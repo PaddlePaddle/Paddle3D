@@ -29,9 +29,9 @@ PointPillars是目前工业界应用广泛的点云检测模型，其最主要�
 
 - PointPillars在KITTI Val set数据集上Cyclist及Pedestrian类别的表现
 
-|      模型      | Cyclist Easy Mod. Hard | Pedestrian Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) |   模型下载    |                                           配置文件                                            |
-|:------------:|:----------------------:|:-------------------------:|:-----------------------:|:-----------------------:|:---------:|:-----------------------------------------------------------------------------------------:|
-| PointPillars |   84.36 64.66 60.53    |     66.13 60.36 54.40     |          30.0           |          30.2           | [model]() | [config](../../../configs/pointpillars/pointpillars_kitti_cyclist_pedestrian_xyres16.yml) |
+|      模型      | Cyclist Easy Mod. Hard | Pedestrian Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) |                                                          模型下载                                                           |                                           配置文件                                            |
+|:------------:|:----------------------:|:-------------------------:|:-----------------------:|:-----------------------:|:-----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------:|
+| PointPillars |   84.36 64.66 60.53    |     66.13 60.36 54.40     |          30.0           |          30.2           | [model](https://bj.bcebos.com/paddle3d/models/pointpillar/pointpillars_kitti_cyclist_pedestrian_xyres16/model.pdparams) | [config](../../../configs/pointpillars/pointpillars_kitti_cyclist_pedestrian_xyres16.yml) |
 
 ## <h2 id="4">训练配置</h2>
 我们提供了在开源数据集上的训练配置与结果，详见[PointPillars 训练配置](../../../configs/pointpillars)。

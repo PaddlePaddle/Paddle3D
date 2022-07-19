@@ -22,10 +22,10 @@ SqueezeSegV3是一个点云语义分割模型。该论文延续了SqueezeSeg系�
 ## <h2 id="3">模型库</h2>
 - SqueezeSegV3在SemanticKITTI Val set数据集上的表现
 
-|       模型        | mIoU (Point Cloud / Range View) | mAcc (Point Cloud / Range View) |   模型下载    |                                       配置文件                                        |
-|:---------------:|:-------------------------------:|:-------------------------------:|:---------:|:---------------------------------------------------------------------------------:|
-| SqueezeSegV3-21 |           46.3 / 51.2           |           87.3 / 90.0           | [model]() | [config](../../../configs/squeezesegv3/squeezesegv3_rangenet21_semantickitti.yml) |
-| SqueezeSegV3-53 |           48.8 / 54.2           |           88.4 / 91.2           | [model]() | [config](../../../configs/squeezesegv3/squeezesegv3_rangenet53_semantickitti.yml) |
+|       模型        | mIoU (Point Cloud / Range View) | mAcc (Point Cloud / Range View) |                                                       模型下载                                                       |                                       配置文件                                        |
+|:---------------:|:-------------------------------:|:-------------------------------:|:----------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------:|
+| SqueezeSegV3-21 |           46.3 / 51.2           |           87.3 / 90.0           | [model](https://bj.bcebos.com/paddle3d/models/squeezesegv3/squeezesegv3_rangenet21_semantickitti/model.pdparams) | [config](../../../configs/squeezesegv3/squeezesegv3_rangenet21_semantickitti.yml) |
+| SqueezeSegV3-53 |           48.8 / 54.2           |           88.4 / 91.2           | [model](https://bj.bcebos.com/paddle3d/models/squeezesegv3/squeezesegv3_rangenet53_semantickitti/model.pdparams) | [config](../../../configs/squeezesegv3/squeezesegv3_rangenet53_semantickitti.yml) |
 
 ## <h2 id="4">训练配置</h2>
 我们提供了在开源数据集上的训练配置与结果，详见[SqueezeSegV3训练配置](../../../configs/squeezesegv3)。
