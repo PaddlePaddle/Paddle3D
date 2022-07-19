@@ -1,0 +1,23 @@
+train_dataset:
+  type: SemanticKITTISegDataset
+  dataset_root: datasets/SemanticKITTI
+  sequences: [ 0, 1, 2, 3, 4, 5, 6, 7, 9, 10 ]
+  transforms:
+    - type: LoadSemanticKITTIRange
+      project_label: true
+    - type: NormalizeRangeImage
+      mean: [ 12.12, 10.88, 0.23, -1.04, 0.21 ]   # range, x, y, z, remission
+      std: [ 12.32, 11.47, 6.91, 0.86, 0.16 ]   # range, x, y, z, remission
+  mode: train
+
+val_dataset:
+  type: SemanticKITTISegDataset
+  dataset_root: datasets/SemanticKITTI
+  sequences: [ 8, ]
+  transforms:
+    - type: LoadSemanticKITTIRange
+      project_label: false
+    - type: NormalizeRangeImage
+      mean: [ 12.12, 10.88, 0.23, -1.04, 0.21 ]   # range, x, y, z, remission
+      std: [ 12.32, 11.47, 6.91, 0.86, 0.16 ]   # range, x, y, z, remission
+  mode: val

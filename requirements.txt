@@ -1,0 +1,16 @@
+colorlog
+easydict
+filelock
+numba
+numpy
+nuscenes-devkit
+opencv-python
+pandas
+paddledet
+paddleseg
+pyquaternion
+pyyaml
+rarfile
+scikit-image
+visualdl
+sklearn

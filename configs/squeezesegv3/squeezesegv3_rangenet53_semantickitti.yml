@@ -1,0 +1,33 @@
+_base_: '../_base_/semantickitti.yml'
+
+batch_size: 1
+iters: 179250   # 150 epochs
+
+optimizer:
+  type: Momentum
+  momentum: 0.9
+  weight_decay: 0.0008
+
+lr_scheduler:
+  type: LinearWarmup
+  learning_rate:
+    type: ExponentialDecay
+    learning_rate: 0.004
+    gamma: 0.999995805413129   # .995 ** (1 / steps_per_epoch)
+  warmup_steps: 1195   # 1 epoch
+  start_lr: 0.0
+  end_lr: 0.004
+
+model:
+  type: SqueezeSegV3
+  num_classes: 20
+  backbone:
+    type: SACRangeNet53
+    in_channels: 5
+    encoder_dropout_prob: 0.01
+    decoder_dropout_prob: 0.01
+  loss:
+    type: SSGLossComputation
+    num_classes: 20
+    epsilon_w: 0.001
+    ignore_index: 0
