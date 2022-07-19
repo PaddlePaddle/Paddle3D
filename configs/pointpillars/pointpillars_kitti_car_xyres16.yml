@@ -1,0 +1,176 @@
+batch_size: 2
+iters: 296960   # 160 epochs
+
+train_dataset:
+  type: KittiPCDataset
+  dataset_root: datasets/KITTI
+  class_names: [ "Car" ]
+  transforms:
+    - type: LoadPointCloud
+      dim: 4
+      use_dim: 4
+    - type: RemoveCameraInvisiblePointsKITTI
+    - type: SamplingDatabase
+      min_num_points_in_box_per_class:
+        Car: 5
+      max_num_samples_per_class:
+        Car: 15
+      ignored_difficulty: [ -1 ]
+      database_anno_path: datasets/KITTI/kitti_train_gt_database/anno_info_train.pkl
+      database_root: datasets/KITTI/
+      class_names: [ "Car" ]
+    - type: RandomObjectPerturb
+      rotation_range: [ -0.15707963267, 0.15707963267 ]
+      translation_std: [ 0.25, 0.25, 0.25 ]
+      max_num_attempts: 100
+    - type: RandomVerticalFlip
+    - type: GlobalRotate
+      min_rot: -0.78539816
+      max_rot: 0.78539816
+    - type: GlobalScale
+      min_scale: 0.95
+      max_scale: 1.05
+    - type: GlobalTranslate
+      translation_std: [ 0.2, 0.2, 0.2 ]
+    - type: FilterBBoxOutsideRange
+      point_cloud_range: [ 0, -39.68, -3, 69.12, 39.68, 1 ]
+    - type: ShufflePoint
+    - type: HardVoxelize
+      point_cloud_range: [ 0, -39.68, -3, 69.12, 39.68, 1 ]
+      voxel_size: [ 0.16, 0.16, 4 ]
+      max_points_in_voxel: 32
+      max_voxel_num: 16000
+    - type: GenerateAnchors
+      output_stride_factor: 2
+      point_cloud_range: [ 0, -39.68, -3, 69.12, 39.68, 1 ]
+      voxel_size: [ 0.16, 0.16, 4 ]
+      anchor_configs:
+        - sizes: [ 1.6, 3.9, 1.56 ] # wlh
+          anchor_strides: [ 0.32, 0.32, 0.0 ]
+          anchor_offsets: [ 0.16, -39.52, -1.78 ]
+          rotations: [ 0, 1.57 ]
+          matched_threshold: 0.6
+          unmatched_threshold: 0.45
+      anchor_area_threshold: 1
+    - type: Gt2PointPillarsTarget
+      rpn_batch_size: 512
+  mode: train
+
+val_dataset:
+  type: KittiPCDataset
+  dataset_root: datasets/KITTI
+  class_names: [ "Car" ]
+  transforms:
+    - type: LoadPointCloud
+      dim: 4
+      use_dim: 4
+    - type: RemoveCameraInvisiblePointsKITTI
+    - type: HardVoxelize
+      point_cloud_range: [ 0, -39.68, -3, 69.12, 39.68, 1 ]
+      voxel_size: [ 0.16, 0.16, 4 ]
+      max_points_in_voxel: 32
+      max_voxel_num: 40000
+    - type: GenerateAnchors
+      output_stride_factor: 2   # RPN `downsample_strides`[0] // `upsample_strides`[0]
+      point_cloud_range: [ 0, -39.68, -3, 69.12, 39.68, 1 ]
+      voxel_size: [ 0.16, 0.16, 4 ]
+      anchor_configs:
+        - sizes: [ 1.6, 3.9, 1.56 ] # wlh
+          anchor_strides: [ 0.32, 0.32, 0.0 ]
+          anchor_offsets: [ 0.16, -39.52, -1.78 ]
+          rotations: [ 0, 1.57 ]
+          matched_threshold: 0.6
+          unmatched_threshold: 0.45
+      anchor_area_threshold: 1
+  mode: val
+
+model:
+  type: PointPillars
+  voxelizer:
+    type: HardVoxelizer
+    point_cloud_range: [ 0, -39.68, -3, 69.12, 39.68, 1 ]
+    voxel_size: [ 0.16, 0.16, 4 ]
+    max_num_points_in_voxel: 32
+    max_num_voxels: [ 16000, 40000 ]   # train, test
+  pillar_encoder:
+    type: PillarFeatureNet
+    in_channels: 4
+    feat_channels: [ 64 ]
+    with_distance: False
+    max_num_points_in_voxel: 32
+    voxel_size: [ 0.16, 0.16, 4 ]
+    point_cloud_range: [ 0, -39.68, -3, 69.12, 39.68, 1 ]
+    legacy: False
+  middle_encoder:
+    type: PointPillarsScatter
+    in_channels: 64
+    voxel_size: [ 0.16, 0.16, 4 ]
+    point_cloud_range: [ 0, -39.68, -3, 69.12, 39.68, 1 ]
+  backbone:
+    type: SecondBackbone
+    in_channels: 64
+    out_channels: [ 64, 128, 256 ]
+    layer_nums: [ 3, 5, 5 ]
+    downsample_strides: [ 2, 2, 2 ]
+  neck:
+    type: SecondFPN
+    in_channels: [ 64, 128, 256 ]
+    out_channels: [ 128, 128, 128 ]
+    upsample_strides: [ 1, 2, 4 ]
+    use_conv_for_no_stride: False
+  head:
+    type: SSDHead
+    num_classes: 1
+    feature_channels: 384   # sum(upsample_channels)
+    num_anchor_per_loc: 2
+    encode_background_as_zeros: True
+    use_direction_classifier: True
+    box_code_size: 7
+    nms_score_threshold: 0.05
+    nms_pre_max_size: 1000
+    nms_post_max_size: 300
+    nms_iou_threshold: 0.5
+    prediction_center_limit_range: [ 0, -39.68, -5, 69.12, 39.68, 5 ]
+  loss:
+    type: PointPillarsLoss
+    num_classes: 1
+    classification_loss:
+      type: SigmoidFocalClassificationLoss
+      gamma: 2.0
+      alpha: 0.25
+    regression_loss:
+      type: WeightedSmoothL1RegressionLoss
+      sigma: 3.0
+      code_weights: [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ]
+    direction_loss:
+      type: WeightedSoftmaxClassificationLoss
+    classification_loss_weight: 1.0
+    regression_loss_weight: 2.0
+    direction_loss_weight: 0.2
+    fg_cls_weight: 1.0
+    bg_cls_weight: 1.0
+    encode_rot_error_by_sin: True
+    use_direction_classifier: True
+    encode_background_as_zeros: True
+    box_code_size: 7
+  anchor_configs:
+    - sizes: [ 1.6, 3.9, 1.56 ] # wlh
+      anchor_strides: [ 0.32, 0.32, 0.0 ]
+      anchor_offsets: [ 0.16, -39.52, -1.78 ]
+      rotations: [ 0, 1.57 ]
+      matched_threshold: 0.6
+      unmatched_threshold: 0.45
+  anchor_area_threshold: 1
+
+optimizer:
+  type: Adam
+  weight_decay: 0.0001
+  grad_clip:
+    type: ClipGradByGlobalNorm
+    clip_norm: 10.0
+
+lr_scheduler:
+  type: StepDecay
+  learning_rate: 0.0002
+  step_size: 27840   # decay every 15 epochs
+  gamma: 0.8

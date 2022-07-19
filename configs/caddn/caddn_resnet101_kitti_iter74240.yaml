@@ -1,0 +1,155 @@
+batch_size: 4
+iters: 74240  # 928*80
+sync_bn: true
+
+train_dataset:
+  type: KittiCadnnDataset
+  dataset_root: data/kitti
+  point_cloud_range: [2, -30.08, -3.0, 46.8, 30.08, 1.0]
+  depth_downsample_factor: 4
+  voxel_size: [0.16, 0.16, 0.16]
+  class_names: ['Car', 'Pedestrian', 'Cyclist']
+  mode: train
+
+val_dataset:
+  type: KittiCadnnDataset
+  dataset_root: data/kitti
+  point_cloud_range: [2, -30.08, -3.0, 46.8, 30.08, 1.0]
+  depth_downsample_factor: 4
+  voxel_size: [0.16, 0.16, 0.16]
+  class_names: ['Car', 'Pedestrian', 'Cyclist']
+  mode: val
+
+optimizer:
+  type: AdamWOnecycle
+  clip_grad_by_norm: 10.0
+  beta1: 0.95
+  beta2: 0.99
+  weight_decay: 0.01
+
+lr_scheduler:
+  type: OneCycle
+  total_step: 74240  # 928 * 80
+  lr_max: 0.001
+  moms: [0.95, 0.85]
+  div_factor: 10
+  pct_start: 0.4
+
+model:
+  type: CADDN
+  pretrained: "pretrained/deeplabv3_resnet101_convert.pdparams"
+  backbone_3d:
+    type: ResNet
+    layers: 101
+    return_idx: [0, 3]
+  class_head:
+    type: DeepLabV3Head
+    num_classes: 81
+    backbone_indices: [1]
+    backbone_channels: 2048
+    aspp_ratios: [1, 12, 24, 36]
+    aspp_out_channels: 256
+    align_corners: False
+  bev_cfg:
+    layer_nums: [10, 10, 10]
+    layer_strides: [2, 2, 2]
+    num_filters: [64, 128, 256]
+    upsample_strides: [1, 2, 4]
+    num_upsample_filters: [128, 128, 128]
+    input_channels: 64
+  dense_head:
+    type: AnchorHeadSingle
+    model_cfg:
+      class_agnostic: False
+      use_direction_classifier: True
+      dir_offset: 0.78539
+      dir_limit_offset: 0.0
+    input_channels: 384
+    point_cloud_range: [2, -30.08, -3.0, 46.8, 30.08, 1.0]
+    class_names: ['Car', 'Pedestrian', 'Cyclist']
+    predict_boxes_when_training: False
+    grid_size: [280, 376,  25.]
+    anchor_generator_cfg: [
+      {
+          'class_name': 'Car',
+          'anchor_sizes': [[3.9, 1.6, 1.56]],
+          'anchor_rotations': [0, 1.57],
+          'anchor_bottom_heights': [-1.78],
+          'align_center': False,
+          'feature_map_stride': 2,
+          'matched_threshold': 0.6,
+          'unmatched_threshold': 0.45
+      },
+      {
+          'class_name': 'Pedestrian',
+          'anchor_sizes': [[0.8, 0.6, 1.73]],
+          'anchor_rotations': [0, 1.57],
+          'anchor_bottom_heights': [-0.6],
+          'align_center': False,
+          'feature_map_stride': 2,
+          'matched_threshold': 0.5,
+          'unmatched_threshold': 0.35
+      },
+      {
+          'class_name': 'Cyclist',
+          'anchor_sizes': [[1.76, 0.6, 1.73]],
+          'anchor_rotations': [0, 1.57],
+          'anchor_bottom_heights': [-0.6],
+          'align_center': False,
+          'feature_map_stride': 2,
+          'matched_threshold': 0.5,
+          'unmatched_threshold': 0.35
+      }
+    ]
+    anchor_target_cfg:
+        pos_fraction: -1.0
+        sample_size: 512
+        norm_by_num_examples: False
+        match_height: False
+    num_dir_bins: 2
+    loss_weights:
+        cls_weight: 1.0
+        loc_weight: 2.0
+        dir_weight: 0.2
+        code_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  map_to_bev_cfg:
+    in_channels: 1600
+    out_channels: 64
+    kernel_size: 1
+    stride: 1
+    bias_attr: False
+    padding: 0
+  ffe_cfg:
+    channel_reduce_cfg:
+      in_channels: 256
+      out_channels: 64
+      kernel_size: 1
+      stride: 1
+      bias_attr: False
+      padding: 0
+    downsample_factor: 4
+    ddn_loss:
+      weight: 3.0
+      alpha: 0.25
+      beta: 2.0
+      fg_weight: 13
+      bg_weight: 1
+  f2v_cfg:
+    pc_range: [2, -30.08, -3.0, 46.8, 30.08, 1.0]
+    grid_size: [280, 376, 25.0]
+    sample_cfg:
+      mode: bilinear
+      padding_mode: zeros
+  disc_cfg:
+      mode: LID
+      num_bins: 80
+      depth_min: 2.0
+      depth_max: 46.8
+  post_process_cfg:
+    recall_thresh_list: [0.3, 0.5, 0.7]
+    score_thresh: 0.1
+    eval_metric: kitti
+    nms_config:
+      nms_thresh: 0.01
+      nms_pre_maxsize: 4096
+      nms_post_maxsize: 500
