@@ -3,12 +3,13 @@
 ## 目录
 * [引用](#h2-id1h2)
 * [简介](#h2-id2h2)
-* [训练配置](#h2-id3h2)
-* [使用教程](#h2-id4h2)
-  * [数据准备](#h3-id41h3)
-  * [训练](#h3-id42h3)
-  * [评估](#h3-id43h3)
-  * [模型导出](#h3-id44h3)
+* [模型库](#h2-id3h2)
+* [训练配置](#h2-id4h2)
+* [使用教程](#h2-id5h2)
+  * [数据准备](#h3-id51h3)
+  * [训练](#h3-id52h3)
+  * [评估](#h3-id53h3)
+  * [模型导出](#h3-id54h3)
 
 ## <h2 id="1">引用</h2>
 
@@ -18,27 +19,34 @@
 SqueezeSegV3是一个点云语义分割模型。该论文延续了SqueezeSeg系列将三维空间点云投影至二维空间进行特征提取的思想，并在RangeNet++模型结构的
 基础上创新性地提出并应用了空间自适应卷积（Spatially-Adaptive Convolution）。
 
-## <h2 id="3">训练配置</h2>
-我们提供了在开源数据集上的训练配置与结果，详见[SqueezeSegV3训练配置](../../configs/squeezesegv3)。
+## <h2 id="3">模型库</h2>
+- SqueezeSegV3在SemanticKITTI Val set数据集上的表现
 
-## <h2 id="4">使用教程</h2>
+|       模型        | mIoU (Point Cloud / Range View) | mAcc (Point Cloud / Range View) |   模型下载    |                                       配置文件                                        |
+|:---------------:|:-------------------------------:|:-------------------------------:|:---------:|:---------------------------------------------------------------------------------:|
+| SqueezeSegV3-21 |           46.3 / 51.2           |           87.3 / 90.0           | [model]() | [config](../../../configs/squeezesegv3/squeezesegv3_rangenet21_semantickitti.yml) |
+| SqueezeSegV3-53 |           48.8 / 54.2           |           88.4 / 91.2           | [model]() | [config](../../../configs/squeezesegv3/squeezesegv3_rangenet53_semantickitti.yml) |
 
-### <h3 id="41">数据准备</h3>
+## <h2 id="4">训练配置</h2>
+我们提供了在开源数据集上的训练配置与结果，详见[SqueezeSegV3训练配置](../../../configs/squeezesegv3)。
+
+## <h2 id="5">使用教程</h2>
+
+### <h3 id="51">数据准备</h3>
 1. 数据格式  
 SqueezeSegV3模型目前仅适配[SemanticKITTI](http://semantic-kitti.org/dataset.html)格式的数据集。需将数据集放置于
-`Paddle3D/datasets/SemanticKITTI`目录下，或在[配置文件](../../configs/_base_/semantickitti.yml)中指定数据集路径。数据集文件结构如下：  
+`Paddle3D/datasets/SemanticKITTI`目录下，或在[配置文件](../../../configs/_base_/semantickitti.yml)中指定数据集路径。数据集文件结构如下：  
 ```
 └── Paddle3D/datasets/SemanticKITTI
-    ├── dataset
-        ├── sqeuences
-            ├── 00
-                ├── velodyne
-                    ├── 000000.bin
-                    ├── ...
-                ├── labels
-                    ├── 000000.label
-                    ├── ...
-                ├── poses.txt
+    ├── sqeuences
+        ├── 00
+            ├── velodyne
+                ├── 000000.bin
+                ├── ...
+            ├── labels
+                ├── 000000.label
+                ├── ...
+            ├── poses.txt
 ```
 
 2. 数据划分  
@@ -47,9 +55,9 @@ SemanticKITTI数据集共包含`00`至`21`共22个序列，其中官方默认的
    - 验证集：08
    - 测试集：11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21  
 
-    如需使用自己的划分，可在[配置文件](../../configs/_base_/semantickitti.yml)中指定。
+    如需使用自己的划分，可在[配置文件](../../../configs/_base_/semantickitti.yml)中指定。
 
-### <h3 id="42">训练</h3>
+### <h3 id="52">训练</h3>
 位于`Paddle3D/`目录下，执行：
 ```shell
 python -m paddle.distributed.launch --gpus 0,1,2,3,4,5,6,7 \
@@ -79,7 +87,7 @@ python -m paddle.distributed.launch --gpus 0,1,2,3,4,5,6,7 \
 | learning_rate       | 学习率                            | 否     | 在配置文件中指定 |
 | seed                | 固定随机种子                         | 否     | None     |
 
-### <h3 id="43">评估</h3>
+### <h3 id="53">评估</h3>
 位于`Paddle3D/`目录下，执行：
 ```shell
 python tools/evaluate.py \
@@ -97,7 +105,7 @@ python tools/evaluate.py \
 | batch_size          | mini-batch大小                   | 否     | 在配置文件中指定 |
 
 
-### <h3 id="44">模型导出</h3>
+### <h3 id="54">模型导出</h3>
 
 运行以下命令，将训练时保存的动态图模型文件导出成推理引擎能够加载的静态图模型文件。
 
