@@ -62,11 +62,13 @@ class PostProcessor(nn.Layer):
 
         pred_regression_pois = paddle.reshape(
             pred_regression, (pred_regression.numel() // 10, 10))
+
+        # yapf: disable
         pred_proj_points = paddle.concat([
             paddle.reshape(xs, (xs.numel(), 1)),
             paddle.reshape(ys, (ys.numel(), 1))
-        ],
-                                         axis=1)
+        ], axis=1)
+        # yapf: enable
 
         # FIXME: fix hard code here
         pred_depths_offset = pred_regression_pois[:, 0]
