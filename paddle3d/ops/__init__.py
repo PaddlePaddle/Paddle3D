@@ -105,7 +105,7 @@ class Paddle3dCustomOperatorModule(ModuleType):
             except ImportError:
                 logger.warning("No custom op {} found, try JIT build".format(
                     self.modulename))
-                self.jit_build()
+                self.module = self.jit_build()
                 logger.info("{} builded success!".format(self.modulename))
 
         return self.module
