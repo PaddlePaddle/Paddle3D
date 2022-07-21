@@ -98,9 +98,7 @@ class SMOKELossComputation(object):
         pred_proj_offsets = pred_regression_pois[:, 1:3]
         pred_dimensions_offsets = pred_regression_pois[:, 3:6]
         pred_orientation = pred_regression_pois[:, 6:8]
-        # pred_bboxsize = paddle.zeros_like(pred_regression_pois[:, 6:8])
         pred_bboxsize = pred_regression_pois[:, 8:10]
-        # pred_c_offsets = pred_regression_pois[:, 10:12]
 
         pred_depths = self.smoke_coder.decode_depth(pred_depths_offset)
         pred_locations = self.smoke_coder.decode_location(

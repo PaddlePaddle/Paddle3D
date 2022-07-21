@@ -57,8 +57,6 @@ class SMOKEPredictor(nn.Layer):
                 padding=1 // 2,
                 bias_attr=True))
 
-        # todo: what is datafill here
-        #self.class_head[-1].bias.data.fill_(-2.19)
         param_init.constant_init(self.class_head[-1].bias, value=-2.19)
 
         self.regression_head = nn.Sequential(
@@ -75,7 +73,6 @@ class SMOKEPredictor(nn.Layer):
                 padding=1 // 2,
                 bias_attr=True))
 
-        #_fill_fc_weights(self.regression_head)
         self.init_weight(self.regression_head)
 
     def forward(self, features):

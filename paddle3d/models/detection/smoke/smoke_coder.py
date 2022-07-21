@@ -314,7 +314,6 @@ class SMOKECoder(paddle.nn.Layer):
         # batch size
         N_batch = trans_mats.shape[0]
         batch_id = paddle.arange(N_batch).unsqueeze(1)
-        # obj_id = batch_id.repeat(1, N // N_batch).flatten()
         obj_id = batch_id.tile([1, N // N_batch]).flatten()
 
         trans_mats_inv = trans_mats.inverse()[obj_id]
