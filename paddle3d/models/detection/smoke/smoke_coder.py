@@ -186,7 +186,7 @@ class SMOKECoder(paddle.nn.Layer):
         Ks_inv = Ks.inverse()[obj_id]
 
         down_ratio = down_ratios[0]
-        points = paddle.reshape(points, (numel_t(points) // 2, 2))
+        points = paddle.reshape(points, points.numel() // 2, 2)
         proj_points = points + points_offset
 
         # trans point from heatmap to ori image, down_sample * resize_scale
@@ -200,7 +200,7 @@ class SMOKECoder(paddle.nn.Layer):
         proj_points_extend = proj_points_extend.unsqueeze(-1)
         # with depth
         proj_points_img = proj_points_extend * paddle.reshape(
-            depths, (N, numel_t(depths) // N, 1))
+            depths, (N, depths.numel() // N, 1))
         # transform image coordinates back to object locations
         locations = paddle.matmul(Ks_inv, proj_points_img)
 
@@ -383,9 +383,3 @@ class DimensionDecoder(paddle.nn.Layer):
         dimensions = dims_offset.exp() * dims_select
 
         return dimensions
-
-
-def numel_t(var):
-    from numpy import prod
-    assert -1 not in var.shape
-    return prod(var.shape)
