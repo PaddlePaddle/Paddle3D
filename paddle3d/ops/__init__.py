@@ -71,8 +71,12 @@ class CustomOperatorPathLoader:
         if modulename not in custom_ops:
             raise UnknownCustomOpException(modulename)
 
-        sys.modules[fullname] = Paddle3dCustomOperatorModule(
-            modulename, fullname)
+        if fullname not in sys.modules:
+            try:
+                sys.modules[fullname] = importlib.import_module(modulename)
+            except ImportError:
+                sys.modules[fullname] = Paddle3dCustomOperatorModule(
+                    modulename, fullname)
         return sys.modules[fullname]
 
 
@@ -101,13 +105,14 @@ class Paddle3dCustomOperatorModule(ModuleType):
         if self.module is None:
             try:
                 self.module = importlib.import_module(self.modulename)
-                sys.modules[self.fullname] = self.module
             except ImportError:
                 logger.warning("No custom op {} found, try JIT build".format(
                     self.modulename))
                 self.module = self.jit_build()
                 logger.info("{} builded success!".format(self.modulename))
 
+            # refresh
+            sys.modules[self.fullname] = self.module
         return self.module
 
     def __getattr__(self, attr: str):
