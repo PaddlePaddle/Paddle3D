@@ -78,33 +78,15 @@ class SMOKECoder(paddle.nn.Layer):
         N = rotys.shape[0]
         ry = self.rad_to_matrix(rotys, N)
 
-        # if test:
-        #     dims.register_hook(lambda grad: print('dims grad', grad.sum()))
-        # dims = paddle.reshape(dims, (-1, 1)).tile([1, 8])
+        dims = paddle.reshape(dims, (-1, 1)).tile([1, 8])
 
-        # dims[::3, :4] = 0.5 * dims[::3, :4]
-        # dims[1::3, :4] = 0.
-        # dims[2::3, :4] = 0.5 * dims[2::3, :4]
+        dims[::3, :4] = 0.5 * dims[::3, :4]
+        dims[1::3, :4] = 0.
+        dims[2::3, :4] = 0.5 * dims[2::3, :4]
 
-        # dims[::3, 4:] = -0.5 * dims[::3, 4:]
-        # dims[1::3, 4:] = -dims[1::3, 4:]
-        # dims[2::3, 4:] = -0.5 * dims[2::3, 4:]
-
-        dim_left_1 = (0.5 * dims[:, 0]).unsqueeze(-1)
-        dim_left_2 = paddle.zeros([dims.shape[0], 1]).astype(
-            "float32")  #(paddle.zeros_like(dims[:, 1])).unsqueeze(-1)
-        dim_left_3 = (0.5 * dims[:, 2]).unsqueeze(-1)
-        dim_left = paddle.concat([dim_left_1, dim_left_2, dim_left_3], axis=1)
-        dim_left = paddle.reshape(dim_left, (-1, 1)).tile([1, 4])
-
-        dim_right_1 = (-0.5 * dims[:, 0]).unsqueeze(-1)
-        dim_right_2 = (-dims[:, 1]).unsqueeze(-1)
-        dim_right_3 = (-0.5 * dims[:, 2]).unsqueeze(-1)
-        dim_right = paddle.concat([dim_right_1, dim_right_2, dim_right_3],
-                                  axis=1)
-        dim_right = paddle.reshape(dim_right, (-1, 1)).tile([1, 4])
-
-        dims = paddle.concat([dim_left, dim_right], axis=1)
+        dims[::3, 4:] = -0.5 * dims[::3, 4:]
+        dims[1::3, 4:] = -dims[1::3, 4:]
+        dims[2::3, 4:] = -0.5 * dims[2::3, 4:]
 
         index = paddle.to_tensor([[4, 0, 1, 2, 3, 5, 6, 7],
                                   [4, 5, 0, 1, 6, 7, 2, 3],
@@ -114,7 +96,6 @@ class SMOKECoder(paddle.nn.Layer):
         box_3d_object = gather(dims, index)
 
         box_3d = paddle.matmul(ry, paddle.reshape(box_3d_object, (N, 3, -1)))
-        # box_3d += locs.unsqueeze(-1).repeat(1, 1, 8)
         box_3d += locs.unsqueeze(-1).tile((1, 1, 8))
 
         return box_3d
