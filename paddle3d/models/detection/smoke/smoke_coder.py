@@ -49,29 +49,12 @@ class SMOKECoder(paddle.nn.Layer):
         i_temp = paddle.to_tensor([[1, 0, 1], [0, 1, 0], [-1, 0, 1]],
                                   dtype="float32")
 
-        # ry = paddle.reshape(i_temp.tile([N, 1]), (N, -1, 3))
+        ry = paddle.reshape(i_temp.tile([N, 1]), (N, -1, 3))
 
-        # ry[:, 0, 0] *= cos
-        # ry[:, 0, 2] *= sin
-        # ry[:, 2, 0] *= sin
-        # ry[:, 2, 2] *= cos
-
-        # slice bug, so use concat
-        pos1 = (paddle.ones([N], dtype="float32") * cos).unsqueeze(-1)
-        pos2 = (paddle.zeros([N], dtype="float32")).unsqueeze(-1)
-        pos3 = (paddle.ones([N], dtype="float32") * sin).unsqueeze(-1)
-        pos4 = (paddle.zeros([N], dtype="float32")).unsqueeze(-1)
-        pos5 = (paddle.ones([N], dtype="float32")).unsqueeze(-1)
-        pos6 = (paddle.zeros([N], dtype="float32")).unsqueeze(-1)
-        pos7 = (paddle.ones([N], dtype="float32") * (-sin)).unsqueeze(-1)
-        pos8 = (paddle.zeros([N], dtype="float32")).unsqueeze(-1)
-        pos9 = (paddle.ones([N], dtype="float32") * cos).unsqueeze(-1)
-
-        ry = paddle.concat(
-            [pos1, pos2, pos3, pos4, pos5, pos6, pos7, pos8, pos9], axis=1)
-
-        ry = paddle.reshape(ry, [N, 3, 3])
-
+        ry[:, 0, 0] *= cos
+        ry[:, 0, 2] *= sin
+        ry[:, 2, 0] *= sin
+        ry[:, 2, 2] *= cos
         return ry
 
     def encode_box3d(self, rotys, dims, locs):
