@@ -24,26 +24,33 @@ from paddle3d.utils.logger import logger
 
 custom_ops = {
     'voxelize': {
-        'sources': ['voxel/voxelize_op.cc', 'voxel/voxelize_op.cu']
+        'sources': ['voxel/voxelize_op.cc', 'voxel/voxelize_op.cu'],
+        'version': '0.1.0',
     },
     'iou3d_nms_cuda': {
         'sources': [
             'iou3d_nms/iou3d_cpu.cpp', 'iou3d_nms/iou3d_nms_api.cpp',
             'iou3d_nms/iou3d_nms.cpp', 'iou3d_nms/iou3d_nms_kernel.cu'
-        ]
+        ],
+        'version':
+        '0.1.0',
     },
     'centerpoint_postprocess': {
         'sources': [
             'centerpoint_postprocess/iou3d_nms_kernel.cu',
             'centerpoint_postprocess/postprocess.cc',
             'centerpoint_postprocess/postprocess.cu'
-        ]
+        ],
+        'version':
+        '0.1.0',
     },
     'grid_sample_3d': {
         'sources': [
             'grid_sample_3d/grid_sample_3d.cc',
             'grid_sample_3d/grid_sample_3d.cu'
-        ]
+        ],
+        'version':
+        '0.1.0',
     }
 }
 
@@ -95,6 +102,8 @@ class Paddle3dCustomOperatorModule(ModuleType):
             args = custom_ops[self.modulename].copy()
             sources = args.pop('sources')
             sources = [os.path.join(rootdir, file) for file in sources]
+
+            args.pop('version')
             return paddle_jit_load(
                 name=self.modulename, sources=sources, **args)
         except:
