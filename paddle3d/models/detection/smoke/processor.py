@@ -60,14 +60,11 @@ class PostProcessor(nn.Layer):
         pred_regression = select_point_of_interest(batch, indexs,
                                                    pred_regression)
 
-        # pred_regression_pois = paddle.reshape(pred_regression, (pred_regression.numel()//10, 10))
-        # pred_proj_points = paddle.concat([paddle.reshape(xs, (xs.numel(), 1)), paddle.reshape(ys, (ys.numel(), 1))], axis=1)
-
         pred_regression_pois = paddle.reshape(
-            pred_regression, (numel_t(pred_regression) // 10, 10))
+            pred_regression, (pred_regression.numel() // 10, 10))
         pred_proj_points = paddle.concat([
-            paddle.reshape(xs, (numel_t(xs), 1)),
-            paddle.reshape(ys, (numel_t(ys), 1))
+            paddle.reshape(xs, (xs.numel(), 1)),
+            paddle.reshape(ys, (ys.numel(), 1))
         ],
                                          axis=1)
 
@@ -183,9 +180,3 @@ class PostProcessor(nn.Layer):
             result = paddle.to_tensor([])
 
         return result
-
-
-def numel_t(var):
-    from numpy import prod
-    assert -1 not in var.shape
-    return prod(var.shape)
