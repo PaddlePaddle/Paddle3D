@@ -97,11 +97,12 @@ class PostProcessor(nn.Layer):
         l, h, w = pred_dimensions.chunk(3, 1)
         pred_dimensions = paddle.concat([h, w, l], axis=1)
 
+        # yapf: disable
         result = paddle.concat([
             clses, pred_alphas, box2d, pred_dimensions, pred_locations,
             pred_rotys, scores
-        ],
-                               axis=1)
+        ], axis=1)
+        # yapf: enable
 
         return result
 
@@ -165,11 +166,12 @@ class PostProcessor(nn.Layer):
         l, h, w = pred_dimensions.chunk(3, 1)
         pred_dimensions = paddle.concat([h, w, l], axis=1)
 
+        # yapf: disable
         result = paddle.concat([
             clses, pred_alphas, box2d, pred_dimensions, pred_locations,
             pred_rotys, scores
-        ],
-                               axis=1)
+        ], axis=1)
+        # yapf: enable
 
         keep_idx = result[:, -1] > self.det_threshold
 

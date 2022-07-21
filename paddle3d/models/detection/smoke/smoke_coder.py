@@ -28,10 +28,6 @@ class SMOKECoder(paddle.nn.Layer):
 
     def __init__(self, depth_ref, dim_ref):
         super().__init__()
-
-        # self.depth_ref = paddle.to_tensor(depth_ref)
-        # self.dim_ref = paddle.to_tensor(dim_ref)
-
         self.depth_decoder = DepthDecoder(depth_ref)
         self.dimension_decoder = DimensionDecoder(dim_ref)
 
@@ -144,9 +140,6 @@ class SMOKECoder(paddle.nn.Layer):
         """
         Transform depth offset to depth
         """
-        #depth = depths_offset * self.depth_ref[1] + self.depth_ref[0]
-
-        #return depth
         return self.depth_decoder(depths_offset)
 
     def decode_location(self, points, points_offset, depths, Ks, trans_mats):
@@ -168,7 +161,6 @@ class SMOKECoder(paddle.nn.Layer):
         # batch size
         N_batch = Ks.shape[0]
         batch_id = paddle.arange(N_batch).unsqueeze(1)
-        # obj_id = batch_id.repeat(1, N // N_batch).flatten()
         obj_id = batch_id.tile([1, N // N_batch]).flatten()
 
         trans_mats_inv = trans_mats.inverse()[obj_id]
