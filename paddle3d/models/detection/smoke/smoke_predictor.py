@@ -91,27 +91,11 @@ class SMOKEPredictor(nn.Layer):
         head_regression = self.regression_head(features)
         head_class = sigmoid_hm(head_class)
 
-        # (N, C, H, W)
-
-        # left slice bug
-        # offset_dims = head_regression[:, self.dim_channel, :, :].clone()
-        # head_regression[:, self.dim_channel, :, :] = F.sigmoid(offset_dims) - 0.5
-        # vector_ori = head_regression[:, self.ori_channel, :, :].clone()
-        # head_regression[:, self.ori_channel, :, :] = F.normalize(vector_ori)
-
         offset_dims = head_regression[:, self.dim_channel, :, :].clone()
-        head_reg_dim = F.sigmoid(offset_dims) - 0.5
-
+        head_regression[:, self.
+                        dim_channel, :, :] = F.sigmoid(offset_dims) - 0.5
         vector_ori = head_regression[:, self.ori_channel, :, :].clone()
-        head_reg_ori = F.normalize(vector_ori)
-
-        head_regression_left = head_regression[:, :self.dim_channel.start, :, :]
-        head_regression_right = head_regression[:, self.ori_channel.stop:, :, :]
-        head_regression = paddle.concat([
-            head_regression_left, head_reg_dim, head_reg_ori,
-            head_regression_right
-        ],
-                                        axis=1)
+        head_regression[:, self.ori_channel, :, :] = F.normalize(vector_ori)
 
         return [head_class, head_regression]
 
