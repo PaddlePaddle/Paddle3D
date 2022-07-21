@@ -55,7 +55,7 @@ custom_ops = {
 }
 
 
-class UnknownCustomOpException(Exception):
+class CustomOpNotFoundException(Exception):
     def __init__(self, op_name):
         self.op_name = op_name
 
@@ -76,7 +76,7 @@ class CustomOperatorPathLoader:
         modulename = fullname.split('.')[-1]
 
         if modulename not in custom_ops:
-            raise UnknownCustomOpException(modulename)
+            raise CustomOpNotFoundException(modulename)
 
         if fullname not in sys.modules:
             try:
