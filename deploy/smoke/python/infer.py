@@ -62,17 +62,18 @@ def get_ratio(ori_img_size, output_size, down_ratio=(4, 4)):
 
 def get_img(img_path):
     img = cv2.imread(img_path)
-    ori_img_size = img.shape
-    img = cv2.resize(img, (960, 640))
-    output_size = img.shape
+    img = cv2.resize(img, (1280, 384))
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
     img = img / 255.0
     img = np.subtract(img, np.array([0.485, 0.456, 0.406]))
     img = np.true_divide(img, np.array([0.229, 0.224, 0.225]))
     img = np.array(img, np.float32)
+
     img = img.transpose(2, 0, 1)
     img = img[None, :, :, :]
 
-    return img, ori_img_size, output_size
+    return img, img.shape, img.shape
 
 
 def init_predictor(args):
@@ -128,13 +129,16 @@ def run(predictor, img):
 if __name__ == '__main__':
     args = parse_args()
     pred = init_predictor(args)
-    K = np.array([[[2055.56, 0, 939.658], [0, 2055.56, 641.072], [0, 0, 1]]],
-                 np.float32)
-    K_inverse = np.linalg.inv(K)
+    # Listed below are camera intrinsic parameter of the kitti dataset
+    # If the model is trained on other datasets, please replace the relevant data
+    K = np.array([[[721.53771973, 0., 609.55932617],
+                   [0., 721.53771973, 172.85400391], [0, 0, 1]]], np.float32)
 
     img, ori_img_size, output_size = get_img(args.image)
     ratio = get_ratio(ori_img_size, output_size)
 
-    results = run(pred, [img, K_inverse, ratio])
+    results = run(pred, [img, K, ratio])
 
     total_pred = results[0]
+    import pdb
+    pdb.set_trace()
