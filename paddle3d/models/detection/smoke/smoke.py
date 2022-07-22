@@ -20,7 +20,7 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 
 from paddle3d.apis import manager
-from paddle3d.geometries import BBoxes2D, BBoxes3D
+from paddle3d.geometries import BBoxes2D, BBoxes3D, CoordMode
 from paddle3d.models.detection.smoke.processor import PostProcessor
 from paddle3d.models.detection.smoke.smoke_loss import SMOKELossComputation
 from paddle3d.sample import Sample
@@ -109,7 +109,14 @@ class SMOKE(nn.Layer):
         if results.shape[0] != 0:
             clas = results[:, 0]
             bboxes_2d = BBoxes2D(results[:, 2:6])
-            bboxes_3d = BBoxes3D(results[:, 6:13])
+
+            # TODO: fix hard code here
+            bboxes_3d = BBoxes3D(
+                results[:, 6:13],
+                coordmode=CoordMode.KittiCamera,
+                origin=(0.5, 1, 0.5),
+                rot_axis=1)
+
             confidences = results[:, 13]
 
             ret.confidences = confidences
