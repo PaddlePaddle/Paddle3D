@@ -382,11 +382,10 @@ class SamplingDatabase(TransformABC):
             existing_velocities = sample.bboxes_3d.velocities.copy()
         existing_labels = sample.labels.copy()
         existing_data = sample.data.copy()
-        existing_difficulties = getattr(sample, "difficulties", None)
-        ignored_bboxes_3d = getattr(
-            sample, "ignored_bboxes_3d",
-            np.zeros([0, existing_bboxes_3d.shape[1]],
-                     dtype=existing_bboxes_3d.dtype))
+        existing_difficulties = None if "difficulties" not in sample else sample.difficulties
+        ignored_bboxes_3d = np.zeros(
+            [0, existing_bboxes_3d.shape[1]], dtype=existing_bboxes_3d.dtype
+        ) if "ignored_bboxes_3d" not in sample else sample.ignored_bboxes_3d
         avoid_coll_bboxes_3d = np.vstack(
             [existing_bboxes_3d, ignored_bboxes_3d])
 
