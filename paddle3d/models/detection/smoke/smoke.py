@@ -100,10 +100,7 @@ class SMOKE(nn.Layer):
 
     def _parse_results_to_sample(self, results: paddle.Tensor, sample: dict,
                                  index: int):
-        ret = Sample(sample['path'][index], sample['modality'][index])
-        ret.meta.update(
-            {key: value[index]
-             for key, value in sample['meta'].items()})
+        ret = sample.copy()
         results = results.numpy()
 
         if results.shape[0] != 0:

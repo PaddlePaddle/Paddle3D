@@ -30,11 +30,13 @@ class KittiMonoDataset(KittiDetDataset):
     def __getitem__(self, index: int) -> Sample:
         filename = '{}.png'.format(self.data[index])
         path = os.path.join(self.image_dir, filename)
-        P2 = self.load_calibration_info(index)[2]
+        calibs = self.load_calibration_info(index)
 
         sample = Sample(path=path, modality="image")
-        sample.meta.camera_intrinsic = P2[:3, :3]
+        # P2
+        sample.meta.camera_intrinsic = calibs[2][:3, :3]
         sample.meta.id = self.data[index]
+        sample.calibs = calibs
 
         if not self.is_test_mode:
             kitti_records, ignored_kitti_records = self.load_annotation(index)
