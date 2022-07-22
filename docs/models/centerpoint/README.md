@@ -32,7 +32,7 @@ Paddle3D实现的CenterPoint做了以下优化：
 
 | 模型 | 点云特征提取模块 | mAP | NDS | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 |
 | ---- | ---------------- | --- | --- | ----------------------- | ----------------------- | -------- | -------- |
-| CenterPoint | PointPillars | 50.64 | 61.16 | 45.7 | 53.8 | [model]() | [config](../../../../configs/centerpoint/nuscenes_centerpoint_pillars_02voxel_10sweep.yml)|
+| CenterPoint | PointPillars | 50.64 | 61.16 | 45.7 | 53.8 | [model]() | [config](../../../configs/centerpoint/nuscenes_centerpoint_pillars_02voxel_10sweep.yml)|
 
 **注意：** nuScenes benchmark使用4张V100 GPU训练得出。
 
@@ -40,11 +40,11 @@ Paddle3D实现的CenterPoint做了以下优化：
 
 | 模型 | 点云特征提取模块 | 3DmAP Mod. | Car Easy Mod. Hard | Pedestrian Easy Mod. Hard | Cyclist Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 |
 | ---- | ---------------- | ---------- | ------------------ | ------------------------- | -----------------------| ----------------------- | ----------------------- | -------- | -------- |
-| CenterPoint | PointPillars | 63.69 | 86.12 77.13 74.43 | 54.61 51.79 46.68 | 86.14 62.18 58.82 | 28.3 | 55.3 | [model]() | [config](../../../../configs/centerpoint/kitti_centerpoint_pillars_016voxel.yml)|
+| CenterPoint | PointPillars | 63.69 | 86.12 77.13 74.43 | 54.61 51.79 46.68 | 86.14 62.18 58.82 | 28.3 | 55.3 | [model]() | [config](../../../configs/centerpoint/kitti_centerpoint_pillars_016voxel.yml)|
 
 | 模型 | 点云特征提取模块 | BEVmAP Mod. | Car Easy Mod. Hard | Pedestrian Easy Mod. Hard | Cyclist Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 |
 | ---- | ---------------- | ----------- | ------------------ | ------------------------- | ---------------------- | ----------------------- | ----------------------- | -------- | -------- |
-| CenterPoint | PointPillars | 70.02 | 91.21 87.09 85.96 | 62.89 59.21 54.57 | 86.88 63.77 60.62 | 28.3 | 55.3 | [model]() | [config](../../../../configs/centerpoint/kitti_centerpoint_pillars_016voxel.yml)|
+| CenterPoint | PointPillars | 70.02 | 91.21 87.09 85.96 | 62.89 59.21 54.57 | 86.88 63.77 60.62 | 28.3 | 55.3 | [model]() | [config](../../../configs/centerpoint/kitti_centerpoint_pillars_016voxel.yml)|
 
 **注意：** KITTI benchmark使用8张V100 GPU训练得出。
 

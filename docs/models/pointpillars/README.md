@@ -3,12 +3,14 @@
 ## 目录
 * [引用](#h2-id1h2)
 * [简介](#h2-id2h2)
-* [训练配置](#h2-id3h2)
-* [使用教程](#h2-id4h2)
-  * [数据准备](#h3-id41h3)
-  * [训练](#h3-id42h3)
-  * [评估](#h3-id43h3)
-  * [模型导出 & 部署](#h3-id44h3)
+* [模型库](#h2-id3h2)
+* [训练配置](#h2-id4h2)
+* [使用教程](#h2-id5h2)
+  * [数据准备](#h3-id51h3)
+  * [训练](#h3-id52h3)
+  * [评估](#h3-id53h3)
+  * [模型导出](#h3-id54h3)
+  * [模型部署](#h3-id55h3)
 
 ## <h2 id="1">引用</h2>
 
@@ -18,14 +20,27 @@
 PointPillars是目前工业界应用广泛的点云检测模型，其最主要的特点是检测速度和精度的平衡。PointPillars 在 [VoxelNet](https://arxiv.org/abs/1711.06396) 和 [SECOND](https://pdfs.semanticscholar.org/5125/a16039cabc6320c908a4764f32596e018ad3.pdf)
  的基础上针对性能进行了优化，将点云转化为柱体（Pillars）表示，从而使得编码后的点云特征可以使用2D卷积神经网络进行检测任务。
 
-## <h2 id="3">训练配置</h2>
-我们提供了在开源数据集上的训练配置与结果，详见[PointPillars 训练配置](../../configs/pointpillars)。
+## <h2 id="3">模型库</h2>
+- PointPillars在KITTI Val set数据集上Car类别的表现
 
-## <h2 id="4">使用教程</h2>
+|      模型      | Car Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) |                                                   模型下载                                                   |                                    配置文件                                    |
+|:------------:|:------------------:|:-----------------------:|:-----------------------:|:--------------------------------------------------------------------------------------------------------:|:--------------------------------------------------------------------------:|
+| PointPillars | 86.90 75.21 71.57  |          37.3           |          40.5           | [model](https://bj.bcebos.com/paddle3d/models/pointpillar/pointpillars_kitti_car_xyres16/model.pdparams) | [config](../../../configs/pointpillars/pointpillars_kitti_car_xyres16.yml) |
 
-### <h3 id="41">数据准备</h3>
+- PointPillars在KITTI Val set数据集上Cyclist及Pedestrian类别的表现
 
-- 目前Paddle3D中提供的CenterPoint模型支持在KITTI数据集上训练，因此需要先准备KITTI数据集，请在[官网](http://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d)进行下载：
+|      模型      | Cyclist Easy Mod. Hard | Pedestrian Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) |                                                          模型下载                                                           |                                           配置文件                                            |
+|:------------:|:----------------------:|:-------------------------:|:-----------------------:|:-----------------------:|:-----------------------------------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------:|
+| PointPillars |   84.36 64.66 60.53    |     66.13 60.36 54.40     |          30.0           |          30.2           | [model](https://bj.bcebos.com/paddle3d/models/pointpillar/pointpillars_kitti_cyclist_pedestrian_xyres16/model.pdparams) | [config](../../../configs/pointpillars/pointpillars_kitti_cyclist_pedestrian_xyres16.yml) |
+
+## <h2 id="4">训练配置</h2>
+我们提供了在开源数据集上的训练配置与结果，详见[PointPillars 训练配置](../../../configs/pointpillars)。
+
+## <h2 id="5">使用教程</h2>
+
+### <h3 id="51">数据准备</h3>
+
+- 目前Paddle3D中提供的PointPillars模型支持在KITTI数据集上训练，因此需要先准备KITTI数据集，请在[官网](http://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d)进行下载：
 
 1. Download Velodyne point clouds, if you want to use laser information (29 GB)
 
@@ -42,22 +57,22 @@ wget https://bj.bcebos.com/paddle3d/datasets/KITTI/ImageSets.tar.gz
 将数据解压后按照下方的目录结构进行组织：
 
 ```
-kitti_dataset_root
-|—— training
-|   |—— label_2
-|   |   |—— 000001.txt
-|   |   |—— ...
-|   |—— calib
-|   |   |—— 000001.txt
-|   |   |—— ...
-|   |—— velodyne
-|   |   |—— 000001.bin
-|   |   |—— ...
-|—— ImageSets
-│   |—— test.txt
-│   |—— train.txt
-│   |—— trainval.txt
-│   |—— val.txt
+└── kitti_dataset_root
+    |—— training
+        |—— label_2
+            |—— 000001.txt
+            |—— ...
+        |—— calib
+            |—— 000001.txt
+            |—— ...
+        |—— velodyne
+            |—— 000001.bin
+            |—— ...
+    |—— ImageSets
+        |—— test.txt
+        |—— train.txt
+        |—— trainval.txt
+        |—— val.txt
 ```
 
 在Paddle3D的目录下创建软链接 `datasets/KITTI`，指向到上面的数据集目录:
@@ -77,15 +92,15 @@ python tools/create_det_gt_database.py --dataset_name kitti --dataset_root ./dat
 `--dataset_root`指定KITTI数据集所在路径，`--save_dir`指定用于保存所生成的真值库的路径。该命令执行后，`save_dir`生成的目录如下：
 
 ```
-kitti_train_gt_database
-|—— anno_info_train.pkl
-|—— Car
-|   |—— 4371_Car_7.bin
-|   |—— ...
-|—— Cyclist
+└── kitti_train_gt_database
+    |—— anno_info_train.pkl
+    |—— Car
+        |—— 4371_Car_7.bin
+        |—— ...
+    |—— Cyclist
 ```
 
-### <h3 id="42">训练</h3>
+### <h3 id="52">训练</h3>
 位于`Paddle3D/`目录下，执行：
 ```shell
 python -m paddle.distributed.launch --gpus 0 \
@@ -116,7 +131,7 @@ python -m paddle.distributed.launch --gpus 0 \
 | learning_rate       | 学习率                            |   否    | 在配置文件中指定  |
 | seed                | Paddle的全局随机种子值                         |   否    |   None    |
 
-### <h3 id="43">评估</h3>
+### <h3 id="53">评估</h3>
 
 位于`Paddle3D/`目录下，执行：
 
@@ -136,7 +151,7 @@ python tools/evaluate.py \
 | num_workers         | 用于异步读取数据的进程数量， 大于等于1时开启子进程读取数据 |   否    |     2     |
 | batch_size          | mini-batch大小                   |   否    | 在配置文件中指定  |
 
-### <h3 id="44">模型导出</h3>
+### <h3 id="54">模型导出</h3>
 
 运行以下命令，将训练时保存的动态图模型文件导出成推理引擎能够加载的静态图模型文件。
 
@@ -155,7 +170,7 @@ python tools/export.py \
 | model       | 待导出模型参数`model.pdparams`路径                                                                                    |   是    |     -     |
 | save_dir    | 保存导出模型的路径，`save_dir`下将会生成三个文件：`pointpillars.pdiparams `、`pointpillars.pdiparams.info`和`pointpillars.pdmodel` |   否    | `deploy`  |
 
-### <h3 id="45">模型部署</h3>
+### <h3 id="55">模型部署</h3>
 
 #### C++部署（Linux系统）
 
@@ -231,8 +246,8 @@ sh compile.sh
 
 ```shell
 ./build/main \
-  --model_file /path/to/centerpoint.pdmodel \
-  --params_file /path/to/centerpoint.pdiparams \
+  --model_file /path/to/pointpillars.pdmodel \
+  --params_file /path/to/pointpillars.pdiparams \
   --lidar_file /path/to/lidar.pcd.bin \
   --point_cloud_range "0 -39.68 -3 69.12 39.68 1" \
   --voxel_size ".16 .16 4" \
@@ -358,8 +373,8 @@ sh compile.sh
 
 ```shell
 python infer.py \
-  --model_file /path/to/centerpoint.pdmodel \
-  --params_file /path/to/centerpoint.pdiparams \
+  --model_file /path/to/pointpillars.pdmodel \
+  --params_file /path/to/pointpillars.pdiparams \
   --lidar_file /path/to/lidar.bin \
   --point_cloud_range 0 -39.68 -3 69.12 39.68 1 \
   --voxel_size .16 .16 4 \
