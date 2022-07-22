@@ -180,7 +180,7 @@ class CADDN(nn.Layer):
             }
 
             pred_dicts.append(record_dict)
-        return pred_dicts
+        return {'preds': pred_dicts}
 
     def class_agnostic_nms(self, box_scores, box_preds, label_preds, nms_config,
                            score_thresh):

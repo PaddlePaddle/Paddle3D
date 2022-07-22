@@ -24,16 +24,12 @@ from skimage import io
 
 import paddle3d.transforms as T
 from paddle3d.apis import manager
-
-from .box_utils import (boxes3d_kitti_camera_to_imageboxes,
-                        boxes3d_kitti_camera_to_lidar,
-                        boxes3d_lidar_to_kitti_camera, boxes_to_corners_3d,
-                        in_hull, mask_boxes_outside_range_numpy)
-from .calibration_kitti import Calibration
-from .common_utils import (drop_info_with_name, keep_arrays_by_name,
-                           mask_points_by_range)
-from .object3d_kitti import get_objects_from_label
-
+from paddle3d.thirdparty import kitti_eval
+from paddle3d.geometries.bbox import (boxes3d_kitti_camera_to_lidar,
+                                      mask_boxes_outside_range_numpy)
+from paddle3d.datasets.kitti.kitti_metric import KittiDepthMetric
+from paddle3d.datasets.kitti.kitti_utils import get_objects_from_label, Calibration
+from paddle3d.datasets.kitti.kitti_det import KittiDetDataset
 
 def get_pad_params(desired_size, cur_size):
     """
@@ -56,7 +52,7 @@ def get_pad_params(desired_size, cur_size):
 
 
 @manager.DATASETS.add_component
-class KittiCadnnDataset(paddle.io.Dataset):
+class KittiDepthDataset(KittiDetDataset):
     """
     This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/datasets/kitti/kitti_dataset.py#L17
     """
@@ -69,12 +65,8 @@ class KittiCadnnDataset(paddle.io.Dataset):
                  voxel_size,
                  class_names,
                  remove_outside_boxes=True):
-        """
-        """
-        super().__init__()
-
-        self.mode = mode
         self.dataset_root = dataset_root
+        self.mode = mode
         self.root_split_path = os.path.join(
             self.dataset_root, 'training' if self.mode != 'test' else 'testing')
 
@@ -93,10 +85,6 @@ class KittiCadnnDataset(paddle.io.Dataset):
         self.training = mode == 'train'
         self.kitti_infos = []
         self.include_kitti_data(self.mode)
-
-    @property
-    def is_train_mode(self) -> bool:
-        return 'train' in self.mode
 
     def include_kitti_data(self, mode):
         kitti_infos = []
@@ -219,104 +207,6 @@ class KittiCadnnDataset(paddle.io.Dataset):
 
         return pts_valid_flag
 
-    def get_infos(self,
-                  num_workers=4,
-                  has_label=True,
-                  count_inside_pts=True,
-                  sample_id_list=None):
-        import concurrent.futures as futures
-
-        def process_single_scene(sample_idx):
-            print('%s sample_idx: %s' % (self.split, sample_idx))
-            info = {}
-            pc_info = {'num_features': 4, 'lidar_idx': sample_idx}
-            info['point_cloud'] = pc_info
-
-            image_info = {
-                'image_idx': sample_idx,
-                'image_shape': self.get_image_shape(sample_idx)
-            }
-            info['image'] = image_info
-            calib = self.get_calib(sample_idx)
-
-            P2 = np.concatenate(
-                [calib.P2, np.array([[0., 0., 0., 1.]])], axis=0)
-            R0_4x4 = np.zeros([4, 4], dtype=calib.R0.dtype)
-            R0_4x4[3, 3] = 1.
-            R0_4x4[:3, :3] = calib.R0
-            V2C_4x4 = np.concatenate(
-                [calib.V2C, np.array([[0., 0., 0., 1.]])], axis=0)
-            calib_info = {'P2': P2, 'R0': R0_4x4, 'Tr_velo2cam': V2C_4x4}
-
-            info['calib'] = calib_info
-
-            if has_label:
-                obj_list = self.get_label(sample_idx)
-                annotations = {}
-                annotations['name'] = np.array(
-                    [obj.cls_type for obj in obj_list])
-                annotations['truncated'] = np.array(
-                    [obj.truncation for obj in obj_list])
-                annotations['occluded'] = np.array(
-                    [obj.occlusion for obj in obj_list])
-                annotations['alpha'] = np.array([obj.alpha for obj in obj_list])
-                annotations['bbox'] = np.concatenate(
-                    [obj.box2d.reshape(1, 4) for obj in obj_list], axis=0)
-                annotations['dimensions'] = np.array(
-                    [[obj.l, obj.h, obj.w]
-                     for obj in obj_list])  # lhw(camera) format
-                annotations['location'] = np.concatenate(
-                    [obj.loc.reshape(1, 3) for obj in obj_list], axis=0)
-                annotations['rotation_y'] = np.array(
-                    [obj.ry for obj in obj_list])
-                annotations['score'] = np.array([obj.score for obj in obj_list])
-                annotations['difficulty'] = np.array(
-                    [obj.level for obj in obj_list], np.int32)
-
-                num_objects = len([
-                    obj.cls_type for obj in obj_list
-                    if obj.cls_type != 'DontCare'
-                ])
-                num_gt = len(annotations['name'])
-                index = list(range(num_objects)) + [-1] * (num_gt - num_objects)
-                annotations['index'] = np.array(index, dtype=np.int32)
-
-                loc = annotations['location'][:num_objects]
-                dims = annotations['dimensions'][:num_objects]
-                rots = annotations['rotation_y'][:num_objects]
-                loc_lidar = calib.rect_to_lidar(loc)
-                l, h, w = dims[:, 0:1], dims[:, 1:2], dims[:, 2:3]
-                loc_lidar[:, 2] += h[:, 0] / 2
-                gt_boxes_lidar = np.concatenate(
-                    [loc_lidar, l, w, h, -(np.pi / 2 + rots[..., np.newaxis])],
-                    axis=1)
-                annotations['gt_boxes_lidar'] = gt_boxes_lidar
-
-                info['annos'] = annotations
-
-                if count_inside_pts:
-                    points = self.get_lidar(sample_idx)
-                    calib = self.get_calib(sample_idx)
-                    pts_rect = calib.lidar_to_rect(points[:, 0:3])
-
-                    fov_flag = self.get_fov_flag(
-                        pts_rect, info['image']['image_shape'], calib)
-                    pts_fov = points[fov_flag]
-                    corners_lidar = boxes_to_corners_3d(gt_boxes_lidar)
-                    num_points_in_gt = -np.ones(num_gt, dtype=np.int32)
-
-                    for k in range(num_objects):
-                        flag = in_hull(pts_fov[:, 0:3], corners_lidar[k])
-                        num_points_in_gt[k] = flag.sum()
-                    annotations['num_points_in_gt'] = num_points_in_gt
-
-            return info
-
-        sample_id_list = sample_id_list if sample_id_list is not None else self.sample_id_list
-        with futures.ThreadPoolExecutor(num_workers) as executor:
-            infos = executor.map(process_single_scene, sample_id_list)
-        return list(infos)
-
     def update_data(self, data_dict):
         """
         Updates data dictionary with additional items
@@ -347,127 +237,17 @@ class KittiCadnnDataset(paddle.io.Dataset):
         })
         return data_dict
 
-    # @staticmethod
-    def generate_prediction_dicts(self,
-                                  batch_dict,
-                                  pred_dicts,
-                                  output_path=None):
-        """
-        Args:
-            batch_dict:
-                frame_id:
-            pred_dicts: list of pred_dicts
-                pred_boxes: (N, 7), Tensor
-                pred_scores: (N), Tensor
-                pred_labels: (N), Tensor
-            class_names:
-            output_path:
-
-        Returns:
-
-        """
-
-        def get_template_prediction(num_samples):
-            ret_dict = {
-                'name': np.zeros(num_samples),
-                'truncated': np.zeros(num_samples),
-                'occluded': np.zeros(num_samples),
-                'alpha': np.zeros(num_samples),
-                'bbox': np.zeros([num_samples, 4]),
-                'dimensions': np.zeros([num_samples, 3]),
-                'location': np.zeros([num_samples, 3]),
-                'rotation_y': np.zeros(num_samples),
-                'score': np.zeros(num_samples),
-                'boxes_lidar': np.zeros([num_samples, 7])
-            }
-            return ret_dict
-
-        def generate_single_sample_dict(batch_index, box_dict):
-            pred_scores = box_dict['pred_scores'].cpu().numpy()
-            pred_boxes = box_dict['pred_boxes'].cpu().numpy()
-            pred_labels = box_dict['pred_labels'].cast("int64").cpu().numpy()
-            if pred_labels[0] < 0:
-                pred_dict = get_template_prediction(0)
-                return pred_dict
-
-            pred_dict = get_template_prediction(pred_scores.shape[0])
-            # calib = batch_dict['calib'][batch_index]
-            calib = Calibration({
-                "P2":
-                batch_dict["trans_cam_to_img"][batch_index].cpu().numpy(),
-                "R0":
-                batch_dict["R0"][batch_index].cpu().numpy(),
-                "Tr_velo2cam":
-                batch_dict["Tr_velo2cam"][batch_index].cpu().numpy()
-            })
-            image_shape = batch_dict['image_shape'][batch_index].cpu().numpy()
-            pred_boxes_camera = boxes3d_lidar_to_kitti_camera(pred_boxes, calib)
-            pred_boxes_img = boxes3d_kitti_camera_to_imageboxes(
-                pred_boxes_camera, calib, image_shape=image_shape)
-
-            pred_dict['name'] = np.array(self.class_names)[pred_labels - 1]
-            pred_dict['alpha'] = -np.arctan2(
-                -pred_boxes[:, 1], pred_boxes[:, 0]) + pred_boxes_camera[:, 6]
-            pred_dict['bbox'] = pred_boxes_img
-            pred_dict['dimensions'] = pred_boxes_camera[:, 3:6]
-            pred_dict['location'] = pred_boxes_camera[:, 0:3]
-            pred_dict['rotation_y'] = pred_boxes_camera[:, 6]
-            pred_dict['score'] = pred_scores
-            pred_dict['boxes_lidar'] = pred_boxes
-
-            return pred_dict
-
-        annos = []
-        for index, box_dict in enumerate(pred_dicts):
-            # frame_id = batch_dict['frame_id'][index]
-
-            single_pred_dict = generate_single_sample_dict(index, box_dict)
-            # single_pred_dict['frame_id'] = frame_id
-            annos.append(single_pred_dict)
-
-            if output_path is not None:
-                cur_det_file = output_path / ('%s.txt' % index)
-                with open(cur_det_file, 'w') as f:
-                    bbox = single_pred_dict['bbox']
-                    loc = single_pred_dict['location']
-                    dims = single_pred_dict['dimensions']  # lhw -> hwl
-
-                    for idx in range(len(bbox)):
-                        print(
-                            '%s -1 -1 %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f %.4f'
-                            % (single_pred_dict['name'][idx],
-                               single_pred_dict['alpha'][idx], bbox[idx][0],
-                               bbox[idx][1], bbox[idx][2], bbox[idx][3],
-                               dims[idx][1], dims[idx][2], dims[idx][0],
-                               loc[idx][0], loc[idx][1], loc[idx][2],
-                               single_pred_dict['rotation_y'][idx],
-                               single_pred_dict['score'][idx]),
-                            file=f)
-
-        return annos
-
-    def evaluation(self, det_annos, **kwargs):
+    @property
+    def metric(self, **kwargs):
         if 'annos' not in self.kitti_infos[0].keys():
             return None, {}
-
-        from .kitti_object_eval_python import eval as kitti_eval
-
-        eval_det_annos = copy.deepcopy(det_annos)
         eval_gt_annos = [
             copy.deepcopy(info['annos']) for info in self.kitti_infos
         ]
-        ap_result_str, ap_dict = kitti_eval.get_official_eval_result(
-            eval_gt_annos, eval_det_annos, self.class_names)
-
-        return ap_result_str  # , ap_dict
+        return KittiDepthMetric(eval_gt_annos=eval_gt_annos, 
+                           class_names=self.class_names)
 
     def mask_points_and_boxes_outside_range(self, data_dict):
-
-        if data_dict.get('points', None) is not None:
-            mask = mask_points_by_range(data_dict['points'],
-                                        self.point_cloud_range)
-            data_dict['points'] = data_dict['points'][mask]
-
         if data_dict.get(
                 'gt_boxes', None
         ) is not None and self.remove_outside_boxes and self.training:
@@ -482,10 +262,17 @@ class KittiCadnnDataset(paddle.io.Dataset):
         grid_size = (self.point_cloud_range[3:6] -
                      self.point_cloud_range[0:3]) / np.array(self.voxel_size)
         self.grid_size = np.round(grid_size).astype(np.int64)
+    
+    def drop_info_with_name(self, info, name):
+        ret_info = {}
+        keep_indices = [i for i, x in enumerate(info['name']) if x != name]
+        for key in info.keys():
+            ret_info[key] = info[key][keep_indices]
+        return ret_info
 
     def data_augmentor(self, data_dict):
-        from .image_augmentor_utils import random_image_flip
-        data_dict = random_image_flip(data_dict)
+        data_dict = T.functional.random_depth_image_horizontal(data_dict)
+
         data_dict['gt_boxes'][:, 6] = data_dict['gt_boxes'][:, 6] - np.floor(
             data_dict['gt_boxes'][:, 6] / (2 * np.pi) + 0.5) * (2 * np.pi)
         if 'calib' in data_dict:
@@ -533,8 +320,8 @@ class KittiCadnnDataset(paddle.io.Dataset):
                 })
 
         if data_dict.get('gt_boxes', None) is not None:
-            selected = keep_arrays_by_name(data_dict['gt_names'],
-                                           self.class_names)
+            selected = [i for i, x in enumerate(data_dict['gt_names']) if x in self.class_names]
+            selected = np.array(selected, dtype=np.int64)
             data_dict['gt_names'] = data_dict['gt_names'][selected]
             gt_classes = np.array(
                 [self.class_names.index(n) + 1 for n in data_dict['gt_names']],
@@ -589,7 +376,7 @@ class KittiCadnnDataset(paddle.io.Dataset):
 
         if 'annos' in info:
             annos = info['annos']
-            annos = drop_info_with_name(annos, name='DontCare')
+            annos = self.drop_info_with_name(annos, name='DontCare')
             loc, dims, rots = annos['location'], annos['dimensions'], annos[
                 'rotation_y']
             gt_names = annos['name']
@@ -612,7 +399,6 @@ class KittiCadnnDataset(paddle.io.Dataset):
         data_dict = self.update_data(data_dict=input_dict)
         data_dict = self.prepare_data(data_dict=data_dict)
         data_dict['image_shape'] = img_shape
-        #data_dict['images'] = data_dict['images'].transpose([2,0,1])
         return data_dict
 
     @staticmethod

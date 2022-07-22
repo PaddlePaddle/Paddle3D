@@ -13,6 +13,5 @@
 # limitations under the License.
 
 from .base import BaseDataset
-from .cadnn_kitti import KittiCadnnDataset
-from .kitti import KittiMonoDataset, KittiPCDataset
+from .kitti import KittiMonoDataset, KittiPCDataset, KittiDepthDataset
 from .nuscenes import NuscenesPCDataset

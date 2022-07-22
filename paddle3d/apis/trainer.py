@@ -246,28 +246,14 @@ class Trainer:
 
         if self.val_dataset is None:
             raise RuntimeError('No evaluation dataset specified!')
-
-        if self.val_dataset.__class__.__name__ != 'KittiCadnnDataset':
-            metric_obj = self.val_dataset.metric
-            msg = 'evaluate on validate dataset'
-        else:
-            results = []
-            metrics = None
+        msg = 'evaluate on validate dataset'
+        metric_obj = self.val_dataset.metric
 
         for idx, sample in logger.enumerate(self.eval_dataloader, msg=msg):
-            if self.val_dataset.__class__.__name__ != 'KittiCadnnDataset':
-                result = validation_step(self.model, sample)
-                metric_obj.update(
+            result = validation_step(self.model, sample)
+            metric_obj.update(
                     predictions=result,
-                    ground_truths=sample.get("labels", None))
-            else:
-                pred_dicts = validation_step(self.model, sample)
-                results += self.val_dataset.generate_prediction_dicts(
-                    sample, pred_dicts, output_path=None)
+                    ground_truths=sample)
 
-        if self.val_dataset.__class__.__name__ != 'KittiCadnnDataset':
-            metrics = metric_obj.compute(verbose=True)
-        else:
-            metrics = self.val_dataset.evaluation(results)
-            logger.info(metrics)
+        metrics = metric_obj.compute(verbose=True)
         return metrics
