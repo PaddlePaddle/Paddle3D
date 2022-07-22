@@ -100,16 +100,21 @@ class SMOKE(nn.Layer):
 
     def _parse_results_to_sample(self, results: paddle.Tensor, sample: dict,
                                  index: int):
-        ret = sample.copy()
-        results = results.numpy()
+        ret = Sample(sample['path'][index], sample['modality'][index])
+        ret.meta.update(
+            {key: value[index]
+             for key, value in sample['meta'].items()})
+        if 'calibs' in sample:
+            ret.calibs = sample['calibs'][index]
 
+        results = results.numpy()
         if results.shape[0] != 0:
             clas = results[:, 0]
             bboxes_2d = BBoxes2D(results[:, 2:6])
 
             # TODO: fix hard code here
             bboxes_3d = BBoxes3D(
-                results[:, 6:13],
+                results[:, [9, 10, 11, 8, 6, 7, 12]],
                 coordmode=CoordMode.KittiCamera,
                 origin=(0.5, 1, 0.5),
                 rot_axis=1)
