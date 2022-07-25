@@ -19,7 +19,7 @@ from typing import List, Tuple, Union
 import numpy as np
 import pandas
 
-import paddle3d.transforms as T
+from paddle3d import transforms as T
 from paddle3d.datasets import BaseDataset
 from paddle3d.datasets.kitti.kitti_metric import KittiMetric
 from paddle3d.transforms import TransformABC
