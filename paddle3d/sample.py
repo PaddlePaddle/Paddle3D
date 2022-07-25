@@ -17,7 +17,9 @@ from typing import Generic, List, Optional
 
 class _EasyDict(dict):
     def __getattr__(self, key: str):
-        return self[key]
+        if key in self:
+            return self[key]
+        return super().__getattr__(self, key)
 
     def __setattr__(self, key: str, value: Generic):
         self[key] = value
@@ -40,7 +42,7 @@ class SampleMeta(_EasyDict):
         "time_lag",
         "ref_from_curr"
     ]
-    # yapf: disable
+    # yapf: enable
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
@@ -54,7 +56,8 @@ class Sample(_EasyDict):
 
     def __init__(self, path: str, modality: str):
         if modality not in self._VALID_MODALITIES:
-            raise ValueError('Only modality {} is supported, but got {}'.format(self._VALID_MODALITIES, modality))
+            raise ValueError('Only modality {} is supported, but got {}'.format(
+                self._VALID_MODALITIES, modality))
 
         self.meta = SampleMeta()
 
