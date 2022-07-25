@@ -17,7 +17,9 @@ from typing import Generic, List, Optional
 
 class _EasyDict(dict):
     def __getattr__(self, key: str):
-        return self[key]
+        if key in self:
+            return self[key]
+        return super().__getattr__(self, key)
 
     def __setattr__(self, key: str, value: Generic):
         self[key] = value
