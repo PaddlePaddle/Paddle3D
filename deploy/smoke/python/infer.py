@@ -62,7 +62,10 @@ def get_ratio(ori_img_size, output_size, down_ratio=(4, 4)):
 
 def get_img(img_path):
     img = cv2.imread(img_path)
+    origin_shape = img.shape
     img = cv2.resize(img, (1280, 384))
+
+    target_shape = img.shape
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
     img = img / 255.0
@@ -73,7 +76,7 @@ def get_img(img_path):
     img = img.transpose(2, 0, 1)
     img = img[None, :, :, :]
 
-    return img, img.shape, img.shape
+    return img, origin_shape, target_shape
 
 
 def init_predictor(args):

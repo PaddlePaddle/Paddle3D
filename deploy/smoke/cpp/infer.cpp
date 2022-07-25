@@ -24,8 +24,6 @@ DEFINE_int32(trt_precision, 0, "Precision type of tensorrt, 0: kFloat32, 1: kInt
 DEFINE_bool(collect_dynamic_shape_info, false, "Whether to collect dynamic shape before using tensorrt");
 DEFINE_string(dynamic_shape_file, "dynamic_shape_info.txt", "Path of a dynamic shape file for tensorrt");
 
-
-
 void get_image(const std::string& image, float* data) {
     cv::Mat img = cv::imread(image, cv::IMREAD_COLOR);
 
