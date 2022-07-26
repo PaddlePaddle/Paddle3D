@@ -77,7 +77,7 @@ python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml
 | batch_size          | 评估时的batch size                                            | 否         | 配置文件中指定值   |
 | config              | 配置文件路径                                                  | 是         | -                |
 | model               | 模型参数路径                                                  | 否         | -                |
-| num_workers         | 用于异步读取数据的进程数量， 大于等于1时开启子进程读取数据        | 否         | 0                |
+| num_workers         | 用于异步读取数据的进程数量， 大于等于1时开启子进程读取数据        | 否         | 2                |
 
 <br>
 
