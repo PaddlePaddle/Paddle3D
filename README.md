@@ -2,6 +2,8 @@
 
 ![License](https://img.shields.io/badge/license-Apache%202-blue.svg)
 
+![img](https://user-images.githubusercontent.com/45024560/180968874-b47fd60a-da20-40bb-8b40-2103881d4947.GIF)
+
 Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了许多前沿和经典的3D感知模型，支持多种模态和多种任务，可以助力开发者便捷地完成 **『自动驾驶』** 领域模型 从训练到部署的全流程应用。Paddle3D具备以下特性：
 
 * 【丰富的模型库】聚合主流3D感知算法及精度调优策略，覆盖单目、点云等多种模态及检测、分割等多种任务类型
