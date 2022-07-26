@@ -18,8 +18,10 @@ import os
 import sys
 from types import ModuleType
 
+import filelock
 from paddle.utils.cpp_extension import load as paddle_jit_load
 
+from paddle3d.env import TMP_HOME
 from paddle3d.utils.logger import logger
 
 custom_ops = {
@@ -96,6 +98,8 @@ class Paddle3dCustomOperatorModule(ModuleType):
 
     def jit_build(self):
         try:
+            lockfile = 'paddle3d.ops.{}'.format(self.modulename)
+            lockfile = os.path.join(TMP_HOME, lockfile)
             file = inspect.getabsfile(sys.modules['paddle3d.ops'])
             rootdir = os.path.split(file)[0]
 
@@ -104,8 +108,9 @@ class Paddle3dCustomOperatorModule(ModuleType):
             sources = [os.path.join(rootdir, file) for file in sources]
 
             args.pop('version')
-            return paddle_jit_load(
-                name=self.modulename, sources=sources, **args)
+            with filelock.FileLock(lockfile):
+                return paddle_jit_load(
+                    name=self.modulename, sources=sources, **args)
         except:
             logger.error("{} builded fail!".format(self.modulename))
             raise
