@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 from typing import List, Tuple
 
 import numpy as np
-import copy
-
 import paddle
+
 from paddle3d.geometries import BBoxes2D, BBoxes3D, CoordMode
 
 
@@ -335,6 +335,7 @@ class Object3d(object):
                        self.ry)
         return kitti_str
 
+
 def get_calib_from_file(calib_file):
     """
     This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/calibration_kitti.py#L4
@@ -479,4 +480,3 @@ class Calibration(object):
             (x.reshape(-1, 8, 1), y.reshape(-1, 8, 1)), axis=2)
 
         return boxes, boxes_corner
-

@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 from typing import Tuple
 
 import numba
-import copy
 import numpy as np
 
 from paddle3d.geometries.bbox import (box_collision_test, iou_2d_jit,
@@ -289,6 +289,7 @@ def nearest_iou_similarity(bboxes_3d_1, bboxes_3d_2):
     boxes_bv_2 = rbbox2d_to_near_bbox(bboxes_3d_2[:, [0, 1, 3, 4, 6]])
     return iou_2d_jit(boxes_bv_1, boxes_bv_2)
 
+
 def random_depth_image_horizontal(data_dict=None):
     """
     Performs random horizontal flip augmentation
@@ -334,7 +335,7 @@ def random_depth_image_horizontal(data_dict=None):
         aug_image = image
         aug_depth_map = depth_map
         aug_gt_boxes = gt_boxes
-    
+
     data_dict['images'] = aug_image
     data_dict['depth_maps'] = aug_depth_map
     data_dict['gt_boxes'] = aug_gt_boxes

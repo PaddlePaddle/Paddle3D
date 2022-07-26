@@ -12,6 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .kitti_depth_det import KittiDepthDataset
 from .kitti_mono_det import KittiMonoDataset
 from .kitti_pointcloud_det import KittiPCDataset
-from .kitti_depth_det import KittiDepthDataset

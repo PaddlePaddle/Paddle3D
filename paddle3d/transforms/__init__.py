@@ -15,6 +15,6 @@
 from paddle3d.transforms.base import *
 from paddle3d.transforms.batch_operators import *
 from paddle3d.transforms.detection import *
+from paddle3d.transforms.functional import *
 from paddle3d.transforms.normalize import *
 from paddle3d.transforms.reader import *
-from paddle3d.transforms.functional import *

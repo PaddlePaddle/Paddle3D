@@ -49,15 +49,16 @@ class PointCloud(_Structure):
         rot_cos = np.cos(angle)
         if self.ndim == 2:
             rotation_matrix = np.array(
-                     [[rot_cos, -rot_sin, 0], [rot_sin, rot_cos, 0], [0, 0, 1]],
-                     dtype=self.dtype)
+                [[rot_cos, -rot_sin, 0], [rot_sin, rot_cos, 0], [0, 0, 1]],
+                dtype=self.dtype)
         elif self.ndim == 3:
             zeros = np.zeros(self.shape[0])
             ones = np.ones(self.shape[0])
             rotation_matrix = np.array(
-                     [[rot_cos, -rot_sin, zeros], [rot_sin, rot_cos, zeros], [zeros, zeros, ones]],
-                     dtype=self.dtype)
-            rotation_matrix = rotation_matrix.reshape([-1,3,3])
+                [[rot_cos, -rot_sin, zeros], [rot_sin, rot_cos, zeros],
+                 [zeros, zeros, ones]],
+                dtype=self.dtype)
+            rotation_matrix = rotation_matrix.reshape([-1, 3, 3])
 
         # Rotate x,y,z
         self[..., :3] = self[..., :3] @ rotation_matrix

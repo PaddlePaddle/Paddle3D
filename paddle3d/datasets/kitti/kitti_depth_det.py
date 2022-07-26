@@ -24,12 +24,14 @@ from skimage import io
 
 import paddle3d.transforms as T
 from paddle3d.apis import manager
-from paddle3d.thirdparty import kitti_eval
+from paddle3d.datasets.kitti.kitti_det import KittiDetDataset
+from paddle3d.datasets.kitti.kitti_metric import KittiDepthMetric
+from paddle3d.datasets.kitti.kitti_utils import (Calibration,
+                                                 get_objects_from_label)
 from paddle3d.geometries.bbox import (boxes3d_kitti_camera_to_lidar,
                                       mask_boxes_outside_range_numpy)
-from paddle3d.datasets.kitti.kitti_metric import KittiDepthMetric
-from paddle3d.datasets.kitti.kitti_utils import get_objects_from_label, Calibration
-from paddle3d.datasets.kitti.kitti_det import KittiDetDataset
+from paddle3d.thirdparty import kitti_eval
+
 
 def get_pad_params(desired_size, cur_size):
     """
@@ -244,8 +246,8 @@ class KittiDepthDataset(KittiDetDataset):
         eval_gt_annos = [
             copy.deepcopy(info['annos']) for info in self.kitti_infos
         ]
-        return KittiDepthMetric(eval_gt_annos=eval_gt_annos, 
-                           class_names=self.class_names)
+        return KittiDepthMetric(
+            eval_gt_annos=eval_gt_annos, class_names=self.class_names)
 
     def mask_points_and_boxes_outside_range(self, data_dict):
         if data_dict.get(
@@ -262,7 +264,7 @@ class KittiDepthDataset(KittiDetDataset):
         grid_size = (self.point_cloud_range[3:6] -
                      self.point_cloud_range[0:3]) / np.array(self.voxel_size)
         self.grid_size = np.round(grid_size).astype(np.int64)
-    
+
     def drop_info_with_name(self, info, name):
         ret_info = {}
         keep_indices = [i for i, x in enumerate(info['name']) if x != name]
@@ -320,7 +322,10 @@ class KittiDepthDataset(KittiDetDataset):
                 })
 
         if data_dict.get('gt_boxes', None) is not None:
-            selected = [i for i, x in enumerate(data_dict['gt_names']) if x in self.class_names]
+            selected = [
+                i for i, x in enumerate(data_dict['gt_names'])
+                if x in self.class_names
+            ]
             selected = np.array(selected, dtype=np.int64)
             data_dict['gt_names'] = data_dict['gt_names'][selected]
             gt_classes = np.array(

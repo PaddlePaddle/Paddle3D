@@ -16,11 +16,13 @@ from typing import Dict, List
 
 import numpy as np
 
-from paddle3d.datasets.kitti.kitti_utils import box_lidar_to_camera, Calibration
+from paddle3d.datasets.kitti.kitti_utils import (Calibration,
+                                                 box_lidar_to_camera)
 from paddle3d.datasets.metrics import MetricABC
 from paddle3d.geometries.bbox import (BBoxes2D, BBoxes3D, CoordMode,
-                                      project_to_image, boxes3d_lidar_to_kitti_camera,
-                                      boxes3d_kitti_camera_to_imageboxes)
+                                      boxes3d_kitti_camera_to_imageboxes,
+                                      boxes3d_lidar_to_kitti_camera,
+                                      project_to_image)
 from paddle3d.sample import Sample
 from paddle3d.thirdparty import kitti_eval
 from paddle3d.utils.logger import logger
@@ -173,6 +175,7 @@ class KittiMetric(MetricABC):
                                     *metrics[metric_type]))
         return metric_dict
 
+
 class KittiDepthMetric(MetricABC):
     """
     """
@@ -182,7 +185,6 @@ class KittiDepthMetric(MetricABC):
         self.predictions = []
         self.class_names = class_names
 
-    
     def generate_prediction_dicts(self,
                                   batch_dict,
                                   pred_dicts,
@@ -284,7 +286,8 @@ class KittiDepthMetric(MetricABC):
     def update(self, predictions, ground_truths, **kwargs):
         """
         """
-        self.predictions += self.generate_prediction_dicts(ground_truths, predictions)
+        self.predictions += self.generate_prediction_dicts(
+            ground_truths, predictions)
 
     def compute(self, verbose=False, **kwargs) -> dict:
         """
@@ -297,8 +300,8 @@ class KittiDepthMetric(MetricABC):
                 'The number of predictions({}) is not equal to the number of GroundTruths({})'
                 .format(len(eval_det_annos), len(eval_gt_annos)))
 
-        metric_dict = kitti_eval(
-            eval_gt_annos, eval_det_annos, self.class_names)
+        metric_dict = kitti_eval(eval_gt_annos, eval_det_annos,
+                                 self.class_names)
 
         if verbose:
             for cls, cls_metrics in metric_dict.items():
