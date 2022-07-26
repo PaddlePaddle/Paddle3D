@@ -62,14 +62,14 @@ kttti
 运行以下命令，进行单卡训练
 
 ```
-python -u tools/train.py --config configs/caddn/caddn_resnet101_kitti_iter74240.yaml
+python -u tools/train.py --config configs/caddn/caddn_deeplabv3p_resnet101_os8_kitti.yml
 ```
 
 运行以下命令，进行多卡训练
 
 ```
 export CUDA_VISIBLE_DEVICES=0,1,2,3
-fleetrun tools/train.py --config configs/caddn/caddn_resnet101_kitti_iter74240.yaml
+fleetrun tools/train.py --config configs/caddn/caddn_deeplabv3p_resnet101_os8_kitti.yml
 ```
 
 训练中断，可以通过`--resume`进行继续训练。
@@ -80,7 +80,7 @@ fleetrun tools/train.py --config configs/caddn/caddn_resnet101_kitti_iter74240.y
 运行以下命令，进行评估
 
 ```
-python tools/evaluate.py --config configs/caddn/caddn_resnet101_kitti_iter74240.yaml --model pretrained_model_path
+python tools/evaluate.py --config configs/caddn/caddn_deeplabv3p_resnet101_os8_kitti.yml --model pretrained_model_path
 ```
 
 ## <h2 id="8">导出 & 部署</h2>
@@ -90,7 +90,7 @@ python tools/evaluate.py --config configs/caddn/caddn_resnet101_kitti_iter74240.
 运行以下命令，将训练时保存的动态图模型文件导出成推理引擎能够加载的静态图模型文件。
 
 ```
-python tools/export.py --config configs/caddn/caddn_resnet101_kitti_iter74240.yaml --model /path/to/model.pdparams --save_dir /path/to/output
+python tools/export.py --config configs/caddn/caddn_deeplabv3p_resnet101_os8_kitti.yml --model /path/to/model.pdparams --save_dir /path/to/output
 ```
 
 | 参数 | 说明 |

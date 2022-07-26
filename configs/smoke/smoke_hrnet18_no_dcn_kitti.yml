@@ -1,4 +1,4 @@
-_base_: '../_base_/kitti.yml'
+_base_: '../_base_/kitti_mono.yml'
 
 batch_size: 8
 iters: 70000

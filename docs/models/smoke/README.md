@@ -84,7 +84,7 @@ export CUDA_VISIBLE_DEVICES=0,1,2,3
 
 # 每隔50步打印一次训练进度
 # 每隔5000步保存一次模型，模型参数将被保存在output目录下
-fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --num_workers 2 --log_interval 50 --save_interval 5000
+fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --num_workers 2 --log_interval 50 --save_interval 5000
 ```
 
 ### 评估
@@ -95,11 +95,11 @@ fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml 
 export CUDA_VISIBLE_DEVICES=0
 
 # 使用Paddle3D提供的预训练模型进行评估
-python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --num_workers 2 --model output/iter_70000/model.pdparams
+python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --num_workers 2 --model output/iter_70000/model.pdparams
 # 也使用Paddle3D提供的预训练模型进行评估
 # python tools/evaluate.py \
-#     --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --num_workers 2 \
-#     --model https://bj.bcebos.com/paddle3d/models/smoke/smoke_dla34_no_dcn_iter70000/model.pdparams
+#     --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --num_workers 2 \
+#     --model https://bj.bcebos.com/paddle3d/models/smoke/smoke_dla34_no_dcn_kitti/model.pdparams
 ```
 
 <br>
@@ -110,11 +110,11 @@ python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml
 
 ```shell
 # 导出Paddle3D提供的预训练模型
-python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --model output/iter_70000/model.pdparams
+python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --model output/iter_70000/model.pdparams
 # 也可以导出Paddle3D提供的预训练模型
 # python tools/export.py \
-#     --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml \
-#     --model https://bj.bcebos.com/paddle3d/models/smoke/smoke_dla34_no_dcn_iter70000/model.pdparams
+#     --config configs/smoke/smoke_dla34_no_dcn_kitti.yml \
+#     --model https://bj.bcebos.com/paddle3d/models/smoke/smoke_dla34_no_dcn_kitti/model.pdparams
 ```
 
 ### 执行预测

@@ -15,7 +15,7 @@
 使用如下命令启动单卡训练，由于一次完成的训练流程耗时较久，我们只训练100个iter进行快速体验，下面的命令在Telsa V100上大约耗时2分钟
 
 ```shell
-python tools/train.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --iters 100 --log_interval 10 --save_interval 20
+python tools/train.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --iters 100 --log_interval 10 --save_interval 20
 ```
 
 **多卡训练**
@@ -24,7 +24,7 @@ python tools/train.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --
 
 ```shell
 export CUDA_VISIBLE_DEVICES=0,1,2,3
-fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --iters 100 --log_interval 10 --save_interval 20
+fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --iters 100 --log_interval 10 --save_interval 20
 ```
 
 **训练脚本参数介绍**
@@ -67,7 +67,7 @@ visualdl --logdir output --host ${HOST_IP} --port {$PORT}
 当模型训练完成后，需要对训练完成的模型进行指标评估，确保模型的指标满足诉求。目前Paddle3D的模型只支持单卡评估，使用以下命令启动评估脚本
 
 ```shell
-python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --model xxxx
+python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --model xxxx
 ```
 
 **评估脚本参数介绍**
@@ -86,7 +86,7 @@ python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml -
 当完成模型训练后，我们需要将模型导出成推理格式进行部署，我们加载Paddle3D已经训练完成的SMOKE模型参数进行模型导出
 
 ```shell
-python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --model
+python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --model
 ```
 
 **导出脚本参数介绍**
