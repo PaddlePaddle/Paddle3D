@@ -24,7 +24,7 @@ Paddle3D支持通过配置文件来描述相关的任务，从而实现配置化
 |iters| 使用一个 batch 数据对模型进行一次参数更新的过程称之为一次迭代，iters 即为训练过程中的迭代次数。 | int|
 |optimizer|优化器类型，支持飞桨全部的[优化器类型](https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/optimizer/Overview_cn.html#paddle-optimizer) | dict|
 |lr_scheduler|调度器类型，支持飞桨全部的[LRScheduler](https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/optimizer/lr/LRScheduler_cn.html) |dict|
-|model| 模型类型，所支持值请参考[模型库](./apis/models.md)|dict|
+|model| 模型类型，所支持值请参考[模型库](./apis/models/)|dict|
 |\_\_base\_\_| 基础配置文件，可以不指定，该配置指向另外一个配置文件作为继承的基础配置|str|
 
 ## 完整示例
