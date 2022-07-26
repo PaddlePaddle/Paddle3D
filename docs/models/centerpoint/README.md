@@ -32,7 +32,7 @@ Paddle3D实现的CenterPoint做了以下优化：
 
 | 模型 | 点云特征提取模块 | mAP | NDS | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 |
 | ---- | ---------------- | --- | --- | ----------------------- | ----------------------- | -------- | -------- |
-| CenterPoint | PointPillars | 50.64 | 61.16 | 45.7 | 53.8 | [model]() | [config](../../../configs/centerpoint/nuscenes_centerpoint_pillars_02voxel_10sweep.yml)|
+| CenterPoint | PointPillars | 50.64 | 61.16 | 45.7 | 53.8 | [model]() | [config](../../../configs/centerpoint/centerpoint_pillars_02voxel_nuscenes_10sweep.yml)|
 
 **注意：** nuScenes benchmark使用4张V100 GPU训练得出。
 
@@ -40,11 +40,11 @@ Paddle3D实现的CenterPoint做了以下优化：
 
 | 模型 | 点云特征提取模块 | 3DmAP Mod. | Car Easy Mod. Hard | Pedestrian Easy Mod. Hard | Cyclist Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 |
 | ---- | ---------------- | ---------- | ------------------ | ------------------------- | -----------------------| ----------------------- | ----------------------- | -------- | -------- |
-| CenterPoint | PointPillars | 63.69 | 86.12 77.13 74.43 | 54.61 51.79 46.68 | 86.14 62.18 58.82 | 28.3 | 55.3 | [model]() | [config](../../../configs/centerpoint/kitti_centerpoint_pillars_016voxel.yml)|
+| CenterPoint | PointPillars | 63.69 | 86.12 77.13 74.43 | 54.61 51.79 46.68 | 86.14 62.18 58.82 | 28.3 | 55.3 | [model]() | [config](../../../configs/centerpoint/centerpoint_pillars_016voxel_kitti.yml)|
 
 | 模型 | 点云特征提取模块 | BEVmAP Mod. | Car Easy Mod. Hard | Pedestrian Easy Mod. Hard | Cyclist Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 |
 | ---- | ---------------- | ----------- | ------------------ | ------------------------- | ---------------------- | ----------------------- | ----------------------- | -------- | -------- |
-| CenterPoint | PointPillars | 70.02 | 91.21 87.09 85.96 | 62.89 59.21 54.57 | 86.88 63.77 60.62 | 28.3 | 55.3 | [model]() | [config](../../../configs/centerpoint/kitti_centerpoint_pillars_016voxel.yml)|
+| CenterPoint | PointPillars | 70.02 | 91.21 87.09 85.96 | 62.89 59.21 54.57 | 86.88 63.77 60.62 | 28.3 | 55.3 | [model]() | [config](../../../configs/centerpoint/centerpoint_pillars_016voxel_kitti.yml)|
 
 **注意：** KITTI benchmark使用8张V100 GPU训练得出。
 
@@ -93,14 +93,14 @@ gt_database_train_nsweeps10_withvelo
 nuScenes数据集上的训练使用4张GPU：
 
 ```
-python -m paddle.distributed.launch --gpus 0,1,2,3 tools/train.py --config configs/centerpoint/nuscenes_centerpoint_pillars_02voxel_10sweep.yml --save_dir ./output_nuscenes --num_workers 4 --save_interval 7723
+python -m paddle.distributed.launch --gpus 0,1,2,3 tools/train.py --config configs/centerpoint/centerpoint_pillars_02voxel_nuscenes_10sweep.yml --save_dir ./output_nuscenes --num_workers 4 --save_interval 7723
 ```
 
 训练启动参数介绍可参考文档[全流程速览](../../quickstart.md#模型训练)。
 #### 评估
 
 ```
-python tools/evaluate.py --config configs/centerpoint/nuscenes_centerpoint_pillars_02voxel_10sweep.yml --model ./output_nuscenes/iter_154460/model.pdparams --batch_size 1 --num_workers 4
+python tools/evaluate.py --config configs/centerpoint/centerpoint_pillars_02voxel_nuscenes_10sweep.yml --model ./output_nuscenes/iter_154460/model.pdparams --batch_size 1 --num_workers 4
 ```
 
 **注意**：CenterPoint的评估目前只支持batch_size为1。
@@ -172,14 +172,14 @@ kitti_train_gt_database
 KITTI数据集上的训练使用8张GPU：
 
 ```
-python -m paddle.distributed.launch --gpus 0,1,2,3,4,5,6,7 tools/train.py --config configs/centerpoint/kitti_centerpoint_pillars_016voxel.yml --save_dir ./output_kitti --num_workers 4 --save_interval 1000
+python -m paddle.distributed.launch --gpus 0,1,2,3,4,5,6,7 tools/train.py --config configs/centerpoint/centerpoint_pillars_016voxel_kitti.yml --save_dir ./output_kitti --num_workers 4 --save_interval 1000
 ```
 
 训练启动参数介绍可参考文档[全流程速览](../../quickstart.md#模型训练)。
 #### 评估
 
 ```
-python tools/evaluate.py --config configs/centerpoint/kitti_centerpoint_pillars_016voxel.yml --model ./output_kitti/iter_15680/model.pdparams --batch_size 1 --num_workers 4
+python tools/evaluate.py --config configs/centerpoint/centerpoint_pillars_016voxel_kitti.yml --model ./output_kitti/iter_15680/model.pdparams --batch_size 1 --num_workers 4
 ```
 
 **注意**：CenterPoint的评估目前只支持batch_size为1。
@@ -193,7 +193,7 @@ python tools/evaluate.py --config configs/centerpoint/kitti_centerpoint_pillars_
 运行以下命令，将训练时保存的动态图模型文件导出成推理引擎能够加载的静态图模型文件。
 
 ```
-python tools/export.py --config configs/centerpoint/nuscenes_centerpoint_pillars_02voxel_10sweep.yml --model /path/to/model.pdparams --save_dir /path/to/output
+python tools/export.py --config configs/centerpoint/centerpoint_pillars_02voxel_nuscenes_10sweep.yml --model /path/to/model.pdparams --save_dir /path/to/output
 ```
 
 | 参数 | 说明 |
