@@ -1,6 +1,6 @@
 # 快速开始
 
-本文以SMOKE模型和KITTI数据集为例，介绍如何基于Paddle3D进行模型训练、评估、可视化的全流程操作。其他模型的全流程操作与此一致，各模型详细的使用教程和benchmark可参考[模型文档](../models)。
+本文以SMOKE模型和KITTI数据集为例，介绍如何基于Paddle3D进行模型训练、评估、可视化的全流程操作。其他模型的全流程操作与此一致，各模型详细的使用教程和benchmark可参考[模型文档](./models)。
 
 ## 准备工作
 
@@ -12,7 +12,7 @@
 
 **单卡训练**
 
-使用如下命令启动单卡训练，由于一次完成的训练流程耗时较久，我们只训练100个iter进行快速体验，下面的命令在Telsa V100上大约耗时2分钟
+使用如下命令启动单卡训练，由于一次完整的训练流程耗时较久，我们只训练100个iter进行快速体验，下面的命令在Telsa V100上大约耗时2分钟
 
 ```shell
 python tools/train.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --iters 100 --log_interval 10 --save_interval 20
@@ -40,9 +40,9 @@ fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml 
 | save_interval       | 模型保存的间隔步数                                            | 否          | 1000             |
 | do_eval             | 是否在保存模型时启动评估                                       | 否         | 否               |
 | log_interval        | 打印日志的间隔步数                                            | 否          | 10               |
-| resume              | 是否从检查点中恢复数据，如：`output/iter_1000`                 | 否          | None             |
-| keep_checkpoint_max | 最新模型保存个数                                              | 否          | 5                |
-| seed                | Paddle的全局随机种子值                                                    | 否         | None              |
+| resume              | 是否从检查点中恢复训练状态                | 否          | None             |
+| keep_checkpoint_max | 最多保存模型的数量                                              | 否          | 5                |
+| seed                | Paddle/numpy/random的全局随机种子值                                                    | 否         | None              |
 
 <br>
 
@@ -67,7 +67,7 @@ visualdl --logdir output --host ${HOST_IP} --port {$PORT}
 当模型训练完成后，需要对训练完成的模型进行指标评估，确保模型的指标满足诉求。目前Paddle3D的模型只支持单卡评估，使用以下命令启动评估脚本
 
 ```shell
-python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --model xxxx
+python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --model xxxx --batch_size 1
 ```
 
 **评估脚本参数介绍**
