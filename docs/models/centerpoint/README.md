@@ -398,4 +398,4 @@ python infer.py --model_file /path/to/centerpoint.pdmodel --params_file /path/to
 请参考文档[自定义数据集格式说明](../../../datasets/custom)准备自定义数据集。
 ## <h2 id="10">Apollo使用教程</h2>
 
-基于Paddle3D训练完成的CenterPoint模型可以直接部署到Apollo架构中使用，请参考[教程]()
+基于Paddle3D训练完成的CenterPoint模型可以直接部署到Apollo架构中使用，请参考[教程](https://github.com/ApolloAuto/apollo/blob/master/modules/perception/README_paddle3D_CN.md)
