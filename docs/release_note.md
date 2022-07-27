@@ -8,7 +8,7 @@
 
 * Release the first version of Paddle3D (that is, v0.5 version), the code of this project is still in beta stage, but under rapid development
 
-* Released the monocular 3D model SMOKE/CaDDN, the point cloud detection model PointPillars/CenterPoint, and the point cloud segmentation model SqueezeSegv3, all with deployment tutorials
+* Release the monocular 3D model SMOKE/CaDDN, the point cloud detection model PointPillars/CenterPoint, and the point cloud segmentation model SqueezeSegv3, all with deployment tutorials
 
 * Support for KITTI dataset and nuScenes dataset
 
