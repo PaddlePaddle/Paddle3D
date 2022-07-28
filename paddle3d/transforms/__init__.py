@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle3d.transforms.anchor import *
+from paddle3d.transforms.anchor_generator import *
 from paddle3d.transforms.base import *
-from paddle3d.transforms.batch_operators import *
 from paddle3d.transforms.normalize import *
 from paddle3d.transforms.reader import *
-from paddle3d.transforms.sample import *
+from paddle3d.transforms.sampling import *
+from paddle3d.transforms.target_generator import *
 from paddle3d.transforms.transform import *
