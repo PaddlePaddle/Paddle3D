@@ -50,6 +50,12 @@ def parse_args():
         type=int,
         default=None)
     parser.add_argument(
+        '--epochs',
+        dest='epochs',
+        help='epochs for training',
+        type=int,
+        default=None)
+    parser.add_argument(
         '--keep_checkpoint_max',
         dest='keep_checkpoint_max',
         help='Maximum number of checkpoints to save',
@@ -87,7 +93,8 @@ def parse_args():
     parser.add_argument(
         '--save_interval',
         dest='save_interval',
-        help='How many iters to save a model snapshot once during training.',
+        help=
+        'How many iters/epochs to save a model snapshot once during training.',
         type=int,
         default=1000)
     parser.add_argument(
@@ -122,6 +129,7 @@ def main(args):
         path=args.cfg,
         learning_rate=args.learning_rate,
         iters=args.iters,
+        epochs=args.epochs,
         batch_size=args.batch_size)
 
     if cfg.train_dataset is None:

@@ -29,6 +29,7 @@ class Config(object):
     The following hyper-parameters are available in the config file:
         batch_size: The number of samples per gpu.
         iters: The total training steps.
+        epochs: The total training epochs.
         train_dataset: A training data config including type/data_root/transforms/mode.
             For data type, please refer to paddle3d.datasets.
             For specific transforms, please refer to paddle3d.transforms.transforms.
@@ -61,7 +62,8 @@ class Config(object):
                  path: str,
                  learning_rate: Optional[float] = None,
                  batch_size: Optional[int] = None,
-                 iters: Optional[int] = None):
+                 iters: Optional[int] = None,
+                 epochs: Optional[int] = None):
         if not path:
             raise ValueError('Please specify the configuration file path.')
 
@@ -77,7 +79,10 @@ class Config(object):
             raise RuntimeError('Config file should in yaml format!')
 
         self.update(
-            learning_rate=learning_rate, batch_size=batch_size, iters=iters)
+            learning_rate=learning_rate,
+            batch_size=batch_size,
+            iters=iters,
+            epochs=epochs)
 
     def _update_dic(self, dic: Dict, base_dic: Dict):
         '''Update config from dic based base_dic
@@ -115,17 +120,21 @@ class Config(object):
     def update(self,
                learning_rate: Optional[float] = None,
                batch_size: Optional[int] = None,
-               iters: Optional[int] = None):
+               iters: Optional[int] = None,
+               epochs: Optional[int] = None):
         '''Update config'''
 
-        if learning_rate:
+        if learning_rate is not None:
             self.dic['lr_scheduler']['learning_rate'] = learning_rate
 
-        if batch_size:
+        if batch_size is not None:
             self.dic['batch_size'] = batch_size
 
-        if iters:
+        if iters is not None:
             self.dic['iters'] = iters
+
+        if epochs is not None:
+            self.dic['epochs'] = epochs
 
     @property
     def batch_size(self) -> int:
@@ -134,9 +143,12 @@ class Config(object):
     @property
     def iters(self) -> int:
         iters = self.dic.get('iters')
-        if not iters:
-            raise RuntimeError('No iters specified in the configuration file.')
         return iters
+
+    @property
+    def epochs(self) -> int:
+        epochs = self.dic.get('epochs')
+        return epochs
 
     @property
     def lr_scheduler(self) -> paddle.optimizer.lr.LRScheduler:
@@ -285,13 +297,17 @@ class Config(object):
         return msg
 
     def to_dict(self) -> Dict:
-        dic = {
+        if self.iters is not None:
+            dic = {'iters': self.iters}
+        else:
+            dic = {'epochs': self.epochs}
+
+        dic.update({
             'optimizer': self.optimizer,
             'model': self.model,
             'train_dataset': self.train_dataset,
             'val_dataset': self.val_dataset,
-            'iters': self.iters,
             'batch_size': self.batch_size
-        }
+        })
 
         return dic
