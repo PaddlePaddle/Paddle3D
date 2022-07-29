@@ -20,6 +20,7 @@ from typing import Dict, List
 import numpy as np
 import paddle
 import paddle.nn as nn
+import paddle.nn.functional as F
 from paddle.static import InputSpec
 
 from paddle3d.apis import manager
@@ -61,6 +62,23 @@ class CenterPoint(nn.Layer):
         if pretrained is not None:
             load_pretrained_model(self, self.pretrained)
 
+    def deploy_preprocess(self, points):
+        def true_fn(points):
+            points = points[:, 0:5]
+            return points
+
+        def false_fn(points):
+            points = points.reshape([1, -1, 4])
+            points = F.pad(
+                points, [0, 1], value=0, mode='constant', data_format="NCL")
+            points = points.reshape([-1, 5])
+            return points
+
+        points = paddle.static.nn.cond(
+            points.shape[-1] >=
+            5, lambda: true_fn(points), lambda: false_fn(points))
+        return points[:, 0:self.voxel_encoder.in_channels]
+
     def voxelize(self, points):
         voxels, coordinates, num_points_in_voxel = self.voxelizer(points)
         return voxels, coordinates, num_points_in_voxel
@@ -82,10 +100,13 @@ class CenterPoint(nn.Layer):
     def forward(self, example, **kwargs):
         if not getattr(self, "export_model", False):
             batch_size = len(example["data"])
+            points = example["data"]
         else:
             batch_size = None
+            points = example["data"]
+            points = self.deploy_preprocess(points)
 
-        data = dict(points=example["data"], batch_size=batch_size)
+        data = dict(points=points, batch_size=batch_size)
 
         x = self.extract_feat(data)
         preds, x = self.bbox_head(x)
@@ -172,7 +193,8 @@ class CenterPoint(nn.Layer):
         self.middle_encoder.export_model = True
         self.bbox_head.export_model = True
         save_path = os.path.join(save_dir, 'centerpoint')
-        points_shape = [-1, self.voxel_encoder.in_channels]
+        #points_shape = [-1, self.voxel_encoder.in_channels]
+        points_shape = [-1, -1]
 
         input_spec = [{
             "data":

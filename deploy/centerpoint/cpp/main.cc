@@ -31,7 +31,7 @@ DEFINE_string(model_file, "", "Path of a inference model");
 DEFINE_string(params_file, "", "Path of a inference params");
 DEFINE_string(lidar_file, "", "Path of a lidar file to be predicted");
 DEFINE_int32(num_point_dim, 4, "Dimension of a point in the lidar file");
-DEFINE_int32(use_timelag, 0, "Whether to insert timelag to each point");
+DEFINE_int32(with_timelag, 0, "Whether timelag is the 5-th dimension of each point feature, like: x, y, z, intensive, timelag");
 DEFINE_int32(gpu_id, 0, "GPU card id");
 DEFINE_int32(use_trt, 0,
              "Whether to use tensorrt to accelerate when using gpu");
@@ -50,6 +50,10 @@ DEFINE_string(dynamic_shape_file, "",
 bool read_point(const std::string &file_path, const int num_point_dim,
                 void **buffer, int *num_points) {
   std::ifstream file_in(file_path, std::ios::in | std::ios::binary);
+  if (num_point_dim < 4) {
+    LOG(ERROR) << "Point dimension must not be less than 4, but recieved "
+	       << "num_point_dim is " << num_point_dim << ".\n";
+  }
 
   if (!file_in) {
     LOG(ERROR) << "Failed to read file: " << file_path << "\n";
@@ -88,7 +92,7 @@ bool insert_time_to_points(const int num_points, const int num_point_dim,
 }
 
 bool preprocess(const std::string &file_path, const int num_point_dim,
-                const int use_timelag, std::vector<int> *points_shape,
+                const int with_timelag, std::vector<int> *points_shape,
                 std::vector<float> *points_data) {
   void *buffer = nullptr;
   int num_points;
@@ -97,7 +101,7 @@ bool preprocess(const std::string &file_path, const int num_point_dim,
   }
   float *points = static_cast<float *>(buffer);
 
-  if (use_timelag) {
+  if (!with_timelag && num_point_dim == 5 || num_point_dim > 5) {
     // the origin points dim is [x, y, z, intensity, ring_index],
     // but we need [x, y, z, intensity] and the sweep time index should be
     // inserted into points
@@ -255,7 +259,7 @@ int main(int argc, char *argv[]) {
 
   std::vector<int> points_shape;
   std::vector<float> points_data;
-  if (!preprocess(FLAGS_lidar_file, FLAGS_num_point_dim, FLAGS_use_timelag,
+  if (!preprocess(FLAGS_lidar_file, FLAGS_num_point_dim, FLAGS_with_timelag,
                   &points_shape, &points_data)) {
     LOG(ERROR) << "Failed to preprocess!\n";
     return 0;
