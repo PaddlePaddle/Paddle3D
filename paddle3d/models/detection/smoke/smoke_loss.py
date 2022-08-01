@@ -98,9 +98,7 @@ class SMOKELossComputation(object):
         pred_proj_offsets = pred_regression_pois[:, 1:3]
         pred_dimensions_offsets = pred_regression_pois[:, 3:6]
         pred_orientation = pred_regression_pois[:, 6:8]
-        # pred_bboxsize = paddle.zeros_like(pred_regression_pois[:, 6:8])
         pred_bboxsize = pred_regression_pois[:, 8:10]
-        # pred_c_offsets = pred_regression_pois[:, 10:12]
 
         pred_depths = self.smoke_coder.decode_depth(pred_depths_offset)
         pred_locations = self.smoke_coder.decode_location(
@@ -112,15 +110,7 @@ class SMOKELossComputation(object):
             pred_dimensions_offsets,
         )
         # we need to change center location to bottom location
-        # bug on left slice
-        # pred_locations[:, 1] += pred_dimensions[:, 1] / 2
-
-        pred_locations_x = (pred_locations[:, 0]).unsqueeze(-1)
-        pred_locations_y = (
-            pred_locations[:, 1] + pred_dimensions[:, 1] / 2).unsqueeze(-1)
-        pred_locations_z = (pred_locations[:, 2]).unsqueeze(-1)
-        pred_locations = paddle.concat(
-            [pred_locations_x, pred_locations_y, pred_locations_z], axis=1)
+        pred_locations[:, 1] += pred_dimensions[:, 1] / 2
 
         pred_rotys = self.smoke_coder.decode_orientation(
             pred_orientation, targets_variables["locations"],
@@ -144,7 +134,6 @@ class SMOKELossComputation(object):
                 loc=pred_box3d_locs,
                 bbox=pred_bboxsize,
             )
-            # coff=pred_c_offsets)
 
         elif self.reg_loss == "L1":
             pred_box_3d = self.smoke_coder.encode_box3d(
@@ -199,4 +188,3 @@ class SMOKELossComputation(object):
                 size_loss=reg_loss_size)
 
             return hm_loss + reg_loss_ori + reg_loss_dim + reg_loss_loc + reg_loss_size
-            return losses

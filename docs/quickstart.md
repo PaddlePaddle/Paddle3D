@@ -31,7 +31,8 @@ fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml 
 
 | 参数名              | 用途                                                         | 是否必选项  | 默认值            |
 | :------------------ | :----------------------------------------------------------- | :--------- | :--------------- |
-| iters               | 训练迭代次数                                                  | 否         | 配置文件中指定值  |
+| iters               | 训练迭代步数                                                  | 否         | 配置文件中指定值  |
+| epochs               | 训练迭代次数                                                  | 否         | 配置文件中指定值  |
 | batch_size          | 单卡batch size                                               | 否         | 配置文件中指定值   |
 | learning_rate       | 初始学习率                                                    | 否         | 配置文件中指定值  |
 | config              | 配置文件路径                                                  | 是         | -                |
@@ -43,6 +44,8 @@ fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml 
 | resume              | 是否从检查点中恢复训练状态                | 否          | None             |
 | keep_checkpoint_max | 最多保存模型的数量                                              | 否          | 5                |
 | seed                | Paddle/numpy/random的全局随机种子值                                                    | 否         | None              |
+
+*注意：使用一个 batch 数据对模型进行一次参数更新的过程称之为一步，iters 即为训练过程中的训练步数。完整遍历一次数据对模型进行训练的过程称之为一次迭代，epochs 即为训练过程中的训练迭代次数。一个epoch包含多个iter。*
 
 <br>
 
