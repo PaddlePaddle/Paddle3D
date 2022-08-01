@@ -70,7 +70,8 @@ visualdl --logdir output --host ${HOST_IP} --port {$PORT}
 当模型训练完成后，需要对训练完成的模型进行指标评估，确保模型的指标满足诉求。目前Paddle3D的模型只支持单卡评估，使用以下命令启动评估脚本
 
 ```shell
-python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --model xxxx --batch_size 1
+wget https://paddle3d.bj.bcebos.com/models/smoke/smoke_dla34_no_dcn_kitti/model.pdparams
+python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --model model.pdparams --batch_size 1
 ```
 
 **评估脚本参数介绍**
@@ -89,7 +90,8 @@ python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml
 当完成模型训练后，我们需要将模型导出成推理格式进行部署，我们加载Paddle3D已经训练完成的SMOKE模型参数进行模型导出
 
 ```shell
-python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --model
+wget https://paddle3d.bj.bcebos.com/models/smoke/smoke_dla34_no_dcn_kitti/model.pdparams
+python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --model model.pdparams
 ```
 
 **导出脚本参数介绍**
