@@ -8,7 +8,9 @@
 
       * model: 待训练或者评估的模型
 
-      * iters: 训练轮次
+      * iters: 更新的训练步数，可以不指定，与epochs互斥，当指定iters时，epochs不生效
+
+      * epochs: 更新的训练轮次，可以不指定
 
       * optimizer: 训练所用的优化器
 
@@ -35,6 +37,8 @@
         *  `dict` 类型，指定构建默认 Dataloader 类对象的参数，如 `batch_size` / `drop_last` / `shuffle` 。
 
         * 继承了 `paddle3d.apis.CheckpointABC` 的类对象
+
+      *注意：使用一个 batch 数据对模型进行一次参数更新的过程称之为一步，iters 即为训练过程中的训练步数。完整遍历一次数据对模型进行训练的过程称之为一次迭代，epochs 即为训练过程中的训练迭代次数。一个epoch包含多个iter。*
 
   * **异常值**
 
