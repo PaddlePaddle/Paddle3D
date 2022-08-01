@@ -50,7 +50,7 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
       <td>
         <p align="center">📡 点云</p>
         <ul>
-          <li> PointPillar </li>
+          <li> PointPillars </li>
           <li> CenterPoint </li>
         </ul>
       </td>
@@ -94,7 +94,7 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
 
   * [CaDDN](./docs/models/caddn)
 
-  * [PointPillar](./docs/models/pointpillar)
+  * [PointPillars](./docs/models/pointpillars)
 
   * [CenterPoint](./docs/models/centerpoint)
 
