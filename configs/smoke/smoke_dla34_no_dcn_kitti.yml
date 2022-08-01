@@ -40,7 +40,7 @@ model:
   backbone:
     type: DLA34
     # This will automatically save to ~/.paddle3d/pretrained/dla34/dla34.pdparams
-    pretrained: "https://bj.bcebos.com/paddle3d/pretrained/imagenet/dla34.pdparams"
+    pretrained: "https://paddle3d.bj.bcebos.com/pretrained/dla34.pdparams"
   head:
     type: SMOKEPredictor
     num_classes: 3
