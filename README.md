@@ -110,6 +110,16 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
 
 * [更新日志](./docs/release_note.md)
 
+## 技术交流
+
+- 如果你发现任何Paddle3D存在的问题或者是建议, 欢迎通过[GitHub Issues](https://github.com/PaddlePaddle/Paddle3D/issues)给我们提issues。
+
+- 欢迎加入Paddle3D 微信用户群
+  <div align="center">
+  <img src="https://user-images.githubusercontent.com/48054808/182345513-bbca647f-1f03-4543-baba-01c09f67addd.jpg"  width = "200" />  
+  </div>
+
+  
 ## 许可证
 
 本项目的发布受[Apache 2.0 license](./LICENSE)许可认证。
