@@ -49,7 +49,7 @@ def camera_record_to_object(
 
 
 # lidar record fields
-# type, truncated, occluded, alpha, xmin, ymin, xmax, ymax, dl, dw, dh, lx, ly, lz, ry
+# type, truncated, occluded, alpha, xmin, ymin, xmax, ymax, dw, dl, dh, lx, ly, lz, rz
 def lidar_record_to_object(
         kitti_records: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
