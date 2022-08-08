@@ -1,1 +1,1 @@
-docs/models/centerpoint/README.md
+../../docs/models/centerpoint/README.md
