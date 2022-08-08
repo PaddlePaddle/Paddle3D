@@ -47,8 +47,6 @@ fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml 
 
 *注意：使用一个 batch 数据对模型进行一次参数更新的过程称之为一步，iters 即为训练过程中的训练步数。完整遍历一次数据对模型进行训练的过程称之为一次迭代，epochs 即为训练过程中的训练迭代次数。一个epoch包含多个iter。*
 
-*注意：使用一个 batch 数据对模型进行一次参数更新的过程称之为一步，iters 即为训练过程中的训练步数。完整遍历一次数据对模型进行训练的过程称之为一次迭代，epochs 即为训练过程中的训练迭代次数。一个epoch包含多个iter。*
-
 <br>
 
 ## 训练过程可视化
