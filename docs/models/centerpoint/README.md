@@ -38,12 +38,12 @@ Paddle3D实现的CenterPoint做了以下优化：
 
 - CenterPoint在KITTI Val set数据集上的表现
 
-| 模型 | 点云特征提取模块 | 3DmAP Mod. | Car Easy Mod. Hard | Pedestrian Easy Mod. Hard | Cyclist Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 |
-| ---- | ---------------- | ---------- | ------------------ | ------------------------- | -----------------------| ----------------------- | ----------------------- | -------- | -------- |
-| CenterPoint | PointPillars | 63.69 | 86.12 77.13 74.43 | 54.61 51.79 46.68 | 86.14 62.18 58.82 | 28.3 | 55.3 | [model]() | [config](../../../configs/centerpoint/kitti_centerpoint_pillars_016voxel.yml)|
+| 模型 | 点云特征提取模块 | 3DmAP Mod. | Car<br>Easy Mod. Hard | Pedestrian<br>Easy Mod. Hard | Cyclist<br>Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 |
+| ---- | ---------------- | ---------- |-----------------------|------------------------------|---------------------------| ----------------------- | ----------------------- | -------- | -------- |
+| CenterPoint | PointPillars | 63.69 | 86.12 77.13 74.43     | 54.61 51.79 46.68            | 86.14 62.18 58.82         | 28.3 | 55.3 | [model]() | [config](../../../configs/centerpoint/kitti_centerpoint_pillars_016voxel.yml)|
 
-| 模型 | 点云特征提取模块 | BEVmAP Mod. | Car Easy Mod. Hard | Pedestrian Easy Mod. Hard | Cyclist Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 |
-| ---- | ---------------- | ----------- | ------------------ | ------------------------- | ---------------------- | ----------------------- | ----------------------- | -------- | -------- |
+| 模型 | 点云特征提取模块 | BEVmAP Mod. | Car<br>Easy Mod. Hard | Pedestrian<br>Easy Mod. Hard | Cyclist<br>Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 |
+| ---- | ---------------- | ----------- |-------------------| ------------------------ | --------------------- | ----------------------- | ----------------------- | -------- | -------- |
 | CenterPoint | PointPillars | 70.02 | 91.21 87.09 85.96 | 62.89 59.21 54.57 | 86.88 63.77 60.62 | 28.3 | 55.3 | [model]() | [config](../../../configs/centerpoint/kitti_centerpoint_pillars_016voxel.yml)|
 
 **注意：** KITTI benchmark使用8张V100 GPU训练得出。
