@@ -32,8 +32,8 @@ train_dataset:
         bicycle: 6
         pedestrian: 2
         traffic_cone: 2
-      database_anno_path: datasets/nuscenes/paddle_gt_base/gt_database_train_nsweeps10_withvelo/anno_info_train_nsweeps10_withvelo.pkl
-      database_root: datasets/nuscenes/paddle_gt_base
+      database_anno_path: datasets/nuscenes/gt_database_train_nsweeps10_withvelo/anno_info_train_nsweeps10_withvelo.pkl
+      database_root: datasets/nuscenes/
       class_names: ["car", "truck", "construction_vehicle", "bus", "trailer", "barrier", "motorcycle", "bicycle", "pedestrian", "traffic_cone"]
     - type: RandomVerticalFlip
     - type: RandomHorizontalFlip

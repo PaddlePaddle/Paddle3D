@@ -1,5 +1,5 @@
 batch_size: 4
-iters: 32000
+iters: 160
 train_dataset:
   type: KittiPCDataset
   dataset_root: datasets/KITTI
@@ -49,7 +49,7 @@ train_dataset:
       max_objs: 500
       min_radius: 2
   mode: train
-  class_balanced_sampling: True
+  class_balanced_sampling: False
   class_names: ["Car", "Cyclist", "Pedestrian"]
 
 

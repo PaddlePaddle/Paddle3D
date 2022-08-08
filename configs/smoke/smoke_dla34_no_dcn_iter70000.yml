@@ -11,6 +11,7 @@ train_dataset:
     - type: Gt2SmokeTarget
       mode: train
       num_classes: 3
+      input_size: [1280, 384]
     - type: Normalize
       mean: [0.485, 0.456, 0.406]
       std: [0.229, 0.224, 0.225]
@@ -23,6 +24,7 @@ val_dataset:
     - type: Gt2SmokeTarget
       mode: val
       num_classes: 3
+      input_size: [1280, 384]
     - type: Normalize
       mean: [0.485, 0.456, 0.406]
       std: [0.229, 0.224, 0.225]

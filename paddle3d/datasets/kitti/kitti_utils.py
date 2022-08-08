@@ -29,20 +29,17 @@ def camera_record_to_object(
         bboxes_2d = BBoxes2D(np.zeros([0, 4]))
         bboxes_3d = BBoxes3D(
             np.zeros([0, 7]),
-            origin=[.5, .5, .5],
+            origin=[.5, 1, .5],
             coordmode=CoordMode.KittiCamera,
             rot_axis=1)
         labels = []
     else:
-        # from bottom-center to object-center
-        kitti_records[:, 12] = kitti_records[:, 12] - kitti_records[:, 8] / 2
-
         centers = kitti_records[:, 11:14]
         dims = kitti_records[:, 8:11]
         yaws = kitti_records[:, 14:15]
         bboxes_3d = BBoxes3D(
             np.concatenate([centers, dims, yaws], axis=1),
-            origin=[.5, .5, .5],
+            origin=[.5, 1, .5],
             coordmode=CoordMode.KittiCamera,
             rot_axis=1)
         bboxes_2d = BBoxes2D(kitti_records[:, 4:8])
@@ -52,7 +49,7 @@ def camera_record_to_object(
 
 
 # lidar record fields
-# type, truncated, occluded, alpha, xmin, ymin, xmax, ymax, dl, dw, dh, lx, ly, lz, ry
+# type, truncated, occluded, alpha, xmin, ymin, xmax, ymax, dw, dl, dh, lx, ly, lz, rz
 def lidar_record_to_object(
         kitti_records: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """

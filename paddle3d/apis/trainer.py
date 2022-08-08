@@ -238,7 +238,7 @@ class Trainer:
 
                     loss_sum = 0
 
-                if status.do_eval:
+                if status.do_eval and env.local_rank == 0:
                     # TODO: whether to save a checkpoint based on the metric
                     metrics = self.evaluate()
                     for k, v in metrics.items():
@@ -266,20 +266,22 @@ class Trainer:
                     self.checkpoint.record('epochs', self.cur_epoch)
 
         logger.info('Training is complete.')
-        if self.train_by_epoch:
-            tag = 'epoch_{}'.format(self.epochs)
-        else:
-            tag = 'iter_{}'.format(self.iters)
 
-        if not self.checkpoint.have(tag):
-            self.checkpoint.push(
-                tag=tag,
-                params_dict=self.model.state_dict(),
-                opt_dict=self.optimizer.state_dict(),
-                verbose=True)
+        if env.local_rank == 0:
+            if self.train_by_epoch:
+                tag = 'epoch_{}'.format(self.epochs)
+            else:
+                tag = 'iter_{}'.format(self.iters)
 
-        self.checkpoint.record('iters', self.iters)
-        self.checkpoint.record('epochs', self.epochs)
+            if not self.checkpoint.have(tag):
+                self.checkpoint.push(
+                    tag=tag,
+                    params_dict=self.model.state_dict(),
+                    opt_dict=self.optimizer.state_dict(),
+                    verbose=True)
+
+            self.checkpoint.record('iters', self.iters)
+            self.checkpoint.record('epochs', self.epochs)
 
     def evaluate(self) -> float:
         """
