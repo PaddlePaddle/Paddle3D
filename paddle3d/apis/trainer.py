@@ -223,11 +223,14 @@ class Trainer:
 
                 if status.do_log and env.local_rank == 0:
                     lr = self.optimizer.get_lr()
+                    max_mem_mb = paddle.device.cuda.max_memory_allocated(
+                    ) / 1024. / 1024.
                     loss_sum = float(loss_sum / self.scheduler.log_interval)
                     logger.info(
-                        '[TRAIN] epoch={}/{}, iter={}/{}, loss={:.6f}, lr={:.6f} | ETA {}'
+                        '[TRAIN] epoch={}/{}, iter={}/{}, loss={:.6f}, lr={:.6f}, max_mem: {:.0f}Mb | ETA {}'
                         .format(self.cur_epoch, self.epochs, self.cur_iter,
-                                self.iters, loss_sum, lr, timer.eta))
+                                self.iters, loss_sum, lr, max_mem_mb,
+                                timer.eta))
 
                     self.log_writer.add_scalar(
                         tag='Training/learning_rate',
