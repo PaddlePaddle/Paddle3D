@@ -1,5 +1,5 @@
 batch_size: 4
-iters: 154460
+epochs: 20
 train_dataset:
   type: NuscenesPCDataset
   dataset_root: datasets/nuscenes/
@@ -33,7 +33,7 @@ train_dataset:
         pedestrian: 2
         traffic_cone: 2
       database_anno_path: datasets/nuscenes/gt_database_train_nsweeps10_withvelo/anno_info_train_nsweeps10_withvelo.pkl
-      database_root: datasets/nuscenes
+      database_root: datasets/nuscenes/
       class_names: ["car", "truck", "construction_vehicle", "bus", "trailer", "barrier", "motorcycle", "bicycle", "pedestrian", "traffic_cone"]
     - type: RandomVerticalFlip
     - type: RandomHorizontalFlip

@@ -214,6 +214,7 @@ class Trainer:
                 if self.cur_iter > self.iters:
                     break
 
+                lr = self.optimizer.get_lr()
                 loss = training_step(model, self.optimizer, sample,
                                      self.cur_iter)
                 loss_sum += loss.numpy()[0]
@@ -222,7 +223,6 @@ class Trainer:
                 status = self.scheduler.step()
 
                 if status.do_log and env.local_rank == 0:
-                    lr = self.optimizer.get_lr()
                     loss_sum = float(loss_sum / self.scheduler.log_interval)
                     logger.info(
                         '[TRAIN] epoch={}/{}, iter={}/{}, loss={:.6f}, lr={:.6f} | ETA {}'
