@@ -176,7 +176,9 @@ cd deploy/smoke/cpp
 
 Paddle Inference针对**是否使用GPU**、**是否支持TensorRT**、以及**不同的CUDA/cuDNN/GCC版本**均提供已经编译好的库文件，请至[Paddle Inference C++预编译库下载列表](https://www.paddlepaddle.org.cn/inference/user_guides/download_lib.html#c)选择符合的版本。
 
-- step 3: 修改`compile.sh`中的编译参数
+- step 3: 下载OpenCV
+
+- step 4: 修改`compile.sh`中的编译参数
 
 主要修改编译脚本`compile.sh`中的以下参数：
 
@@ -189,13 +191,13 @@ Paddle Inference针对**是否使用GPU**、**是否支持TensorRT**、以及**�
 | CUDA_LIB | CUDA`libcudart.so `所在路径 |
 | TENSORRT_ROOT | TensorRT所在路径。**非必须**，如果`USE_TENSORRT`设置为`ON`时，需要填写该路径，该路径下的内容应有`bin`、`lib`和`include`等|
 
-- step 4: 开始编译
+- step 5: 开始编译
 
 ```shell
 sh compile.sh
 ```
 
-- step 5: 执行预测
+- step 6: 执行预测
 
 ```shell
 ./build/infer --model_file /path/to/smoke.pdmodel --params_file /path/to/smoke.pdiparams --image /path/to/image
