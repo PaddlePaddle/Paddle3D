@@ -31,9 +31,14 @@ SMOKE是一个单阶段的单目3D检测模型，该论文创新性地提出了�
 
 <br>
 
-## 训练配置
+## 模型库
 
-我们提供了在开源数据集上的训练配置与结果，详见[SMOKE训练配置](../../../configs/smoke)
+| 模型 |  骨干网络  | 3DmAP Mod. | Car<br>Easy Mod. Hard | Pedestrian<br>Easy Mod. Hard | Cyclist<br>Easy Mod. Hard | 模型下载 | 配置文件 |  日志 |
+| ---- | --------- | ---------- | --------------------- | ---------------------------- | ------------------------- | --------| ------- |  ---- |
+|SMOKE |  DLA34    | 2.94 |  6.26 5.16 4.54 | 3.04 2.73 2.23 | 1.69 0.95 0.94 | [model](https://paddle3d.bj.bcebos.com/models/smoke/smoke_dla34_no_dcn_kitti/model.pdparams) | [config](../../../configs/smoke/smoke_dla34_no_dcn_kitti.yml) | [log](https://paddle3d.bj.bcebos.com/models/smoke/smoke_dla34_no_dcn_kitti/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=1650ec346b4426486bd079b506fc1f86) |
+|SMOKE |  HRNet18  | 4.05 | 8.48 6.44 5.74 | 5.02 4.23 3.06 | 2.59 1.49 1.37 | [model](https://paddle3d.bj.bcebos.com/models/smoke/smoke_hrnet18_no_dcn_kitti/model.pdparams) | [config](../../../configs/smoke/smoke_hrnet18_no_dcn_kitti.yml) | [log](https://paddle3d.bj.bcebos.com/models/smoke/smoke_hrnet18_no_dcn_kitti/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=4e31655b33d0f44b0c19399df8fb7b00) |
+
+**注意：** KITTI benchmark使用4张V100 GPU训练得出。
 
 <br>
 
