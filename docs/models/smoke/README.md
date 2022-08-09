@@ -95,7 +95,7 @@ fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml 
 export CUDA_VISIBLE_DEVICES=0
 
 # 使用Paddle3D提供的预训练模型进行评估
-python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --num_workers 2 --model output/iter_70000/model.pdparams
+python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --num_workers 2 --batch_size 1 --model output/iter_70000/model.pdparams
 ```
 
 <br>
