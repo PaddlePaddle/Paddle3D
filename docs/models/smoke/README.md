@@ -95,11 +95,7 @@ fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --nu
 export CUDA_VISIBLE_DEVICES=0
 
 # 使用Paddle3D提供的预训练模型进行评估
-python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --num_workers 2 --model output/iter_70000/model.pdparams
-# 也使用Paddle3D提供的预训练模型进行评估
-# python tools/evaluate.py \
-#     --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --num_workers 2 \
-#     --model https://bj.bcebos.com/paddle3d/models/smoke/smoke_dla34_no_dcn_kitti/model.pdparams
+python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --num_workers 2 --batch_size 1 --model output/iter_70000/model.pdparams
 ```
 
 <br>
@@ -111,10 +107,6 @@ python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --n
 ```shell
 # 导出Paddle3D提供的预训练模型
 python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --model output/iter_70000/model.pdparams
-# 也可以导出Paddle3D提供的预训练模型
-# python tools/export.py \
-#     --config configs/smoke/smoke_dla34_no_dcn_kitti.yml \
-#     --model https://bj.bcebos.com/paddle3d/models/smoke/smoke_dla34_no_dcn_kitti/model.pdparams
 ```
 
 ### 执行预测
