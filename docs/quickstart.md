@@ -15,7 +15,7 @@
 使用如下命令启动单卡训练，由于一次完整的训练流程耗时较久，我们只训练100个iter进行快速体验，下面的命令在Telsa V100上大约耗时2分钟
 
 ```shell
-python tools/train.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --iters 100 --log_interval 10 --save_interval 20
+python tools/train.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --iters 100 --log_interval 10 --save_interval 20
 ```
 
 **多卡训练**
@@ -24,7 +24,7 @@ python tools/train.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --
 
 ```shell
 export CUDA_VISIBLE_DEVICES=0,1,2,3
-fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --iters 100 --log_interval 10 --save_interval 20
+fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --iters 100 --log_interval 10 --save_interval 20
 ```
 
 **训练脚本参数介绍**
@@ -71,7 +71,7 @@ visualdl --logdir output --host ${HOST_IP} --port {$PORT}
 
 ```shell
 wget https://paddle3d.bj.bcebos.com/models/smoke/smoke_dla34_no_dcn_kitti/model.pdparams
-python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --model model.pdparams --batch_size 1
+python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --model model.pdparams --batch_size 1
 ```
 
 **评估脚本参数介绍**
@@ -91,7 +91,7 @@ python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml
 
 ```shell
 wget https://paddle3d.bj.bcebos.com/models/smoke/smoke_dla34_no_dcn_kitti/model.pdparams
-python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_iter70000.yml --model model.pdparams
+python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --model model.pdparams
 ```
 
 **导出脚本参数介绍**

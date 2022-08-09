@@ -105,7 +105,7 @@ python tools/create_det_gt_database.py --dataset_name kitti --dataset_root ./dat
 ```shell
 python -m paddle.distributed.launch --gpus 0 \
     tools/train.py \
-    --config configs/pointpillars/pointpillars_kitti_car_xyres16.yml \
+    --config configs/pointpillars/pointpillars_xyres16_kitti_car.yml \
     --save_interval 1856 \
     --keep_checkpoint_max 100 \
     --save_dir outputs/pointpillars \
@@ -137,7 +137,7 @@ python -m paddle.distributed.launch --gpus 0 \
 
 ```shell
 python tools/evaluate.py \
-    --config configs/pointpillars/pointpillars_kitti_car_xyres16.yml \
+    --config configs/pointpillars/pointpillars_xyres16_kitti_car.yml \
     --model /path/to/model.pdparams \
     --num_workers 8
 ```
@@ -157,7 +157,7 @@ python tools/evaluate.py \
 
 ```shell
 python tools/export.py \
-    --config configs/pointpillars/pointpillars_kitti_car_xyres16.yml \
+    --config configs/pointpillars/pointpillars_xyres16_kitti_car.yml \
     --model /path/to/model.pdparams \
     --save_dir /path/to/output
 ```
