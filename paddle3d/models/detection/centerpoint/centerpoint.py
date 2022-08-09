@@ -193,7 +193,6 @@ class CenterPoint(nn.Layer):
         self.middle_encoder.export_model = True
         self.bbox_head.export_model = True
         save_path = os.path.join(save_dir, 'centerpoint')
-        #points_shape = [-1, self.voxel_encoder.in_channels]
         points_shape = [-1, -1]
 
         input_spec = [{
