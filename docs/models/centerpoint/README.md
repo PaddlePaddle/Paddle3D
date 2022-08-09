@@ -277,19 +277,14 @@ sh compile.sh
 | params_file | 导出模型的参数文件`centerpoint.pdiparams`所在路径 |
 | lidar_file | 待预测的点云文件所在路径 |
 | num_point_dim | 点云文件中每个点的维度大小。例如，若每个点的信息是`x, y, z, intensity`，则`num_point_dim`填写为4 |
-| use_timelag | 仅针对`nuscenes`数据集，若使用`nuscenes`数据集训练的模型，需设置为True，默认False |
+| with_timelag | 该参数仅针对由多帧融合而成的点云文件，融合后的点云文件通常每个点都会包含时间差(timelag)。若点云维度大于等于5且第5维信息是timelag，需设置为1，默认0 |
 
-- 如果模型是使用`nuscenes`数据集训练的，执行命令：
-
-```
-./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5 --use_timelag 1
-```
-
-- 如果模型是使用`kitti`数据集格式训练的，执行命令：
 
 ```
-./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 4
+./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5
 ```
+
+**注意：** 请预先确认实际待测试点云文件的维度是否是5，如果不是5，`--num_point_dim`请修改为实际值。如果待测试的点云文件是由多帧融合而成且点云维度大于等于5且第5维信息是timelag，可将`--with_timelag`设置为1。
 
 ### 开启TensorRT加速预测【可选】
 
@@ -303,7 +298,7 @@ sh compile.sh
 | params_file | 导出模型的参数文件`centerpoint.pdiparams`所在路径 |
 | lidar_file | 待预测的点云文件所在路径 |
 | num_point_dim | 点云文件中每个点的维度大小。例如，若每个点的信息是`x, y, z, intensity`，则`num_point_dim`填写为4 |
-| use_timelag | 仅针对`nuscenes`数据集，若使用`nuscenes`数据集训练的模型，需设置为1，默认0 |
+| with_timelag | 仅针对`nuscenes`数据集，若使用`nuscenes`数据集训练的模型，需设置为1，默认0 |
 | use_trt | 是否使用TensorRT进行加速，默认0|
 | trt_precision | 当use_trt设置为1时，模型精度可设置0或1，0表示fp32, 1表示fp16。默认0 |
 | trt_use_static | 当trt_use_static设置为1时，**在首次运行程序的时候会将TensorRT的优化信息进行序列化到磁盘上，下次运行时直接加载优化的序列化信息而不需要重新生成**。默认0 |
@@ -313,44 +308,20 @@ sh compile.sh
 
 * **首次运行TensorRT**，收集模型动态shape信息，并保存至`--dynamic_shape_file`指定的文件中
 
-    如果模型是使用`nuscenes`数据集训练的，执行命令：
-
     ```
-    ./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5 --use_timelag 1 --use_trt 1 --collect_shape_info 1 --dynamic_shape_file /path/to/shape_info.txt
-    ```
-
-    如果模型是使用`kitti`数据集格式训练的，执行命令：
-
-    ```
-    ./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 4 --use_trt 1 --collect_shape_info 1 --dynamic_shape_file /path/to/shape_info.txt
+    ./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5 --use_trt 1 --collect_shape_info 1 --dynamic_shape_file /path/to/shape_info.txt
     ```
 
 * 加载`--dynamic_shape_file`指定的模型动态shape信息，使用FP32精度进行预测
 
-    如果模型是使用`nuscenes`数据集训练的，执行命令：
-
     ```
-    ./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5 --use_timelag 1 --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt
-    ```
-
-    如果模型是使用`kitti`数据集格式训练的，执行命令：
-
-    ```
-    ./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 4 --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt
+    ./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5 --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt
     ```
 
 * 加载`--dynamic_shape_file`指定的模型动态shape信息，使用FP16精度进行预测
 
-    如果模型是使用`nuscenes`数据集训练的，执行命令：
-
     ```
-    ./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5 --use_timelag 1 --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1
-    ```
-
-    如果模型是使用`kitti`数据集格式训练的，执行命令：
-
-    ```
-    ./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 4 --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1
+    ./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5 --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1
     ```
 
 * 如果觉得每次运行时模型加载的时间过长，可以设置`trt_use_static`和`trt_static_dir`，首次运行时将TensorRT的优化信息保存在硬盘中，后续直接反序列化优化信息即可
@@ -371,7 +342,7 @@ sh compile.sh
 | params_file | 导出模型的参数文件`centerpoint.pdiparams`所在路径 |
 | lidar_file | 待预测的点云文件所在路径 |
 | num_point_dim | 点云文件中每个点的维度大小。例如，若每个点的信息是`x, y, z, intensity`，则`num_point_dim`填写为4 |
-| use_timelag | 仅针对`nuscenes`数据集，若使用`nuscenes`数据集训练的模型，需设置为1，默认0 |
+| with_timelag | 该参数仅针对由多帧融合而成的点云文件，融合后的点云文件通常每个点都会包含时间差(timelag)。若点云维度大于等于5且第5维信息是timelag，需设置为1>，默认0 |
 | use_trt | 是否使用TensorRT进行加速，默认0|
 | trt_precision | 当use_trt设置为1时，模型精度可设置0或1，0表示fp32, 1表示fp16。默认0 |
 | trt_use_static | 当trt_use_static设置为1时，**在首次运行程序的时候会将TensorRT的优化信息进行序列化到磁盘上，下次运行时直接加载优化的序列化信息而不需要重新生成**。默认0 |
@@ -381,16 +352,8 @@ sh compile.sh
 
 运行以下命令，执行预测：
 
-* 如果模型是使用`nuscenes`数据集训练的，执行命令：
-
 ```
-python infer.py --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5 --use_timelag 1
-```
-
-* 如果模型是使用`kitti`数据集格式训练的，执行命令：
-
-```
-python infer.py --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 4
+python infer.py --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5
 ```
 
 ## <h2 id="9">自定义数据集</h2>
@@ -398,4 +361,4 @@ python infer.py --model_file /path/to/centerpoint.pdmodel --params_file /path/to
 请参考文档[自定义数据集格式说明](../../../datasets/custom)准备自定义数据集。
 ## <h2 id="10">Apollo使用教程</h2>
 
-基于Paddle3D训练完成的CenterPoint模型可以直接部署到Apollo架构中使用，请参考[教程]()
+基于Paddle3D训练完成的CenterPoint模型可以直接部署到Apollo架构中使用，请参考[教程](https://github.com/ApolloAuto/apollo/blob/master/modules/perception/README_paddle3D_CN.md)

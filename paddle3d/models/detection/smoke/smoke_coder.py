@@ -28,10 +28,6 @@ class SMOKECoder(paddle.nn.Layer):
 
     def __init__(self, depth_ref, dim_ref):
         super().__init__()
-
-        # self.depth_ref = paddle.to_tensor(depth_ref)
-        # self.dim_ref = paddle.to_tensor(dim_ref)
-
         self.depth_decoder = DepthDecoder(depth_ref)
         self.dimension_decoder = DimensionDecoder(dim_ref)
 
@@ -53,29 +49,12 @@ class SMOKECoder(paddle.nn.Layer):
         i_temp = paddle.to_tensor([[1, 0, 1], [0, 1, 0], [-1, 0, 1]],
                                   dtype="float32")
 
-        # ry = paddle.reshape(i_temp.tile([N, 1]), (N, -1, 3))
+        ry = paddle.reshape(i_temp.tile([N, 1]), (N, -1, 3))
 
-        # ry[:, 0, 0] *= cos
-        # ry[:, 0, 2] *= sin
-        # ry[:, 2, 0] *= sin
-        # ry[:, 2, 2] *= cos
-
-        # slice bug, so use concat
-        pos1 = (paddle.ones([N], dtype="float32") * cos).unsqueeze(-1)
-        pos2 = (paddle.zeros([N], dtype="float32")).unsqueeze(-1)
-        pos3 = (paddle.ones([N], dtype="float32") * sin).unsqueeze(-1)
-        pos4 = (paddle.zeros([N], dtype="float32")).unsqueeze(-1)
-        pos5 = (paddle.ones([N], dtype="float32")).unsqueeze(-1)
-        pos6 = (paddle.zeros([N], dtype="float32")).unsqueeze(-1)
-        pos7 = (paddle.ones([N], dtype="float32") * (-sin)).unsqueeze(-1)
-        pos8 = (paddle.zeros([N], dtype="float32")).unsqueeze(-1)
-        pos9 = (paddle.ones([N], dtype="float32") * cos).unsqueeze(-1)
-
-        ry = paddle.concat(
-            [pos1, pos2, pos3, pos4, pos5, pos6, pos7, pos8, pos9], axis=1)
-
-        ry = paddle.reshape(ry, [N, 3, 3])
-
+        ry[:, 0, 0] *= cos
+        ry[:, 0, 2] *= sin
+        ry[:, 2, 0] *= sin
+        ry[:, 2, 2] *= cos
         return ry
 
     def encode_box3d(self, rotys, dims, locs):
@@ -99,33 +78,15 @@ class SMOKECoder(paddle.nn.Layer):
         N = rotys.shape[0]
         ry = self.rad_to_matrix(rotys, N)
 
-        # if test:
-        #     dims.register_hook(lambda grad: print('dims grad', grad.sum()))
-        # dims = paddle.reshape(dims, (-1, 1)).tile([1, 8])
+        dims = paddle.reshape(dims, (-1, 1)).tile([1, 8])
 
-        # dims[::3, :4] = 0.5 * dims[::3, :4]
-        # dims[1::3, :4] = 0.
-        # dims[2::3, :4] = 0.5 * dims[2::3, :4]
+        dims[::3, :4] = 0.5 * dims[::3, :4]
+        dims[1::3, :4] = 0.
+        dims[2::3, :4] = 0.5 * dims[2::3, :4]
 
-        # dims[::3, 4:] = -0.5 * dims[::3, 4:]
-        # dims[1::3, 4:] = -dims[1::3, 4:]
-        # dims[2::3, 4:] = -0.5 * dims[2::3, 4:]
-
-        dim_left_1 = (0.5 * dims[:, 0]).unsqueeze(-1)
-        dim_left_2 = paddle.zeros([dims.shape[0], 1]).astype(
-            "float32")  #(paddle.zeros_like(dims[:, 1])).unsqueeze(-1)
-        dim_left_3 = (0.5 * dims[:, 2]).unsqueeze(-1)
-        dim_left = paddle.concat([dim_left_1, dim_left_2, dim_left_3], axis=1)
-        dim_left = paddle.reshape(dim_left, (-1, 1)).tile([1, 4])
-
-        dim_right_1 = (-0.5 * dims[:, 0]).unsqueeze(-1)
-        dim_right_2 = (-dims[:, 1]).unsqueeze(-1)
-        dim_right_3 = (-0.5 * dims[:, 2]).unsqueeze(-1)
-        dim_right = paddle.concat([dim_right_1, dim_right_2, dim_right_3],
-                                  axis=1)
-        dim_right = paddle.reshape(dim_right, (-1, 1)).tile([1, 4])
-
-        dims = paddle.concat([dim_left, dim_right], axis=1)
+        dims[::3, 4:] = -0.5 * dims[::3, 4:]
+        dims[1::3, 4:] = -dims[1::3, 4:]
+        dims[2::3, 4:] = -0.5 * dims[2::3, 4:]
 
         index = paddle.to_tensor([[4, 0, 1, 2, 3, 5, 6, 7],
                                   [4, 5, 0, 1, 6, 7, 2, 3],
@@ -135,7 +96,6 @@ class SMOKECoder(paddle.nn.Layer):
         box_3d_object = gather(dims, index)
 
         box_3d = paddle.matmul(ry, paddle.reshape(box_3d_object, (N, 3, -1)))
-        # box_3d += locs.unsqueeze(-1).repeat(1, 1, 8)
         box_3d += locs.unsqueeze(-1).tile((1, 1, 8))
 
         return box_3d
@@ -144,9 +104,6 @@ class SMOKECoder(paddle.nn.Layer):
         """
         Transform depth offset to depth
         """
-        #depth = depths_offset * self.depth_ref[1] + self.depth_ref[0]
-
-        #return depth
         return self.depth_decoder(depths_offset)
 
     def decode_location(self, points, points_offset, depths, Ks, trans_mats):
@@ -168,7 +125,6 @@ class SMOKECoder(paddle.nn.Layer):
         # batch size
         N_batch = Ks.shape[0]
         batch_id = paddle.arange(N_batch).unsqueeze(1)
-        # obj_id = batch_id.repeat(1, N // N_batch).flatten()
         obj_id = batch_id.tile([1, N // N_batch]).flatten()
 
         trans_mats_inv = trans_mats.inverse()[obj_id]
@@ -358,7 +314,6 @@ class SMOKECoder(paddle.nn.Layer):
         # batch size
         N_batch = trans_mats.shape[0]
         batch_id = paddle.arange(N_batch).unsqueeze(1)
-        # obj_id = batch_id.repeat(1, N // N_batch).flatten()
         obj_id = batch_id.tile([1, N // N_batch]).flatten()
 
         trans_mats_inv = trans_mats.inverse()[obj_id]
@@ -429,6 +384,7 @@ class DimensionDecoder(paddle.nn.Layer):
         return dimensions
 
 
+# Use numel_t(Tensor) instead of Tensor.numel to avoid shape uncertainty when exporting the model
 def numel_t(var):
     from numpy import prod
     assert -1 not in var.shape

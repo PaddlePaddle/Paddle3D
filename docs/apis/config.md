@@ -12,7 +12,11 @@
 
     * batch_size: 更新的batch_size，可以不指定
 
-    * iters: 更新的训练轮次，可以不指定
+    * iters: 更新的训练步数，可以不指定
+
+    * epochs: 更新的训练轮次，可以不指定
+
+    *注意：使用一个 batch 数据对模型进行一次参数更新的过程称之为一步，iters 即为训练过程中的训练步数。完整遍历一次数据对模型进行训练的过程称之为一次迭代，epochs 即为训练过程中的训练迭代次数。一个epoch包含多个iter。*
 
   * **异常值**
 
@@ -32,7 +36,9 @@
 
     * batch_size: 更新的batch_size，可以不指定
 
-    * iters: 更新的训练轮次，可以不指定
+    * iters: 更新的训练步数，可以不指定
+
+    * epochs: 更新的训练轮次，可以不指定
 
 ## to_dict
 
@@ -43,6 +49,10 @@
   单卡batch_size大小
 
 ## iters
+
+  训练步数，与epochs互斥，当指定iters时，epochs不生效
+
+## epochs
 
   训练轮次
 
