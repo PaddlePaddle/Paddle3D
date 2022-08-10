@@ -157,7 +157,7 @@ hard_voxelize(const paddle::Tensor &points,
     return hard_voxelize_cpu(points, voxel_size, point_cloud_range,
                              max_num_points_in_voxel, max_voxels);
 #ifdef PADDLE_WITH_CUDA
-  } else if (points.is_gpu()) {
+  } else if (points.is_gpu() || points.is_gpu_pinned()) {
     return hard_voxelize_cuda(points, voxel_size, point_cloud_range,
                               max_num_points_in_voxel, max_voxels);
 #endif
