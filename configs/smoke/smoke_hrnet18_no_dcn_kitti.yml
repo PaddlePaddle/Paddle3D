@@ -1,4 +1,4 @@
-_base_: '../_base_/kitti.yml'
+_base_: '../_base_/kitti_mono.yml'
 
 batch_size: 8
 iters: 70000
@@ -40,16 +40,15 @@ lr_scheduler:
 model:
   type: SMOKE
   backbone:
-    type: DLA34
-    # This will automatically save to ~/.paddle3d/pretrained/dla34/dla34.pdparams
-    pretrained: "https://bj.bcebos.com/paddle3d/pretrained/imagenet/dla34.pdparams"
+    type: $paddleseg.HRNet_W18
+    pretrained: https://bj.bcebos.com/paddleseg/dygraph/hrnet_w18_ssld.tar.gz
   head:
     type: SMOKEPredictor
     num_classes: 3
     reg_channels: [1, 2, 3, 2, 2]
     num_chanels: 256
     norm_type: "gn"
-    in_channels: 64
+    in_channels: 270
   depth_ref: [28.01, 16.32]
   dim_ref: [[3.88, 1.63, 1.53], [1.78, 1.70, 0.58], [0.88, 1.73, 0.67]]
   max_detection: 50

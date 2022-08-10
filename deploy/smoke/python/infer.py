@@ -143,5 +143,3 @@ if __name__ == '__main__':
     results = run(pred, [img, K, ratio])
 
     total_pred = results[0]
-    import pdb
-    pdb.set_trace()

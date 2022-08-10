@@ -32,7 +32,7 @@ Paddle3D支持通过配置文件来描述相关的任务，从而实现配置化
 
 ```yaml
 # 从另外一个配置文件中继承配置
-_base_: '../_base_/kitti.yml'
+_base_: '../_base_/kitti_mono.yml'
 
 # 设置batch size为8
 batch_size: 8
@@ -40,7 +40,7 @@ batch_size: 8
 # 设置训练轮次为70000
 iters: 70000
 
-# 指定训练集参数，由于训练集类别在 kitti.yml 中已经指定，此处不需要特殊指定，直接继承
+# 指定训练集参数，由于训练集类别在 kitti_mono.yml 中已经指定，此处不需要特殊指定，直接继承
 train_dataset:
   # 设置三个Transform对加载的数据进行处理
   transforms:
