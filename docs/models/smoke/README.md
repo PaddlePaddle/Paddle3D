@@ -31,9 +31,14 @@ SMOKE是一个单阶段的单目3D检测模型，该论文创新性地提出了�
 
 <br>
 
-## 训练配置
+## 模型库
 
-我们提供了在开源数据集上的训练配置与结果，详见[SMOKE训练配置](../../../configs/smoke)
+| 模型 |  骨干网络  | 3DmAP Mod. | Car<br>Easy Mod. Hard | Pedestrian<br>Easy Mod. Hard | Cyclist<br>Easy Mod. Hard | 模型下载 | 配置文件 |  日志 |
+| :--: | :-------: | :--------: | :-------------------: | :--------------------------: | :-----------------------: | :------: | :-----: | :--: |
+|SMOKE |  DLA34    | 2.94 |  6.26 5.16 4.54 | 3.04 2.73 2.23 | 1.69 0.95 0.94 | [model](https://paddle3d.bj.bcebos.com/models/smoke/smoke_dla34_no_dcn_kitti/model.pdparams) | [config](../../../configs/smoke/smoke_dla34_no_dcn_kitti.yml) | [log](https://paddle3d.bj.bcebos.com/models/smoke/smoke_dla34_no_dcn_kitti/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=1650ec346b4426486bd079b506fc1f86) |
+|SMOKE |  HRNet18  | 4.05 | 8.48 6.44 5.74 | 5.02 4.23 3.06 | 2.59 1.49 1.37 | [model](https://paddle3d.bj.bcebos.com/models/smoke/smoke_hrnet18_no_dcn_kitti/model.pdparams) | [config](../../../configs/smoke/smoke_hrnet18_no_dcn_kitti.yml) | [log](https://paddle3d.bj.bcebos.com/models/smoke/smoke_hrnet18_no_dcn_kitti/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=4e31655b33d0f44b0c19399df8fb7b00) |
+
+**注意：** KITTI benchmark使用4张V100 GPU训练得出。
 
 <br>
 
@@ -171,7 +176,9 @@ cd deploy/smoke/cpp
 
 Paddle Inference针对**是否使用GPU**、**是否支持TensorRT**、以及**不同的CUDA/cuDNN/GCC版本**均提供已经编译好的库文件，请至[Paddle Inference C++预编译库下载列表](https://www.paddlepaddle.org.cn/inference/user_guides/download_lib.html#c)选择符合的版本。
 
-- step 3: 修改`compile.sh`中的编译参数
+- step 3: 下载OpenCV
+
+- step 4: 修改`compile.sh`中的编译参数
 
 主要修改编译脚本`compile.sh`中的以下参数：
 
@@ -184,13 +191,13 @@ Paddle Inference针对**是否使用GPU**、**是否支持TensorRT**、以及**�
 | CUDA_LIB | CUDA`libcudart.so `所在路径 |
 | TENSORRT_ROOT | TensorRT所在路径。**非必须**，如果`USE_TENSORRT`设置为`ON`时，需要填写该路径，该路径下的内容应有`bin`、`lib`和`include`等|
 
-- step 4: 开始编译
+- step 5: 开始编译
 
 ```shell
 sh compile.sh
 ```
 
-- step 5: 执行预测
+- step 6: 执行预测
 
 ```shell
 ./build/infer --model_file /path/to/smoke.pdmodel --params_file /path/to/smoke.pdiparams --image /path/to/image
