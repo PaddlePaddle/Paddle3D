@@ -10,6 +10,7 @@ paddledet
 paddleseg
 pyquaternion
 pyyaml
+pillow<=8.3.2
 rarfile
 scikit-image
 visualdl
