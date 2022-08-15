@@ -286,3 +286,14 @@ class RandomObjectPerturb(TransformABC):
                                     translation_noises)
 
         return sample
+
+
+@manager.TRANSFORMS.add_component
+class TranslatePointCloud(TransformABC):
+    def __call__(self, point_cloud):
+        xyz1 = np.random.uniform(low=2. / 3., high=3. / 2., size=[3])
+        xyz2 = np.random.uniform(low=-0.2, high=0.2, size=[3])
+
+        translated_pointcloud = np.add(np.multiply(point_cloud, xyz1),
+                                       xyz2).astype('float32')
+        return translated_pointcloud

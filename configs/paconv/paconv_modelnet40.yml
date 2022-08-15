@@ -1,0 +1,36 @@
+batch_size: 32
+iters: 107450   # 350 epochs
+
+train_dataset:
+  type: ModelNet40
+  dataset_root: datasets/modelnet40_ply_hdf5_2048
+  num_points: 1024
+  transforms:
+    - type: TranslatePointCloud
+  pt_norm: False
+  mode: train
+
+val_dataset:
+  type: ModelNet40
+  dataset_root: datasets/modelnet40_ply_hdf5_2048
+  num_points: 1024
+  pt_norm: False
+  mode: test
+
+optimizer:
+  type: Momentum
+  momentum: 0.9
+  weight_decay: 0.0001
+
+lr_scheduler:
+  type: CosineAnnealingDecay
+  learning_rate: 0.1
+  T_max: 107450
+  eta_min: 0.001
+
+model:
+  type: PAConv
+  k_neighbors: 20
+  calc_scores: softmax
+  num_matrices: [8, 8, 8, 8]
+  dropout: 0.5
