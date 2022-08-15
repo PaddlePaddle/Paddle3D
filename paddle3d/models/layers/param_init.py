@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import math
+import warnings
 
 import numpy as np
 import paddle
@@ -106,6 +107,22 @@ def kaiming_normal_init(param, **kwargs):
     """
     initializer = nn.initializer.KaimingNormal(**kwargs)
     initializer(param, param.block)
+
+
+def paconv_kaiming_normal_init(tensor,
+                               a=0,
+                               mode='fan_in',
+                               nonlinearity='leaky_relu',
+                               reverse=False):
+    if 0 in tensor.shape:
+        warnings.warn("Initializing zero-element tensors is a no-op")
+        return tensor
+    fan = _calculate_correct_fan(tensor, mode, reverse)
+    gain = _calculate_gain(nonlinearity, a)
+    std = gain / math.sqrt(fan)
+    with paddle.no_grad():
+        initializer = paddle.nn.initializer.Normal(mean=0, std=std)
+        initializer(tensor)
 
 
 def kaiming_uniform_init(param,

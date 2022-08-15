@@ -53,6 +53,15 @@ custom_ops = {
         ],
         'version':
         '0.1.0',
+    },
+    'assign_score_withk': {
+        'sources': [
+            "assign_score_withk/assign_score_withk_cuda.cc",
+            "assign_score_withk/assign_score_withk_kernel.cu"
+        ],
+        'extra_cuda_cflags': ['-arch=sm_60'],
+        'version':
+        '0.1.0',
     }
 }
 

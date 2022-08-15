@@ -11,15 +11,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .backbones import *
-from .classification import *
-from .detection import *
-from .heads import *
-from .layers import *
-from .losses import *
-from .middle_encoders import *
-from .necks import *
-from .optimizers import *
-from .segmentation import *
-from .voxel_encoders import *
-from .voxelizers import *
+from .paconv import PAConv
