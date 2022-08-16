@@ -15,7 +15,7 @@
 #include "paddle/include/experimental/ext_all.h"
 
 #define CHECK_INPUT_CUDA(x)                                                    \
-  PD_CHECK(x.is_gpu(), #x " must be a GPU Tensor.")
+  PD_CHECK(x.is_gpu() || x.is_gpu_pinned(), #x " must be a GPU Tensor.")
 
 #define CUDA_KERNEL_LOOP(i, n)                                                 \
   for (auto i = blockIdx.x * blockDim.x + threadIdx.x; i < (n);                \
