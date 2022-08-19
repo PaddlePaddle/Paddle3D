@@ -22,6 +22,7 @@ import paddle3d.env as env
 from paddle3d.apis.checkpoint import Checkpoint, CheckpointABC
 from paddle3d.apis.pipeline import training_step, validation_step
 from paddle3d.apis.scheduler import Scheduler, SchedulerABC
+from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
 from paddle3d.utils.timer import Timer
 
@@ -101,12 +102,16 @@ class Trainer:
             train_dataset: Optional[paddle.io.Dataset] = None,
             val_dataset: Optional[paddle.io.Dataset] = None,
             resume: bool = False,
+            pretrained: str = None,
             # TODO: Default parameters should not use mutable objects, there is a risk
             checkpoint: Union[dict, CheckpointABC] = dict(),
             scheduler: Union[dict, SchedulerABC] = dict(),
             dataloader_fn: Union[dict, Callable] = dict()):
 
         self.model = model
+        if pretrained is not None:
+            load_pretrained_model(self.model, pretrained)
+
         self.optimizer = optimizer
 
         _dataloader_build_fn = default_dataloader_build_fn(

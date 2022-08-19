@@ -85,6 +85,12 @@ def parse_args():
         help='Whether to resume training from checkpoint',
         action='store_true')
     parser.add_argument(
+        '--pretrained',
+        dest='pretrained',
+        help='pretrained weights for model',
+        type=str,
+        default=None)
+    parser.add_argument(
         '--save_dir',
         dest='save_dir',
         help='The directory for saving the model snapshot',
@@ -147,6 +153,7 @@ def main(args):
     batch_size = dic.pop('batch_size')
     dic.update({
         'resume': args.resume,
+        'pretrained': args.pretrained,
         'checkpoint': {
             'keep_checkpoint_max': args.keep_checkpoint_max,
             'save_dir': args.save_dir
