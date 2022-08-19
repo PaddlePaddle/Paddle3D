@@ -12,12 +12,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+from functools import partial
+
 from setuptools import find_packages, setup
 
 import paddle3d
 
 with open("requirements.txt") as fin:
     REQUIRED_PACKAGES = fin.read()
+
+
+def get_all_files(directory: str):
+    all_files = []
+    for root, _, files in os.walk(directory):
+        root = os.path.relpath(root, directory)
+        for file in files:
+            filepath = os.path.join(root, file)
+            all_files.append(filepath)
+
+    return all_files
+
+
+def get_data_files(directory: str, data: list = None, filetypes: list = None):
+    all_files = []
+    data = data or []
+    filetypes = filetypes or []
+
+    for file in get_all_files(directory):
+        filetype = os.path.splitext(file)[1][1:]
+        filename = os.path.basename(file)
+        if file in data:
+            all_files.append(file)
+        elif filetype in filetypes:
+            all_files.append(file)
+
+    return all_files
+
+
+get_cpp_files = partial(
+    get_data_files, filetypes=['h', 'hpp', 'cpp', 'cc', 'cu'])
 
 setup(
     name='paddle3d',
@@ -30,6 +64,10 @@ setup(
     author_email='',
     install_requires=REQUIRED_PACKAGES,
     packages=find_packages(),
+    package_data={
+        'paddle3d.ops': get_cpp_files('paddle3d/ops'),
+        'paddle3d.thirdparty': get_all_files('paddle3d/thirdparty')
+    },
     # PyPI package information.
     classifiers=[
         'Development Status :: 3 - Alpha',

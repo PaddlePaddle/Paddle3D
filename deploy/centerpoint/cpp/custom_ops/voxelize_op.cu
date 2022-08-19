@@ -15,7 +15,7 @@
 #include "paddle/include/experimental/ext_all.h"
 
 #define CHECK_INPUT_CUDA(x)                                                    \
-  PD_CHECK(x.is_gpu(), #x " must be a GPU Tensor.")
+  PD_CHECK(x.is_gpu() || x.is_gpu_pinned(), #x " must be a GPU Tensor.")
 
 #define CUDA_KERNEL_LOOP(i, n)                                                 \
   for (auto i = blockIdx.x * blockDim.x + threadIdx.x; i < (n);                \
@@ -123,8 +123,8 @@ assign_voxels_kernel(const T *points, const T_int *points_to_grid_idx,
 template <typename T, typename T_int>
 __global__ void assign_coords_kernel(
     const T_int *grid_idx_to_voxel_idx, const T_int *num_points_in_grid,
-    const int num_grids, const float grid_size_x, const float grid_size_y,
-    const float grid_size_z, T *coords, T *num_points_per_voxel) {
+    const int num_grids, const int grid_size_x, const int grid_size_y,
+    const int grid_size_z, T *coords, T *num_points_per_voxel) {
   int64_t grid_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (grid_idx > num_grids || grid_idx == num_grids) {
     return;

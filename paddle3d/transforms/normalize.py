@@ -21,7 +21,44 @@ from paddle3d.sample import Sample
 from paddle3d.transforms import functional as F
 from paddle3d.transforms.base import TransformABC
 
-__all__ = ["NormalizeRangeImage"]
+__all__ = ["Normalize", "NormalizeRangeImage"]
+
+
+@manager.TRANSFORMS.add_component
+class Normalize(TransformABC):
+    """
+    """
+
+    def __init__(self, mean: Tuple[float, float, float],
+                 std: Tuple[float, float, float]):
+        self.mean = mean
+        self.std = std
+
+        if not (isinstance(self.mean, (list, tuple))
+                and isinstance(self.std, (list, tuple))):
+            raise ValueError(
+                "{}: input type is invalid. It should be list or tuple".format(
+                    self))
+
+        from functools import reduce
+        if reduce(lambda x, y: x * y, self.std) == 0:
+            raise ValueError('{}: std is invalid!'.format(self))
+
+    def __call__(self, sample: Sample):
+        """
+        """
+        mean = np.array(self.mean)[:, np.newaxis, np.newaxis]
+        std = np.array(self.std)[:, np.newaxis, np.newaxis]
+
+        if sample.modality == 'image':
+            sample.data = sample.data.astype(np.float32, copy=False) / 255.0
+
+            if sample.meta.channel_order != 'chw':
+                mean = np.array(self.mean)
+                std = np.array(self.std)
+
+        sample.data = F.normalize(sample.data, mean, std)
+        return sample
 
 
 @manager.TRANSFORMS.add_component

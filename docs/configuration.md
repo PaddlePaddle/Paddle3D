@@ -21,17 +21,18 @@ Paddle3D支持通过配置文件来描述相关的任务，从而实现配置化
 |train_dataset |训练数据集 | dict |
 |val_dataset |验证数据集 | dict  |
 |batch_size|单张卡上，每步迭代训练时的数据量。一般来说，单步训练时的batch_size越大，则样本整体梯度更加稳定，有利于模型的收敛，调大batch_size时往往需要适当调大learning_rate | int |
-|iters| 使用一个 batch 数据对模型进行一次参数更新的过程称之为一次迭代，iters 即为训练过程中的迭代次数。 | int|
+|iters| 使用一个 batch 数据对模型进行一次参数更新的过程称之为一步，iters 即为训练过程中的训练步数。 | int|
+|epochs| 完整遍历一次数据对模型进行训练的过程称之为一次迭代，epochs 即为训练过程中的训练迭代次数。一个epoch包含多个iter | int|
 |optimizer|优化器类型，支持飞桨全部的[优化器类型](https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/optimizer/Overview_cn.html#paddle-optimizer) | dict|
 |lr_scheduler|调度器类型，支持飞桨全部的[LRScheduler](https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/optimizer/lr/LRScheduler_cn.html) |dict|
-|model| 模型类型，所支持值请参考[模型库](./apis/models.md)|dict|
+|model| 模型类型，所支持值请参考[模型库](./apis/models/)|dict|
 |\_\_base\_\_| 基础配置文件，可以不指定，该配置指向另外一个配置文件作为继承的基础配置|str|
 
 ## 完整示例
 
 ```yaml
 # 从另外一个配置文件中继承配置
-_base_: '../_base_/kitti.yml'
+_base_: '../_base_/kitti_mono.yml'
 
 # 设置batch size为8
 batch_size: 8
@@ -39,7 +40,7 @@ batch_size: 8
 # 设置训练轮次为70000
 iters: 70000
 
-# 指定训练集参数，由于训练集类别在 kitti.yml 中已经指定，此处不需要特殊指定，直接继承
+# 指定训练集参数，由于训练集类别在 kitti_mono.yml 中已经指定，此处不需要特殊指定，直接继承
 train_dataset:
   # 设置三个Transform对加载的数据进行处理
   transforms:

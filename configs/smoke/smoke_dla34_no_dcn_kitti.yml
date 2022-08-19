@@ -1,4 +1,4 @@
-_base_: '../_base_/kitti.yml'
+_base_: '../_base_/kitti_mono.yml'
 
 batch_size: 8
 iters: 70000
@@ -11,6 +11,7 @@ train_dataset:
     - type: Gt2SmokeTarget
       mode: train
       num_classes: 3
+      input_size: [1280, 384]
     - type: Normalize
       mean: [0.485, 0.456, 0.406]
       std: [0.229, 0.224, 0.225]
@@ -23,6 +24,7 @@ val_dataset:
     - type: Gt2SmokeTarget
       mode: val
       num_classes: 3
+      input_size: [1280, 384]
     - type: Normalize
       mean: [0.485, 0.456, 0.406]
       std: [0.229, 0.224, 0.225]
@@ -40,7 +42,7 @@ model:
   backbone:
     type: DLA34
     # This will automatically save to ~/.paddle3d/pretrained/dla34/dla34.pdparams
-    pretrained: "https://bj.bcebos.com/paddle3d/pretrained/imagenet/dla34.pdparams"
+    pretrained: "https://bj.bcebos.com/paddle3d/pretrained/dla34.pdparams"
   head:
     type: SMOKEPredictor
     num_classes: 3
