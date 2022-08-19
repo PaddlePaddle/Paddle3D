@@ -139,24 +139,45 @@ class GlobalTranslate(TransformABC):
     Args:
         translation_std (Union[float, List[float], Tuple[float]], optional):
             The standard deviation of the translation offset. Defaults to (.2, .2, .2).
+        distribution (str):
+            The random distribution. Defaults to normal.
     """
 
     def __init__(
             self,
             translation_std: Union[float, List[float], Tuple[float]] = (.2, .2,
-                                                                        .2)):
+                                                                        .2),
+            distribution="normal"):
         if not isinstance(translation_std, (list, tuple)):
             translation_std = [
                 translation_std, translation_std, translation_std
             ]
         self.translation_std = translation_std
+        self.distribution = distribution
 
     def __call__(self, sample: Sample):
         if sample.modality != "lidar":
             raise ValueError("GlobalScale only supports lidar data!")
-        translation = np.random.normal(scale=self.translation_std, size=3)
+        if self.distribution not in ["normal", "uniform"]:
+            raise ValueError(
+                "GlobalScale only supports normal and uniform random distribution!"
+            )
+
+        if self.distribution == "normal":
+            translation = np.random.normal(scale=self.translation_std, size=3)
+        elif self.distribution == "uniform":
+            translation = np.random.uniform(
+                low=-self.translation_std[0],
+                high=self.translation_std[0],
+                size=3)
+        else:
+            raise ValueError(
+                "GlobalScale only supports normal and uniform random distribution!"
+            )
+
         sample.data.translate(translation)
-        sample.bboxes_3d.translate(translation)
+        if sample.bboxes_3d is not None:
+            sample.bboxes_3d.translate(translation)
 
         return sample
 
@@ -286,14 +307,3 @@ class RandomObjectPerturb(TransformABC):
                                     translation_noises)
 
         return sample
-
-
-@manager.TRANSFORMS.add_component
-class TranslatePointCloud(TransformABC):
-    def __call__(self, point_cloud):
-        xyz1 = np.random.uniform(low=2. / 3., high=3. / 2., size=[3])
-        xyz2 = np.random.uniform(low=-0.2, high=0.2, size=[3])
-
-        translated_pointcloud = np.add(np.multiply(point_cloud, xyz1),
-                                       xyz2).astype('float32')
-        return translated_pointcloud

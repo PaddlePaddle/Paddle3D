@@ -18,11 +18,11 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 
 from paddle3d.apis import manager
-from paddle3d.models.layers import constant_init, paconv_kaiming_normal_init
+from paddle3d.models.layers import constant_init, kaiming_normal_init
 from paddle3d.ops import assign_score_withk
 from paddle3d.utils.logger import logger
 
-from .socre_net import ScoreNet
+from .score_net import ScoreNet
 
 
 @manager.MODELS.add_component
@@ -33,7 +33,9 @@ class PAConv(nn.Layer):
                  num_matrices=(8, 8, 8, 8),
                  dropout=0.5):
         super(PAConv, self).__init__()
-
+        if calc_scores not in ['softmax']:
+            raise ValueError(
+                "Unsupported calc scores type {}".format(calc_scores))
         self.k = k_neighbors
         self.calc_scores = calc_scores
         self.assign_score_withk = assign_score_withk.assign_score_withk
@@ -51,7 +53,7 @@ class PAConv(nn.Layer):
         o4 = 256  # channel dim of output_4th
 
         params = paddle.zeros(shape=[self.m1, i1 * 2, o1], dtype='float32')
-        paconv_kaiming_normal_init(params, nonlinearity='relu')
+        kaiming_normal_init(params, nonlinearity='relu')
         params = paddle.transpose(params,
                                   [1, 0, 2]).reshape([i1 * 2, self.m1 * o1])
         matrice1 = paddle.create_parameter(
@@ -61,7 +63,7 @@ class PAConv(nn.Layer):
         self.add_parameter('matrice1', matrice1)
 
         params = paddle.zeros(shape=[self.m2, i2 * 2, o2], dtype='float32')
-        paconv_kaiming_normal_init(params, nonlinearity='relu')
+        kaiming_normal_init(params, nonlinearity='relu')
         params = paddle.transpose(params,
                                   [1, 0, 2]).reshape([i2 * 2, self.m2 * o2])
         matrice2 = paddle.create_parameter(
@@ -72,7 +74,7 @@ class PAConv(nn.Layer):
 
         params = paddle.create_parameter(
             shape=[self.m3, i3 * 2, o3], dtype='float32')
-        paconv_kaiming_normal_init(params, nonlinearity='relu')
+        kaiming_normal_init(params, nonlinearity='relu')
         params = paddle.transpose(params,
                                   [1, 0, 2]).reshape([i3 * 2, self.m3 * o3])
         matrice3 = paddle.create_parameter(
@@ -83,7 +85,7 @@ class PAConv(nn.Layer):
 
         params = paddle.create_parameter(
             shape=[self.m4, i4 * 2, o4], dtype='float32')
-        paconv_kaiming_normal_init(params, nonlinearity='relu')
+        kaiming_normal_init(params, nonlinearity='relu')
         params = paddle.transpose(params,
                                   [1, 0, 2]).reshape([i4 * 2, self.m4 * o4])
         matrice4 = paddle.create_parameter(
@@ -112,15 +114,15 @@ class PAConv(nn.Layer):
 
     def weight_init(self, m):
         if isinstance(m, paddle.nn.Linear):
-            paconv_kaiming_normal_init(m.weight, reverse=True)
+            kaiming_normal_init(m.weight, reverse=True)
             if m.bias is not None:
                 constant_init(m.bias, value=0)
         elif isinstance(m, paddle.nn.Conv2D):
-            paconv_kaiming_normal_init(m.weight)
+            kaiming_normal_init(m.weight)
             if m.bias is not None:
                 constant_init(m.bias, value=0)
         elif isinstance(m, paddle.nn.Conv1D):
-            paconv_kaiming_normal_init(m.weight)
+            kaiming_normal_init(m.weight)
             if m.bias is not None:
                 constant_init(m.bias, value=0)
         elif isinstance(m, paddle.nn.BatchNorm2D):
@@ -157,7 +159,6 @@ class PAConv(nn.Layer):
 
         x = paddle.transpose(x, [0, 2, 1])
 
-        # neighbor = x.reshape([batch_size * num_points, -1])[idx.numpy().tolist(), :]
         neighbor = x.reshape([batch_size * num_points, -1])
         neighbor = paddle.gather(neighbor, idx, axis=0)
         neighbor = neighbor.reshape([batch_size, num_points, k, num_dims])
@@ -171,7 +172,6 @@ class PAConv(nn.Layer):
 
     def feat_trans_dgcnn(self, point_input, kernel, m):
         """transforming features using weight matrices"""
-        # following get_graph_feature in DGCNN: torch.cat((neighbor - center, neighbor), dim=3)
         B, _, N = point_input.shape  # b, 2cin, n
         point_output = paddle.matmul(
             point_input.transpose([0, 2, 1]).tile([1, 1, 2]),
@@ -249,7 +249,6 @@ class PAConv(nn.Layer):
         point4 = self.assign_score_withk(
             scores=score4, points=point4, centers=center4, knn_idx=idx)
         point4 = F.relu(self.bn4(point4))
-        ##################
 
         point = paddle.concat((point1, point2, point3, point4), axis=1)
         point = F.relu(self.conv5(point))
@@ -263,21 +262,24 @@ class PAConv(nn.Layer):
         point = self.dp2(point)
         point = self.linear3(point)
 
-        if not self.training:
-            return {'preds': point}
-        else:
+        if self.training:
             loss = self.get_loss(point, label)
             return loss
+        else:
+            if not getattr(self, "export_model", False):
+                return {'preds': point}
+            else:
+                return F.softmax(point, axis=-1)
 
-    def export(self, save_dir: str, **kwargs):
-
+    def export(self, save_dir: str, input_shape=(1, 1024, 3), **kwargs):
+        self.export_model = True
         save_path = os.path.join(save_dir, 'paconv')
 
         paddle.jit.to_static(
             self,
             input_spec=[{
                 'data':
-                paddle.static.InputSpec(shape=[1, 1024, 3], dtype='float32')
+                paddle.static.InputSpec(shape=input_shape, dtype='float32')
             }])
         paddle.jit.save(self, save_path)
 

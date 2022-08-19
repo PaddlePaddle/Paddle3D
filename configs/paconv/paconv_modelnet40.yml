@@ -1,20 +1,24 @@
 batch_size: 32
-iters: 107450   # 350 epochs
+epochs: 350
 
 train_dataset:
   type: ModelNet40
   dataset_root: datasets/modelnet40_ply_hdf5_2048
   num_points: 1024
   transforms:
-    - type: TranslatePointCloud
-  pt_norm: False
+    - type: GlobalScale
+      min_scale: 0.67
+      max_scale: 1.5
+    - type: GlobalTranslate
+      translation_std: 0.2
+      distribution: uniform
+    - type: ShufflePoint
   mode: train
 
 val_dataset:
   type: ModelNet40
   dataset_root: datasets/modelnet40_ply_hdf5_2048
   num_points: 1024
-  pt_norm: False
   mode: test
 
 optimizer:

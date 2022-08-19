@@ -19,10 +19,10 @@ from paddle3d.datasets.metrics import MetricABC
 from paddle3d.sample import Sample
 from paddle3d.utils.logger import logger
 
-__all__ = ["ModelNet40Metric"]
+__all__ = ["AccuracyMetric"]
 
 
-class ModelNet40Metric(MetricABC):
+class AccuracyMetric(MetricABC):
     def __init__(self, num_classes: int):
         # classes
         self.num_classes = num_classes

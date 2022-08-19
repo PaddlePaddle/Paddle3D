@@ -17,36 +17,34 @@ import os
 import h5py
 import numpy as np
 
+import paddle3d.transforms as T
 from paddle3d.apis import manager
 from paddle3d.datasets import BaseDataset
-from paddle3d.datasets.modelnet40.modelnet40_metric import ModelNet40Metric
+from paddle3d.datasets.modelnet40.modelnet40_metric import AccuracyMetric
+from paddle3d.geometries import PointCloud
+from paddle3d.sample import Sample
 
 
 @manager.DATASETS.add_component
 class ModelNet40(BaseDataset):
-    def __init__(self,
-                 dataset_root,
-                 num_points,
-                 transforms=None,
-                 pt_norm=False,
-                 mode='train'):
+    def __init__(self, dataset_root, num_points, transforms=None, mode='train'):
         super().__init__()
         self.data, self.label = self.load_data(dataset_root, mode)
         self.num_points = num_points
         self.mode = mode
-        self.pt_norm = pt_norm
+        if isinstance(transforms, list):
+            transforms = T.Compose(transforms)
+
         self.transforms = transforms
 
     def __getitem__(self, item):
-        pointcloud = self.data[item][:self.num_points]
-        label = self.label[item]
+        sample = Sample(path="", modality='lidar')
+        sample.data = PointCloud(self.data[item][:self.num_points])
+        sample.labels = self.label[item]
         if self.mode == 'train':
-            if self.pt_norm:
-                pointcloud = self.pc_normalize(pointcloud)
-            for transform in self.transforms:
-                pointcloud = transform(pointcloud)
-            np.random.shuffle(pointcloud)  # shuffle the order of pts
-        return {'data': pointcloud, 'labels': label}
+            if self.transforms:
+                sample = self.transforms(sample)
+        return sample
 
     def __len__(self):
         return self.data.shape[0]
@@ -66,13 +64,6 @@ class ModelNet40(BaseDataset):
         all_label = np.concatenate(all_label, axis=0)
         return all_data, all_label
 
-    def pc_normalize(self, pc):
-        centroid = np.mean(pc, axis=0)
-        pc = pc - centroid
-        m = np.max(np.sqrt(np.sum(pc**2, axis=1)))
-        pc = pc / m
-        return pc
-
     @property
     def metric(self):
-        return ModelNet40Metric(num_classes=40)
+        return AccuracyMetric(num_classes=40)

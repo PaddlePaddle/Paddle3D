@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ def parse_args():
         return v.lower() in ("true", "t", "1")
 
     # general params
-    parser = argparse.ArgumentParser("PaddleVideo Inference model script")
+    parser = argparse.ArgumentParser("Paddle3D Inference model script")
     parser.add_argument(
         '-c',
         '--config',
@@ -48,7 +48,6 @@ def parse_args():
     parser.add_argument("--use_gpu", type=str2bool, default=True)
     parser.add_argument("--precision", type=str, default="fp32")
     parser.add_argument("--ir_optim", type=str2bool, default=True)
-    parser.add_argument("--use_tensorrt", type=str2bool, default=False)
     parser.add_argument("--gpu_mem", type=int, default=8000)
     parser.add_argument("--enable_benchmark", type=str2bool, default=False)
     parser.add_argument("--enable_mkldnn", type=str2bool, default=False)
@@ -74,21 +73,6 @@ def create_paddle_predictor(args):
 
     # config.disable_glog_info()
     config.switch_ir_optim(args.ir_optim)  # default true
-    if args.use_tensorrt:
-        # choose precision
-        if args.precision == "fp16":
-            precision = inference.PrecisionType.Half
-        elif args.precision == "int8":
-            precision = inference.PrecisionType.Int8
-        else:
-            precision = inference.PrecisionType.Float32
-
-        # calculate real max batch size during inference when tenrotRT enabled
-        num_seg = 1
-        num_views = 1
-        max_batch_size = args.batch_size * num_views * num_seg
-        config.enable_tensorrt_engine(
-            precision_mode=precision, max_batch_size=max_batch_size)
 
     config.enable_memory_optim()
     # use zero copy
@@ -105,10 +89,7 @@ def parse_file_paths(input_path: str) -> list:
         ]
     else:
         files = os.listdir(input_path)
-        files = [
-            file for file in files
-            if (file.endswith(".avi") or file.endswith(".mp4"))
-        ]
+        files = [file for file in files if (file.endswith(".h5"))]
         files = [osp.join(input_path, file) for file in files]
     return files
 
@@ -126,14 +107,12 @@ def postprocess(input_file, output, print_output=True):
         output = output.reshape(
             [N] + [output.shape[0] // N] + list(output.shape[1:]))  # [N, T, C]
         output = output.mean(axis=1)  # [N, C]
-    output = F.softmax(
-        paddle.to_tensor(output), axis=-1).numpy()  # done in it's head
+
     for i in range(N):
         classes = np.argpartition(output[i], -top_k)[-top_k:]
         classes = classes[np.argsort(-output[i, classes])]
         scores = output[i, classes]
         if print_output:
-            # print("Current video file: {0}".format(input_file[i]))
             for j in range(top_k):
                 print("\ttop-{0} class: {1}".format(j + 1, classes[j]))
                 print("\ttop-{0} score: {1}".format(j + 1, scores[j]))
@@ -225,8 +204,6 @@ def main():
         # get post process time cost
         if args.enable_benchmark:
             autolog.times.end(stamp=True)
-
-        # time.sleep(0.01)  # sleep for T4 GPU
 
     # report benchmark log if enabled
     if args.enable_benchmark:

@@ -19,6 +19,8 @@ import numpy as np
 import paddle
 import paddle.nn as nn
 
+from paddle3d.utils.logger import logger
+
 
 def constant_init(param, **kwargs):
     """
@@ -75,47 +77,23 @@ def uniform_init(param, a, b):
     return _no_grad_uniform_(param, a, b)
 
 
-def kaiming_normal_init(param, **kwargs):
-    r"""
-    Initialize the input tensor with Kaiming Normal initialization.
-
-    This function implements the `param` initialization from the paper
-    `Delving Deep into Rectifiers: Surpassing Human-Level Performance on
-    ImageNet Classification <https://arxiv.org/abs/1502.01852>`
-    by Kaiming He, Xiangyu Zhang, Shaoqing Ren and Jian Sun. This is a
-    robust initialization method that particularly considers the rectifier
-    nonlinearities. In case of Uniform distribution, the range is [-x, x], where
-    .. math::
-        x = \sqrt{\\frac{6.0}{fan\_in}}
-    In case of Normal distribution, the mean is 0 and the standard deviation
-    is
-    .. math::
-        \sqrt{\\frac{2.0}{fan\_in}}
-
-    Args:
-        param (Tensor): Tensor that needs to be initialized.
-
-    Examples:
-
-        from paddle3d.models.layers import param_init
-        import paddle.nn as nn
-
-        linear = nn.Linear(2, 4)
-        # uniform is used to decide whether to use uniform or normal distribution
-        param_init.kaiming_normal_init(linear.weight)
-
+def kaiming_normal_init(tensor,
+                        a=0,
+                        mode='fan_in',
+                        nonlinearity='leaky_relu',
+                        reverse=False):
     """
-    initializer = nn.initializer.KaimingNormal(**kwargs)
-    initializer(param, param.block)
-
-
-def paconv_kaiming_normal_init(tensor,
-                               a=0,
-                               mode='fan_in',
-                               nonlinearity='leaky_relu',
-                               reverse=False):
+    Modified tensor inspace using kaiming_normal method
+    Args:
+        param (paddle.Tensor): paddle Tensor
+        mode (str): ['fan_in', 'fan_out'], 'fin_in' defalut
+        nonlinearity (str): nonlinearity method name
+        reverse (bool):  reverse (bool: False): tensor data format order, False by default as [fout, fin, ...].
+    Return:
+        tensor
+    """
     if 0 in tensor.shape:
-        warnings.warn("Initializing zero-element tensors is a no-op")
+        logger.warning("Initializing zero-element tensors is a no-op")
         return tensor
     fan = _calculate_correct_fan(tensor, mode, reverse)
     gain = _calculate_gain(nonlinearity, a)
