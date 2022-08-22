@@ -22,6 +22,7 @@ import paddle
 import paddle3d.env as paddle3d_env
 from paddle3d.apis.config import Config
 from paddle3d.apis.trainer import Trainer
+from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
 
 
@@ -84,6 +85,12 @@ def parse_args():
         dest='resume',
         help='Whether to resume training from checkpoint',
         action='store_true')
+    parser.add_argument(
+        '--model',
+        dest='model',
+        help='pretrained parameters of the model',
+        type=str,
+        default=None)
     parser.add_argument(
         '--save_dir',
         dest='save_dir',
@@ -161,6 +168,9 @@ def main(args):
             'num_workers': args.num_workers,
         }
     })
+
+    if args.model is not None:
+        load_pretrained_model(cfg.model, args.model)
 
     trainer = Trainer(**dic)
     trainer.train()
