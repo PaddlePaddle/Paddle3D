@@ -7,8 +7,9 @@ train_dataset:
   num_points: 1024
   transforms:
     - type: GlobalScale
-      min_scale: 0.67
+      min_scale: 0.667
       max_scale: 1.5
+      size: 3
     - type: GlobalTranslate
       translation_std: 0.2
       distribution: uniform

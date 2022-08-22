@@ -115,14 +115,19 @@ class GlobalScale(TransformABC):
     """
     """
 
-    def __init__(self, min_scale: float = 0.95, max_scale: float = 1.05):
+    def __init__(self,
+                 min_scale: float = 0.95,
+                 max_scale: float = 1.05,
+                 size=None):
         self.min_scale = min_scale
         self.max_scale = max_scale
+        self.size = size
 
     def __call__(self, sample: Sample):
         if sample.modality != "lidar":
             raise ValueError("GlobalScale only supports lidar data!")
-        factor = np.random.uniform(self.min_scale, self.max_scale)
+        factor = np.random.uniform(
+            self.min_scale, self.max_scale, size=self.size)
         # Scale points
         sample.data.scale(factor)
         # Scale bboxes_3d
