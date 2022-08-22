@@ -107,7 +107,6 @@ class Trainer:
             dataloader_fn: Union[dict, Callable] = dict()):
 
         self.model = model
-
         self.optimizer = optimizer
 
         _dataloader_build_fn = default_dataloader_build_fn(
