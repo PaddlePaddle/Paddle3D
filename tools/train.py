@@ -22,6 +22,7 @@ import paddle
 import paddle3d.env as paddle3d_env
 from paddle3d.apis.config import Config
 from paddle3d.apis.trainer import Trainer
+from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
 
 
@@ -85,9 +86,9 @@ def parse_args():
         help='Whether to resume training from checkpoint',
         action='store_true')
     parser.add_argument(
-        '--pretrained',
-        dest='pretrained',
-        help='pretrained weights for model',
+        '--model',
+        dest='model',
+        help='pretrained parameters of the model',
         type=str,
         default=None)
     parser.add_argument(
@@ -153,7 +154,6 @@ def main(args):
     batch_size = dic.pop('batch_size')
     dic.update({
         'resume': args.resume,
-        'pretrained': args.pretrained,
         'checkpoint': {
             'keep_checkpoint_max': args.keep_checkpoint_max,
             'save_dir': args.save_dir
@@ -168,6 +168,9 @@ def main(args):
             'num_workers': args.num_workers,
         }
     })
+
+    if args.model is not None:
+        load_pretrained_model(cfg.model, args.model)
 
     trainer = Trainer(**dic)
     trainer.train()
