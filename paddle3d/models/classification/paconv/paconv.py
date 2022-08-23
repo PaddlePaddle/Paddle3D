@@ -33,7 +33,7 @@ class PAConv(nn.Layer):
                  num_matrices=(8, 8, 8, 8),
                  dropout=0.5):
         super(PAConv, self).__init__()
-        if calc_scores not in ['softmax']:
+        if calc_scores not in ['softmax', 'sigmoid']:
             raise ValueError(
                 "Unsupported calc scores type {}".format(calc_scores))
         self.k = k_neighbors
@@ -212,7 +212,6 @@ class PAConv(nn.Layer):
             x, idx=idx, k=self.k
         )  # ScoreNet input: 3D coord difference concat with coord: b,6,n,k
 
-        ##################
         # replace all the DGCNN-EdgeConv with PAConv:
         """CUDA implementation of PAConv: (presented in the supplementary material of the paper)"""
         """feature transformation:"""

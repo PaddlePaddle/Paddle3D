@@ -80,7 +80,6 @@ class ScoreNet(nn.Layer):
         else:
             raise ValueError('Not Implemented!')
 
-        # scores = scores.permute(0, 2, 3, 1)  # B*N*K*m
         scores = paddle.transpose(scores, [0, 2, 3, 1])
 
         return scores
