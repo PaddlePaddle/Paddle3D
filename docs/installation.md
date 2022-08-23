@@ -22,19 +22,19 @@ python -m pip install paddlepaddle-gpu==2.3.0
 
 * 更多安装方式例如conda或源码编译安装方法，请参考[PaddlePaddle安装指南](https://www.paddlepaddle.org.cn/documentation/docs/zh/install/index_cn.html)
 
-## 2.下载Paddle3D代码
+### 2. 下载Paddle3D代码
 
 ```shell
 git clone https://github.com/PaddlePaddle/Paddle3D
 ```
 
-## 3.安装Paddle3D依赖
+### 3. 安装Paddle3D依赖
 
 ```shell
 cd Paddle3D
 pip install -r requirements.txt
 ```
-## 4.安装Paddle3D
+### 4. 安装Paddle3D
 ```shell
 pip install .     # regular install
 pip install -e .  # develop install

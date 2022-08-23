@@ -34,22 +34,26 @@ def parse_args():
         default="./inference.pdiparams",
         help=
         "Parameter filename, Specify this when your model is a combined model.")
-    parser.add_argument(
-        '--image', dest='image', help='The image path', type=str, required=True)
-    parser.add_argument(
-        "--use_gpu", action='store_true', help="Whether use gpu.")
-    parser.add_argument(
-        "--use_trt", action='store_true', help="Whether use trt.")
+    parser.add_argument('--image',
+                        dest='image',
+                        help='The image path',
+                        type=str,
+                        required=True)
+    parser.add_argument("--use_gpu",
+                        action='store_true',
+                        help="Whether use gpu.")
+    parser.add_argument("--use_trt",
+                        action='store_true',
+                        help="Whether use trt.")
     parser.add_argument(
         "--collect_dynamic_shape_info",
         action='store_true',
         help="Whether to collect dynamic shape before using tensorrt.")
-    parser.add_argument(
-        "--dynamic_shape_file",
-        dest='dynamic_shape_file',
-        help='The image path',
-        type=str,
-        default="dynamic_shape_info.txt")
+    parser.add_argument("--dynamic_shape_file",
+                        dest='dynamic_shape_file',
+                        help='The image path',
+                        type=str,
+                        default="dynamic_shape_info.txt")
     return parser.parse_args()
 
 
@@ -97,11 +101,10 @@ def init_predictor(args):
         config.enable_tuned_tensorrt_dynamic_shape(args.dynamic_shape_file,
                                                    allow_build_at_runtime)
 
-        config.enable_tensorrt_engine(
-            workspace_size=1 << 20,
-            max_batch_size=1,
-            min_subgraph_size=3,
-            precision_mode=PrecisionType.Float32)
+        config.enable_tensorrt_engine(workspace_size=1 << 20,
+                                      max_batch_size=1,
+                                      min_subgraph_size=3,
+                                      precision_mode=PrecisionType.Float32)
 
     predictor = create_predictor(config)
     return predictor

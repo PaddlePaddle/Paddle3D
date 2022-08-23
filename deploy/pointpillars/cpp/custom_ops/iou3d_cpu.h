@@ -15,11 +15,12 @@
 #ifndef IOU3D_CPU_H
 #define IOU3D_CPU_H
 
-#include <vector>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+#include <vector>
 #include "paddle/include/experimental/ext_all.h"
 
-std::vector<paddle::Tensor>  boxes_iou_bev_cpu(const paddle::Tensor & boxes_a_tensor, const paddle::Tensor & boxes_b_tensor);
+std::vector<paddle::Tensor> boxes_iou_bev_cpu(
+    const paddle::Tensor& boxes_a_tensor, const paddle::Tensor& boxes_b_tensor);
 
 #endif

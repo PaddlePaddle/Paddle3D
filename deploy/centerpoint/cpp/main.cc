@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gflags/gflags.h>
+#include <glog/logging.h>
 #include <chrono>
 #include <cmath>
 #include <fstream>
-#include <gflags/gflags.h>
-#include <glog/logging.h>
 #include <iostream>
 #include <numeric>
 #include <string>
@@ -31,7 +31,9 @@ DEFINE_string(model_file, "", "Path of a inference model");
 DEFINE_string(params_file, "", "Path of a inference params");
 DEFINE_string(lidar_file, "", "Path of a lidar file to be predicted");
 DEFINE_int32(num_point_dim, 4, "Dimension of a point in the lidar file");
-DEFINE_int32(with_timelag, 0, "Whether timelag is the 5-th dimension of each point feature, like: x, y, z, intensive, timelag");
+DEFINE_int32(with_timelag, 0,
+             "Whether timelag is the 5-th dimension of each point feature, "
+             "like: x, y, z, intensive, timelag");
 DEFINE_int32(gpu_id, 0, "GPU card id");
 DEFINE_int32(use_trt, 0,
              "Whether to use tensorrt to accelerate when using gpu");
@@ -52,7 +54,7 @@ bool read_point(const std::string &file_path, const int num_point_dim,
   std::ifstream file_in(file_path, std::ios::in | std::ios::binary);
   if (num_point_dim < 4) {
     LOG(ERROR) << "Point dimension must not be less than 4, but recieved "
-	       << "num_point_dim is " << num_point_dim << ".\n";
+               << "num_point_dim is " << num_point_dim << ".\n";
   }
 
   if (!file_in) {
@@ -117,12 +119,11 @@ bool preprocess(const std::string &file_path, const int num_point_dim,
   return true;
 }
 
-std::shared_ptr<paddle_infer::Predictor>
-create_predictor(const std::string &model_path, const std::string &params_path,
-                 const int gpu_id, const int use_trt, const int trt_precision,
-                 const int trt_use_static, const std::string trt_static_dir,
-                 const int collect_shape_info,
-                 const std::string dynamic_shape_file) {
+std::shared_ptr<paddle_infer::Predictor> create_predictor(
+    const std::string &model_path, const std::string &params_path,
+    const int gpu_id, const int use_trt, const int trt_precision,
+    const int trt_use_static, const std::string trt_static_dir,
+    const int collect_shape_info, const std::string dynamic_shape_file) {
   paddle::AnalysisConfig config;
   config.EnableUseGpu(1000, gpu_id);
   config.SetModel(model_path, params_path);

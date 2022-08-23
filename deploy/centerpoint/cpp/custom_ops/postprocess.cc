@@ -16,20 +16,20 @@
 #include <cuda_runtime_api.h>
 #include "paddle/include/experimental/ext_all.h"
 
-std::vector<paddle::Tensor>
-postprocess_gpu(const std::vector<paddle::Tensor> &hm,
-                const std::vector<paddle::Tensor> &reg,
-                const std::vector<paddle::Tensor> &height,
-                const std::vector<paddle::Tensor> &dim,
-                const std::vector<paddle::Tensor> &vel,
-                const std::vector<paddle::Tensor> &rot,
-                const std::vector<float> &voxel_size,
-                const std::vector<float> &point_cloud_range,
-                const std::vector<float> &post_center_range,
-                const std::vector<int> &num_classes, const int down_ratio,
-                const float score_threshold, const float nms_iou_threshold,
-                const int nms_pre_max_size, const int nms_post_max_size,
-                const bool with_velocity);
+std::vector<paddle::Tensor> postprocess_gpu(
+    const std::vector<paddle::Tensor> &hm,
+    const std::vector<paddle::Tensor> &reg,
+    const std::vector<paddle::Tensor> &height,
+    const std::vector<paddle::Tensor> &dim,
+    const std::vector<paddle::Tensor> &vel,
+    const std::vector<paddle::Tensor> &rot,
+    const std::vector<float> &voxel_size,
+    const std::vector<float> &point_cloud_range,
+    const std::vector<float> &post_center_range,
+    const std::vector<int> &num_classes, const int down_ratio,
+    const float score_threshold, const float nms_iou_threshold,
+    const int nms_pre_max_size, const int nms_post_max_size,
+    const bool with_velocity);
 
 std::vector<paddle::Tensor> centerpoint_postprocess(
     const std::vector<paddle::Tensor> &hm,
@@ -51,26 +51,26 @@ std::vector<paddle::Tensor> centerpoint_postprocess(
                            down_ratio, score_threshold, nms_iou_threshold,
                            nms_pre_max_size, nms_post_max_size, with_velocity);
   } else {
-    PD_THROW("Unsupported device type for centerpoint postprocess "
-             "operator.");
+    PD_THROW(
+        "Unsupported device type for centerpoint postprocess "
+        "operator.");
   }
 }
 
-std::vector<std::vector<int64_t>>
-PostProcessInferShape(const std::vector<std::vector<int64_t>> &hm_shape,
-                      const std::vector<std::vector<int64_t>> &reg_shape,
-                      const std::vector<std::vector<int64_t>> &height_shape,
-                      const std::vector<std::vector<int64_t>> &dim_shape,
-                      const std::vector<std::vector<int64_t>> &vel_shape,
-                      const std::vector<std::vector<int64_t>> &rot_shape,
-                      const std::vector<float> &voxel_size,
-                      const std::vector<float> &point_cloud_range,
-                      const std::vector<float> &post_center_range,
-                      const std::vector<int> &num_classes, const int down_ratio,
-                      const float score_threshold,
-                      const float nms_iou_threshold, const int nms_pre_max_size,
-                      const int nms_post_max_size,
-                      const bool with_velocity) {
+std::vector<std::vector<int64_t>> PostProcessInferShape(
+    const std::vector<std::vector<int64_t>> &hm_shape,
+    const std::vector<std::vector<int64_t>> &reg_shape,
+    const std::vector<std::vector<int64_t>> &height_shape,
+    const std::vector<std::vector<int64_t>> &dim_shape,
+    const std::vector<std::vector<int64_t>> &vel_shape,
+    const std::vector<std::vector<int64_t>> &rot_shape,
+    const std::vector<float> &voxel_size,
+    const std::vector<float> &point_cloud_range,
+    const std::vector<float> &post_center_range,
+    const std::vector<int> &num_classes, const int down_ratio,
+    const float score_threshold, const float nms_iou_threshold,
+    const int nms_pre_max_size, const int nms_post_max_size,
+    const bool with_velocity) {
   if (with_velocity) {
     return {{-1, 9}, {-1}, {-1}};
   } else {
@@ -78,13 +78,13 @@ PostProcessInferShape(const std::vector<std::vector<int64_t>> &hm_shape,
   }
 }
 
-std::vector<paddle::DataType>
-PostProcessInferDtype(const std::vector<paddle::DataType> &hm_dtype,
-                      const std::vector<paddle::DataType> &reg_dtype,
-                      const std::vector<paddle::DataType> &height_dtype,
-                      const std::vector<paddle::DataType> &dim_dtype,
-                      const std::vector<paddle::DataType> &vel_dtype,
-                      const std::vector<paddle::DataType> &rot_dtype) {
+std::vector<paddle::DataType> PostProcessInferDtype(
+    const std::vector<paddle::DataType> &hm_dtype,
+    const std::vector<paddle::DataType> &reg_dtype,
+    const std::vector<paddle::DataType> &height_dtype,
+    const std::vector<paddle::DataType> &dim_dtype,
+    const std::vector<paddle::DataType> &vel_dtype,
+    const std::vector<paddle::DataType> &rot_dtype) {
   return {reg_dtype[0], hm_dtype[0], paddle::DataType::INT64};
 }
 

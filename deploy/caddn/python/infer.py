@@ -39,8 +39,10 @@ def parse_args():
         help=
         "Parameter filename, Specify this when your model is a combined model.",
         required=True)
-    parser.add_argument(
-        '--img_path', type=str, help='The image path.', required=True)
+    parser.add_argument('--img_path',
+                        type=str,
+                        help='The image path.',
+                        required=True)
     parser.add_argument("--gpu_id", type=int, default=0, help="GPU card id.")
     parser.add_argument(
         "--use_trt",
@@ -58,20 +60,18 @@ def parse_args():
         default=0,
         help="Whether to load the tensorrt graph optimization from a disk path."
     )
-    parser.add_argument(
-        "--trt_static_dir",
-        type=str,
-        help="Path of a tensorrt graph optimization directory.")
+    parser.add_argument("--trt_static_dir",
+                        type=str,
+                        help="Path of a tensorrt graph optimization directory.")
     parser.add_argument(
         "--collect_shape_info",
         type=int,
         default=0,
         help="Whether to collect dynamic shape before using tensorrt.")
-    parser.add_argument(
-        "--dynamic_shape_file",
-        type=str,
-        default="",
-        help="Path of a dynamic shape file for tensorrt.")
+    parser.add_argument("--dynamic_shape_file",
+                        type=str,
+                        default="",
+                        help="Path of a dynamic shape file for tensorrt.")
 
     return parser.parse_args()
 
@@ -103,13 +103,12 @@ def load_predictor(model_file,
         precision_mode = paddle.inference.PrecisionType.Float32
         if trt_precision == 1:
             precision_mode = paddle.inference.PrecisionType.Half
-        config.enable_tensorrt_engine(
-            workspace_size=1 << 20,
-            max_batch_size=1,
-            min_subgraph_size=30,
-            precision_mode=precision_mode,
-            use_static=trt_use_static,
-            use_calib_mode=False)
+        config.enable_tensorrt_engine(workspace_size=1 << 20,
+                                      max_batch_size=1,
+                                      min_subgraph_size=30,
+                                      precision_mode=precision_mode,
+                                      use_static=trt_use_static,
+                                      use_calib_mode=False)
         if collect_shape_info:
             config.collect_shape_range_info(dynamic_shape_file)
         else:
