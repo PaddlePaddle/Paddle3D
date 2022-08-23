@@ -117,7 +117,6 @@ model:
     out_channels: [128, 128, 128]
     upsample_strides: [0.5, 1, 2]
     use_conv_for_no_stride: True
-    use_spatial_attn_before_concat: True
   bbox_head:
     type: CenterHead
     in_channels: 384 # sum([128, 128, 128])
