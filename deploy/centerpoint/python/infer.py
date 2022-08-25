@@ -36,18 +36,18 @@ def parse_args():
         help=
         "Parameter filename, Specify this when your model is a combined model.",
         required=True)
-    parser.add_argument('--lidar_file',
-                        type=str,
-                        help='The lidar path.',
-                        required=True)
-    parser.add_argument("--num_point_dim",
-                        type=int,
-                        default=4,
-                        help="Dimension of a point in the lidar file.")
-    parser.add_argument("--use_timelag",
-                        type=int,
-                        default=0,
-                        help="Whether to insert timelag to each point.")
+    parser.add_argument(
+        '--lidar_file', type=str, help='The lidar path.', required=True)
+    parser.add_argument(
+        "--num_point_dim",
+        type=int,
+        default=4,
+        help="Dimension of a point in the lidar file.")
+    parser.add_argument(
+        "--use_timelag",
+        type=int,
+        default=0,
+        help="Whether to insert timelag to each point.")
     parser.add_argument("--gpu_id", type=int, default=0, help="GPU card id.")
     parser.add_argument(
         "--use_trt",
@@ -65,18 +65,20 @@ def parse_args():
         default=0,
         help="Whether to load the tensorrt graph optimization from a disk path."
     )
-    parser.add_argument("--trt_static_dir",
-                        type=str,
-                        help="Path of a tensorrt graph optimization directory.")
+    parser.add_argument(
+        "--trt_static_dir",
+        type=str,
+        help="Path of a tensorrt graph optimization directory.")
     parser.add_argument(
         "--collect_shape_info",
         type=int,
         default=0,
         help="Whether to collect dynamic shape before using tensorrt.")
-    parser.add_argument("--dynamic_shape_file",
-                        type=str,
-                        default="",
-                        help="Path of a dynamic shape file for tensorrt.")
+    parser.add_argument(
+        "--dynamic_shape_file",
+        type=str,
+        default="",
+        help="Path of a dynamic shape file for tensorrt.")
 
     return parser.parse_args()
 
@@ -116,12 +118,13 @@ def init_predictor(model_file,
         precision_mode = paddle.inference.PrecisionType.Float32
         if trt_precision == 1:
             precision_mode = paddle.inference.PrecisionType.Half
-        config.enable_tensorrt_engine(workspace_size=1 << 20,
-                                      max_batch_size=1,
-                                      min_subgraph_size=30,
-                                      precision_mode=precision_mode,
-                                      use_static=trt_use_static,
-                                      use_calib_mode=False)
+        config.enable_tensorrt_engine(
+            workspace_size=1 << 20,
+            max_batch_size=1,
+            min_subgraph_size=30,
+            precision_mode=precision_mode,
+            use_static=trt_use_static,
+            use_calib_mode=False)
         if collect_shape_info:
             config.collect_shape_range_info(dynamic_shape_file)
         else:
@@ -145,19 +148,17 @@ def parse_result(box3d_lidar, label_preds, scores):
                 .format(scores[box_idx], label_preds[box_idx],
                         box3d_lidar[box_idx, 0], box3d_lidar[box_idx, 1],
                         box3d_lidar[box_idx, 2], box3d_lidar[box_idx, 3],
-                        box3d_lidar[box_idx,
-                                    4], box3d_lidar[box_idx,
-                                                    5], box3d_lidar[box_idx, 6],
-                        box3d_lidar[box_idx, 7], box3d_lidar[box_idx, 8]))
+                        box3d_lidar[box_idx, 4], box3d_lidar[box_idx, 5],
+                        box3d_lidar[box_idx, 6], box3d_lidar[box_idx, 7],
+                        box3d_lidar[box_idx, 8]))
         elif bbox3d_dims == 7:
             print(
                 "Score: {} Label: {} Box(x_c, y_c, z_c, w, l, h, -rot): {} {} {} {} {} {} {}"
                 .format(scores[box_idx], label_preds[box_idx],
                         box3d_lidar[box_idx, 0], box3d_lidar[box_idx, 1],
-                        box3d_lidar[box_idx,
-                                    2], box3d_lidar[box_idx,
-                                                    3], box3d_lidar[box_idx, 4],
-                        box3d_lidar[box_idx, 5], box3d_lidar[box_idx, 6]))
+                        box3d_lidar[box_idx, 2], box3d_lidar[box_idx, 3],
+                        box3d_lidar[box_idx, 4], box3d_lidar[box_idx, 5],
+                        box3d_lidar[box_idx, 6]))
 
 
 def run(predictor, points):

@@ -35,34 +35,37 @@ def parse_args():
         help=
         "Parameter filename, Specify this when your model is a combined model.",
         required=True)
-    parser.add_argument('--lidar_file',
-                        type=str,
-                        help='The lidar path.',
-                        required=True)
-    parser.add_argument("--num_point_dim",
-                        type=int,
-                        default=4,
-                        help="Dimension of a point in the lidar file.")
-    parser.add_argument("--point_cloud_range",
-                        dest='point_cloud_range',
-                        nargs='+',
-                        help="Range of point cloud for voxelize operation.",
-                        type=float,
-                        default=None)
-    parser.add_argument("--voxel_size",
-                        dest='voxel_size',
-                        nargs='+',
-                        help="Size of voxels for voxelize operation.",
-                        type=float,
-                        default=None)
-    parser.add_argument("--max_points_in_voxel",
-                        type=int,
-                        default=100,
-                        help="Maximum number of points in a voxel.")
-    parser.add_argument("--max_voxel_num",
-                        type=int,
-                        default=12000,
-                        help="Maximum number of voxels.")
+    parser.add_argument(
+        '--lidar_file', type=str, help='The lidar path.', required=True)
+    parser.add_argument(
+        "--num_point_dim",
+        type=int,
+        default=4,
+        help="Dimension of a point in the lidar file.")
+    parser.add_argument(
+        "--point_cloud_range",
+        dest='point_cloud_range',
+        nargs='+',
+        help="Range of point cloud for voxelize operation.",
+        type=float,
+        default=None)
+    parser.add_argument(
+        "--voxel_size",
+        dest='voxel_size',
+        nargs='+',
+        help="Size of voxels for voxelize operation.",
+        type=float,
+        default=None)
+    parser.add_argument(
+        "--max_points_in_voxel",
+        type=int,
+        default=100,
+        help="Maximum number of points in a voxel.")
+    parser.add_argument(
+        "--max_voxel_num",
+        type=int,
+        default=12000,
+        help="Maximum number of voxels.")
     parser.add_argument("--gpu_id", type=int, default=0, help="GPU card id.")
     parser.add_argument(
         "--use_trt",
@@ -80,18 +83,20 @@ def parse_args():
         default=0,
         help="Whether to load the tensorrt graph optimization from a disk path."
     )
-    parser.add_argument("--trt_static_dir",
-                        type=str,
-                        help="Path of a tensorrt graph optimization directory.")
+    parser.add_argument(
+        "--trt_static_dir",
+        type=str,
+        help="Path of a tensorrt graph optimization directory.")
     parser.add_argument(
         "--collect_shape_info",
         type=int,
         default=0,
         help="Whether to collect dynamic shape before using tensorrt.")
-    parser.add_argument("--dynamic_shape_file",
-                        type=str,
-                        default="",
-                        help="Path of a dynamic shape file for tensorrt.")
+    parser.add_argument(
+        "--dynamic_shape_file",
+        type=str,
+        default="",
+        help="Path of a dynamic shape file for tensorrt.")
 
     return parser.parse_args()
 
@@ -170,11 +175,9 @@ def hardvoxelize(points, point_cloud_range, voxel_size, max_points_in_voxel,
 def preprocess(file_path, num_point_dim, point_cloud_range, voxel_size,
                max_points_in_voxel, max_voxel_num):
     points = read_point(file_path, num_point_dim)
-    voxels, coords, num_points_per_voxel = hardvoxelize(points,
-                                                        point_cloud_range,
-                                                        voxel_size,
-                                                        max_points_in_voxel,
-                                                        max_voxel_num)
+    voxels, coords, num_points_per_voxel = hardvoxelize(
+        points, point_cloud_range, voxel_size, max_points_in_voxel,
+        max_voxel_num)
 
     return voxels, coords, num_points_per_voxel
 
@@ -195,12 +198,13 @@ def init_predictor(model_file,
         precision_mode = paddle.inference.PrecisionType.Float32
         if trt_precision == 1:
             precision_mode = paddle.inference.PrecisionType.Half
-        config.enable_tensorrt_engine(workspace_size=1 << 20,
-                                      max_batch_size=1,
-                                      min_subgraph_size=10,
-                                      precision_mode=precision_mode,
-                                      use_static=trt_use_static,
-                                      use_calib_mode=False)
+        config.enable_tensorrt_engine(
+            workspace_size=1 << 20,
+            max_batch_size=1,
+            min_subgraph_size=10,
+            precision_mode=precision_mode,
+            use_static=trt_use_static,
+            use_calib_mode=False)
         if collect_shape_info:
             config.collect_shape_range_info(dynamic_shape_file)
         else:
@@ -223,10 +227,9 @@ def parse_result(box3d_lidar, label_preds, scores):
                 "Score: {} Label: {} Box(x_c, y_c, z_c, w, l, h, -rot): {} {} {} {} {} {} {}"
                 .format(scores[box_idx], label_preds[box_idx],
                         box3d_lidar[box_idx, 0], box3d_lidar[box_idx, 1],
-                        box3d_lidar[box_idx,
-                                    2], box3d_lidar[box_idx,
-                                                    3], box3d_lidar[box_idx, 4],
-                        box3d_lidar[box_idx, 5], box3d_lidar[box_idx, 6]))
+                        box3d_lidar[box_idx, 2], box3d_lidar[box_idx, 3],
+                        box3d_lidar[box_idx, 4], box3d_lidar[box_idx, 5],
+                        box3d_lidar[box_idx, 6]))
 
 
 def run(predictor, voxels, coords, num_points_per_voxel):
