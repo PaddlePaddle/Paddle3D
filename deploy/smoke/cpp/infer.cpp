@@ -24,13 +24,11 @@ DEFINE_int32(trt_precision, 0, "Precision type of tensorrt, 0: kFloat32, 1: kInt
 DEFINE_bool(collect_dynamic_shape_info, false, "Whether to collect dynamic shape before using tensorrt");
 DEFINE_string(dynamic_shape_file, "dynamic_shape_info.txt", "Path of a dynamic shape file for tensorrt");
 
-
-
 void get_image(const std::string& image, float* data) {
     cv::Mat img = cv::imread(image, cv::IMREAD_COLOR);
 
-    //cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
-    cv::resize(img, img, cv::Size(960, 640));
+    cv::cvtColor(img, img, cv::COLOR_BGR2RGB);
+    cv::resize(img, img, cv::Size(1280, 384));
     //Normalize
     img.convertTo(img, CV_32F, 1.0 / 255, 0);
 
@@ -133,14 +131,14 @@ int main(int argc, char *argv[]) {
 
     auto predictor = InitPredictor();
 
-    std::vector<int> input_im_shape = {1, 3, 640, 960};
-    std::vector<float> input_im_data(1 * 3 * 640 * 960);
+    std::vector<int> input_im_shape = {1, 3, 384, 1280};
+    std::vector<float> input_im_data(1 * 3 * 384 * 1280);
     get_image(FLAGS_image, input_im_data.data());
 
     std::vector<int> input_K_shape = {1, 3, 3};
-    // K is {2055.56, 0, 939.658, 0, 2055.56, 641.072, 0, 0, 1}
-    std::vector<float> input_K_data = {4.8648543e-04, 0, -4.5712993e-01, 0.0, 4.8648543e-04, -3.1187218e-01, 0, 0, 1};
-
+    // Listed below are camera intrinsic parameter of the kitti dataset
+    // If the model is trained on other datasets, please replace the relevant data
+    std::vector<float> input_K_data = {721.53771973, 0., 609.55932617, 0., 721.53771973, 172.85400391, 0, 0, 1};
     std::vector<int> input_ratio_shape = {1, 2};
     std::vector<float> input_ratio_data(8, 8);
 

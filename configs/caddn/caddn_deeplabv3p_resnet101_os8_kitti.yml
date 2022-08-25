@@ -37,14 +37,18 @@ lr_scheduler:
 
 model:
   type: CADDN
-  pretrained: "pretrained/hrnet_w18.pdparams"
+  pretrained: "https://paddle3d.bj.bcebos.com/pretrained/deeplabv3_resnet101.pdparams"
   backbone_3d:
-    type: HRNet_W18
+    type: ResNet
+    layers: 101
+    return_idx: [0, 3]
   class_head:
-    type: OCRHead
+    type: DeepLabV3Head
     num_classes: 81
     backbone_indices: [1]
-    in_channels: [270]
+    backbone_channels: 2048
+    aspp_ratios: [1, 12, 24, 36]
+    aspp_out_channels: 256
     align_corners: False
   bev_cfg:
     layer_nums: [10, 10, 10]

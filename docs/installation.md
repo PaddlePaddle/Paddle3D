@@ -34,3 +34,8 @@ git clone https://github.com/PaddlePaddle/Paddle3D
 cd Paddle3D
 pip install -r requirements.txt
 ```
+## 4.安装Paddle3D
+```shell
+pip install .     # regular install
+pip install -e .  # develop install
+```

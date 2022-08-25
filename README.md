@@ -2,17 +2,20 @@
 
 ![License](https://img.shields.io/badge/license-Apache%202-blue.svg)
 
+![camera](https://user-images.githubusercontent.com/29754889/185546875-b8296cf4-f298-494b-8c15-201a2559d7ea.gif)
+![lidar](https://user-images.githubusercontent.com/29754889/185551580-828f08d0-d607-4020-9e05-b96110bce7eb.gif)
+
 Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了许多前沿和经典的3D感知模型，支持多种模态和多种任务，可以助力开发者便捷地完成 **『自动驾驶』** 领域模型 从训练到部署的全流程应用。Paddle3D具备以下特性：
 
-* 【丰富的模型库】
+* 【丰富的模型库】聚合主流3D感知算法及精度调优策略，覆盖单目、点云等多种模态及检测、分割等多种任务类型
 
-* 【灵活的框架设计】
+* 【灵活的框架设计】针对各类3D数据格式，灵活构建数据处理、骨干网络等核心模块，支持基于PaddleDet/PaddleSeg灵活扩展2D视觉感知能力，并提供API与脚本两种训练评估方式，满足开发者灵活定制的差异化需求
 
-* 【端到端全流程】
+* 【端到端全流程】支持KITTI、nuScenes等主流3D数据集，提供从数据处理、模型搭建、训练调优到部署落地的全流程能力
 
-* 【工业级部署方案】
+* 【工业级部署方案】极致优化模型性能，适配多种自动驾驶主流芯片，支持计算图优化、TensorRT/OpenVINO等加速库，并提供了开箱即用的部署教程，5分钟即可完成模型部署
 
-* 【无缝衔接Apollo】
+* 【无缝衔接Apollo】无缝对接Apollo自动驾驶平台，支持真机与仿真平台实验效果快速验证、多模态模型高性能融合，实现自动驾驶全栈式技术方案的高效搭建
 
 目前Paddle3D还在快速发展中，大量的模型将被集成进来，如果您有特定的模型需求，请[反馈](https://github.com/PaddlePaddle/Paddle3D/issues)给我们
 
@@ -48,7 +51,7 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
       <td>
         <p align="center">📡 点云</p>
         <ul>
-          <li> PointPillar </li>
+          <li> PointPillars </li>
           <li> CenterPoint </li>
         </ul>
       </td>
@@ -107,6 +110,16 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
 * [常见问题](./docs/faq.md)
 
 * [更新日志](./docs/release_note.md)
+
+## 技术交流
+
+- 如果你发现任何Paddle3D存在的问题或者是建议, 欢迎通过[GitHub Issues](https://github.com/PaddlePaddle/Paddle3D/issues)给我们提issues。
+
+- 欢迎加入Paddle3D 微信用户群
+  <div align="center">
+  <img src="https://user-images.githubusercontent.com/48054808/182345513-bbca647f-1f03-4543-baba-01c09f67addd.jpg"  width = "200" />  
+  </div>
+
 
 ## 许可证
 

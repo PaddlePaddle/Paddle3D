@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import os
-from typing import Callable, Union
+from typing import Callable, Optional, Union
 
 import paddle
 from visualdl import LogWriter
@@ -77,9 +77,14 @@ def default_scheduler_build_fn(**kwargs) -> Scheduler:
     """
     """
     kwargs = kwargs.copy()
-    kwargs.setdefault('save_interval', 1000)
     kwargs.setdefault('log_interval', 10)
     kwargs.setdefault('do_eval', False)
+
+    if kwargs.get('train_by_epoch'):
+        kwargs.setdefault('save_interval', 5)
+    else:
+        kwargs.setdefault('save_interval', 1000)
+
     return Scheduler(**kwargs)
 
 
@@ -90,10 +95,11 @@ class Trainer:
     def __init__(
             self,
             model: paddle.nn.Layer,
-            iters: int,
             optimizer: paddle.optimizer.Optimizer,
-            train_dataset: paddle.io.Dataset,
-            val_dataset: paddle.io.Dataset = None,
+            iters: Optional[int] = None,
+            epochs: Optional[int] = None,
+            train_dataset: Optional[paddle.io.Dataset] = None,
+            val_dataset: Optional[paddle.io.Dataset] = None,
             resume: bool = False,
             # TODO: Default parameters should not use mutable objects, there is a risk
             checkpoint: Union[dict, CheckpointABC] = dict(),
@@ -102,18 +108,6 @@ class Trainer:
 
         self.model = model
         self.optimizer = optimizer
-        self.iters = iters
-        self.cur_iter = 0
-        self.resume = resume
-        vdl_file_name = None
-
-        if self.optimizer.__class__.__name__ == 'OneCycleAdam':
-            self.optimizer.before_run(max_iters=self.iters)
-
-        self.checkpoint = default_checkpoint_build_fn(
-            **checkpoint) if isinstance(checkpoint, dict) else checkpoint
-        self.scheduler = default_scheduler_build_fn(
-            **scheduler) if isinstance(scheduler, dict) else scheduler
 
         _dataloader_build_fn = default_dataloader_build_fn(
             **dataloader_fn) if isinstance(dataloader_fn,
@@ -124,6 +118,35 @@ class Trainer:
             val_dataset, self.model) if val_dataset else None
         self.val_dataset = val_dataset
 
+        self.resume = resume
+        vdl_file_name = None
+        self.iters_per_epoch = len(self.train_dataloader)
+
+        if iters is None:
+            self.epochs = epochs
+            self.iters = epochs * self.iters_per_epoch
+            self.train_by_epoch = True
+        else:
+            self.iters = iters
+            self.epochs = (iters - 1) // self.iters_per_epoch + 1
+            self.train_by_epoch = False
+
+        self.cur_iter = 0
+        self.cur_epoch = 0
+
+        if self.optimizer.__class__.__name__ == 'OneCycleAdam':
+            self.optimizer.before_run(max_iters=self.iters)
+
+        self.checkpoint = default_checkpoint_build_fn(
+            **checkpoint) if isinstance(checkpoint, dict) else checkpoint
+
+        if isinstance(scheduler, dict):
+            scheduler.setdefault('train_by_epoch', self.train_by_epoch)
+            scheduler.setdefault('iters_per_epoch', self.iters_per_epoch)
+            self.scheduler = default_scheduler_build_fn(**scheduler)
+        else:
+            self.scheduler = scheduler
+
         if self.checkpoint is None:
             return
 
@@ -133,10 +156,18 @@ class Trainer:
                     'The checkpoint {} is not emtpy! Set `resume=True` to continue training or use another dir as checkpoint'
                     .format(self.checkpoint.rootdir))
 
+            if self.checkpoint.meta.get(
+                    'train_by_epoch') != self.train_by_epoch:
+                raise RuntimeError(
+                    'Unable to resume training since the train_by_epoch is inconsistent with that saved in the checkpoint'
+                )
+
             params_dict, opt_dict = self.checkpoint.get()
             self.model.set_dict(params_dict)
             self.optimizer.set_state_dict(opt_dict)
             self.cur_iter = self.checkpoint.meta.get('iters')
+            self.cur_epoch = self.checkpoint.meta.get('epochs')
+            self.scheduler.step(self.cur_iter)
 
             logger.info(
                 'Resume model from checkpoint {}, current iter set to {}'.
@@ -151,6 +182,7 @@ class Trainer:
                 logdir=self.checkpoint.rootdir, file_name=vdl_file_name)
             self.checkpoint.record('vdl_file_name',
                                    os.path.basename(self.log_writer.file_name))
+            self.checkpoint.record('train_by_epoch', self.train_by_epoch)
 
     def train(self):
         """
@@ -175,9 +207,14 @@ class Trainer:
 
             for sample in self.train_dataloader:
                 self.cur_iter += 1
+
+                if self.cur_iter % self.iters_per_epoch == 1:
+                    self.cur_epoch += 1
+
                 if self.cur_iter > self.iters:
                     break
 
+                lr = self.optimizer.get_lr()
                 loss = training_step(model, self.optimizer, sample,
                                      self.cur_iter)
                 loss_sum += loss.numpy()[0]
@@ -186,12 +223,11 @@ class Trainer:
                 status = self.scheduler.step()
 
                 if status.do_log and env.local_rank == 0:
-                    lr = self.optimizer.get_lr()
                     loss_sum = float(loss_sum / self.scheduler.log_interval)
                     logger.info(
-                        '[TRAIN] iter={}/{}, loss={:.6f}, lr={:.6f} | ETA {}'.
-                        format(self.cur_iter, self.iters, loss_sum, lr,
-                               timer.eta))
+                        '[TRAIN] epoch={}/{}, iter={}/{}, loss={:.6f}, lr={:.6f} | ETA {}'
+                        .format(self.cur_epoch, self.epochs, self.cur_iter,
+                                self.iters, loss_sum, lr, timer.eta))
 
                     self.log_writer.add_scalar(
                         tag='Training/learning_rate',
@@ -202,39 +238,50 @@ class Trainer:
 
                     loss_sum = 0
 
+                if status.do_eval and env.local_rank == 0:
+                    # TODO: whether to save a checkpoint based on the metric
+                    metrics = self.evaluate()
+                    for k, v in metrics.items():
+                        if not isinstance(v, paddle.Tensor) or v.numel() != 1:
+                            continue
+
+                        self.log_writer.add_scalar(
+                            tag='Evaluation/{}'.format(k),
+                            value=float(v),
+                            step=self.cur_iter)
+
                 if status.save_checkpoint and env.local_rank == 0:
-
-                    if status.do_eval:
-                        # TODO: whether to save a checkpoint based on the metric
-                        metrics = self.evaluate()
-                        for k, v in metrics.items():
-                            if isinstance(v, paddle.Tensor) and v.numel() == 1:
-                                self.log_writer.add_scalar(
-                                    tag='Evaluation/{}'.format(k),
-                                    value=float(v),
-                                    step=self.cur_iter)
-
-                    dic = {
-                        'params_dict': model.state_dict(),
-                        'opt_dict': self.optimizer.state_dict()
-                    }
+                    if self.train_by_epoch:
+                        tag = 'epoch_{}'.format(self.cur_epoch)
+                    else:
+                        tag = 'iter_{}'.format(self.cur_iter)
 
                     self.checkpoint.push(
-                        **dic,
-                        tag='iter_{}'.format(self.cur_iter),
+                        tag=tag,
+                        params_dict=self.model.state_dict(),
+                        opt_dict=self.optimizer.state_dict(),
                         verbose=True)
+
                     self.checkpoint.record('iters', self.cur_iter)
+                    self.checkpoint.record('epochs', self.cur_epoch)
 
         logger.info('Training is complete.')
-        last_checkpoint = 'iter_{}'.format(self.iters)
-        if not self.checkpoint.have(last_checkpoint):
-            dic = {
-                'params_dict': self.model.state_dict(),
-                'opt_dict': self.optimizer.state_dict()
-            }
-            self.checkpoint.push(**dic, tag=last_checkpoint, verbose=True)
 
-        self.checkpoint.record('iters', self.iters)
+        if env.local_rank == 0:
+            if self.train_by_epoch:
+                tag = 'epoch_{}'.format(self.epochs)
+            else:
+                tag = 'iter_{}'.format(self.iters)
+
+            if not self.checkpoint.have(tag):
+                self.checkpoint.push(
+                    tag=tag,
+                    params_dict=self.model.state_dict(),
+                    opt_dict=self.optimizer.state_dict(),
+                    verbose=True)
+
+            self.checkpoint.record('iters', self.iters)
+            self.checkpoint.record('epochs', self.epochs)
 
     def evaluate(self) -> float:
         """
@@ -251,9 +298,7 @@ class Trainer:
 
         for idx, sample in logger.enumerate(self.eval_dataloader, msg=msg):
             result = validation_step(self.model, sample)
-            metric_obj.update(
-                    predictions=result,
-                    ground_truths=sample)
+            metric_obj.update(predictions=result, ground_truths=sample)
 
         metrics = metric_obj.compute(verbose=True)
         return metrics
