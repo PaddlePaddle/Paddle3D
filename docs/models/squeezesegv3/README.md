@@ -10,6 +10,7 @@
   * [训练](#h3-id52h3)
   * [评估](#h3-id53h3)
   * [模型导出](#h3-id54h3)
+  * [模型部署](#h3-id55h3)
 
 ## <h2 id="1">引用</h2>
 
@@ -125,3 +126,42 @@ python tools/export.py \
 | model       | 待导出模型参数`model.pdparams`路径                                                                                    | 是     | -        |
 | input_shape | 指定模型的输入尺寸，支持`N, C, H, W`或`H, W`格式                                                                            | 是     | -        |
 | save_dir    | 保存导出模型的路径，`save_dir`下将会生成三个文件：`squeezesegv3.pdiparams `、`squeezesegv3.pdiparams.info`和`squeezesegv3.pdmodel` | 否     | `deploy` |
+
+
+
+### <h3 id="55">模型部署</h3>
+
+#### C++部署
+
+Coming soon...
+
+#### Python部署
+
+命令参数说明如下：
+
+| 参数 | 说明 |
+| -- | -- |
+| model_file | 导出模型的结构文件`squeezesegv3.pdmodel`所在路径 |
+| params_file | 导出模型的参数文件`squeezesegv3.pdiparams`所在路径 |
+| lidar_file | 待预测的点云文件所在路径 |
+| img_mean | 点云投影到range-view后所成图像的均值，例如为`12.12,10.88,0.23,-1.04,0.21` |
+| img_std | 点云投影到range-view后所成图像的方差，例如为`12.32,11.47,6.91,0.86,0.16` |
+| use_trt | 是否使用TensorRT进行加速，默认0|
+| trt_precision | 当use_trt设置为1时，模型精度可设置0或1，0表示fp32, 1表示fp16。默认0 |
+| trt_use_static | 当trt_use_static设置为1时，**在首次运行程序的时候会将TensorRT的优化信息进行序列化到磁盘上，下次运行时直接加载优化的序列化信息而不需要重新生成**。默认0 |
+| trt_static_dir | 当trt_use_static设置为1时，保存优化信息的路径 |
+
+
+运行以下命令，执行预测：
+
+```
+python infer.py --model_file /path/to/squeezesegv3.pdmodel --params_file /path/to/squeezesegv3.pdiparams --lidar_file /path/to/lidar.pcd.bin --img_mean 12.12,10.88,0.23,-1.04,0.21 --img_std 12.32,11.47,6.91,0.86,0.16
+```
+
+如果要开启TensorRT的话，请卸载掉原有的`paddlepaddel_gpu`，至[Paddle官网](https://paddleinference.paddlepaddle.org.cn/user_guides/download_lib.html#python)下载与TensorRT连编的预编译Paddle Inferece安装包，选择符合本地环境CUDA/cuDNN/TensorRT版本的安装包完成安装即可。
+
+运行以下命令，开启TensorRT加速模型预测：
+
+```
+python infer.py --model_file /path/to/squeezesegv3.pdmodel --params_file /path/to/squeezesegv3.pdiparams --lidar_file /path/to/lidar.pcd.bin --img_mean 12.12,10.88,0.23,-1.04,0.21 --img_std 12.32,11.47,6.91,0.86,0.16 --use_trt 1
+```
