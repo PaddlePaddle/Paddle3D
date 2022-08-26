@@ -23,18 +23,22 @@ Linux端基础训练预测功能测试的主程序为`test_train_inference_pytho
 
 
 ### 2.1 安装依赖
-- 安装PaddlePaddle == 2.2.0
-- 安装PaddleC3D依赖
+- 安装PaddlePaddle == 2.3.1
+- 安装Paddle3D依赖
     ```
-    pip install  -r ../requirements.txt
+    pip install  -r requirements.txt
+    ```
+- 安装Paddle3D
+    ```
+    python setup.py develop
     ```
 - 安装autolog（规范化日志输出工具）
     ```
-    git clone https://github.com/LDOUBLEV/AutoLog
-    cd AutoLog
+    git clone https://gitee.com/Double_V/AutoLog
+    cd AutoLog/
     pip3 install -r requirements.txt
     python3 setup.py bdist_wheel
-    pip3 install ./dist/auto_log-1.0.0-py3-none-any.whl
+    pip3 install ./dist/auto_log-1.2.0-py3-none-any.whl
     cd ../
     ```
 
@@ -62,14 +66,14 @@ test_tipc/output/
 
 其中`results_python.log`中包含了每条指令的运行状态，如果运行成功会输出：
 ```
-Run successfully with command - python3.7 infer.py --use_gpu=False --enable_mkldnn=False --cpu_threads=1 --model_file=output/model.pdmodel --batch_size=1 --input_file=test_tipc/data/predict_example.pkl --enable_benchmark=True --precision=fp32 --params_file=output/model.pdiparams > ./test_tipc/output/c3d/python_infer_cpu_usemkldnn_False_threads_1_precision_fp32_batchsize_1.log 2>&1 !
-Run successfully with command - python3.7 infer.py --use_gpu=False --enable_mkldnn=False --cpu_threads=1 --model_file=output/model.pdmodel --batch_size=2 --input_file=test_tipc/data/predict_example.pkl --enable_benchmark=True --precision=fp32 --params_file=output/model.pdiparams > ./test_tipc/output/c3d/python_infer_cpu_usemkldnn_False_threads_1_precision_fp32_batchsize_2.log 2>&1 !  
+Run successfully with command - python3.7 infer.py --use_gpu=False --enable_mkldnn=False --cpu_threads=1 --model_file=output/model.pdmodel --batch_size=1 --input_file=test_tipc/data/predict_example.pkl --enable_benchmark=True --precision=fp32 --params_file=output/model.pdiparams > ./test_tipc/output/PAConv/python_infer_cpu_usemkldnn_False_threads_1_precision_fp32_batchsize_1.log 2>&1 !
+Run successfully with command - python3.7 infer.py --use_gpu=False --enable_mkldnn=False --cpu_threads=1 --model_file=output/model.pdmodel --batch_size=2 --input_file=test_tipc/data/predict_example.pkl --enable_benchmark=True --precision=fp32 --params_file=output/model.pdiparams > ./test_tipc/output/PAConv/python_infer_cpu_usemkldnn_False_threads_1_precision_fp32_batchsize_2.log 2>&1 !  
 ......
 ```
 如果运行失败，会输出：
 ```
-Run failed with command - python3.7 infer.py --use_gpu=False --enable_mkldnn=False --cpu_threads=1 --model_file=output/model.pdmodel --batch_size=1 --input_file=test_tipc/data/predict_example.pkl --enable_benchmark=True --precision=fp32 --params_file=output/model.pdiparams > ./test_tipc/output/c3d/python_infer_cpu_usemkldnn_False_threads_1_precision_fp32_batchsize_1.log 2>&1 !
-Run failed with command - python3.7 infer.py --use_gpu=False --enable_mkldnn=False --cpu_threads=1 --model_file=output/model.pdmodel --batch_size=2 --input_file=test_tipc/data/predict_example.pkl --enable_benchmark=True --precision=fp32 --params_file=output/model.pdiparams > ./test_tipc/output/c3d/python_infer_cpu_usemkldnn_False_threads_1_precision_fp32_batchsize_2.log 2>&1 !  
+Run failed with command - python3.7 infer.py --use_gpu=False --enable_mkldnn=False --cpu_threads=1 --model_file=output/model.pdmodel --batch_size=1 --input_file=test_tipc/data/predict_example.pkl --enable_benchmark=True --precision=fp32 --params_file=output/model.pdiparams > ./test_tipc/output/PAConv/python_infer_cpu_usemkldnn_False_threads_1_precision_fp32_batchsize_1.log 2>&1 !
+Run failed with command - python3.7 infer.py --use_gpu=False --enable_mkldnn=False --cpu_threads=1 --model_file=output/model.pdmodel --batch_size=2 --input_file=test_tipc/data/predict_example.pkl --enable_benchmark=True --precision=fp32 --params_file=output/model.pdiparams > ./test_tipc/output/PAConv/python_infer_cpu_usemkldnn_False_threads_1_precision_fp32_batchsize_2.log 2>&1 !  
 ......
 ```
 可以很方便的根据`results_python.log`中的内容判定哪一个指令运行错误。
