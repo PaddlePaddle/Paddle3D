@@ -36,6 +36,6 @@ repos:
     -   id: clang-format-with-version-check
         name: clang-format
         description: Format files with ClangFormat
-        entry: bash ./clang_format.hook  -style=Google -i
+        entry: bash .clang_format.hook  -style=Google -i
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|cuh|proto)$
