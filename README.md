@@ -19,6 +19,10 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
 
 目前Paddle3D还在快速发展中，大量的模型将被集成进来，如果您有特定的模型需求，请[反馈](https://github.com/PaddlePaddle/Paddle3D/issues)给我们
 
+## 🔥 热门活动
+- 【百度自动驾驶技术大揭秘】Apollo自动驾驶技术架构概览 & 飞桨Paddle3D在自动驾驶中的应用与实战
+  - 课程回放及PPT材料（Day2待更新）：https://aistudio.baidu.com/aistudio/course/introduce/26961
+
 ## 模型库
 
 <table align="center">
