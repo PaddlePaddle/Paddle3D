@@ -25,8 +25,9 @@ from paddle3d.transforms.functional import points_to_voxel
 
 __all__ = [
     "RandomHorizontalFlip", "RandomVerticalFlip", "GlobalRotate", "GlobalScale",
-    "GlobalTranslate", "ShufflePoint", "FilterBBoxOutsideRange", "HardVoxelize",
-    "RandomObjectPerturb"
+    "GlobalTranslate", "ShufflePoint", "SamplePoint",
+    "FilterPointsOutsideRange", "FilterBBoxOutsideRange", "HardVoxelize",
+    "RandomObjectPerturb", "ConvertBoxFormat"
 ]
 
 
@@ -197,6 +198,71 @@ class ShufflePoint(TransformABC):
 
 
 @manager.TRANSFORMS.add_component
+class ConvertBoxFormat(TransformABC):
+    def __call__(self, sample: Sample):
+        # convert to [x,y,z,l,w,h,heading], original is [x,y,z,w,l,h,yaw]
+        gt_boxes = sample.bboxes_3d
+        gt_boxes[:, 2] += gt_boxes[:, 5] / 2
+        gt_boxes[:, 3:6] = gt_boxes[:, [4, 3, 5]]
+        gt_boxes[:, 6] = -(gt_boxes[:, 6] + np.pi / 2)
+
+        # limit heading
+        period = 2 * np.pi
+        offset = 0.5
+        gt_boxes[:, 6] = gt_boxes[:, 6] - np.floor(gt_boxes[:, 6] / period +
+                                                   offset) * period
+
+        # stack labels into gt_boxes. Notice: label start from 1, not 0.
+        labels = sample.labels + 1
+        gt_boxes = np.concatenate(
+            [gt_boxes, labels.reshape(-1, 1).astype(np.float32)], axis=-1)
+        sample.bboxes_3d = gt_boxes
+        sample.pop('labels', None)
+
+        return sample
+
+
+@manager.TRANSFORMS.add_component
+class SamplePoint(TransformABC):
+    def __init__(self, num_points):
+        self.num_points = num_points
+
+    def __call__(self, sample: Sample):
+        if self.num_points == -1:
+            return sample
+
+        points = sample.data
+        if self.num_points < len(points):
+            pts_depth = np.linalg.norm(points[:, 0:3], axis=1)
+            pts_near_flag = pts_depth < 40.0
+            far_idxs_choice = np.where(pts_near_flag == 0)[0]
+            near_idxs = np.where(pts_near_flag == 1)[0]
+            choice = []
+            if self.num_points > len(far_idxs_choice):
+                near_idxs_choice = np.random.choice(
+                    near_idxs,
+                    self.num_points - len(far_idxs_choice),
+                    replace=False)
+                choice = np.concatenate((near_idxs_choice, far_idxs_choice), axis=0) \
+                    if len(far_idxs_choice) > 0 else near_idxs_choice
+            else:
+                choice = np.arange(0, len(points), dtype=np.int32)
+                choice = np.random.choice(
+                    choice, self.num_points, replace=False)
+            np.random.shuffle(choice)
+        else:
+            choice = np.arange(0, len(points), dtype=np.int32)
+            if self.num_points > len(points):
+                extra_choice = np.random.choice(choice,
+                                                self.num_points - len(points))
+                choice = np.concatenate((choice, extra_choice), axis=0)
+            np.random.shuffle(choice)
+        sample.data = sample.data[choice]
+
+        return sample
+
+
+@manager.TRANSFORMS.add_component
 class FilterBBoxOutsideRange(TransformABC):
     def __init__(self, point_cloud_range: Tuple[float]):
         self.point_cloud_range = np.asarray(point_cloud_range, dtype='float32')
@@ -208,6 +274,19 @@ class FilterBBoxOutsideRange(TransformABC):
             self.point_cloud_range)
         sample.bboxes_3d = sample.bboxes_3d.masked_select(mask)
         sample.labels = sample.labels[mask]
+        return sample
+
+
+@manager.TRANSFORMS.add_component
+class FilterPointsOutsideRange(TransformABC):
+    def __init__(self, point_cloud_range: Tuple[float]):
+        self.limit_range = np.asarray(point_cloud_range, dtype='float32')
+
+    def __call__(self, sample: Sample):
+        points = sample.data
+        mask = (points[:, 0] >= self.limit_range[0]) & (points[:, 0] <= self.limit_range[3]) \
+           & (points[:, 1] >= self.limit_range[1]) & (points[:, 1] <= self.limit_range[4])
+        sample.data = sample.data[mask]
         return sample
 
 

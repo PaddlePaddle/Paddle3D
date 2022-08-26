@@ -62,6 +62,17 @@ custom_ops = {
         'extra_cuda_cflags': ['-arch=sm_60'],
         'version':
         '0.1.0',
+    },
+    'pointnet2_ops': {
+        'sources': [
+            'pointnet2/ball_query.cc', 'pointnet2/ball_query_gpu.cu',
+            'pointnet2/gather_points.cc', 'pointnet2/gather_points_gpu.cu',
+            'pointnet2/group_points.cc', 'pointnet2/group_points_gpu.cu',
+            'pointnet2/sampling.cc', 'pointnet2/sampling_gpu.cu',
+            'pointnet2/box_utils.cc', 'pointnet2/box_utils_gpu.cu'
+        ],
+        'version':
+        '0.1.0',
     }
 }
 

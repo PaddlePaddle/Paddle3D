@@ -793,10 +793,10 @@ def get_official_eval_result(gt_annos,
 
             for metric_type in metric_types:
                 if metric_type == "aos":
-                    res[curcls][overlap][metric_type] = get_mAP_r40(
+                    res[curcls][overlap][metric_type] = get_mAP_v2(
                         metrics["bbox"]["orientation"][j, :, i])
                 else:
-                    res[curcls][overlap][metric_type] = get_mAP_r40(
+                    res[curcls][overlap][metric_type] = get_mAP_v2(
                         metrics[metric_type]["precision"][j, :, i])
 
     return res

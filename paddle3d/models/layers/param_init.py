@@ -204,8 +204,8 @@ def _no_grad_uniform_(tensor, a, b):
     return tensor
 
 
-def reset_parameters(m):
-    kaiming_uniform_init(m.weight, a=math.sqrt(5))
+def reset_parameters(m, reverse=False):
+    kaiming_uniform_init(m.weight, a=math.sqrt(5), reverse=reverse)
     if m.bias is not None:
         fan_in, _ = _calculate_fan_in_and_fan_out(m.weight)
         bound = 1 / math.sqrt(fan_in)
