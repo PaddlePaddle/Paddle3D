@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "grid_sample_3d.h"
+
 #include <vector>
+
 #include "paddle/include/experimental/ext_all.h"
 
 std::vector<paddle::Tensor> GridSample3DCUDAForward(

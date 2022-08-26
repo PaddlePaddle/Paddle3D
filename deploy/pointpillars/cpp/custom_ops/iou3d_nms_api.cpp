@@ -14,11 +14,12 @@
 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+
 #include <vector>
-#include "paddle/include/experimental/ext_all.h"
 
 #include "iou3d_cpu.h"
 #include "iou3d_nms.h"
+#include "paddle/include/experimental/ext_all.h"
 
 std::vector<paddle::DataType> BoxesIouBevCpuInferDtype(
     paddle::DataType boxes_a_dtype, paddle::DataType boxes_b_dtype) {

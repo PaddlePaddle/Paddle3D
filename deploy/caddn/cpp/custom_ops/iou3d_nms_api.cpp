@@ -1,10 +1,11 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+
 #include <vector>
-#include "paddle/include/experimental/ext_all.h"
 
 #include "iou3d_cpu.h"
 #include "iou3d_nms.h"
+#include "paddle/include/experimental/ext_all.h"
 
 std::vector<std::vector<int64_t>> NMSInferShape(
     std::vector<int64_t> boxes_shape) {

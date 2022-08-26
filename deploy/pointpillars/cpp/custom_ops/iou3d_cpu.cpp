@@ -19,11 +19,14 @@ All Rights Reserved 2020.
 */
 
 #include "iou3d_cpu.h"
+
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <math.h>
 #include <stdio.h>
+
 #include <vector>
+
 #include "paddle/include/experimental/ext_all.h"
 
 inline float min(float a, float b) { return a > b ? b : a; }

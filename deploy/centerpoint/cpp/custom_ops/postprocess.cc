@@ -14,6 +14,7 @@
 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+
 #include "paddle/include/experimental/ext_all.h"
 
 std::vector<paddle::Tensor> postprocess_gpu(

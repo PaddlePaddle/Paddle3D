@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cuda.h>
+
 #include "grid_sample_3d.h"
 #include "paddle/include/experimental/ext_all.h"
 
@@ -277,11 +278,11 @@ std::vector<paddle::Tensor> GridSample3DCUDAForward(
   int block_num = (count - 1) / max_threads_per_block + 1;
   // printf("size: %d, %d, %d, %d, %d, %d \n", n, c, out_d, out_h, count,
   // block_num);
-  GridSample3DCudaKernel<
-      float, int><<<block_num, max_threads_per_block, 0, x.stream()>>>(
-      count, c, out_d, out_h, out_w, in_d, in_h, in_w, x.data<float>(),
-      grid.data<float>(), output.data<float>(), enum_mode, enum_padding_mode,
-      align_corners);
+  GridSample3DCudaKernel<float, int>
+      <<<block_num, max_threads_per_block, 0, x.stream()>>>(
+          count, c, out_d, out_h, out_w, in_d, in_h, in_w, x.data<float>(),
+          grid.data<float>(), output.data<float>(), enum_mode,
+          enum_padding_mode, align_corners);
 
   cudaError_t error_check;
   error_check = cudaGetLastError();
@@ -632,12 +633,12 @@ std::vector<paddle::Tensor> GridSample3DCUDABackward(
   int max_threads_per_block = 512;
   int block_num = (count - 1) / max_threads_per_block + 1;
 
-  GridSample3DCudaBackwardKernel<
-      float, int><<<block_num, max_threads_per_block, 0, x.stream()>>>(
-      count, grad_out.data<float>(), x.data<float>(), grid.data<float>(), c,
-      out_d, out_h, out_w, in_d, in_h, in_w, x_grad_output.data<float>(),
-      grid_grad_output.data<float>(), enum_mode, enum_padding_mode,
-      align_corners);
+  GridSample3DCudaBackwardKernel<float, int>
+      <<<block_num, max_threads_per_block, 0, x.stream()>>>(
+          count, grad_out.data<float>(), x.data<float>(), grid.data<float>(), c,
+          out_d, out_h, out_w, in_d, in_h, in_w, x_grad_output.data<float>(),
+          grid_grad_output.data<float>(), enum_mode, enum_padding_mode,
+          align_corners);
 
   return {x_grad_output};
 }

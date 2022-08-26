@@ -5,11 +5,14 @@ All Rights Reserved 2020.
 */
 
 #include "iou3d_cpu.h"
+
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <math.h>
 #include <stdio.h>
+
 #include <vector>
+
 #include "paddle/include/experimental/ext_all.h"
 
 // #define CHECK_CUDA(x) do { \

@@ -1,19 +1,18 @@
-#include <iostream>
-#include <numeric>
-
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+
+#include <iostream>
+#include <numeric>
 
 #include "opencv2/core.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgproc.hpp"
-
 #include "paddle/include/paddle_inference_api.h"
 
 using paddle_infer::Config;
-using paddle_infer::Predictor;
 using paddle_infer::CreatePredictor;
 using paddle_infer::PrecisionType;
+using paddle_infer::Predictor;
 
 DEFINE_string(model_file, "", "Directory of the inference model.");
 DEFINE_string(params_file, "", "Directory of the inference model.");

@@ -7,9 +7,12 @@ All Rights Reserved 2019-2020.
 */
 
 #include "iou3d_nms.h"
+
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+
 #include <vector>
+
 #include "paddle/include/experimental/ext_all.h"
 
 // #define CHECK_CUDA(x) do { \

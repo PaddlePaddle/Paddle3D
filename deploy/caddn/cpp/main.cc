@@ -15,10 +15,10 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <time.h>
+
 #include <chrono>
 #include <iostream>
 #include <numeric>
-
 #include <opencv2/opencv.hpp>
 
 #include "paddle/include/paddle_inference_api.h"
@@ -42,8 +42,8 @@ DEFINE_string(dynamic_shape_file, "",
               "Path of a dynamic shape file for tensorrt");
 
 using paddle_infer::Config;
-using paddle_infer::Predictor;
 using paddle_infer::CreatePredictor;
+using paddle_infer::Predictor;
 
 const std::string shape_range_info = "deeplab_model/shape_range_info.pbtxt";
 

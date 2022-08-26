@@ -19,9 +19,11 @@ All Rights Reserved 2019-2020.
 */
 
 #include "iou3d_nms.h"
+
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <paddle/extension.h>
+
 #include <vector>
 
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))

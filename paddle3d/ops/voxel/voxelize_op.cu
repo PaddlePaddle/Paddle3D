@@ -212,44 +212,44 @@ std::vector<paddle::Tensor> hard_voxelize_cuda(
 
   PD_DISPATCH_FLOATING_TYPES(
       points.type(), "map_point_to_grid_kernel", ([&] {
-        map_point_to_grid_kernel<data_t,
-                                 int><<<blocks, threads, 0, points.stream()>>>(
-            points.data<data_t>(), point_cloud_range_x_min,
-            point_cloud_range_y_min, point_cloud_range_z_min, voxel_size_x,
-            voxel_size_y, voxel_size_z, grid_size_x, grid_size_y, grid_size_z,
-            num_points, num_point_dim, max_num_points_in_voxel,
-            points_to_grid_idx_data, points_to_num_idx_data,
-            num_points_in_grid_data);
+        map_point_to_grid_kernel<data_t, int>
+            <<<blocks, threads, 0, points.stream()>>>(
+                points.data<data_t>(), point_cloud_range_x_min,
+                point_cloud_range_y_min, point_cloud_range_z_min, voxel_size_x,
+                voxel_size_y, voxel_size_z, grid_size_x, grid_size_y,
+                grid_size_z, num_points, num_point_dim, max_num_points_in_voxel,
+                points_to_grid_idx_data, points_to_num_idx_data,
+                num_points_in_grid_data);
       }));
 
   // 2. Find the number of non-zero voxels
   threads = 1;
   blocks = 1;
 
-  get_voxel_idx_kernel<
-      int><<<blocks, threads, 0, num_points_in_grid.stream()>>>(
-      num_points_in_grid_data, points_to_grid_idx_data, num_grids, num_points,
-      max_voxels, num_voxels_data, grid_idx_to_voxel_idx_data);
+  get_voxel_idx_kernel<int>
+      <<<blocks, threads, 0, num_points_in_grid.stream()>>>(
+          num_points_in_grid_data, points_to_grid_idx_data, num_grids,
+          num_points, max_voxels, num_voxels_data, grid_idx_to_voxel_idx_data);
 
   // 3. Store points to voxels coords and num_points_per_voxel
   int64_t num = max_voxels * max_num_points_in_voxel * num_point_dim;
   threads = 512;
   blocks = (num + threads - 1) / threads;
-  PD_DISPATCH_FLOATING_TYPES(
-      points.type(), "init_voxels_kernel", ([&] {
-        init_voxels_kernel<data_t><<<blocks, threads, 0, points.stream()>>>(
-            num, voxels.data<data_t>());
-      }));
+  PD_DISPATCH_FLOATING_TYPES(points.type(), "init_voxels_kernel", ([&] {
+                               init_voxels_kernel<data_t>
+                                   <<<blocks, threads, 0, points.stream()>>>(
+                                       num, voxels.data<data_t>());
+                             }));
 
   threads = 512;
   blocks = (num_points + threads - 1) / threads;
   PD_DISPATCH_FLOATING_TYPES(
       points.type(), "assign_voxels_kernel", ([&] {
-        assign_voxels_kernel<data_t,
-                             int><<<blocks, threads, 0, points.stream()>>>(
-            points.data<data_t>(), points_to_grid_idx_data,
-            points_to_num_idx_data, grid_idx_to_voxel_idx_data, num_points,
-            num_point_dim, max_num_points_in_voxel, voxels.data<data_t>());
+        assign_voxels_kernel<data_t, int>
+            <<<blocks, threads, 0, points.stream()>>>(
+                points.data<data_t>(), points_to_grid_idx_data,
+                points_to_num_idx_data, grid_idx_to_voxel_idx_data, num_points,
+                num_point_dim, max_num_points_in_voxel, voxels.data<data_t>());
       }));
 
   // 4. Store coords, num_points_per_voxel
