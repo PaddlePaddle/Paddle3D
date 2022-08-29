@@ -3,9 +3,8 @@ repos:
     hooks:
     -   id: yapf
         name: yapf
-        entry: yapf
+        entry: yapf --style .style.yapf -i
         language: system
-        args: [-i, --style .style.yapf]
         files: \.py$
 
 -   repo: https://github.com/pre-commit/pre-commit-hooks
@@ -16,7 +15,6 @@ repos:
     -   id: end-of-file-fixer
     -   id: trailing-whitespace
     -   id: detect-private-key
-    -   id: check-symlinks
     -   id: check-added-large-files
 
 -   repo: https://github.com/pycqa/isort
@@ -29,11 +27,15 @@ repos:
     hooks:
     -   id: flake8
         name: flake8
-        entry: flake8
+        entry: flake8 --count --select=E9,F63,F7,F82 --show-source --statistics
         language: system
-        args:
-        -   --count
-        -   --select=E9,F63,F7,F82
-        -   --show-source
-        -   --statistics
         files: \.py$
+
+-   repo: local
+    hooks:
+    -   id: clang-format-with-version-check
+        name: clang-format
+        description: Format files with ClangFormat
+        entry: bash .clang_format.hook  -style=Google -i
+        language: system
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|cuh|proto)$

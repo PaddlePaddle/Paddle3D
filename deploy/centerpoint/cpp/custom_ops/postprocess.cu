@@ -14,10 +14,9 @@
 
 #include "paddle/include/experimental/ext_all.h"
 
-#define CHECK_INPUT_CUDA(x)                                                    \
-  PD_CHECK(x.is_gpu(), #x " must be a GPU Tensor.")
+#define CHECK_INPUT_CUDA(x) PD_CHECK(x.is_gpu(), #x " must be a GPU Tensor.")
 
-#define CHECK_INPUT_BATCHSIZE(x)                                               \
+#define CHECK_INPUT_BATCHSIZE(x) \
   PD_CHECK(x.shape()[0] == 1, #x " batch size must be 1.")
 
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
@@ -39,8 +38,8 @@ __global__ void decode_kernel(
     const float post_center_range_y_min, const float post_center_range_z_min,
     const float post_center_range_x_max, const float post_center_range_y_max,
     const float post_center_range_z_max, const int num_bboxes,
-    const bool with_velocity, const int decode_bboxes_dims,
-    float *bboxes, bool *mask, int *score_idx) {
+    const bool with_velocity, const int decode_bboxes_dims, float *bboxes,
+    bool *mask, int *score_idx) {
   int box_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (box_idx == num_bboxes || box_idx > num_bboxes) {
     return;
@@ -63,11 +62,12 @@ __global__ void decode_kernel(
   if (with_velocity) {
     bboxes[box_idx * decode_bboxes_dims + 6] = vel[box_idx];
     bboxes[box_idx * decode_bboxes_dims + 7] = vel[box_idx + num_bboxes];
-    bboxes[box_idx * decode_bboxes_dims + 8] = atan2f(rot[box_idx], rot[box_idx + num_bboxes]);
+    bboxes[box_idx * decode_bboxes_dims + 8] =
+        atan2f(rot[box_idx], rot[box_idx + num_bboxes]);
   } else {
-    bboxes[box_idx * decode_bboxes_dims + 6] = atan2f(rot[box_idx], rot[box_idx + num_bboxes]);
+    bboxes[box_idx * decode_bboxes_dims + 6] =
+        atan2f(rot[box_idx], rot[box_idx + num_bboxes]);
   }
-  
 
   if (score[box_idx] > score_threshold && x <= post_center_range_x_max &&
       y <= post_center_range_y_max && z <= post_center_range_z_max &&
@@ -88,8 +88,8 @@ void DecodeLauncher(
     const float post_center_range_x_min, const float post_center_range_y_min,
     const float post_center_range_z_min, const float post_center_range_x_max,
     const float post_center_range_y_max, const float post_center_range_z_max,
-    const int num_bboxes, const bool with_velocity, const int decode_bboxes_dims,
-    float *bboxes, bool *mask, int *score_idx) {
+    const int num_bboxes, const bool with_velocity,
+    const int decode_bboxes_dims, float *bboxes, bool *mask, int *score_idx) {
   dim3 blocks(DIVUP(num_bboxes, THREADS_PER_BLOCK_NMS));
   dim3 threads(THREADS_PER_BLOCK_NMS);
   decode_kernel<<<blocks, threads, 0, stream>>>(
@@ -101,20 +101,20 @@ void DecodeLauncher(
       bboxes, mask, score_idx);
 }
 
-std::vector<paddle::Tensor>
-postprocess_gpu(const std::vector<paddle::Tensor> &hm,
-                const std::vector<paddle::Tensor> &reg,
-                const std::vector<paddle::Tensor> &height,
-                const std::vector<paddle::Tensor> &dim,
-                const std::vector<paddle::Tensor> &vel,
-                const std::vector<paddle::Tensor> &rot,
-                const std::vector<float> &voxel_size,
-                const std::vector<float> &point_cloud_range,
-                const std::vector<float> &post_center_range,
-                const std::vector<int> &num_classes, const int down_ratio,
-                const float score_threshold, const float nms_iou_threshold,
-                const int nms_pre_max_size, const int nms_post_max_size,
-                const bool with_velocity) {
+std::vector<paddle::Tensor> postprocess_gpu(
+    const std::vector<paddle::Tensor> &hm,
+    const std::vector<paddle::Tensor> &reg,
+    const std::vector<paddle::Tensor> &height,
+    const std::vector<paddle::Tensor> &dim,
+    const std::vector<paddle::Tensor> &vel,
+    const std::vector<paddle::Tensor> &rot,
+    const std::vector<float> &voxel_size,
+    const std::vector<float> &point_cloud_range,
+    const std::vector<float> &post_center_range,
+    const std::vector<int> &num_classes, const int down_ratio,
+    const float score_threshold, const float nms_iou_threshold,
+    const int nms_pre_max_size, const int nms_post_max_size,
+    const bool with_velocity) {
   int num_tasks = hm.size();
   int decode_bboxes_dims = 9;
   if (!with_velocity) {
@@ -158,8 +158,9 @@ postprocess_gpu(const std::vector<paddle::Tensor> &hm,
     const float *exp_dim_per_task_ptr = exp_dim_per_task.data<float>();
     const float *vel_ptr = vel[task_id].data<float>();
     const float *rot_ptr = rot[task_id].data<float>();
-    auto decode_bboxes = paddle::empty(
-        {num_bboxes, decode_bboxes_dims}, paddle::DataType::FLOAT32, paddle::GPUPlace());
+    auto decode_bboxes =
+        paddle::empty({num_bboxes, decode_bboxes_dims},
+                      paddle::DataType::FLOAT32, paddle::GPUPlace());
     float *decode_bboxes_ptr = decode_bboxes.data<float>();
     auto thresh_mask = paddle::full({num_bboxes}, 0, paddle::DataType::BOOL,
                                     paddle::GPUPlace());
@@ -174,9 +175,9 @@ postprocess_gpu(const std::vector<paddle::Tensor> &hm,
                    point_cloud_range_x_min, point_cloud_range_y_min,
                    post_center_range_x_min, post_center_range_y_min,
                    post_center_range_z_min, post_center_range_x_max,
-                   post_center_range_y_max, post_center_range_z_max,
-                   num_bboxes, with_velocity, decode_bboxes_dims,
-                   decode_bboxes_ptr, thresh_mask_ptr, score_idx_ptr);
+                   post_center_range_y_max, post_center_range_z_max, num_bboxes,
+                   with_velocity, decode_bboxes_dims, decode_bboxes_ptr,
+                   thresh_mask_ptr, score_idx_ptr);
 
     // select score by mask
     auto selected_score_idx =
@@ -187,8 +188,9 @@ postprocess_gpu(const std::vector<paddle::Tensor> &hm,
         flattened_selected_score, thresh_mask);
     int num_selected = selected_score.numel();
     if (num_selected == 0 || num_selected < 0) {
-      auto fake_out_boxes = paddle::full({1, decode_bboxes_dims}, 0., paddle::DataType::FLOAT32,
-                                         paddle::GPUPlace());
+      auto fake_out_boxes =
+          paddle::full({1, decode_bboxes_dims}, 0., paddle::DataType::FLOAT32,
+                       paddle::GPUPlace());
       auto fake_out_score =
           paddle::full({1}, -1., paddle::DataType::FLOAT32, paddle::GPUPlace());
       auto fake_out_label =

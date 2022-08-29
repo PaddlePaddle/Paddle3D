@@ -23,10 +23,9 @@
 #define HOST_DEVICE __host__ __device__
 #define HOST_DEVICE_INLINE HOST_DEVICE __forceinline__
 
-enum class Mode {bilinear, nearest};
+enum class Mode { bilinear, nearest };
 
 enum class PaddingMode { zeros, border, reflect };
 
-namespace {
-}
+namespace {}
 #endif
