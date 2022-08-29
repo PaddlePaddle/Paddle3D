@@ -27,6 +27,8 @@ from typing import List
 
 import numba
 import numpy as np
+import scipy
+from scipy.spatial import Delaunay
 
 from paddle3d.geometries.structure import _Structure
 
@@ -675,6 +677,23 @@ def project_to_image(points_3d, proj_mat):
     return point_2d_res
 
 
+def in_hull(p, hull):
+    """
+    param p: (N, K) test points
+    param hull: (M, K) M corners of a box
+    return (N) bool
+    """
+    try:
+        if not isinstance(hull, Delaunay):
+            hull = Delaunay(hull)
+        flag = hull.find_simplex(p) >= 0
+    except scipy.spatial.qhull.QhullError:
+        print('Warning: not a hull %s' % str(hull))
+        flag = np.zeros(p.shape[0], dtype=np.bool)
+
+    return flag
+
+
 def boxes_to_corners_3d(boxes3d):
     """
     Args:
@@ -705,7 +724,7 @@ def boxes_to_corners_3d(boxes3d):
 
 def mask_boxes_outside_range_numpy(boxes, limit_range, min_num_corners=1):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L55
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L55
 
     Args:
         boxes: (N, 7) [x, y, z, dx, dy, dz, heading, ...], (x, y, z) is the box center
@@ -727,7 +746,7 @@ def mask_boxes_outside_range_numpy(boxes, limit_range, min_num_corners=1):
 
 def boxes3d_kitti_camera_to_lidar(boxes3d_camera, calib):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L91
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L91
 
     Args:
         boxes3d_camera: (N, 7) [x, y, z, l, h, w, r] in rect camera coords
@@ -751,7 +770,7 @@ def boxes3d_kitti_camera_to_lidar(boxes3d_camera, calib):
 
 def boxes3d_lidar_to_kitti_camera(boxes3d_lidar, calib):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L152
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L152
 
     :param boxes3d_lidar: (N, 7) [x, y, z, dx, dy, dz, heading], (x, y, z) is the box center
     :param calib:
@@ -775,7 +794,7 @@ def boxes3d_lidar_to_kitti_camera(boxes3d_lidar, calib):
 
 def boxes3d_to_corners3d_kitti_camera(boxes3d, bottom_center=True):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L169
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L169
 
     :param boxes3d: (N, 7) [x, y, z, l, h, w, ry] in camera coords, see the definition of ry in KITTI dataset
     :param bottom_center: whether y is on the bottom center of object
@@ -837,7 +856,7 @@ def boxes3d_to_corners3d_kitti_camera(boxes3d, bottom_center=True):
 
 def boxes3d_kitti_camera_to_imageboxes(boxes3d, calib, image_shape=None):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L215
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L215
 
     :param boxes3d: (N, 7) [x, y, z, l, h, w, r] in rect camera coords
     :param calib:

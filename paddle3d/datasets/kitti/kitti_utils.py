@@ -257,7 +257,7 @@ def cls_type_to_id(cls_type):
 
 class Object3d(object):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/object3d_kitti.py#L18
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/object3d_kitti.py#L18
     """
 
     def __init__(self, line):
@@ -335,7 +335,7 @@ class Object3d(object):
 
 def get_calib_from_file(calib_file):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/calibration_kitti.py#L4
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/calibration_kitti.py#L4
     """
 
     with open(calib_file) as f:
@@ -360,7 +360,7 @@ def get_calib_from_file(calib_file):
 
 class Calibration(object):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/calibration_kitti.py#L23
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/calibration_kitti.py#L23
     """
 
     def __init__(self, calib_file):
