@@ -23,6 +23,15 @@ class PointCloud(_Structure):
             data = np.array(data)
 
         if data.ndim != 2 and data.ndim != 3:
+            # When the data expands in 8 directions, the data.ndim is 3
+            # [-1, 3] --> [-1, 8, 3]
+            #   7 -------- 4
+            #  /|         /|
+            # 6 -------- 5 .
+            # | |        | |
+            # . 3 -------- 0
+            # |/         |/
+            # 2 -------- 1
             raise ValueError(
                 'Illegal PointCloud data with number of dim {}'.format(
                     data.ndim))

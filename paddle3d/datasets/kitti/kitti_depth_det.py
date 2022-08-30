@@ -150,9 +150,10 @@ class KittiDepthDataset(KittiDetDataset):
         return depth
 
     def get_calib(self, idx):
-        calib_file = os.path.join(self.base_dir, 'calib', '%s.txt' % idx)
-        assert os.path.exists(calib_file)
-        return Calibration(calib_file)
+        _, _, P2, _, R0_rect, V2C, _ = self.load_calibration_info(
+            idx, use_data=False)
+        calib_dict = {"P2": P2, "R0": R0_rect, "Tr_velo2cam": V2C}
+        return Calibration(calib_dict)
 
     def get_road_plane(self, idx):
         plane_file = os.path.join(self.base_dir, 'planes', '%s.txt' % idx)
@@ -395,17 +396,6 @@ class KittiDepthDataset(KittiDetDataset):
                 voxel_num_points: optional (num_voxels)
                 ...
         """
-        if self.training:
-            assert 'gt_boxes' in data_dict, 'gt_boxes should be provided for training'
-            gt_boxes_mask = np.array(
-                [n in self.class_names for n in data_dict['gt_names']],
-                dtype=np.bool_)
-
-            data_dict = self.data_augmentor(
-                data_dict={
-                    **data_dict, 'gt_boxes_mask': gt_boxes_mask
-                })
-
         if data_dict.get('gt_boxes', None) is not None:
             selected = [
                 i for i, x in enumerate(data_dict['gt_names'])

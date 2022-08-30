@@ -333,41 +333,13 @@ class Object3d(object):
         return kitti_str
 
 
-def get_calib_from_file(calib_file):
-    """
-    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/calibration_kitti.py#L4
-    """
-
-    with open(calib_file) as f:
-        lines = f.readlines()
-
-    obj = lines[2].strip().split(' ')[1:]
-    P2 = np.array(obj, dtype=np.float32)
-    obj = lines[3].strip().split(' ')[1:]
-    P3 = np.array(obj, dtype=np.float32)
-    obj = lines[4].strip().split(' ')[1:]
-    R0 = np.array(obj, dtype=np.float32)
-    obj = lines[5].strip().split(' ')[1:]
-    Tr_velo_to_cam = np.array(obj, dtype=np.float32)
-
-    return {
-        'P2': P2.reshape(3, 4),
-        'P3': P3.reshape(3, 4),
-        'R0': R0.reshape(3, 3),
-        'Tr_velo2cam': Tr_velo_to_cam.reshape(3, 4)
-    }
-
-
 class Calibration(object):
     """
     This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/calibration_kitti.py#L23
     """
 
-    def __init__(self, calib_file):
-        if not isinstance(calib_file, dict):
-            calib = get_calib_from_file(calib_file)
-        else:
-            calib = calib_file
+    def __init__(self, calib_dict):
+        calib = calib_dict
 
         self.P2 = calib['P2']  # 3 x 4
         self.R0 = calib['R0']  # 3 x 3

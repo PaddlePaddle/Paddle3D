@@ -37,7 +37,7 @@ lr_scheduler:
 
 model:
   type: CADDN
-  pretrained: "https://paddle3d.bj.bcebos.com/pretrained/hrnet18.pdparams"
+  pretrained: "https://bj.bcebos.com/paddle3d/pretrained/hrnet18.pdparams"
   backbone_3d:
     type: HRNet_W18
   class_head:
