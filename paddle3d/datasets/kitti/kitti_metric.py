@@ -191,13 +191,11 @@ class KittiDepthMetric(MetricABC):
                                   output_path=None):
         """
         Args:
-            batch_dict:
-                frame_id:
+            batch_dict: list of batch_dict
             pred_dicts: list of pred_dicts
                 pred_boxes: (N, 7), Tensor
                 pred_scores: (N), Tensor
                 pred_labels: (N), Tensor
-            class_names:
             output_path:
 
         Returns:
