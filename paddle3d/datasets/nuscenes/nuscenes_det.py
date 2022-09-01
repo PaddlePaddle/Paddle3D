@@ -235,7 +235,9 @@ class NuscenesDetDataset(BaseDataset):
                 continue
 
             # add velocity
-            velocities.append(box.velocity[:2])
+            velocity = np.array(box.velocity)
+            velocity[np.isnan(velocity)] = 0
+            velocities.append(velocity[:2])
 
             # get attribute
             clsname = self.LABEL_MAP[anno['category_name']]
