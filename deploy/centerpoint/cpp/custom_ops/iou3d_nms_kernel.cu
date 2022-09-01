@@ -80,8 +80,7 @@ __device__ inline int intersection(const Point &p1, const Point &p0,
                                    const Point &q1, const Point &q0,
                                    Point *ans) {
   // fast exclusion
-  if (check_rect_cross(p0, p1, q0, q1) == 0)
-    return 0;
+  if (check_rect_cross(p0, p1, q0, q1) == 0) return 0;
 
   // check cross standing
   float s1 = cross(q0, p1, p0);
@@ -89,8 +88,7 @@ __device__ inline int intersection(const Point &p1, const Point &p0,
   float s3 = cross(p0, q1, q0);
   float s4 = cross(q1, p1, q0);
 
-  if (!(s1 * s2 > 0 && s3 * s4 > 0))
-    return 0;
+  if (!(s1 * s2 > 0 && s3 * s4 > 0)) return 0;
 
   // calculate intersection of two lines
   float s5 = cross(q1, p1, p0);
@@ -197,12 +195,13 @@ __device__ inline float box_overlap(const float *box_a, const float *box_b) {
         poly_center = poly_center + cross_points[cnt];
         cnt++;
 #ifdef DEBUG
-        printf("Cross points (%.3f, %.3f): a(%.3f, %.3f)->(%.3f, %.3f), "
-               "b(%.3f, %.3f)->(%.3f, %.3f) \n",
-               cross_points[cnt - 1].x, cross_points[cnt - 1].y,
-               box_a_corners[i].x, box_a_corners[i].y, box_a_corners[i + 1].x,
-               box_a_corners[i + 1].y, box_b_corners[i].x, box_b_corners[i].y,
-               box_b_corners[i + 1].x, box_b_corners[i + 1].y);
+        printf(
+            "Cross points (%.3f, %.3f): a(%.3f, %.3f)->(%.3f, %.3f), "
+            "b(%.3f, %.3f)->(%.3f, %.3f) \n",
+            cross_points[cnt - 1].x, cross_points[cnt - 1].y,
+            box_a_corners[i].x, box_a_corners[i].y, box_a_corners[i + 1].x,
+            box_a_corners[i + 1].y, box_b_corners[i].x, box_b_corners[i].y,
+            box_b_corners[i + 1].x, box_b_corners[i + 1].y);
 #endif
       }
     }
@@ -304,7 +303,8 @@ __global__ void nms_kernel(const int num_bboxes, const int num_bboxes_for_nms,
     block_boxes[threadIdx.x * 7 + 4] = bboxes[box_idx * decode_bboxes_dims + 3];
     block_boxes[threadIdx.x * 7 + 5] = bboxes[box_idx * decode_bboxes_dims + 5];
     block_boxes[threadIdx.x * 7 + 6] =
-        -bboxes[box_idx * decode_bboxes_dims + decode_bboxes_dims - 1] - 3.141592653589793 / 2;
+        -bboxes[box_idx * decode_bboxes_dims + decode_bboxes_dims - 1] -
+        3.141592653589793 / 2;
   }
   __syncthreads();
 
@@ -318,7 +318,9 @@ __global__ void nms_kernel(const int num_bboxes, const int num_bboxes_for_nms,
     cur_box[3] = bboxes[act_box_idx * decode_bboxes_dims + 4];
     cur_box[4] = bboxes[act_box_idx * decode_bboxes_dims + 3];
     cur_box[5] = bboxes[act_box_idx * decode_bboxes_dims + 5];
-    cur_box[6] = -bboxes[act_box_idx * decode_bboxes_dims + decode_bboxes_dims - 1] - 3.141592653589793 / 2;
+    cur_box[6] =
+        -bboxes[act_box_idx * decode_bboxes_dims + decode_bboxes_dims - 1] -
+        3.141592653589793 / 2;
 
     int i = 0;
     int64_t t = 0;
@@ -339,13 +341,12 @@ __global__ void nms_kernel(const int num_bboxes, const int num_bboxes_for_nms,
 void NmsLauncher(const cudaStream_t &stream, const float *bboxes,
                  const int *index, const int64_t *sorted_index,
                  const int num_bboxes, const int num_bboxes_for_nms,
-                 const float nms_overlap_thresh,
-                 const int decode_bboxes_dims, int64_t *mask) {
+                 const float nms_overlap_thresh, const int decode_bboxes_dims,
+                 int64_t *mask) {
   dim3 blocks(DIVUP(num_bboxes_for_nms, THREADS_PER_BLOCK_NMS),
               DIVUP(num_bboxes_for_nms, THREADS_PER_BLOCK_NMS));
   dim3 threads(THREADS_PER_BLOCK_NMS);
-  nms_kernel<<<blocks, threads, 0, stream>>>(num_bboxes, num_bboxes_for_nms,
-                                             nms_overlap_thresh,
-                                             decode_bboxes_dims, bboxes, index,
-                                             sorted_index, mask);
+  nms_kernel<<<blocks, threads, 0, stream>>>(
+      num_bboxes, num_bboxes_for_nms, nms_overlap_thresh, decode_bboxes_dims,
+      bboxes, index, sorted_index, mask);
 }
