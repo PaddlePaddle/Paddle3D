@@ -119,10 +119,13 @@ class KittiDetDataset(BaseDataset):
         return os.path.join(self.dataset_root, 'ImageSets',
                             '{}.txt'.format(self.mode))
 
-    def load_calibration_info(self, index: int) -> Tuple:
+    def load_calibration_info(self, index: int, use_data: bool = True) -> Tuple:
         """
         """
-        filename = '{}.txt'.format(self.data[index])
+        if use_data:
+            filename = '{}.txt'.format(self.data[index])
+        else:
+            filename = '{}.txt'.format(index)
 
         with open(os.path.join(self.calib_dir, filename), 'r') as csv_file:
             reader = list(csv.reader(csv_file, delimiter=' '))

@@ -16,9 +16,12 @@ from typing import Dict, List
 
 import numpy as np
 
-from paddle3d.datasets.kitti.kitti_utils import box_lidar_to_camera
+from paddle3d.datasets.kitti.kitti_utils import (Calibration,
+                                                 box_lidar_to_camera)
 from paddle3d.datasets.metrics import MetricABC
 from paddle3d.geometries.bbox import (BBoxes2D, BBoxes3D, CoordMode,
+                                      boxes3d_kitti_camera_to_imageboxes,
+                                      boxes3d_lidar_to_kitti_camera,
                                       project_to_image)
 from paddle3d.sample import Sample
 from paddle3d.thirdparty import kitti_eval
@@ -164,6 +167,123 @@ class KittiMetric(MetricABC):
                 logger.info("{}:".format(cls))
                 for overlap_thresh, metrics in cls_metrics.items():
                     for metric_type, thresh in zip(["bbox", "bev", "3d"],
+                                                   overlap_thresh):
+                        if metric_type in metrics:
+                            logger.info(
+                                "{} AP@{:.0%}: {:.2f} {:.2f} {:.2f}".format(
+                                    metric_type.upper().ljust(4), thresh,
+                                    *metrics[metric_type]))
+        return metric_dict
+
+
+class KittiDepthMetric(MetricABC):
+    """
+    """
+
+    def __init__(self, eval_gt_annos, class_names):
+        self.eval_gt_annos = eval_gt_annos
+        self.predictions = []
+        self.class_names = class_names
+
+    def generate_prediction_dicts(self,
+                                  batch_dict,
+                                  pred_dicts,
+                                  output_path=None):
+        """
+        Args:
+            batch_dict: list of batch_dict
+            pred_dicts: list of pred_dicts
+                pred_boxes: (N, 7), Tensor
+                pred_scores: (N), Tensor
+                pred_labels: (N), Tensor
+            output_path:
+
+        Returns:
+
+        """
+
+        def get_template_prediction(num_samples):
+            ret_dict = {
+                'name': np.zeros(num_samples),
+                'truncated': np.zeros(num_samples),
+                'occluded': np.zeros(num_samples),
+                'alpha': np.zeros(num_samples),
+                'bbox': np.zeros([num_samples, 4]),
+                'dimensions': np.zeros([num_samples, 3]),
+                'location': np.zeros([num_samples, 3]),
+                'rotation_y': np.zeros(num_samples),
+                'score': np.zeros(num_samples),
+                'boxes_lidar': np.zeros([num_samples, 7])
+            }
+            return ret_dict
+
+        def generate_single_sample_dict(batch_index, box_dict):
+            pred_scores = box_dict['pred_scores'].cpu().numpy()
+            pred_boxes = box_dict['pred_boxes'].cpu().numpy()
+            pred_labels = box_dict['pred_labels'].cast("int64").cpu().numpy()
+            if pred_labels[0] < 0:
+                pred_dict = get_template_prediction(0)
+                return pred_dict
+
+            pred_dict = get_template_prediction(pred_scores.shape[0])
+            # calib = batch_dict['calib'][batch_index]
+            calib = Calibration({
+                "P2":
+                batch_dict["trans_cam_to_img"][batch_index].cpu().numpy(),
+                "R0":
+                batch_dict["R0"][batch_index].cpu().numpy(),
+                "Tr_velo2cam":
+                batch_dict["Tr_velo2cam"][batch_index].cpu().numpy()
+            })
+            image_shape = batch_dict['image_shape'][batch_index].cpu().numpy()
+            pred_boxes_camera = boxes3d_lidar_to_kitti_camera(pred_boxes, calib)
+            pred_boxes_img = boxes3d_kitti_camera_to_imageboxes(
+                pred_boxes_camera, calib, image_shape=image_shape)
+
+            pred_dict['name'] = np.array(self.class_names)[pred_labels - 1]
+            pred_dict['alpha'] = -np.arctan2(
+                -pred_boxes[:, 1], pred_boxes[:, 0]) + pred_boxes_camera[:, 6]
+            pred_dict['bbox'] = pred_boxes_img
+            pred_dict['dimensions'] = pred_boxes_camera[:, 3:6]
+            pred_dict['location'] = pred_boxes_camera[:, 0:3]
+            pred_dict['rotation_y'] = pred_boxes_camera[:, 6]
+            pred_dict['score'] = pred_scores
+            pred_dict['boxes_lidar'] = pred_boxes
+
+            return pred_dict
+
+        annos = []
+        for index, box_dict in enumerate(pred_dicts):
+            single_pred_dict = generate_single_sample_dict(index, box_dict)
+            annos.append(single_pred_dict)
+        return annos
+
+    def update(self, predictions, ground_truths, **kwargs):
+        """
+        """
+        self.predictions += self.generate_prediction_dicts(
+            ground_truths, predictions)
+
+    def compute(self, verbose=False, **kwargs) -> dict:
+        """
+        """
+        eval_gt_annos = self.eval_gt_annos
+        eval_det_annos = self.predictions
+
+        if len(eval_det_annos) != len(eval_gt_annos):
+            raise RuntimeError(
+                'The number of predictions({}) is not equal to the number of GroundTruths({})'
+                .format(len(eval_det_annos), len(eval_gt_annos)))
+
+        metric_dict = kitti_eval(eval_gt_annos, eval_det_annos,
+                                 self.class_names)
+
+        if verbose:
+            for cls, cls_metrics in metric_dict.items():
+                logger.info("{}:".format(cls))
+                for overlap_thresh, metrics in cls_metrics.items():
+                    overlap_thresh = overlap_thresh + overlap_thresh
+                    for metric_type, thresh in zip(["bbox", "bev", "3d", "aos"],
                                                    overlap_thresh):
                         if metric_type in metrics:
                             logger.info(

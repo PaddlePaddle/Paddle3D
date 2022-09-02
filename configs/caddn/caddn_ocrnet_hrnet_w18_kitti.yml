@@ -3,7 +3,7 @@ iters: 74240  # 928*80
 sync_bn: true
 
 train_dataset:
-  type: KittiCadnnDataset
+  type: KittiDepthDataset
   dataset_root: data/kitti
   point_cloud_range: [2, -30.08, -3.0, 46.8, 30.08, 1.0]
   depth_downsample_factor: 4
@@ -12,7 +12,7 @@ train_dataset:
   mode: train
 
 val_dataset:
-  type: KittiCadnnDataset
+  type: KittiDepthDataset
   dataset_root: data/kitti
   point_cloud_range: [2, -30.08, -3.0, 46.8, 30.08, 1.0]
   depth_downsample_factor: 4
@@ -37,7 +37,7 @@ lr_scheduler:
 
 model:
   type: CADDN
-  pretrained: "https://paddle3d.bj.bcebos.com/pretrained/hrnet18.pdparams"
+  pretrained: "https://bj.bcebos.com/paddle3d/pretrained/hrnet18.pdparams"
   backbone_3d:
     type: HRNet_W18
   class_head:
