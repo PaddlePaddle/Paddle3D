@@ -8,8 +8,6 @@
     <a href="https://github.com/PaddlePaddle/Paddle3D/stargazers"><img src="https://img.shields.io/github/stars/PaddlePaddle/Paddle3D?color=ccf"></a>
 </p>
 
-![License](https://img.shields.io/badge/license-Apache%202-blue.svg)
-
 ![camera](https://user-images.githubusercontent.com/29754889/185546875-b8296cf4-f298-494b-8c15-201a2559d7ea.gif)
 ![lidar](https://user-images.githubusercontent.com/29754889/185551580-828f08d0-d607-4020-9e05-b96110bce7eb.gif)
 
