@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List
+from typing import Dict, List
 
 import numpy as np
 import paddle
@@ -62,23 +62,23 @@ class SemanticKITTIMetric(MetricABC):
                                         dtype="int64")
 
     def update(self, predictions: List[Sample],
-               ground_truths: List[paddle.Tensor]):  # x=preds, y=targets
-        for sample, gt in zip(predictions, ground_truths):
-            pred = sample.labels
-            if isinstance(pred, np.ndarray):
-                pred = paddle.to_tensor(pred, dtype="int64")
+               ground_truths: Dict):  # x=preds, y=targets
+        for pd_sample, gt in zip(predictions, ground_truths["labels"]):
+            pd = pd_sample.labels
+            if isinstance(pd, np.ndarray):
+                pd = paddle.to_tensor(pd, dtype="int64")
             if isinstance(gt, np.ndarray):
                 gt = paddle.to_tensor(gt, dtype="int64")
 
             # sizes should be matching
-            pred_row = pred.reshape([-1])  # de-batchify
+            pd_row = pd.reshape([-1])  # de-batchify
             gt_row = gt.reshape([-1])  # de-batchify
 
             # check
-            assert (pred_row.shape == gt_row.shape)
+            assert (pd_row.shape == gt_row.shape)
 
             # idxs are labels and predictions
-            idxs = paddle.stack([pred_row, gt_row], axis=-1)
+            idxs = paddle.stack([pd_row, gt_row], axis=-1)
 
             updates = paddle.ones([idxs.shape[0]], dtype="int64")
 
