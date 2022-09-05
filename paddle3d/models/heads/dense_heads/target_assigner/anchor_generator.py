@@ -17,7 +17,7 @@ import paddle
 
 class AnchorGenerator(object):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/models/dense_heads/target_assigner/anchor_generator.py#L4
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/models/dense_heads/target_assigner/anchor_generator.py#L4
     """
 
     def __init__(self, anchor_range, anchor_generator_config):

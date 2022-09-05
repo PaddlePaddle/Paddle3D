@@ -14,6 +14,7 @@
 
 from paddle3d.transforms.anchor_generator import *
 from paddle3d.transforms.base import *
+from paddle3d.transforms.functional import *
 from paddle3d.transforms.normalize import *
 from paddle3d.transforms.reader import *
 from paddle3d.transforms.sampling import *

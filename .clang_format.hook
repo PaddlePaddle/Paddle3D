@@ -1,0 +1,17 @@
+#!/bin/bash
+set -e
+
+readonly VERSIONS=("10.0.0" "10.0.1")
+version=$(clang-format -version)
+
+for v in ${VERSIONS[*]}; do
+    if [[ "${version}" == *"${v}"* ]]; then
+        clang-format $@
+        exit 0
+    fi
+done
+
+echo "clang-format version check failed."
+echo "a version in ${VERSIONS[*]} is needed, but get ${version}"
+echo "please install the right version via 'pip install clang-format==version'"
+exit -1

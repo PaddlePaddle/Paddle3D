@@ -18,63 +18,79 @@ Written by Shaoshuai Shi
 All Rights Reserved 2019-2020.
 */
 
-#include "paddle/include/experimental/ext_all.h"
-#include <vector>
-#include <cuda.h>
-#include <cuda_runtime_api.h>
 #include "iou3d_nms.h"
 
+#include <cuda.h>
+#include <cuda_runtime_api.h>
 
-#define DIVUP(m,n) ((m) / (n) + ((m) % (n) > 0))
+#include <vector>
+
+#include "paddle/include/experimental/ext_all.h"
+
+#define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
 
 const int THREADS_PER_BLOCK_NMS = sizeof(int64_t) * 8;
 
+void BoxesOverlapLauncher(const cudaStream_t &stream, const int num_a,
+                          const float *boxes_a, const int num_b,
+                          const float *boxes_b, float *ans_overlap);
+void BoxesIouBevLauncher(const cudaStream_t &stream, const int num_a,
+                         const float *boxes_a, const int num_b,
+                         const float *boxes_b, float *ans_iou);
+void NmsLauncher(const cudaStream_t &stream, const float *boxes, int64_t *mask,
+                 int boxes_num, float nms_overlap_thresh);
+void NmsNormalLauncher(const cudaStream_t &stream, const float *boxes,
+                       int64_t *mask, int boxes_num, float nms_overlap_thresh);
 
-void BoxesOverlapLauncher(const cudaStream_t &stream, const int num_a, const float *boxes_a, const int num_b, const float *boxes_b, float *ans_overlap);
-void BoxesIouBevLauncher(const cudaStream_t &stream, const int num_a, const float *boxes_a, const int num_b, const float *boxes_b, float *ans_iou);
-void NmsLauncher(const cudaStream_t &stream, const float *boxes, int64_t * mask, int boxes_num, float nms_overlap_thresh);
-void NmsNormalLauncher(const cudaStream_t &stream, const float *boxes, int64_t * mask, int boxes_num, float nms_overlap_thresh);
+std::vector<paddle::Tensor> boxes_overlap_bev_gpu(
+    const paddle::Tensor &boxes_a, const paddle::Tensor &boxes_b) {
+  // params boxes_a: (N, 7) [x, y, z, dx, dy, dz, heading]
+  // params boxes_b: (M, 7) [x, y, z, dx, dy, dz, heading]
+  // params ans_overlap: (N, M)
+  int num_a = boxes_a.shape()[0];
+  int num_b = boxes_b.shape()[0];
 
-std::vector<paddle::Tensor>  boxes_overlap_bev_gpu(const paddle::Tensor &boxes_a, const paddle::Tensor &boxes_b){
-    // params boxes_a: (N, 7) [x, y, z, dx, dy, dz, heading]
-    // params boxes_b: (M, 7) [x, y, z, dx, dy, dz, heading]
-    // params ans_overlap: (N, M)
-    int num_a = boxes_a.shape()[0];
-    int num_b = boxes_b.shape()[0];
+  const float *boxes_a_data = boxes_a.data<float>();
+  const float *boxes_b_data = boxes_b.data<float>();
+  auto ans_overlap = paddle::empty({num_a, num_b}, paddle::DataType::FLOAT32,
+                                   paddle::GPUPlace());
+  float *ans_overlap_data = ans_overlap.data<float>();
 
-    const float * boxes_a_data = boxes_a.data<float>();
-    const float * boxes_b_data = boxes_b.data<float>();
-    auto ans_overlap = paddle::empty({num_a, num_b}, paddle::DataType::FLOAT32, paddle::GPUPlace());
-    float *ans_overlap_data = ans_overlap.data<float>();
+  BoxesOverlapLauncher(boxes_a.stream(), num_a, boxes_a_data, num_b,
+                       boxes_b_data, ans_overlap_data);
 
-    BoxesOverlapLauncher(boxes_a.stream(), num_a, boxes_a_data, num_b, boxes_b_data, ans_overlap_data);
-
-    return {ans_overlap};
+  return {ans_overlap};
 }
 
-std::vector<paddle::Tensor>  boxes_iou_bev_gpu(const paddle::Tensor & boxes_a_tensor, const paddle::Tensor & boxes_b_tensor) {
-    // params boxes_a: (N, 7) [x, y, z, dx, dy, dz, heading]
-    // params boxes_b: (M, 7) [x, y, z, dx, dy, dz, heading]
-    // params ans_overlap: (N, M)
+std::vector<paddle::Tensor> boxes_iou_bev_gpu(
+    const paddle::Tensor &boxes_a_tensor,
+    const paddle::Tensor &boxes_b_tensor) {
+  // params boxes_a: (N, 7) [x, y, z, dx, dy, dz, heading]
+  // params boxes_b: (M, 7) [x, y, z, dx, dy, dz, heading]
+  // params ans_overlap: (N, M)
 
-    int num_a = boxes_a_tensor.shape()[0];
-    int num_b = boxes_b_tensor.shape()[0];
+  int num_a = boxes_a_tensor.shape()[0];
+  int num_b = boxes_b_tensor.shape()[0];
 
-    const float * boxes_a_data = boxes_a_tensor.data<float>();
-    const float * boxes_b_data = boxes_b_tensor.data<float>();
-    auto ans_iou_tensor = paddle::empty({num_a, num_b}, paddle::DataType::FLOAT32, paddle::GPUPlace());
-    float *ans_iou_data = ans_iou_tensor.data<float>();
+  const float *boxes_a_data = boxes_a_tensor.data<float>();
+  const float *boxes_b_data = boxes_b_tensor.data<float>();
+  auto ans_iou_tensor = paddle::empty({num_a, num_b}, paddle::DataType::FLOAT32,
+                                      paddle::GPUPlace());
+  float *ans_iou_data = ans_iou_tensor.data<float>();
 
-    BoxesIouBevLauncher(boxes_a_tensor.stream(), num_a, boxes_a_data, num_b, boxes_b_data, ans_iou_data);
+  BoxesIouBevLauncher(boxes_a_tensor.stream(), num_a, boxes_a_data, num_b,
+                      boxes_b_data, ans_iou_data);
 
-    return {ans_iou_tensor};
+  return {ans_iou_tensor};
 }
 
-std::vector<paddle::Tensor>  nms_gpu(const paddle::Tensor &boxes,
-                                     float nms_overlap_thresh){
+std::vector<paddle::Tensor> nms_gpu(const paddle::Tensor &boxes,
+                                    float nms_overlap_thresh) {
   // params boxes: (N, 7) [x, y, z, dx, dy, dz, heading]
-  auto keep = paddle::empty({boxes.shape()[0]}, paddle::DataType::INT32, paddle::CPUPlace());
-  auto num_to_keep_tensor = paddle::empty({1}, paddle::DataType::INT32, paddle::CPUPlace());
+  auto keep = paddle::empty({boxes.shape()[0]}, paddle::DataType::INT32,
+                            paddle::CPUPlace());
+  auto num_to_keep_tensor =
+      paddle::empty({1}, paddle::DataType::INT32, paddle::CPUPlace());
   int *num_to_keep_data = num_to_keep_tensor.data<int>();
 
   int boxes_num = boxes.shape()[0];
@@ -86,10 +102,11 @@ std::vector<paddle::Tensor>  nms_gpu(const paddle::Tensor &boxes,
   // int64_t *mask_data = NULL;
   // CHECK_ERROR(cudaMalloc((void**)&mask_data, boxes_num * col_blocks *
   // sizeof(int64_t)));
-  auto mask = paddle::empty({boxes_num * col_blocks}, paddle::DataType::INT64, paddle::GPUPlace());
+  auto mask = paddle::empty({boxes_num * col_blocks}, paddle::DataType::INT64,
+                            paddle::GPUPlace());
   int64_t *mask_data = mask.data<int64_t>();
   NmsLauncher(boxes.stream(), boxes_data, mask_data, boxes_num,
-               nms_overlap_thresh);
+              nms_overlap_thresh);
 
   // std::vector<int64_t> mask_cpu(boxes_num * col_blocks);
 
@@ -119,20 +136,20 @@ std::vector<paddle::Tensor>  nms_gpu(const paddle::Tensor &boxes,
   }
 
   num_to_keep_data[0] = num_to_keep;
-  if (cudaSuccess != cudaGetLastError())
-    printf("Error!\n");
+  if (cudaSuccess != cudaGetLastError()) printf("Error!\n");
 
   return {keep, num_to_keep_tensor};
 }
-
 
 std::vector<paddle::Tensor> nms_normal_gpu(const paddle::Tensor &boxes,
                                            float nms_overlap_thresh) {
   // params boxes: (N, 7) [x, y, z, dx, dy, dz, heading]
   // params keep: (N)
 
-  auto keep = paddle::empty({boxes.shape()[0]}, paddle::DataType::INT32, paddle::CPUPlace());
-  auto num_to_keep_tensor = paddle::empty({1}, paddle::DataType::INT32, paddle::CPUPlace());
+  auto keep = paddle::empty({boxes.shape()[0]}, paddle::DataType::INT32,
+                            paddle::CPUPlace());
+  auto num_to_keep_tensor =
+      paddle::empty({1}, paddle::DataType::INT32, paddle::CPUPlace());
   int *num_to_keep_data = num_to_keep_tensor.data<int>();
   int boxes_num = boxes.shape()[0];
   const float *boxes_data = boxes.data<float>();
@@ -143,10 +160,11 @@ std::vector<paddle::Tensor> nms_normal_gpu(const paddle::Tensor &boxes,
   // int64_t *mask_data = NULL;
   // CHECK_ERROR(cudaMalloc((void**)&mask_data, boxes_num * col_blocks *
   // sizeof(int64_t)));
-  auto mask = paddle::empty({boxes_num * col_blocks}, paddle::DataType::INT64, paddle::GPUPlace());
+  auto mask = paddle::empty({boxes_num * col_blocks}, paddle::DataType::INT64,
+                            paddle::GPUPlace());
   int64_t *mask_data = mask.data<int64_t>();
   NmsNormalLauncher(boxes.stream(), boxes_data, mask_data, boxes_num,
-                      nms_overlap_thresh);
+                    nms_overlap_thresh);
 
   // int64_t mask_cpu[boxes_num * col_blocks];
   // int64_t *mask_cpu = new int64_t [boxes_num * col_blocks];

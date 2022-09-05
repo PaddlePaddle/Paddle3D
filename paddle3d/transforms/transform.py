@@ -115,14 +115,19 @@ class GlobalScale(TransformABC):
     """
     """
 
-    def __init__(self, min_scale: float = 0.95, max_scale: float = 1.05):
+    def __init__(self,
+                 min_scale: float = 0.95,
+                 max_scale: float = 1.05,
+                 size=None):
         self.min_scale = min_scale
         self.max_scale = max_scale
+        self.size = size
 
     def __call__(self, sample: Sample):
         if sample.modality != "lidar":
             raise ValueError("GlobalScale only supports lidar data!")
-        factor = np.random.uniform(self.min_scale, self.max_scale)
+        factor = np.random.uniform(
+            self.min_scale, self.max_scale, size=self.size)
         # Scale points
         sample.data.scale(factor)
         # Scale bboxes_3d
@@ -139,24 +144,45 @@ class GlobalTranslate(TransformABC):
     Args:
         translation_std (Union[float, List[float], Tuple[float]], optional):
             The standard deviation of the translation offset. Defaults to (.2, .2, .2).
+        distribution (str):
+            The random distribution. Defaults to normal.
     """
 
     def __init__(
             self,
             translation_std: Union[float, List[float], Tuple[float]] = (.2, .2,
-                                                                        .2)):
+                                                                        .2),
+            distribution="normal"):
         if not isinstance(translation_std, (list, tuple)):
             translation_std = [
                 translation_std, translation_std, translation_std
             ]
         self.translation_std = translation_std
+        self.distribution = distribution
 
     def __call__(self, sample: Sample):
         if sample.modality != "lidar":
             raise ValueError("GlobalScale only supports lidar data!")
-        translation = np.random.normal(scale=self.translation_std, size=3)
+        if self.distribution not in ["normal", "uniform"]:
+            raise ValueError(
+                "GlobalScale only supports normal and uniform random distribution!"
+            )
+
+        if self.distribution == "normal":
+            translation = np.random.normal(scale=self.translation_std, size=3)
+        elif self.distribution == "uniform":
+            translation = np.random.uniform(
+                low=-self.translation_std[0],
+                high=self.translation_std[0],
+                size=3)
+        else:
+            raise ValueError(
+                "GlobalScale only supports normal and uniform random distribution!"
+            )
+
         sample.data.translate(translation)
-        sample.bboxes_3d.translate(translation)
+        if sample.bboxes_3d is not None:
+            sample.bboxes_3d.translate(translation)
 
         return sample
 

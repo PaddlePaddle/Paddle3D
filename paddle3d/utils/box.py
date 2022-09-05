@@ -18,7 +18,7 @@ import paddle
 
 def boxes_iou_normal(boxes_a, boxes_b):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L238
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L238
 
     Args:
         boxes_a: (N, 4) [x1, y1, x2, y2]
@@ -44,7 +44,7 @@ def boxes_iou_normal(boxes_a, boxes_b):
 
 def boxes3d_lidar_to_aligned_bev_boxes(boxes3d):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L261
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L261
 
     Args:
         boxes3d: (N, 7 + C) [x, y, z, dx, dy, dz, heading] in lidar coordinate
@@ -66,7 +66,7 @@ def boxes3d_lidar_to_aligned_bev_boxes(boxes3d):
 
 def boxes3d_nearest_bev_iou(boxes_a, boxes_b):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L275
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/box_utils.py#L275
 
     Args:
         boxes_a: (N, 7) [x, y, z, dx, dy, dz, heading]

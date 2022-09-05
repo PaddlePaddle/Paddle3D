@@ -1,0 +1,41 @@
+batch_size: 32
+epochs: 350
+
+train_dataset:
+  type: ModelNet40
+  dataset_root: datasets/modelnet40_ply_hdf5_2048
+  num_points: 1024
+  transforms:
+    - type: GlobalScale
+      min_scale: 0.667
+      max_scale: 1.5
+      size: 3
+    - type: GlobalTranslate
+      translation_std: 0.2
+      distribution: uniform
+    - type: ShufflePoint
+  mode: train
+
+val_dataset:
+  type: ModelNet40
+  dataset_root: datasets/modelnet40_ply_hdf5_2048
+  num_points: 1024
+  mode: test
+
+optimizer:
+  type: Momentum
+  momentum: 0.9
+  weight_decay: 0.0001
+
+lr_scheduler:
+  type: CosineAnnealingDecay
+  learning_rate: 0.1
+  T_max: 107450
+  eta_min: 0.001
+
+model:
+  type: PAConv
+  k_neighbors: 20
+  calc_scores: softmax
+  num_matrices: [8, 8, 8, 8]
+  dropout: 0.5

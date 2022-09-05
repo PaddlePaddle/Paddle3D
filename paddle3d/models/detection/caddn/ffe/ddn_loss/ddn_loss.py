@@ -23,7 +23,7 @@ from .balancer import Balancer
 
 class DDNLoss(nn.Layer):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/models/backbones_3d/ffe/ddn_loss/ddn_loss.py#L9
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/models/backbones_3d/ffe/ddn_loss/ddn_loss.py#L9
     """
 
     def __init__(self, weight, alpha, beta, disc_cfg, fg_weight, bg_weight,

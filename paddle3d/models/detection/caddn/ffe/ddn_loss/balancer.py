@@ -18,7 +18,7 @@ import paddle.nn as nn
 
 class Balancer(nn.Layer):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/models/backbones_3d/ffe/ddn_loss/balancer.py#L7
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/models/backbones_3d/ffe/ddn_loss/balancer.py#L7
     """
 
     def __init__(self, fg_weight, bg_weight, downsample_factor=1):
