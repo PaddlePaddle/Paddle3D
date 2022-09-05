@@ -235,6 +235,8 @@ class NuscenesDetDataset(BaseDataset):
                 continue
 
             # add velocity
+            # loaded velocity may be nan when using nuscenes_devkit<=1.1.9
+            # so we reset nan velocity to zero
             velocity = np.array(box.velocity)
             velocity[np.isnan(velocity)] = 0
             velocities.append(velocity[:2])
@@ -261,6 +263,8 @@ class NuscenesDetDataset(BaseDataset):
                 [x, y, z, w, l, h, -(yaw + np.pi / 2)
                  ],  #TODO(luoqianhui): check this positive sign of yaw
                 dtype=np.float32)
+            # loaded bounding box may be nan when using nuscenes_devkit<=1.1.9
+            # so we reset nan box to zero
             bbox3d[np.isnan(bbox3d)] = 0
             bboxes.append(bbox3d)
             labels.append(label)

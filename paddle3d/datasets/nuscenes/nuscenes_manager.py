@@ -28,6 +28,6 @@ class NuScenesManager:
             with logger.processing(
                     'Loading nuscenes metadata, this may take a few minutes'):
                 nusc = NuScenes(
-                    version=version, dataroot=dataroot, verbose=True)
+                    version=version, dataroot=dataroot, verbose=False)
                 cls._instance_map[key] = nusc
         return cls._instance_map[key]
