@@ -1,5 +1,13 @@
 # Paddle3D
 
+<p align="center">
+    <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache%202-dfd.svg"></a>
+    <a href=""><img src="https://img.shields.io/badge/python-3.6.2+-aff.svg"></a>
+    <a href=""><img src="https://img.shields.io/badge/os-linux%2C%20win%2C%20mac-pink.svg"></a>
+    <a href="https://pypi.org/project/paddle3d/"><img src="https://img.shields.io/pypi/dm/paddle3d?color=9cf"></a>
+    <a href="https://github.com/PaddlePaddle/Paddle3D/stargazers"><img src="https://img.shields.io/github/stars/PaddlePaddle/Paddle3D?color=ccf"></a>
+</p>
+
 ![License](https://img.shields.io/badge/license-Apache%202-blue.svg)
 
 ![camera](https://user-images.githubusercontent.com/29754889/185546875-b8296cf4-f298-494b-8c15-201a2559d7ea.gif)
