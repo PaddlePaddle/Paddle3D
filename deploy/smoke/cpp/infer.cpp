@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
   std::vector<float> input_K_data = {
       721.53771973, 0., 609.55932617, 0., 721.53771973, 172.85400391, 0, 0, 1};
   std::vector<int> input_ratio_shape = {1, 2};
-  std::vector<float> input_ratio_data(8, 8);
+  std::vector<float> input_ratio_data(4, 4);
 
   std::vector<float> out_data;
   run(predictor.get(), input_im_data, input_im_shape, input_K_data,
