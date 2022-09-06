@@ -18,7 +18,6 @@ from typing import List
 
 import numpy as np
 import paddle
-import paddle.fluid.layers as layers
 
 from paddle3d.geometries import BBoxes2D, BBoxes3D
 from paddle3d.sample import Sample
@@ -69,7 +68,7 @@ class BaseDataset(paddle.io.Dataset):
             batch = np.stack(batch, axis=0)
             return batch
         elif isinstance(sample, paddle.Tensor):
-            return layers.stack(batch, axis=0)
+            return paddle.stack(batch, axis=0)
         elif isinstance(sample, numbers.Number):
             batch = np.array(batch)
             return batch
