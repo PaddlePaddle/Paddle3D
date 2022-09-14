@@ -43,20 +43,22 @@ def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
             # Do eval in single device
             BatchSampler = paddle.io.BatchSampler
 
-        batch_sampler = BatchSampler(dataset,
-                                     batch_size=batch_size,
-                                     shuffle=shuffle,
-                                     drop_last=drop_last)
+        batch_sampler = BatchSampler(
+            dataset,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            drop_last=drop_last)
 
         if hasattr(model, 'collate_fn'):
             collate_fn = model.collate_fn
         else:
             collate_fn = getattr(dataset, 'collate_fn', None)
 
-        return paddle.io.DataLoader(dataset=dataset,
-                                    batch_sampler=batch_sampler,
-                                    collate_fn=collate_fn,
-                                    **args)
+        return paddle.io.DataLoader(
+            dataset=dataset,
+            batch_sampler=batch_sampler,
+            collate_fn=collate_fn,
+            **args)
 
     return _generate_loader
 
@@ -91,18 +93,18 @@ class Trainer:
     """
 
     def __init__(
-        self,
-        model: paddle.nn.Layer,
-        optimizer: paddle.optimizer.Optimizer,
-        iters: Optional[int] = None,
-        epochs: Optional[int] = None,
-        train_dataset: Optional[paddle.io.Dataset] = None,
-        val_dataset: Optional[paddle.io.Dataset] = None,
-        resume: bool = False,
-        # TODO: Default parameters should not use mutable objects, there is a risk
-        checkpoint: Union[dict, CheckpointABC] = dict(),
-        scheduler: Union[dict, SchedulerABC] = dict(),
-        dataloader_fn: Union[dict, Callable] = dict()):
+            self,
+            model: paddle.nn.Layer,
+            optimizer: paddle.optimizer.Optimizer,
+            iters: Optional[int] = None,
+            epochs: Optional[int] = None,
+            train_dataset: Optional[paddle.io.Dataset] = None,
+            val_dataset: Optional[paddle.io.Dataset] = None,
+            resume: bool = False,
+            # TODO: Default parameters should not use mutable objects, there is a risk
+            checkpoint: Union[dict, CheckpointABC] = dict(),
+            scheduler: Union[dict, SchedulerABC] = dict(),
+            dataloader_fn: Union[dict, Callable] = dict()):
 
         self.model = model
         self.optimizer = optimizer
@@ -176,8 +178,8 @@ class Trainer:
                 "Attempt to restore parameters from an empty checkpoint")
 
         if env.local_rank == 0:
-            self.log_writer = LogWriter(logdir=self.checkpoint.rootdir,
-                                        file_name=vdl_file_name)
+            self.log_writer = LogWriter(
+                logdir=self.checkpoint.rootdir, file_name=vdl_file_name)
             self.checkpoint.record('vdl_file_name',
                                    os.path.basename(self.log_writer.file_name))
             self.checkpoint.record('train_by_epoch', self.train_by_epoch)
@@ -236,12 +238,12 @@ class Trainer:
                         .format(self.cur_epoch, self.epochs, self.cur_iter,
                                 self.iters, loss_sum, lr, timer.eta))
 
-                    self.log_writer.add_scalar(tag='Training/learning_rate',
-                                               value=lr,
-                                               step=self.cur_iter)
-                    self.log_writer.add_scalar(tag='Training/loss',
-                                               value=loss_sum,
-                                               step=self.cur_iter)
+                    self.log_writer.add_scalar(
+                        tag='Training/learning_rate',
+                        value=lr,
+                        step=self.cur_iter)
+                    self.log_writer.add_scalar(
+                        tag='Training/loss', value=loss_sum, step=self.cur_iter)
 
                     loss_sum = 0
 
@@ -263,10 +265,11 @@ class Trainer:
                     else:
                         tag = 'iter_{}'.format(self.cur_iter)
 
-                    self.checkpoint.push(tag=tag,
-                                         params_dict=self.model.state_dict(),
-                                         opt_dict=self.optimizer.state_dict(),
-                                         verbose=True)
+                    self.checkpoint.push(
+                        tag=tag,
+                        params_dict=self.model.state_dict(),
+                        opt_dict=self.optimizer.state_dict(),
+                        verbose=True)
 
                     self.checkpoint.record('iters', self.cur_iter)
                     self.checkpoint.record('epochs', self.cur_epoch)
@@ -280,10 +283,11 @@ class Trainer:
                 tag = 'iter_{}'.format(self.iters)
 
             if not self.checkpoint.have(tag):
-                self.checkpoint.push(tag=tag,
-                                     params_dict=self.model.state_dict(),
-                                     opt_dict=self.optimizer.state_dict(),
-                                     verbose=True)
+                self.checkpoint.push(
+                    tag=tag,
+                    params_dict=self.model.state_dict(),
+                    opt_dict=self.optimizer.state_dict(),
+                    verbose=True)
 
             self.checkpoint.record('iters', self.iters)
             self.checkpoint.record('epochs', self.epochs)
