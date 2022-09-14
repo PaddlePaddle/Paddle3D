@@ -51,6 +51,7 @@ model:
     norm_type: "gn"
     in_channels: 64
   depth_ref: [28.01, 16.32]
+  # dim_ref is the reference size mentioned in the paper, the order here is [l, h, w]
   dim_ref: [[3.88, 1.63, 1.53], [1.78, 1.70, 0.58], [0.88, 1.73, 0.67]]
   max_detection: 50
   pred_2d: True
