@@ -25,6 +25,7 @@ __all__ = ['HardVoxelizer']
 
 @manager.VOXELIZERS.add_component
 class HardVoxelizer(nn.Layer):
+
     def __init__(self, voxel_size, point_cloud_range, max_num_points_in_voxel,
                  max_num_voxels):
         super(HardVoxelizer, self).__init__()
@@ -41,7 +42,6 @@ class HardVoxelizer(nn.Layer):
             point, self.voxel_size, self.point_cloud_range,
             self.max_num_points_in_voxel, max_num_voxels)
         voxels = voxels[0:voxels_num, :, :]
-        coors = coors.astype(voxels.dtype)
         coors = coors[0:voxels_num, :]
         num_points_per_voxel = num_points_per_voxel[0:voxels_num]
 
@@ -50,8 +50,10 @@ class HardVoxelizer(nn.Layer):
         # bs_idx = bs_idx.reshape([-1, 1])
         # coors_pad = paddle.concat([bs_idx, coors], axis=1)
         coors = coors.reshape([1, -1, 3])
-        coors_pad = F.pad(
-            coors, [1, 0], value=bs_idx, mode='constant', data_format="NCL")
+        coors_pad = F.pad(coors, [1, 0],
+                          value=bs_idx,
+                          mode='constant',
+                          data_format="NCL")
         coors_pad = coors_pad.reshape([-1, 4])
         return voxels, coors_pad, num_points_per_voxel
 

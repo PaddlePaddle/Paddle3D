@@ -31,6 +31,7 @@ from paddle3d.utils.logger import logger
 
 
 class DictObject(Dict):
+
     def __init__(self, config: Dict):
         for key, value in config.items():
             if isinstance(value, dict):
@@ -41,6 +42,7 @@ class DictObject(Dict):
 
 @manager.MODELS.add_component
 class CenterPoint(nn.Layer):
+
     def __init__(self,
                  voxelizer,
                  voxel_encoder,
@@ -63,20 +65,23 @@ class CenterPoint(nn.Layer):
             load_pretrained_model(self, self.pretrained)
 
     def deploy_preprocess(self, points):
+
         def true_fn(points):
             points = points[:, 0:5]
             return points
 
         def false_fn(points):
             points = points.reshape([1, -1, 4])
-            points = F.pad(
-                points, [0, 1], value=0, mode='constant', data_format="NCL")
+            points = F.pad(points, [0, 1],
+                           value=0,
+                           mode='constant',
+                           data_format="NCL")
             points = points.reshape([-1, 5])
             return points
 
-        points = paddle.static.nn.cond(
-            points.shape[-1] >=
-            5, lambda: true_fn(points), lambda: false_fn(points))
+        points = paddle.static.nn.cond(points.shape[-1] >= 5,
+                                       lambda: true_fn(points),
+                                       lambda: false_fn(points))
         return points[:, 0:self.voxel_encoder.in_channels]
 
     def voxelize(self, points):
@@ -89,8 +94,9 @@ class CenterPoint(nn.Layer):
         data["features"] = voxels
         data["num_points_in_voxel"] = num_points_in_voxel
         data["coors"] = coordinates
-        input_features = self.voxel_encoder(
-            data["features"], data["num_points_in_voxel"], data["coors"])
+        input_features = self.voxel_encoder(data["features"],
+                                            data["num_points_in_voxel"],
+                                            data["coors"])
         x = self.middle_encoder(input_features, data["coors"],
                                 data["batch_size"])
         x = self.backbone(x)
@@ -102,7 +108,7 @@ class CenterPoint(nn.Layer):
             batch_size = len(example["data"])
             points = example["data"]
         else:
-            batch_size = None
+            batch_size = 1
             points = example["data"]
             points = self.deploy_preprocess(points)
 
@@ -167,10 +173,9 @@ class CenterPoint(nn.Layer):
             elif key == "coords":
                 coors = []
                 for i, coor in enumerate(elems):
-                    coor_pad = np.pad(
-                        coor, ((0, 0), (1, 0)),
-                        mode="constant",
-                        constant_values=i)
+                    coor_pad = np.pad(coor, ((0, 0), (1, 0)),
+                                      mode="constant",
+                                      constant_values=i)
                     coors.append(coor_pad)
                 ret[key] = np.concatenate(coors, axis=0)
             elif key in [
