@@ -2,17 +2,17 @@
 
 ### 测试环境
 
-    * GPU: Tesla V100
+* GPU: Tesla V100
 
-    * CPU: Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz
+* CPU: Intel(R) Xeon(R) Gold 6148 CPU @ 2.40GHz
 
-    * CUDA: 10.1
+* CUDA: 10.1
 
-    * cuDNN: 7.6
+* cuDNN: 7.6
 
-    * TensorRT: 6.0.1.5
+* TensorRT: 6.0.1.5
 
-    * Paddle: 2.3.1
+* Paddle: 2.3.1
 
 ### KITTI数据指标
 
@@ -40,6 +40,6 @@
 
   * [PointPillars](./models/pointpillars)
 
-  * [CenterPoint](./docs/models/centerpoint)
+  * [CenterPoint](./models/centerpoint)
 
   * [SequeezeSeg v3](./models/squeezesegv3)
