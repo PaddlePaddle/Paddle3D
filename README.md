@@ -93,17 +93,7 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
 
 * [全流程速览](./docs/quickstart.md)
 
-* 模型使用教程
-
-  * [SMOKE](./docs/models/smoke)
-
-  * [CaDDN](./docs/models/caddn)
-
-  * [PointPillars](./docs/models/pointpillars)
-
-  * [CenterPoint](./docs/models/centerpoint)
-
-  * [SequeezeSeg v3](./docs/models/squeezesegv3)
+* [模型库](./docs/model_zoo.md)
 
 * [自定义数据准备](./docs/datasets/custom.md)
 
