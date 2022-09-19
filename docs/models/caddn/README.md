@@ -59,6 +59,12 @@ kttti
 
 ## <h2 id="6">训练</h2>
 
+下载backbone预训练模型参数，并放在pretrained目录下
+| 配置文件 | 下载 |
+| -- | -- |
+| caddn_ocrnet_hrnet_w18_kitti | [下载](https://paddle3d.bj.bcebos.com/models/caddn/caddn_ocrnet_hrnet_w18_kitti/hrnet_w18.pdparams) |
+| caddn_deeplabv3p_resnet101_os8_kitti | [下载](https://paddle3d.bj.bcebos.com/models/caddn/caddn_deeplabv3p_resnet101_os8_kitti/deeplabv3_resnet101_convert.pdparams) |
+
 运行以下命令，进行单卡训练
 
 ```
@@ -76,6 +82,12 @@ fleetrun tools/train.py --config configs/caddn/caddn_deeplabv3p_resnet101_os8_ki
 
 
 ## <h2 id="7">评估</h2>
+
+提供训练好的模型参数及KITTI test dataset 指标
+| 配置文件 | 模型参数 | 训练log | Car (IOU = 0.7) | Pedestrian (IOU = 0.5) | Cyclist (IOU = 0.5) |
+| -- | -- | -- | -- |  -- |  -- |
+| caddn_ocrnet_hrnet_w18_kitti | [model](https://paddle3d.bj.bcebos.com/models/caddn/caddn_ocrnet_hrnet_w18_kitti/model.pdparams) | [log](https://paddle3d.bj.bcebos.com/models/caddn/caddn_ocrnet_hrnet_w18_kitti/train.log) | 22.5024/15.7760/13.9519 | 10.0902/7.1216/5.5687 | 1.2693/0.6853/0.6931 | 
+| caddn_deeplabv3p_resnet101_os8_kitti | [model](https://paddle3d.bj.bcebos.com/models/caddn/caddn_deeplabv3p_resnet101_os8_kitti/model.pdparams) | [log](https://paddle3d.bj.bcebos.com/models/caddn/caddn_deeplabv3p_resnet101_os8_kitti/train.log) | 21.4490/14.3622/12.5689 | 9.1494/6.5328/5.1213 | 1.8240/0.7392/0.7478 | 
 
 运行以下命令，进行评估
 
@@ -98,6 +110,12 @@ python tools/export.py --config configs/caddn/caddn_deeplabv3p_resnet101_os8_kit
 | config | **[必填]** 训练配置文件所在路径 |
 | model | **[必填]** 训练时保存的模型文件`model.pdparams`所在路径 |
 | save_dir | **[必填]** 保存导出模型的路径，`save_dir`下将会生成三个文件：`caddn.pdiparams `、`caddn.pdiparams.info`和`caddn.pdmodel` |
+
+提供训练好的导出模型
+| 配置文件 | 下载 |
+| -- | -- |
+| caddn_ocrnet_hrnet_w18_kitti | [下载](https://paddle3d.bj.bcebos.com/models/caddn/caddn_ocrnet_hrnet_w18_kitti/model.zip) |
+| caddn_deeplabv3p_resnet101_os8_kitti | [下载](https://paddle3d.bj.bcebos.com/models/caddn/caddn_deeplabv3p_resnet101_os8_kitti/model.zip) |
 
 ### C++部署
 
