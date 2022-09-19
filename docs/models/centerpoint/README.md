@@ -35,7 +35,7 @@ Paddle3D实现的CenterPoint做了以下优化：
 | CenterPoint | 2D-Pillars | 50.97 | 61.30 | 50.28 | 63.43 | [model](https://bj.bcebos.com/paddle3d/models/centerpoint//centerpoint_pillars_02voxel_nuscenes_10_sweep/model.pdparams) | [config](../../../configs/centerpoint/centerpoint_pillars_02voxel_nuscenes_10sweep.yml) | [log](https://bj.bcebos.com/paddle3d/models/centerpoint//centerpoint_pillars_02voxel_nuscenes_10_sweep/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=f150eb3b4db30c7bd4ff2dfac5ca4166) |
 | CenterPoint | 3D-Voxels | 59.25 | 66.74 | 21.90 | 26.93 | [model]( https://bj.bcebos.com/paddle3d/models/centerpoint/centerpoint_voxels_0075voxel_nuscenes_10sweep/model.pdparams) | [config](../../../configs/centerpoint/centerpoint_voxels_0075voxel_nuscenes_10sweep.yml) | [log]( https://bj.bcebos.com/paddle3d/models/centerpoint/centerpoint_voxels_0075voxel_nuscenes_10sweep/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=2cf9f2123ea8393cf873e8f8ae907fdc) |
 
-**注意：** nuScenes benchmark使用4张V100 GPU训练得出。
+**注意：nuScenes benchmark使用4张V100 GPU训练得出。3D Sparse Conv功能需要安装Paddle develop版。**
 
 - CenterPoint在KITTI Val set数据集上的表现
 
@@ -170,7 +170,6 @@ kitti_train_gt_database
 ```
 #### 训练
 
-**注意：3D Sparse Conv功能需要安装Paddle develop版本**
 
 KITTI数据集上的训练使用8张GPU：
 
@@ -181,7 +180,6 @@ python -m paddle.distributed.launch --gpus 0,1,2,3,4,5,6,7 tools/train.py --conf
 训练启动参数介绍可参考文档[全流程速览](../../quickstart.md#模型训练)。
 #### 评估
 
-**注意：3D Sparse Conv功能需要安装Paddle develop版本**
 
 ```
 python tools/evaluate.py --config configs/centerpoint/centerpoint_pillars_016voxel_kitti.yml --model ./output_kitti/epoch_160/model.pdparams --batch_size 1 --num_workers 4
@@ -195,7 +193,6 @@ python tools/evaluate.py --config configs/centerpoint/centerpoint_pillars_016vox
 
 ### <h3 id="81">模型导出</h3>
 
-**注意：3D Sparse Conv导出功能即将合入Paddle develop分支，请耐心等待**
 
 运行以下命令，将训练时保存的动态图模型文件导出成推理引擎能够加载的静态图模型文件。
 
@@ -242,8 +239,6 @@ python tools/export.py --config configs/centerpoint/centerpoint_pillars_02voxel_
 #### 编译步骤
 
 **注意：目前CenterPoint的仅支持使用GPU进行推理。**
-
-**注意：3D Sparse Conv推理功能即将合入Paddle develop分支，请耐心等待**
 
 - step 1: 进入部署代码所在路径
 
@@ -342,8 +337,6 @@ sh compile.sh
 ### Python部署
 
 **注意：目前CenterPoint的仅支持使用GPU进行推理。**
-
-**注意：3D Sparse Conv推理功能即将合入Paddle develop分支，请耐心等待**
 
 命令参数说明如下：
 

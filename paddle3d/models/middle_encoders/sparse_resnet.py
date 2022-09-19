@@ -183,7 +183,6 @@ class SparseResNet3D(paddle.nn.Layer):
 
         out = self.extra_conv(x_conv4)
 
-        #out = out.to_dense()
         out = sparse.sparse_coo_tensor(
             paddle.cast(out.indices(), 'int64'),
             out.values(),
