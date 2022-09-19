@@ -69,7 +69,8 @@ class KittiDepthDataset(KittiDetDataset):
                  voxel_size,
                  class_names,
                  remove_outside_boxes=True):
-        super(KittiDepthDataset, self).__init__(dataset_root, mode, class_names)
+        super(KittiDepthDataset, self).__init__(dataset_root, mode)
+        self.class_names = class_names
         self.point_cloud_range = np.array(point_cloud_range, dtype=np.float32)
         self.depth_downsample_factor = depth_downsample_factor
         self._merge_all_iters_to_one_epoch = False
