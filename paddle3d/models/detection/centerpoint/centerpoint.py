@@ -102,7 +102,7 @@ class CenterPoint(nn.Layer):
             batch_size = len(example["data"])
             points = example["data"]
         else:
-            batch_size = None
+            batch_size = 1
             points = example["data"]
             points = self.deploy_preprocess(points)
 
