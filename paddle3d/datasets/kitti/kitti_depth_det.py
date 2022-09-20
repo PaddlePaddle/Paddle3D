@@ -380,7 +380,6 @@ class KittiDepthDataset(KittiDetDataset):
         """
         Args:
             data_dict:
-                points: (N, 3 + C_in)
                 gt_boxes: optional, (N, 7 + C) [x, y, z, dx, dy, dz, heading, ...]
                 gt_names: optional, (N), string
                 ...
@@ -388,13 +387,8 @@ class KittiDepthDataset(KittiDetDataset):
         Returns:
             data_dict:
                 frame_id: string
-                points: (N, 3 + C_in)
                 gt_boxes: optional, (N, 7 + C) [x, y, z, dx, dy, dz, heading, ...]
                 gt_names: optional, (N), string
-                use_lead_xyz: bool
-                voxels: optional (num_voxels, max_points_per_voxel, 3 + C)
-                voxel_coords: optional (num_voxels, 3)
-                voxel_num_points: optional (num_voxels)
                 ...
         """
         if data_dict.get('gt_boxes', None) is not None:
