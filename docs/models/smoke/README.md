@@ -145,6 +145,18 @@ python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --mod
     python infer.py --model_file /path/to/smoke.pdmodel --params_file /path/to/smoke.pdiparams --image /path/to/image --use_gpu
     ```
 
+* 执行CPU预测并显示3d框
+
+    ```shell
+    python vis.py --model_file /path/to/smoke.pdmodel --params_file /path/to/smoke.pdiparams --image /path/to/image
+    ```
+
+* 执行GPU预测并显示3d框
+
+    ```shell
+    python vis.py --model_file /path/to/smoke.pdmodel --params_file /path/to/smoke.pdiparams --image /path/to/image --use_gpu
+    ```
+
 * 执行TRT预测
 
     **注意：需要下载支持TRT版本的paddlepaddle以及nvidia对应版本的TensorRT库**
