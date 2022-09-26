@@ -20,8 +20,7 @@ from infer import parse_args, init_predictor, get_img, get_ratio, run
 
 
 def total_pred_by_conf_to_kitti_records(
-    total_pred, conf, class_names=["Car", "Cyclist", "Pedestrian"]
-):
+        total_pred, conf, class_names=["Car", "Cyclist", "Pedestrian"]):
     """convert total_pred to kitti_records"""
     kitti_records_list = []
     for p in total_pred:
@@ -51,9 +50,9 @@ def make_imgpts_list(bboxes_3d, K):
         rot_y = np.array(box3d[6])
 
         height, width, length = box3d[3:6]
-        point, box2d, box3d = encode_label(
-            K, rot_y, np.array([length, height, width]), locs
-        )
+        point, box2d, box3d = encode_label(K, rot_y,
+                                           np.array([length, height, width]),
+                                           locs)
 
         if np.all(box2d == 0):
             continue
@@ -120,13 +119,11 @@ if __name__ == "__main__":
     # Listed below are camera intrinsic parameter of the kitti dataset
     # If the model is trained on other datasets, please replace the relevant data
     K = np.array(
-        [
-            [
-                [721.53771973, 0.0, 609.55932617],
-                [0.0, 721.53771973, 172.85400391],
-                [0, 0, 1],
-            ]
-        ],
+        [[
+            [721.53771973, 0.0, 609.55932617],
+            [0.0, 721.53771973, 172.85400391],
+            [0, 0, 1],
+        ]],
         np.float32,
     )
 
