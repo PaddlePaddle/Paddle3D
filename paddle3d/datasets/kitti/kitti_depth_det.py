@@ -272,22 +272,6 @@ class KittiDepthDataset(KittiDetDataset):
 
                 info['annos'] = annotations
 
-                if count_inside_pts:
-                    points = self.get_lidar(sample_idx)
-                    calib = self.get_calib(sample_idx)
-                    pts_rect = calib.lidar_to_rect(points[:, 0:3])
-
-                    fov_flag = self.get_fov_flag(
-                        pts_rect, info['image']['image_shape'], calib)
-                    pts_fov = points[fov_flag]
-                    corners_lidar = boxes_to_corners_3d(gt_boxes_lidar)
-                    num_points_in_gt = -np.ones(num_gt, dtype=np.int32)
-
-                    for k in range(num_objects):
-                        flag = in_hull(pts_fov[:, 0:3], corners_lidar[k])
-                        num_points_in_gt[k] = flag.sum()
-                    annotations['num_points_in_gt'] = num_points_in_gt
-
             return info
 
         self.mode = mode

@@ -24,9 +24,17 @@ Caddn为单目3D检测模型，用于从单目图像中检测3D对象。 Caddn�
 
 我们提供了在开源数据集上的训练配置与结果，详见[CADDN训练配置](../../../configs/caddn)
 
-## <h2 id="4">使用教程</h2>
 
-## <h2 id="5">数据准备</h2>
+## <h2 id="4">模型库</h2>
+
+| 模型 |  骨干网络  | 3DmAP Mod. | Car<br>Easy Mod. Hard | Pedestrian<br>Easy Mod. Hard | Cyclist<br>Easy Mod. Hard | 模型下载 | 配置文件 |  日志 |
+| :--: | :-------: | :--------: | :-------------------: | :--------------------------: | :-----------------------: | :------: | :-----: | :--: |
+|CADDN |  ocrnet_hrnet_w18    | 7.86 |  22.50 15.78 13.95 | 10.09 7.12 5.57 | 1.27 0.69 0.69 | [model](https://paddle3d.bj.bcebos.com/models/caddn/caddn_ocrnet_hrnet_w18_kitti/model.pdparams) | [config](../../../configs/caddn/caddn_ocrnet_hrnet_w18_kitti.yml) | [log](https://paddle3d.bj.bcebos.com/models/caddn/caddn_ocrnet_hrnet_w18_kitti/train.log) \| [vdl](https://www.paddlepaddle.org.cn/paddle/visualdl/service/app/scalar?id=36ff3161e13f37bb318fc2d78e679983) |
+|CADDN |  deeplabv3p_resnet101_os8    | 7.21 |  21.45 14.36 12.57 | 9.15 6.53 5.12 | 1.82 0.74 0.75 | [model](https://paddle3d.bj.bcebos.com/models/caddn/caddn_deeplabv3p_resnet101_os8_kitti/model.pdparams) | [config](../../../configs/caddn/caddn_deeplabv3p_resnet101_os8_kitti.yml) | [log](https://paddle3d.bj.bcebos.com/models/caddn/caddn_deeplabv3p_resnet101_os8_kitti/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=a56f45325b80ce7f7e29f185efaed28c) |
+
+## <h2 id="5">使用教程</h2>
+
+## <h2 id="6">数据准备</h2>
 
 请下载KITTI单目3D检测数据集，数据集信息请参考[KITTI官网](http://www.cvlibs.net/datasets/kitti/)
 
@@ -42,14 +50,12 @@ kttti
    |      └── val.txt
    ├── testing
    |      ├── calib
-   |      ├── image_2
-   |      └── velodyne
+   |      └── image_2
    ├── training
    |      ├── calib
    |      ├── depth_2
    |      ├── image_2
-   |      ├── label_2
-   |      └── velodyne
+   |      └── label_2
    ├── kitti_infos_test.pkl
    ├── kitti_infos_train.pkl
    ├── kitti_infos_val.pkl
@@ -57,7 +63,12 @@ kttti
 ```
 将kitti数据软链至data/kitti，或更改配置文件数据集路径。
 
-## <h2 id="6">训练</h2>
+备注：准备好kitti数据集后，上述的.pkl是通过下列命令生成
+```
+python tools/creat_caddn_kitti_infos.py
+```
+
+## <h2 id="7">训练</h2>
 
 运行以下命令，进行单卡训练
 
@@ -75,13 +86,7 @@ fleetrun tools/train.py --config configs/caddn/caddn_deeplabv3p_resnet101_os8_ki
 训练中断，可以通过`--resume`进行继续训练。
 
 
-## <h2 id="7">评估</h2>
-
-提供训练好的模型参数及KITTI test dataset 指标
-| 配置文件 | 模型参数 | 训练log | Car (IOU = 0.7) | Pedestrian (IOU = 0.5) | Cyclist (IOU = 0.5) |
-| -- | -- | -- | -- | -- | -- |
-| caddn_ocrnet_hrnet_w18_kitti | [model](https://paddle3d.bj.bcebos.com/models/caddn/caddn_ocrnet_hrnet_w18_kitti/model.pdparams) | [log](https://paddle3d.bj.bcebos.com/models/caddn/caddn_ocrnet_hrnet_w18_kitti/train.log) | 22.5024/15.7760/13.9519 | 10.0902/7.1216/5.5687 | 1.2693/0.6853/0.6931 |
-| caddn_deeplabv3p_resnet101_os8_kitti | [model](https://paddle3d.bj.bcebos.com/models/caddn/caddn_deeplabv3p_resnet101_os8_kitti/model.pdparams) | [log](https://paddle3d.bj.bcebos.com/models/caddn/caddn_deeplabv3p_resnet101_os8_kitti/train.log) | 21.4490/14.3622/12.5689 | 9.1494/6.5328/5.1213 | 1.8240/0.7392/0.7478 |
+## <h2 id="8">评估</h2>
 
 运行以下命令，进行评估
 
@@ -89,9 +94,9 @@ fleetrun tools/train.py --config configs/caddn/caddn_deeplabv3p_resnet101_os8_ki
 python tools/evaluate.py --config configs/caddn/caddn_deeplabv3p_resnet101_os8_kitti.yml --model pretrained_model_path
 ```
 
-## <h2 id="8">导出 & 部署</h2>
+## <h2 id="9">导出 & 部署</h2>
 
-### <h3 id="81">模型导出</h3>模型导出
+### <h3 id="91">模型导出</h3>模型导出
 
 运行以下命令，将训练时保存的动态图模型文件导出成推理引擎能够加载的静态图模型文件。
 
