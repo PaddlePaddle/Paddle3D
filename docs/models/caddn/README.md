@@ -67,6 +67,10 @@ kttti
 ```
 python tools/creat_caddn_kitti_infos.py
 ```
+| 参数 | 说明 |
+| -- | -- |
+| dataset_root | **[选填]** kitti数据集路径，默认data/kitti |
+| save_dir | **[选填]** 生成的.pkl文件保存路径，默认data/kitti |
 
 ## <h2 id="7">训练</h2>
 
