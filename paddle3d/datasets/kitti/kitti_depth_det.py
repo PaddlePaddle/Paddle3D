@@ -69,7 +69,8 @@ class KittiDepthDataset(KittiDetDataset):
                  voxel_size,
                  class_names,
                  remove_outside_boxes=True):
-        super(KittiDepthDataset, self).__init__(dataset_root, mode, class_names)
+        super(KittiDepthDataset, self).__init__(dataset_root, mode)
+        self.class_names = class_names
         self.point_cloud_range = np.array(point_cloud_range, dtype=np.float32)
         self.depth_downsample_factor = depth_downsample_factor
         self._merge_all_iters_to_one_epoch = False
@@ -271,22 +272,6 @@ class KittiDepthDataset(KittiDetDataset):
 
                 info['annos'] = annotations
 
-                if count_inside_pts:
-                    points = self.get_lidar(sample_idx)
-                    calib = self.get_calib(sample_idx)
-                    pts_rect = calib.lidar_to_rect(points[:, 0:3])
-
-                    fov_flag = self.get_fov_flag(
-                        pts_rect, info['image']['image_shape'], calib)
-                    pts_fov = points[fov_flag]
-                    corners_lidar = boxes_to_corners_3d(gt_boxes_lidar)
-                    num_points_in_gt = -np.ones(num_gt, dtype=np.int32)
-
-                    for k in range(num_objects):
-                        flag = in_hull(pts_fov[:, 0:3], corners_lidar[k])
-                        num_points_in_gt[k] = flag.sum()
-                    annotations['num_points_in_gt'] = num_points_in_gt
-
             return info
 
         self.mode = mode
@@ -379,7 +364,6 @@ class KittiDepthDataset(KittiDetDataset):
         """
         Args:
             data_dict:
-                points: (N, 3 + C_in)
                 gt_boxes: optional, (N, 7 + C) [x, y, z, dx, dy, dz, heading, ...]
                 gt_names: optional, (N), string
                 ...
@@ -387,13 +371,8 @@ class KittiDepthDataset(KittiDetDataset):
         Returns:
             data_dict:
                 frame_id: string
-                points: (N, 3 + C_in)
                 gt_boxes: optional, (N, 7 + C) [x, y, z, dx, dy, dz, heading, ...]
                 gt_names: optional, (N), string
-                use_lead_xyz: bool
-                voxels: optional (num_voxels, max_points_per_voxel, 3 + C)
-                voxel_coords: optional (num_voxels, 3)
-                voxel_num_points: optional (num_voxels)
                 ...
         """
         if data_dict.get('gt_boxes', None) is not None:
