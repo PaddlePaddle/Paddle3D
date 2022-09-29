@@ -178,7 +178,15 @@ class PostProcessor(nn.Layer):
         keep_idx = result[:, -1] > self.det_threshold
 
         if paddle.sum(keep_idx.astype("int32")) >= 1:
-            keep_idx = paddle.nonzero(result[:, -1] > self.det_threshold)
+            # Add indexs to determine which sample each box belongs to
+            batch_size = targets['K'].shape[0]
+            ids = paddle.arange(batch_size, dtype=paddle.float32)
+            ids = ids.unsqueeze(0).expand([self.max_detection, batch_size])
+            ids = ids.transpose([1, 0]).reshape([-1, 1])
+            result = paddle.concat([result, ids], 1)
+
+            # Filter out low confidence boxes
+            keep_idx = paddle.nonzero(keep_idx)
             result = paddle.gather(result, keep_idx)
         else:
             result = paddle.to_tensor([])
