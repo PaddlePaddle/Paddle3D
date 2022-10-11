@@ -103,15 +103,15 @@ class KittiMetric(MetricABC):
 
                 alpha = pred.get('alpha', np.zeros([num_boxes]))
 
+                if pred.bboxes_3d.origin != [.5, .5, 0]:
+                    pred.bboxes_3d[:, :3] += pred.bboxes_3d[:, 3:6] * (
+                        np.array([.5, .5, 0]) - np.array(pred.bboxes_3d.origin))
+                    pred.bboxes_3d.origin = [.5, .5, 0]
+
                 if pred.bboxes_3d.coordmode != CoordMode.KittiCamera:
                     bboxes_3d = box_lidar_to_camera(pred.bboxes_3d, calibs)
                 else:
                     bboxes_3d = pred.bboxes_3d
-
-                if bboxes_3d.origin != [.5, 1., .5]:
-                    bboxes_3d[:, :3] += bboxes_3d[:, 3:6] * (
-                        np.array([.5, 1., .5]) - np.array(bboxes_3d.origin))
-                    bboxes_3d.origin = [.5, 1., .5]
 
                 if pred.bboxes_2d is None:
                     bboxes_2d = self.get_camera_box2d(bboxes_3d, calibs[2])
