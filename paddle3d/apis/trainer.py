@@ -113,14 +113,16 @@ class Trainer:
             **dataloader_fn) if isinstance(dataloader_fn,
                                            dict) else dataloader_fn
 
-        self.train_dataloader = _dataloader_build_fn(train_dataset, self.model)
+        self.train_dataloader = _dataloader_build_fn(
+            train_dataset, self.model) if train_dataset else None
         self.eval_dataloader = _dataloader_build_fn(
             val_dataset, self.model) if val_dataset else None
         self.val_dataset = val_dataset
 
         self.resume = resume
         vdl_file_name = None
-        self.iters_per_epoch = len(self.train_dataloader)
+        self.iters_per_epoch = len(
+            self.train_dataloader) if train_dataset else 0
 
         if iters is None:
             self.epochs = epochs

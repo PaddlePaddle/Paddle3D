@@ -14,6 +14,7 @@ from paddle3d.geometries import BBoxes3D, CoordMode
 from paddle3d.models.layers import constant_init, reset_parameters
 from paddle3d.ops import iou3d_nms_cuda
 from paddle3d.sample import Sample, SampleMeta
+from paddle3d.utils import box_utils
 from paddle3d.utils.logger import logger
 
 
@@ -33,7 +34,7 @@ class IASSD(nn.Layer):
         Args:
             batch_dict:
                 batch_size: int
-                data: (B * N, 5)  # 5 = [batch_id, x, y, z, intensity]
+                data: (B * N, C)  # C = [batch_id, x, y, z, intensity, ...]
                 bboxes_3d: (B, num_gt, 8) # [x, y, z, l, w, h, heading, label]
         Returns:
 
@@ -49,7 +50,9 @@ class IASSD(nn.Layer):
                 return self.post_process(batch_dict)
             else:
                 result_list = self.post_process(batch_dict)
-                sample_list = self._parse_batch_result_to_sample(
+                # sample_list = self._parse_batch_result_to_sample(
+                #     result_list, batch_dict)
+                sample_list = self._parse_results_to_sample(
                     result_list, batch_dict)
                 return {"preds": sample_list}
 
@@ -94,7 +97,7 @@ class IASSD(nn.Layer):
                 max_gt = max([len(x) for x in val])
                 batch_bboxes_3d = np.zeros(
                     (batch_size, max_gt, val[0].shape[-1]), dtype=np.float32)
-                # pad num of bboxes to max_gt with zeros
+                # pad num of bboxes to max_gt with zeros, as well as labels
                 for k in range(batch_size):
                     batch_bboxes_3d[k, :val[k].__len__(), :] = val[k]
                 collated_batch[key] = batch_bboxes_3d
@@ -103,6 +106,7 @@ class IASSD(nn.Layer):
                 collated_batch[key] = val
 
         collated_batch["batch_size"] = batch_size
+        collated_batch["num_points"] = batch[0]["data"].shape[0]
 
         return collated_batch
 
@@ -184,42 +188,79 @@ class IASSD(nn.Layer):
                 selected_label = paddle.gather(label_preds, index=selected)
                 return selected_score, selected_label, selected_box
 
-    def _parse_batch_result_to_sample(self, result_list, batch_dict):
+    # def _parse_batch_result_to_sample(self, result_list, batch_dict):
+    #     sample_list = []
+    #     for i, result in enumerate(result_list):
+    #         sample = self._parse_single_result_to_sample(
+    #             result, batch_dict["path"][i], batch_dict["calibs"][i],
+    #             batch_dict["meta"][i])
+    #         sample_list.append(sample)
+    #     return sample_list
+
+    # def _parse_single_result_to_sample(self, result, path, calibs, meta):
+    #     if (result["pred_labels"] == -1).any():
+    #         sample = Sample(path=path, modality="lidar")
+    #     else:
+    #         sample = Sample(path=path, modality="lidar")
+    #         sample.calibs = [calib.numpy() for calib in calibs]
+    #         box_preds = result["pred_boxes"]
+    #         if isinstance(box_preds, paddle.Tensor):
+    #             box_preds = box_preds.numpy()
+    #         # convert box format from [x, y, z, l, w, h, heading] to [x, y, z, w, l, h, yaw]
+    #         # where heading = -(yaw + pi/2)
+    #         box_preds[:, 3:6] = box_preds[:, [4, 3, 5]]
+    #         box_preds[:, 6] = -box_preds[:, 6] - np.pi / 2
+    #         cls_labels = result["pred_labels"]
+    #         cls_scores = result["pred_scores"]
+    #         sample.bboxes_3d = BBoxes3D(
+    #             box_preds,
+    #             origin=[0.5, 0.5, 0.5],
+    #             coordmode="Lidar",
+    #             rot_axis=2)
+    #         sample.labels = cls_labels.numpy()
+    #         sample.confidences = cls_scores.numpy()
+    #         sample.alpha = (-np.arctan2(-box_preds[:, 1], box_preds[:, 0]) +
+    #                         box_preds[:, 6])
+    #     sample.meta.update(meta)
+
+    #     return sample
+
+    def _parse_results_to_sample(self, results, batch_dict):
+        num = len(results)
         sample_list = []
-        for i, result in enumerate(result_list):
-            sample = self._parse_single_result_to_sample(
-                result, batch_dict["path"][i], batch_dict["calibs"][i],
-                batch_dict["meta"][i])
+        for i in range(num):
+            result = results[i]
+            path = batch_dict["path"][i]
+            if (result["pred_labels"] == -1).any():
+                sample = Sample(path=path, modality="lidar")
+            else:
+                sample = Sample(path=path, modality="lidar")
+                box_preds = result["pred_boxes"]
+                if isinstance(box_preds, paddle.Tensor):
+                    box_preds = box_preds.numpy()
+                # convert box format to kitti, only for kitti eval
+                box_preds = box_utils.boxes3d_lidar_to_kitti_lidar(box_preds)
+                cls_labels = result["pred_labels"]
+                cls_scores = result["pred_scores"]
+                sample.bboxes_3d = BBoxes3D(
+                    box_preds,
+                    origin=[0.5, 0.5, 0],
+                    coordmode="Lidar",
+                    rot_axis=2)
+                sample.labels = cls_labels.numpy()
+                sample.confidences = cls_scores.numpy()
+                sample.alpha = (-np.arctan2(-box_preds[:, 1], box_preds[:, 0]) +
+                                box_preds[:, 6])
+                if ("calibs" in batch_dict) and (batch_dict["calibs"] is
+                                                 not None):
+                    sample.calibs = [
+                        calib.numpy() for calib in batch_dict["calibs"][i]
+                    ]
+            if ("meta" in batch_dict) and (batch_dict["meta"] is not None):
+                sample.meta.update(batch_dict["meta"][i])
             sample_list.append(sample)
+
         return sample_list
-
-    def _parse_single_result_to_sample(self, result, path, calibs, meta):
-        if (result["pred_labels"] == -1).any():
-            sample = Sample(path=path, modality="lidar")
-        else:
-            sample = Sample(path=path, modality="lidar")
-            sample.calibs = [calib.numpy() for calib in calibs]
-            box_preds = result["pred_boxes"]
-            if isinstance(box_preds, paddle.Tensor):
-                box_preds = box_preds.numpy()
-            # convert box format from [x, y, z, l, w, h, heading] to [x, y, z, w, l, h, yaw]
-            # where heading = -(yaw + pi/2)
-            box_preds[:, 3:6] = box_preds[:, [4, 3, 5]]
-            box_preds[:, 6] = -box_preds[:, 6] - np.pi / 2
-            cls_labels = result["pred_labels"]
-            cls_scores = result["pred_scores"]
-            sample.bboxes_3d = BBoxes3D(
-                box_preds,
-                origin=[0.5, 0.5, 0.5],
-                coordmode="Lidar",
-                rot_axis=2)
-            sample.labels = cls_labels.numpy()
-            sample.confidences = cls_scores.numpy()
-            sample.alpha = (-np.arctan2(-box_preds[:, 1], box_preds[:, 0]) +
-                            box_preds[:, 6])
-        sample.meta.update(meta)
-
-        return sample
 
     def export(self, save_dir, **kwargs):
         self.export_model = True

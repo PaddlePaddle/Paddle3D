@@ -100,9 +100,15 @@ class IASSD_Backbone(nn.Layer):
         self.num_point_features = channel_out
 
     def forward(self, batch_dict):
-        batch_size = batch_dict["data"].shape[0] // 16384
-        batch_dict['batch_size'] = batch_size
         points = batch_dict["data"]
+        batch_size = batch_dict["batch_size"]
+
+        # for export only
+        if not self.training:
+            num_points = batch_dict["num_points"]
+            batch_size_tensor = points.shape[0] // num_points
+            assert batch_size_tensor == batch_size
+            batch_dict["batch_size"] = batch_size_tensor
 
         batch_idx, xyz, features = self.break_up_pc(points)
         xyz = xyz.reshape([batch_size, -1, 3])
@@ -116,6 +122,7 @@ class IASSD_Backbone(nn.Layer):
                           axis=-1)
         ]
 
+        # yapf: disable
         li_cls_pred = None
         var_dict = dict()
         for i in range(len(self.SA_modules)):
@@ -123,8 +130,7 @@ class IASSD_Backbone(nn.Layer):
             feature_input = encoder_features[self.layer_input[i]]
 
             if self.layer_types[i] == "SA_Layer":
-                ctr_xyz = (encoder_xyz[self.ctr_idx_list[i]]
-                           if self.ctr_idx_list[i] != -1 else None)
+                ctr_xyz = (encoder_xyz[self.ctr_idx_list[i]] if self.ctr_idx_list[i] != -1 else None)
                 li_xyz, li_features, li_cls_pred = self.SA_modules[i](
                     xyz_input, feature_input, li_cls_pred, ctr_xyz=ctr_xyz)
 
@@ -137,46 +143,40 @@ class IASSD_Backbone(nn.Layer):
                 var_dict["centers"] = centers
                 var_dict["centers_origin"] = centers_origin
 
-                center_origin_batch_idx = batch_idx.reshape(
-                    [batch_size, -1])[:, :centers_origin.shape[1]]
+                center_origin_batch_idx = batch_idx.reshape([batch_size, -1])[:, :centers_origin.shape[1]]
                 encoder_coords.append(
                     paddle.concat(
                         [
-                            center_origin_batch_idx[..., None].astype(
-                                "float32"),
-                            centers_origin.reshape([batch_size, -1, 3]),
+                            center_origin_batch_idx[..., None].astype("float32"),
+                            centers_origin.reshape([batch_size, -1, 3])
                         ],
-                        axis=-1,
+                        axis=-1
                     ))
             encoder_xyz.append(li_xyz)
-            li_batch_idx = batch_idx.reshape([batch_size,
-                                              -1])[:, :li_xyz.shape[1]]
+            li_batch_idx = batch_idx.reshape([batch_size, -1])[:, :li_xyz.shape[1]]
             encoder_coords.append(
                 paddle.concat(
                     [
                         li_batch_idx[..., None].astype("float32"),
-                        li_xyz.reshape([batch_size, -1, 3]),
+                        li_xyz.reshape([batch_size, -1, 3])
                     ],
-                    axis=-1,
+                    axis=-1
                 ))
             encoder_features.append(li_features)
             if li_cls_pred is not None:
-                li_cls_batch_idx = batch_idx.reshape(
-                    [batch_size, -1])[:, :li_cls_pred.shape[1]]
+                li_cls_batch_idx = batch_idx.reshape([batch_size, -1])[:, :li_cls_pred.shape[1]]
                 sa_ins_preds.append(
                     paddle.concat(
                         [
                             li_cls_batch_idx[..., None].astype("float32"),
-                            li_cls_pred.reshape(
-                                [batch_size, -1, li_cls_pred.shape[-1]]),
+                            li_cls_pred.reshape([batch_size, -1, li_cls_pred.shape[-1]])
                         ],
-                        axis=-1,
+                        axis=-1
                     ))
             else:
                 sa_ins_preds.append([])
 
-        ctr_batch_idx = batch_idx.reshape([batch_size,
-                                           -1])[:, :encoder_xyz[-1].shape[1]]
+        ctr_batch_idx = batch_idx.reshape([batch_size, -1])[:, :encoder_xyz[-1].shape[1]]
         ctr_batch_idx = ctr_batch_idx.reshape([-1])
 
         batch_dict["ctr_offsets"] = paddle.concat(
@@ -184,7 +184,7 @@ class IASSD_Backbone(nn.Layer):
                 ctr_batch_idx[:, None].astype("float32"),
                 var_dict["ctr_offsets"].reshape([-1, 3])
             ],
-            axis=1,
+            axis=1
         )
 
         batch_dict["centers"] = paddle.concat(
@@ -192,7 +192,7 @@ class IASSD_Backbone(nn.Layer):
                 ctr_batch_idx[:, None].astype("float32"),
                 var_dict["centers"].reshape([-1, 3])
             ],
-            axis=1,
+            axis=1
         )
 
         batch_dict["centers_origin"] = paddle.concat(
@@ -200,8 +200,9 @@ class IASSD_Backbone(nn.Layer):
                 ctr_batch_idx[:, None].astype("float32"),
                 var_dict["centers_origin"].reshape([-1, 3])
             ],
-            axis=1,
+            axis=1
         )
+        # yapf: enable
 
         center_features = (encoder_features[-1].transpose([0, 2, 1]).reshape(
             [-1, encoder_features[-1].shape[1]]))

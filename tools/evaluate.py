@@ -54,6 +54,10 @@ def parse_args():
     return parser.parse_args()
 
 
+def worker_init_fn(worker_id):
+    np.random.seed(1024)
+
+
 def main(args):
     """
     """
@@ -64,6 +68,7 @@ def main(args):
         raise RuntimeError("Config file `{}` does not exist!".format(args.cfg))
 
     cfg = Config(path=args.cfg, batch_size=args.batch_size)
+    cfg.dic.pop("train_dataset")
 
     if cfg.val_dataset is None:
         raise RuntimeError(
@@ -79,7 +84,8 @@ def main(args):
     dic.update({
         'dataloader_fn': {
             'batch_size': batch_size,
-            'num_workers': args.num_workers
+            'num_workers': args.num_workers,
+            'worker_init_fn': worker_init_fn
         }
     })
 

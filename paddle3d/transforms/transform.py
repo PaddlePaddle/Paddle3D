@@ -15,17 +15,20 @@
 from typing import Any, List, Tuple, Union
 
 import numpy as np
+import paddle
 
 from paddle3d.apis import manager
 from paddle3d.geometries.bbox import points_in_convex_polygon_3d_jit
+from paddle3d.ops import voxelize
 from paddle3d.sample import Sample
 from paddle3d.transforms import functional as F
 from paddle3d.transforms.base import TransformABC
 from paddle3d.transforms.functional import points_to_voxel
+from paddle3d.utils import box_utils
 
 __all__ = [
     "RandomHorizontalFlip", "RandomVerticalFlip", "GlobalRotate", "GlobalScale",
-    "GlobalTranslate", "ShufflePoint", "SamplePoint",
+    "GlobalTranslate", "ShufflePoint", "SamplePoint", "SamplePointByVoxels",
     "FilterPointsOutsideRange", "FilterBBoxOutsideRange", "HardVoxelize",
     "RandomObjectPerturb", "ConvertBoxFormat"
 ]
@@ -200,23 +203,18 @@ class ShufflePoint(TransformABC):
 @manager.TRANSFORMS.add_component
 class ConvertBoxFormat(TransformABC):
     def __call__(self, sample: Sample):
-        # convert to [x,y,z,l,w,h,heading], original is [x,y,z,w,l,h,yaw]
-        gt_boxes = sample.bboxes_3d
-        gt_boxes[:, 2] += gt_boxes[:, 5] / 2
-        gt_boxes[:, 3:6] = gt_boxes[:, [4, 3, 5]]
-        gt_boxes[:, 6] = -(gt_boxes[:, 6] + np.pi / 2)
+        # convert boxes from [x,y,z,w,l,h,yaw] to [x,y,z,l,w,h,heading], bottom_center -> obj_center
+        bboxes_3d = box_utils.boxes3d_kitti_lidar_to_lidar(sample.bboxes_3d)
 
         # limit heading
-        period = 2 * np.pi
-        offset = 0.5
-        gt_boxes[:, 6] = gt_boxes[:, 6] - np.floor(gt_boxes[:, 6] / period +
-                                                   offset) * period
+        bboxes_3d[:, -1] = box_utils.limit_period(
+            bboxes_3d[:, -1], offset=0.5, period=2 * np.pi)
 
-        # stack labels into gt_boxes. Notice: label start from 1, not 0.
+        # stack labels into gt_boxes, label starts from 1, instead of 0.
         labels = sample.labels + 1
-        gt_boxes = np.concatenate(
-            [gt_boxes, labels.reshape(-1, 1).astype(np.float32)], axis=-1)
-        sample.bboxes_3d = gt_boxes
+        bboxes_3d = np.concatenate(
+            [bboxes_3d, labels.reshape(-1, 1).astype(np.float32)], axis=-1)
+        sample.bboxes_3d = bboxes_3d
         sample.pop('labels', None)
 
         return sample
@@ -260,6 +258,95 @@ class SamplePoint(TransformABC):
         sample.data = sample.data[choice]
 
         return sample
+
+
+@manager.TRANSFORMS.add_component
+class SamplePointByVoxels(TransformABC):
+    def __init__(self, voxel_size, max_points_per_voxel, max_num_of_voxels,
+                 num_points, point_cloud_range):
+        self.voxel_size = voxel_size
+        self.max_points_per_voxel = max_points_per_voxel
+        self.max_num_of_voxels = max_num_of_voxels
+        self.num_points = num_points
+        self.point_cloud_range = point_cloud_range
+
+    def sample_point(self, sample):
+        if self.num_points == -1:
+            return sample
+
+        points = sample.data
+        if self.num_points < len(points):
+            pts_depth = np.linalg.norm(points[:, 0:3], axis=1)
+            pts_near_flag = pts_depth < 40.0
+            far_idxs_choice = np.where(pts_near_flag == 0)[0]
+            near_idxs = np.where(pts_near_flag == 1)[0]
+            choice = []
+            if self.num_points > len(far_idxs_choice):
+                near_idxs_choice = np.random.choice(
+                    near_idxs,
+                    self.num_points - len(far_idxs_choice),
+                    replace=False)
+                choice = np.concatenate((near_idxs_choice, far_idxs_choice), axis=0) \
+                    if len(far_idxs_choice) > 0 else near_idxs_choice
+            else:
+                choice = np.arange(0, len(points), dtype=np.int32)
+                choice = np.random.choice(
+                    choice, self.num_points, replace=False)
+            np.random.shuffle(choice)
+        else:
+            choice = np.arange(0, len(points), dtype=np.int32)
+            if self.num_points > len(points):
+                extra_choice = np.random.choice(choice,
+                                                self.num_points - len(points))
+                choice = np.concatenate((choice, extra_choice), axis=0)
+            np.random.shuffle(choice)
+        sample.data = sample.data[choice]
+
+        return sample
+
+    def transform_points_to_voxels(self, sample):
+        points = sample.data
+        points = paddle.to_tensor(points)
+        voxels, coordinates, num_points, voxels_num = voxelize.hard_voxelize(
+            points, self.voxel_size, self.point_cloud_range,
+            self.max_points_per_voxel, self.max_num_of_voxels)
+        voxels = voxels[:voxels_num, :, :].numpy()
+        coordinates = coordinates[:voxels_num, :].numpy()
+        num_points = num_points[:voxels_num, :].numpy()
+
+        sample['voxels'] = voxels
+        sample['voxel_coords'] = coordinates
+        sample['voxel_num_points'] = num_points
+
+        return sample
+
+    def sample_points_by_voxels(self, sample):
+        if self.num_points == -1:  # dynamic voxelization !
+            return sample
+
+        # voxelization
+        sample = self.transform_points_to_voxels(sample)
+        # if config.get('SAMPLE_TYPE', 'raw') == 'mean_vfe':
+        #     voxels = sample['voxels']
+        #     voxel_num_points = sample['voxel_num_points']
+        #     a = voxels.sum(axis=1)
+        #     b = np.expand_dims(voxel_num_points, axis=1).repeat(voxels.shape[-1], axis=-1)
+        #     points = a / b
+
+        # else: # defalt: 'raw'
+        points = sample['voxels'][:, 0]  # remain only one point per voxel
+
+        sample.data = points
+        # sampling
+        sample = self.sample_point(sample)
+        sample.pop('voxels')
+        sample.pop('voxel_coords')
+        sample.pop('voxel_num_points')
+
+        return sample
+
+    def __call__(self, sample):
+        return self.sample_points_by_voxels(sample)
 
 
 @manager.TRANSFORMS.add_component

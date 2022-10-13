@@ -1,30 +1,27 @@
-batch_size: 8 # on 4 gpus, total bs = 32
-epochs: 80
+batch_size: 2  #on 4 gpus, total bs = 8
+epochs: 30
 
 train_dataset:
-  type: KittiPCDataset
-  dataset_root: datasets/KITTI
-  class_names: [ "Car", "Pedestrian", "Cyclist"]
-  use_road_plane: True
+  type: WaymoPCDataset
+  dataset_root: datasets/waymo
+  class_names: [ "Vehicle", "Pedestrian", "Cyclist" ]
+  sampled_interval: 5
   transforms:
-    - type: LoadPointCloud
-      dim: 4
-      use_dim: 4
-    - type: RemoveCameraInvisiblePointsKITTIV2
     - type: SamplingDatabase
       min_num_points_in_box_per_class:
-        Car: 5
+        Vehicle: 5
         Pedestrian: 5
         Cyclist: 5
       max_num_samples_per_class:
-        Car: 20
-        Pedestrian: 15
-        Cyclist: 15
+        Vehicle: 15
+        Pedestrian: 10
+        Cyclist: 10
       ignored_difficulty: [ -1 ]
-      database_anno_path: datasets/KITTI/kitti_train_gt_database/anno_info_train.pkl
-      database_root: datasets/KITTI
-      class_names: [ "Car", "Pedestrian", "Cyclist" ]
+      database_anno_path: datasets/waymo/waymo_train_gt_database/waymo_train_gt_database_infos.pkl
+      database_root: datasets/waymo
+      class_names: [ "Vehicle", "Pedestrian", "Cyclist" ]
     - type: RandomVerticalFlip
+    # - type: RandomHorizontalFlip
     - type: GlobalRotate
       min_rot: -0.78539816
       max_rot: 0.78539816
@@ -32,28 +29,33 @@ train_dataset:
       min_scale: 0.95
       max_scale: 1.05
     - type: FilterBBoxOutsideRange
-      point_cloud_range: &point_cloud_range [ 0, -40, -3, 70.4, 40, 1 ]
+      point_cloud_range: &point_cloud_range [-75.2, -75.2, -2, 75.2, 75.2, 4]
     - type: FilterPointsOutsideRange
       point_cloud_range: *point_cloud_range
-    - type: SamplePoint
-      num_points: 16384
     - type: ShufflePoint
+    - type: SamplePointByVoxels
+      voxel_size: [0.1, 0.1, 0.15]
+      max_points_per_voxel: 5
+      max_num_of_voxels: 80000
+      num_points: 65536
+      point_cloud_range: *point_cloud_range
     - type: ConvertBoxFormat
   mode: train
 
 val_dataset:
-  type: KittiPCDataset
-  dataset_root: datasets/KITTI
-  class_names: [ "Car", "Pedestrian", "Cyclist"]
+  type: WaymoPCDataset
+  dataset_root: datasets/waymo
+  class_names: [ "Vehicle", "Pedestrian", "Cyclist" ]
+  sampled_interval: 1
   transforms:
-    - type: LoadPointCloud
-      dim: 4
-      use_dim: 4
-    - type: RemoveCameraInvisiblePointsKITTIV2
     - type: FilterPointsOutsideRange
       point_cloud_range: *point_cloud_range
-    - type: SamplePoint
-      num_points: 16384
+    - type: SamplePointByVoxels
+      voxel_size: [0.1, 0.1, 0.15]
+      max_points_per_voxel: 5
+      max_num_of_voxels: 90000
+      num_points: 65536
+      point_cloud_range: *point_cloud_range
   mode: val
 
 model:
@@ -61,7 +63,7 @@ model:
 
   backbone:
     type: IASSD_Backbone
-    npoint_list: [4096, 1024, 512, 256, null, 256]
+    npoint_list: [16384, 4096, 2048, 1024, null, 1024]
     sample_method_list: &sample_method_list ["D-FPS", "D-FPS", "ctr_aware", "ctr_aware", null, null]
     radius_list: [[0.2,0.8], [0.8,1.6], [1.6,4.8], [], [], [4.8, 6.4]]
     nsample_list: [[16,32], [16,32], [16,32], [], [], [16, 32]]
@@ -78,12 +80,12 @@ model:
     layer_input: [0, 1, 2, 3, 4, 3]
     ctr_index: [-1, -1, -1, -1, -1, 5]
     max_translate_range: [3., 3., 2.]
-    input_channel: 4
+    input_channel: 5
     num_classes: 3
 
   head:
     type: IASSD_Head
-    input_channel: 512
+    input_channel: 512  #last aggregation mlp
     cls_fc: [256, 256]
     reg_fc: [256, 256]
     num_classes: 3
@@ -95,9 +97,9 @@ model:
         'angle_bin_num': 12,
         'use_mean_size': True,
         'mean_size': [
-            [3.9, 1.6, 1.56],
-            [0.8, 0.6, 1.73],
-            [1.76, 0.6, 1.73]
+          [4.7, 2.1, 1.7],
+          [0.91, 0.86, 1.73],
+          [1.78, 0.84, 1.78]
         ]
       }
 
@@ -122,7 +124,7 @@ model:
   post_process_cfg:
     score_thresh: 0.1
     nms_config:
-      nms_thresh: 0.01
+      nms_thresh: 0.1
       nms_pre_maxsize: 4096
       nms_post_maxsize: 500
 
@@ -136,7 +138,7 @@ optimizer:
 
 lr_scheduler:
   type: OneCycle
-  total_step: 9280 # total iters
+  total_step: 79050  #total iters
   lr_max: 0.01
   moms: [0.95, 0.85]
   div_factor: 10
