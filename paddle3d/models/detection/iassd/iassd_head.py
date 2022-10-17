@@ -1,3 +1,17 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
@@ -10,10 +24,21 @@ from .iassd_loss import (WeightedClassificationLoss, WeightedSmoothL1Loss,
 from .iassd_modules import pointnet2_ops
 from .iassd_utils import enlarge_box3d, rotate_points_along_z
 
+__all__ = ["IASSD_Head"]
+
 
 @manager.HEADS.add_component
 class IASSD_Head(nn.Layer):
-    """Head of IA-SSD"""
+    """Head of IA-SSD
+
+    Args:
+        input_channle (int): input feature channel of IA-SSD Head.
+        cls_fc (List[int]): hidden dim of box classification branch.
+        reg_fc (List[int]): hidden dim of box regression branch.
+        num_classes (int): number of classes.
+        target_config (dict): config of box coder to encode boxes.
+        loss_config (dict): config of loss computation.
+    """
 
     def __init__(self, input_channel, cls_fc, reg_fc, num_classes,
                  target_config, loss_config):
@@ -93,9 +118,6 @@ class IASSD_Head(nn.Layer):
 
         point_loss = (center_loss_reg + center_loss_cls + center_loss_box +
                       corner_loss + sa_loss_cls)
-        if point_loss > 50:
-            paddle.save(self.forward_ret_dict,
-                        "/workspace/temp/ret_dict.pdparams")
         return point_loss
 
     def get_contextual_vote_loss(self):
@@ -358,7 +380,6 @@ class IASSD_Head(nn.Layer):
         Returns:
             point_cls_labels: (N1 + N2 + N3 + ...), long type, 0:background, -1:ignored
             point_box_labels: (N1 + N2 + N3 + ..., code_size)
-
         """
         assert len(
             points.shape
@@ -590,7 +611,6 @@ class IASSD_Head(nn.Layer):
         Returns:
             point_cls_preds: (N, num_class)
             point_box_preds: (N, box_code_size)
-
         """
         pred_classes = point_cls_preds.argmax(axis=-1)
         point_box_preds = self.box_coder.decode_paddle(point_box_preds, points,

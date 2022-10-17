@@ -1,3 +1,17 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 import paddle
 import paddle.nn as nn
@@ -6,10 +20,29 @@ from paddle3d.apis import manager
 
 from .iassd_modules import SAModuleMSG_WithSampling, Vote_layer
 
+__all__ = ["IASSD_Backbone"]
+
 
 @manager.BACKBONES.add_component
 class IASSD_Backbone(nn.Layer):
-    """Backbone of IA-SSD"""
+    """Backbone of IA-SSD
+
+    Args:
+        npoint_list (List[int]): num of sampled points in each layer.
+        sample_method_list (List[str]): sample method in each layer.
+        radius_list (List[List[float]]): radius params in multi-scale SA layer.
+        nsample_list (List[List[int]]): num of sampled points in multi-scale SA layer.
+        mlps (List[List[int]]): hidden dim of mlps in SA layer.
+        layer_types (List[str]): type of layer, SA or Vote layer in IA-SSD.
+        dilated_group (List[bool]): not implemented, set to False in default.
+        aggregation_mlps (List[List[int]]): hidden dim of aggregation mlps, used to aggregate the outputs of multi-scale SA layer.
+        confidence_mlps (List[List[int]]): hidden dim of confidence mlps, used to predict classes of each point.
+        layer_input (List[int]): index of layer input, determine which layer's outputs feeded in current layer.
+        ctr_index (List[int]): index of centroid, determine which layer's outpus used in centroid prediction.
+        max_translate_range (List[float]): limit the max range of predicted offset in Vote layer.
+        input_channle (int): input pointcloud feature dim.
+        num_classes (int): number of classes.
+    """
 
     def __init__(
             self,
@@ -100,10 +133,19 @@ class IASSD_Backbone(nn.Layer):
         self.num_point_features = channel_out
 
     def forward(self, batch_dict):
+        """
+        Args:
+            batch_dict: input dict of batched point data and box annos.
+                data: (num_points * B, 3 + C), input point cloud, C is feature dim.
+                batch_size: B.
+                num_points: number of points in single point cloud
+        Return:
+            batch_dict: add new fileds int to input batch_dict
+        """
         points = batch_dict["data"]
         batch_size = batch_dict["batch_size"]
 
-        # for export only
+        # for export
         if not self.training:
             num_points = batch_dict["num_points"]
             batch_size_tensor = points.shape[0] // num_points
@@ -216,6 +258,14 @@ class IASSD_Backbone(nn.Layer):
         return batch_dict
 
     def break_up_pc(self, pc):
+        """break up point cloud into xyz + point_feature
+        Args:
+            pc: (num_points * B, C)
+        Return:
+            batch_idx: (num_points * B, 1), batch index of input data
+            xyz: (num_points * B, 3), coordinates of points
+            features: (num_points * B, C), features of points
+        """
         batch_idx = pc[:, 0]  # (B*N, 1)
         xyz = pc[:, 1:4]  # (B*N, 3)
         features = pc[:, 4:] if pc.shape[

@@ -1,3 +1,17 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 from typing import List
 
@@ -6,6 +20,8 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 
 from paddle3d.ops import pointnet2_ops
+
+__all__ = ["SAModuleMSG_WithSampling", "Vote_layer"]
 
 
 class QueryAndGroup(nn.Layer):
@@ -272,21 +288,3 @@ class Vote_layer(nn.Layer):
             vote_xyz = xyz + ctr_offsets
 
         return vote_xyz, new_features, xyz, ctr_offsets
-
-
-if __name__ == '__main__':
-    module = SAModuleMSG_WithSampling(
-        npoint=4096,
-        sample_range=-1,
-        sample_type='D-FPS',
-        radii=[0.6, 0.8],
-        nsamples=[16, 32],
-        mlps=[[1, 16, 16, 32], [1, 32, 32, 64]],
-        use_xyz=True,
-        dilated_group=False,
-        aggregation_mlp=[64],
-        confidence_mlp=[128],
-        num_classes=3)
-    module = Vote_layer(
-        mlp_list=[128], pre_channel=256, max_translate_range=[3., 3., 2.])
-    print(module)

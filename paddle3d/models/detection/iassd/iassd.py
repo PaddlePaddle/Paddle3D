@@ -1,6 +1,19 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 from collections import defaultdict
-from collections.abc import Mapping, Sequence
 from typing import List
 
 import numpy as np
@@ -13,14 +26,22 @@ from paddle3d.apis import manager
 from paddle3d.geometries import BBoxes3D, CoordMode
 from paddle3d.models.layers import constant_init, reset_parameters
 from paddle3d.ops import iou3d_nms_cuda
-from paddle3d.sample import Sample, SampleMeta
+from paddle3d.sample import Sample
 from paddle3d.utils import box_utils
 from paddle3d.utils.logger import logger
+
+__all = ["IASSD"]
 
 
 @manager.MODELS.add_component
 class IASSD(nn.Layer):
-    """Model of IA-SSD"""
+    """Model of IA-SSD
+
+    Args:
+        backbone (nn.Layer): instantiated class of backbone.
+        head (nn.Layer): instantiated class of head.
+        post_process_cfg (dict): config of nms post-process.
+    """
 
     def __init__(self, backbone, head, post_process_cfg):
         super().__init__()
@@ -37,7 +58,7 @@ class IASSD(nn.Layer):
                 data: (B * N, C)  # C = [batch_id, x, y, z, intensity, ...]
                 bboxes_3d: (B, num_gt, 8) # [x, y, z, l, w, h, heading, label]
         Returns:
-
+            ...
         """
         batch_dict = self.backbone(batch_dict)
         batch_dict = self.head(batch_dict)
@@ -50,8 +71,6 @@ class IASSD(nn.Layer):
                 return self.post_process(batch_dict)
             else:
                 result_list = self.post_process(batch_dict)
-                # sample_list = self._parse_batch_result_to_sample(
-                #     result_list, batch_dict)
                 sample_list = self._parse_results_to_sample(
                     result_list, batch_dict)
                 return {"preds": sample_list}
@@ -187,43 +206,6 @@ class IASSD(nn.Layer):
                 selected_box = paddle.gather(box_preds, index=selected)
                 selected_label = paddle.gather(label_preds, index=selected)
                 return selected_score, selected_label, selected_box
-
-    # def _parse_batch_result_to_sample(self, result_list, batch_dict):
-    #     sample_list = []
-    #     for i, result in enumerate(result_list):
-    #         sample = self._parse_single_result_to_sample(
-    #             result, batch_dict["path"][i], batch_dict["calibs"][i],
-    #             batch_dict["meta"][i])
-    #         sample_list.append(sample)
-    #     return sample_list
-
-    # def _parse_single_result_to_sample(self, result, path, calibs, meta):
-    #     if (result["pred_labels"] == -1).any():
-    #         sample = Sample(path=path, modality="lidar")
-    #     else:
-    #         sample = Sample(path=path, modality="lidar")
-    #         sample.calibs = [calib.numpy() for calib in calibs]
-    #         box_preds = result["pred_boxes"]
-    #         if isinstance(box_preds, paddle.Tensor):
-    #             box_preds = box_preds.numpy()
-    #         # convert box format from [x, y, z, l, w, h, heading] to [x, y, z, w, l, h, yaw]
-    #         # where heading = -(yaw + pi/2)
-    #         box_preds[:, 3:6] = box_preds[:, [4, 3, 5]]
-    #         box_preds[:, 6] = -box_preds[:, 6] - np.pi / 2
-    #         cls_labels = result["pred_labels"]
-    #         cls_scores = result["pred_scores"]
-    #         sample.bboxes_3d = BBoxes3D(
-    #             box_preds,
-    #             origin=[0.5, 0.5, 0.5],
-    #             coordmode="Lidar",
-    #             rot_axis=2)
-    #         sample.labels = cls_labels.numpy()
-    #         sample.confidences = cls_scores.numpy()
-    #         sample.alpha = (-np.arctan2(-box_preds[:, 1], box_preds[:, 0]) +
-    #                         box_preds[:, 6])
-    #     sample.meta.update(meta)
-
-    #     return sample
 
     def _parse_results_to_sample(self, results, batch_dict):
         num = len(results)

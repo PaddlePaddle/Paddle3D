@@ -1,4 +1,4 @@
-batch_size: 8 # on 4 gpus, total bs = 32
+batch_size: 8  #on 4 gpus, total bs = 32
 epochs: 80
 
 train_dataset:
@@ -136,7 +136,7 @@ optimizer:
 
 lr_scheduler:
   type: OneCycle
-  total_step: 9280 # total iters
+  total_step: 9280  #change to your correspondent total iter
   lr_max: 0.01
   moms: [0.95, 0.85]
   div_factor: 10

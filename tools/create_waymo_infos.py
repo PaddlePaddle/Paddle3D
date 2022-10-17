@@ -1,3 +1,17 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import multiprocessing
 import os
 import pickle
@@ -8,10 +22,8 @@ import numpy as np
 from tqdm import tqdm
 
 from paddle3d.datasets.waymo import WaymoPCDataset
-from paddle3d.geometries import BBoxes3D, PointCloud
+from paddle3d.geometries import BBoxes3D
 from paddle3d.geometries.bbox import get_mask_of_points_in_bboxes3d
-from paddle3d.sample import Sample
-from paddle3d.utils import box_utils
 from paddle3d.utils.logger import logger
 
 
@@ -121,7 +133,7 @@ def get_infos(raw_data_path,
 
     from functools import partial
 
-    from . import waymo_utils
+    from paddle3d.datasets.waymo import waymo_utils
     logger.info(
         "---------------The waymo sample interval is %d, total sequecnes is %d-----------------"
         % (sampled_interval, len(sample_sequence_list)))
@@ -158,44 +170,43 @@ def create_waymo_infos(dataset_root,
     os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
     logger.info("---------------Start to generate data infos---------------")
 
-    # dataset = WaymoPCDataset(
-    #     dataset_root=dataset_root,
-    #     sampled_interval=1,
-    #     mode="train",
-    #     class_names=class_names,
-    #     processed_data_tag=processed_data_tag
-    # )
-    # waymo_infos_train = get_infos(
-    #     raw_data_path=os.path.join(dataset_root, raw_data_tag),
-    #     save_path=os.path.join(save_path, processed_data_tag),
-    #     sample_sequence_list=dataset.sample_sequence_list,
-    #     num_workers=num_workers,
-    #     sampled_interval=1  # save all infos
-    # )
+    dataset = WaymoPCDataset(
+        dataset_root=dataset_root,
+        sampled_interval=1,
+        mode="train",
+        class_names=class_names,
+        processed_data_tag=processed_data_tag)
+    waymo_infos_train = get_infos(
+        raw_data_path=os.path.join(dataset_root, raw_data_tag),
+        save_path=os.path.join(save_path, processed_data_tag),
+        sample_sequence_list=dataset.sample_sequence_list,
+        num_workers=num_workers,
+        sampled_interval=1  # save all infos
+    )
     logger.info("----------------Waymo train info is saved-----------------")
 
-    # dataset = WaymoPCDataset(
-    #     dataset_root=dataset_root,
-    #     sampled_interval=1,
-    #     mode="val",
-    #     class_names=class_names,
-    #     processed_data_tag=processed_data_tag
-    # )
-    # waymo_infos_val = get_infos(
-    #     raw_data_path=os.path.join(dataset_root, raw_data_tag),
-    #     save_path=os.path.join(save_path, processed_data_tag),
-    #     sample_sequence_list=dataset.sample_sequence_list,
-    #     num_workers=num_workers,
-    #     sampled_interval=1  # save all infos
-    # )
+    dataset = WaymoPCDataset(
+        dataset_root=dataset_root,
+        sampled_interval=1,
+        mode="val",
+        class_names=class_names,
+        processed_data_tag=processed_data_tag)
+    waymo_infos_val = get_infos(
+        raw_data_path=os.path.join(dataset_root, raw_data_tag),
+        save_path=os.path.join(save_path, processed_data_tag),
+        sample_sequence_list=dataset.sample_sequence_list,
+        num_workers=num_workers,
+        sampled_interval=1  # save all infos
+    )
     logger.info("----------------Waymo val info is saved-----------------")
 
     logger.info("-------------------Create gt database-------------------")
+
     create_waymo_gt_database(
         dataset_root=dataset_root,
         class_names=class_names,
         save_path=save_path,
-        sampled_interval=1,
+        sampled_interval=1,  # sampling all gt
         use_point_dim=5)
     logger.info("-------------------Create gt database done-------------------")
 
@@ -203,7 +214,7 @@ def create_waymo_infos(dataset_root,
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="arg parser")
+    parser = argparse.ArgumentParser(description="Create infos and gt database")
     parser.add_argument(
         "--processed_data_tag",
         type=str,

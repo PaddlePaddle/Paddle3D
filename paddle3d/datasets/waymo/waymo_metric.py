@@ -1,3 +1,17 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from typing import List
 
 import numpy as np
@@ -14,6 +28,12 @@ tf.get_logger().setLevel('INFO')
 
 
 class WaymoMetric(tf.test.TestCase):
+    """
+    AP/APH metric evaluation of Waymo Dataset.
+    This code is beased on:
+        <https://github.com/yifanzhang713/IA-SSD/blob/main/pcdet/datasets/waymo/waymo_eval.py>
+    """
+
     WAYMO_CLASSES = ['unknown', 'Vehicle', 'Pedestrian', 'Sign', 'Cyclist']
 
     def __init__(self, gt_infos, class_names, distance_thresh):
@@ -206,8 +226,6 @@ class WaymoMetric(tf.test.TestCase):
         assert len(prediction_infos) == len(self.gt_infos)
 
         tf.compat.v1.disable_eager_execution()
-        import pdb
-        pdb.set_trace()
         # set is_kitti=True, because iassd's outputs is in kitti format
         pd_frameid, pd_boxes3d, pd_type, pd_score, pd_overlap_nlz, _ = self.parse_infos_to_eval_format(
             prediction_infos, self.class_names, is_gt=False, is_kitti=True)

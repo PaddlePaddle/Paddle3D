@@ -1,4 +1,4 @@
-batch_size: 2  #on 4 gpus, total bs = 8
+batch_size: 4  #on 4 gpus, total bs = 16
 epochs: 30
 
 train_dataset:
@@ -21,7 +21,7 @@ train_dataset:
       database_root: datasets/waymo
       class_names: [ "Vehicle", "Pedestrian", "Cyclist" ]
     - type: RandomVerticalFlip
-    # - type: RandomHorizontalFlip
+    - type: RandomHorizontalFlip
     - type: GlobalRotate
       min_rot: -0.78539816
       max_rot: 0.78539816
@@ -138,7 +138,7 @@ optimizer:
 
 lr_scheduler:
   type: OneCycle
-  total_step: 79050  #total iters
+  total_step: 59280  #change to your correspondent total iters
   lr_max: 0.01
   moms: [0.95, 0.85]
   div_factor: 10

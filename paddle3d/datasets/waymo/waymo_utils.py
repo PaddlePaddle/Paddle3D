@@ -1,3 +1,19 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This code is heavily based on: <https://github.com/yifanzhang713/IA-SSD/blob/main/pcdet/datasets/waymo/waymo_utils.py>
+
 import os
 import pickle
 
@@ -8,11 +24,6 @@ from waymo_open_dataset.utils import (frame_utils, range_image_utils,
                                       transform_utils)
 
 from paddle3d.utils.logger import logger
-
-try:
-    tf.enable_eager_execution()
-except:
-    pass
 
 WAYMO_CLASSES = ['unknown', 'Vehicle', 'Pedestrian', 'Sign', 'Cyclist']
 
@@ -74,7 +85,7 @@ def process_single_sequence(sequence_file,
         annotations = generate_labels(frame)
         info['annos'] = annotations
 
-        # parse point data
+        # parse scene point data and save it
         num_points_of_each_lidar = save_lidar_points(
             frame,
             os.path.join(cur_save_dir, ("%04d.npy" % cnt)),

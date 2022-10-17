@@ -1,3 +1,17 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 import paddle
 import paddle.nn as nn
@@ -12,7 +26,7 @@ class WeightedClassificationLoss(nn.Layer):
 
     @staticmethod
     def sigmoid_cross_entropy_with_logits(input, target):
-        """ PyTorch Implementation for tf.nn.sigmoid_cross_entropy_with_logits:
+        """ Paddle Implementation for tf.nn.sigmoid_cross_entropy_with_logits:
             max(x, 0) - x * z + log(1 + exp(-abs(x))) in
             https://www.tensorflow.org/api_docs/python/tf/nn/sigmoid_cross_entropy_with_logits
 
@@ -68,8 +82,8 @@ class WeightedClassificationLoss(nn.Layer):
 
 class WeightedSmoothL1Loss(nn.Layer):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/loss_utils.py#L80
-
+    Please refer to:
+        <https://github.com/facebookresearch/fvcore/blob/master/fvcore/nn/smooth_l1_loss.py>
                   | 0.5 * x ** 2 / beta   if abs(x) < beta
     smoothl1(x) = |
                   | abs(x) - 0.5 * beta   otherwise,
