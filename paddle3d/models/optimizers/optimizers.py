@@ -16,8 +16,6 @@
 from collections import defaultdict
 
 import paddle
-from paddle.fluid import framework
-from paddle.fluid.framework import Variable
 from paddle.optimizer import Adam, AdamW
 
 from paddle3d.apis import manager
