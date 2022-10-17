@@ -22,7 +22,6 @@ import paddle
 
 import paddle3d.transforms as T
 from paddle3d.datasets import BaseDataset
-from paddle3d.datasets.waymo.waymo_metric import WaymoMetric
 from paddle3d.geometries import BBoxes2D, BBoxes3D
 from paddle3d.sample import Sample
 from paddle3d.transforms import TransformABC
@@ -127,6 +126,8 @@ class WaymoDetDataset(BaseDataset):
 
     @property
     def metric(self):
+        # lazy import to avoid tensorflow dependency in other tasks
+        from paddle3d.datasets.waymo.waymo_metric import WaymoMetric
         eval_gt_annos = [copy.deepcopy(info['annos']) for info in self.infos]
         return WaymoMetric(
             eval_gt_annos, self.class_names, distance_thresh=1000)

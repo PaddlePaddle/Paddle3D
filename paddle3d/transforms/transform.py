@@ -326,14 +326,7 @@ class SamplePointByVoxels(TransformABC):
 
         # voxelization
         sample = self.transform_points_to_voxels(sample)
-        # if config.get('SAMPLE_TYPE', 'raw') == 'mean_vfe':
-        #     voxels = sample['voxels']
-        #     voxel_num_points = sample['voxel_num_points']
-        #     a = voxels.sum(axis=1)
-        #     b = np.expand_dims(voxel_num_points, axis=1).repeat(voxels.shape[-1], axis=-1)
-        #     points = a / b
 
-        # else: # defalt: 'raw'
         points = sample['voxels'][:, 0]  # remain only one point per voxel
 
         sample.data = points
