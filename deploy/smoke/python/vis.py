@@ -15,6 +15,7 @@
 import cv2
 import numpy as np
 from infer import get_img, get_ratio, init_predictor, parse_args, run
+
 from paddle3d.datasets.kitti.kitti_utils import camera_record_to_object
 from paddle3d.transforms.target_generator import encode_label
 
