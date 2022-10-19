@@ -145,13 +145,6 @@ class IASSD_Backbone(nn.Layer):
         points = batch_dict["data"]
         batch_size = batch_dict["batch_size"]
 
-        # for export
-        if not self.training:
-            num_points = batch_dict["num_points"]
-            batch_size_tensor = points.shape[0] // num_points
-            assert batch_size_tensor == batch_size
-            batch_dict["batch_size"] = batch_size_tensor
-
         batch_idx, xyz, features = self.break_up_pc(points)
         xyz = xyz.reshape([batch_size, -1, 3])
         features = (features.reshape([

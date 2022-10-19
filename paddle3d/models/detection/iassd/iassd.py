@@ -25,7 +25,7 @@ from paddle.static import InputSpec
 from paddle3d.apis import manager
 from paddle3d.geometries import BBoxes3D, CoordMode
 from paddle3d.models.layers import constant_init, reset_parameters
-from paddle3d.ops import iou3d_nms_cuda
+from paddle3d.ops import iou3d_nms_cuda, pointnet2_ops
 from paddle3d.sample import Sample
 from paddle3d.utils import box_utils
 from paddle3d.utils.logger import logger
@@ -50,6 +50,8 @@ class IASSD(nn.Layer):
         self.post_process_cfg = post_process_cfg
         self.apply(self.init_weight)
 
+        self.export_model = False
+
     def forward(self, batch_dict):
         """
         Args:
@@ -60,6 +62,10 @@ class IASSD(nn.Layer):
         Returns:
             ...
         """
+        # for export only
+        if self.export_model:
+            batch_dict["batch_size"] = 1
+
         batch_dict = self.backbone(batch_dict)
         batch_dict = self.head(batch_dict)
 
@@ -125,7 +131,6 @@ class IASSD(nn.Layer):
                 collated_batch[key] = val
 
         collated_batch["batch_size"] = batch_size
-        collated_batch["num_points"] = batch[0]["data"].shape[0]
 
         return collated_batch
 
@@ -246,11 +251,11 @@ class IASSD(nn.Layer):
 
     def export(self, save_dir, **kwargs):
         self.export_model = True
-        save_path = os.path.join(save_dir, 'iassd')
         input_spec = [{
             "data":
-            InputSpec(shape=[16384, 5], name="data", dtype='float32')
+            InputSpec(shape=[-1, 5], name="data", dtype='float32')
         }]
+        save_path = os.path.join(save_dir, 'iassd')
 
         paddle.jit.to_static(self, input_spec=input_spec)
         paddle.jit.save(self, save_path, input_spec=input_spec)
