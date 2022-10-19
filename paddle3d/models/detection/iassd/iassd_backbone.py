@@ -74,6 +74,7 @@ class IASSD_Backbone(nn.Layer):
         self.layer_input = layer_input
         self.ctr_idx_list = ctr_index
         self.max_translate_range = max_translate_range
+        self.export_model = False
 
         channel_in = input_channel - 3
         channel_out_list = [channel_in]
@@ -142,15 +143,14 @@ class IASSD_Backbone(nn.Layer):
         Return:
             batch_dict: add new fileds int to input batch_dict
         """
-        points = batch_dict["data"]
-        batch_size = batch_dict["batch_size"]
 
-        # for export
-        if not self.training:
-            num_points = batch_dict["num_points"]
-            batch_size_tensor = points.shape[0] // num_points
-            assert batch_size_tensor == batch_size
-            batch_dict["batch_size"] = batch_size_tensor
+        points = batch_dict["data"]
+        # for export only
+        if self.export_model:
+            batch_dict["batch_size"] = 1
+            points = self.stack_batch_idx_to_points(
+                points, num_points=16384)  # 16384 for kitti
+        batch_size = batch_dict["batch_size"]
 
         batch_idx, xyz, features = self.break_up_pc(points)
         xyz = xyz.reshape([batch_size, -1, 3])
@@ -271,3 +271,8 @@ class IASSD_Backbone(nn.Layer):
         features = pc[:, 4:] if pc.shape[
             -1] > 4 else None  # (B*N, C) C=1 for intensity
         return batch_idx, xyz, features
+
+    def stack_batch_idx_to_points(self, points, num_points=16384):
+        batch_idx = paddle.zeros([num_points, 1], dtype='float32')
+        points = paddle.concat([batch_idx, points], axis=-1)
+        return points

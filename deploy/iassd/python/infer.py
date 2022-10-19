@@ -3,7 +3,7 @@ import os
 
 import numpy as np
 import paddle
-from paddle.inference import Config, create_predictor
+from paddle.inference import Config, PrecisionType, create_predictor
 
 from paddle3d.ops.iou3d_nms_cuda import nms_gpu
 from paddle3d.ops.pointnet2_ops import (ball_query, farthest_point_sample,
@@ -27,15 +27,11 @@ def parse_args():
         '--lidar_file', type=str, help='The lidar path.', required=True)
     parser.add_argument("--gpu_id", type=int, default=0, help="GPU card id.")
     parser.add_argument(
-        "--use_trt",
-        type=int,
-        default=0,
-        help="Whether to use tensorrt to accelerate when using gpu.")
-    parser.add_argument(
-        "--trt_precision",
-        type=int,
-        default=0,
-        help="Precision type of tensorrt, 0: kFloat32, 1: kHalf.")
+        "--run_mode",
+        type=str,
+        default="",
+        help="Run_mode which can be: trt_fp32, trt_fp16, trt_int8 and gpu_fp16."
+    )
     parser.add_argument(
         "--trt_use_static",
         type=int,
@@ -46,16 +42,6 @@ def parse_args():
         "--trt_static_dir",
         type=str,
         help="Path of a tensorrt graph optimization directory.")
-    parser.add_argument(
-        "--collect_shape_info",
-        type=int,
-        default=0,
-        help="Whether to collect dynamic shape before using tensorrt.")
-    parser.add_argument(
-        "--dynamic_shape_file",
-        type=str,
-        default="",
-        help="Path of a dynamic shape file for tensorrt.")
 
     return parser.parse_args()
 
@@ -79,7 +65,6 @@ def sample_point(points, num_points):
         pts_near_flag = pts_depth < 40.0
         far_idxs_choice = np.where(pts_near_flag == 0)[0]
         near_idxs = np.where(pts_near_flag == 1)[0]
-        choice = []
         if num_points > len(far_idxs_choice):
             near_idxs_choice = np.random.choice(
                 near_idxs, num_points - len(far_idxs_choice), replace=False)
@@ -103,41 +88,46 @@ def preprocess(lidar_file, num_points, point_cloud_range):
     points = read_point(lidar_file)
     points = filter_points_outside_range(points, point_cloud_range)
     points = sample_point(points, num_points)
-    # stack batch_idx into points
-    batch_idx = np.zeros((num_points, 1), dtype=np.float32)
-    points = np.concatenate([batch_idx, points], axis=-1)
     return points
 
 
 def init_predictor(model_file,
                    params_file,
                    gpu_id=0,
-                   use_trt=False,
-                   trt_precision=0,
+                   run_mode=None,
                    trt_use_static=False,
-                   trt_static_dir=None,
-                   collect_shape_info=False,
-                   dynamic_shape_file=None):
+                   trt_static_dir=None):
     config = Config(model_file, params_file)
     config.enable_memory_optim()
     config.enable_use_gpu(1000, gpu_id)
-    if use_trt:
-        precision_mode = paddle.inference.PrecisionType.Float32
-        if trt_precision == 1:
-            precision_mode = paddle.inference.PrecisionType.Half
+    if args.run_mode == "gpu_fp16":
+        config.exp_enable_use_gpu_fp16()
+    elif args.run_mode == "trt_fp32":
         config.enable_tensorrt_engine(
-            workspace_size=1 << 20,
+            workspace_size=1 << 30,
             max_batch_size=1,
-            min_subgraph_size=10,
-            precision_mode=precision_mode,
+            min_subgraph_size=15,
+            precision_mode=PrecisionType.Float32,
             use_static=trt_use_static,
             use_calib_mode=False)
-        if collect_shape_info:
-            config.collect_shape_range_info(dynamic_shape_file)
-        else:
-            config.enable_tuned_tensorrt_dynamic_shape(dynamic_shape_file, True)
-        if trt_use_static:
-            config.set_optim_cache_dir(trt_static_dir)
+    elif args.run_mode == "trt_fp16":
+        config.enable_tensorrt_engine(
+            workspace_size=1 << 30,
+            max_batch_size=1,
+            min_subgraph_size=15,
+            precision_mode=PrecisionType.Half,
+            use_static=trt_use_static,
+            use_calib_mode=False)
+    elif args.run_mode == "trt_int8":
+        config.enable_tensorrt_engine(
+            workspace_size=1 << 30,
+            max_batch_size=1,
+            min_subgraph_size=15,
+            precision_mode=PrecisionType.Int8,
+            use_static=trt_use_static,
+            use_calib_mode=True)
+    if trt_use_static:
+        config.set_optim_cache_dir(trt_static_dir)
 
     predictor = create_predictor(config)
     return predictor
@@ -171,11 +161,10 @@ def run(predictor, points):
 def main(args):
     np.random.seed(1024)
     predictor = init_predictor(args.model_file, args.params_file, args.gpu_id,
-                               args.use_trt, args.trt_precision,
-                               args.trt_use_static, args.trt_static_dir,
-                               args.collect_shape_info, args.dynamic_shape_file)
+                               args.run_mode)
     num_points = 16384
     point_cloud_range = [0, -40, -3, 70.4, 40, 1]
+
     points = preprocess(args.lidar_file, num_points, point_cloud_range)
     box3d_lidar, label_preds, scores = run(predictor, points)
     print({'boxes': box3d_lidar, 'labels': label_preds, 'scores': scores})
