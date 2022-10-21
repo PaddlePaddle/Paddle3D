@@ -21,7 +21,7 @@ from paddle3d.models.layers.layer_libs import _transpose_and_gather_feat
 
 class RegLoss(nn.Layer):
     """
-    This function refers to https://github.com/tianweiy/CenterPoint/blob/cb25e870b271fe8259e91c5d17dcd429d74abc91/det3d/models/losses/centernet_loss.py#L6
+    This code is based on https://github.com/tianweiy/CenterPoint/blob/cb25e870b271fe8259e91c5d17dcd429d74abc91/det3d/models/losses/centernet_loss.py#L6
     """
 
     def __init__(self):

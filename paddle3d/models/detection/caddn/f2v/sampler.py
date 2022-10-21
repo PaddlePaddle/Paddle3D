@@ -21,7 +21,7 @@ from paddle3d.ops import grid_sample_3d
 
 class Sampler(nn.Layer):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/models/backbones_3d/f2v/sampler.py#L6
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/models/backbones_3d/f2v/sampler.py#L6
     """
 
     def __init__(self, mode="bilinear", padding_mode="zeros"):

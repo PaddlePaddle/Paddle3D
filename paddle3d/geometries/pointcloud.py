@@ -22,12 +22,21 @@ class PointCloud(_Structure):
         if not isinstance(data, np.ndarray):
             data = np.array(data)
 
-        if data.ndim != 2:
+        if data.ndim != 2 and data.ndim != 3:
+            # When the data expands in 8 directions, the data.ndim is 3
+            # [-1, 3] --> [-1, 8, 3]
+            #   7 -------- 4
+            #  /|         /|
+            # 6 -------- 5 .
+            # | |        | |
+            # . 3 -------- 0
+            # |/         |/
+            # 2 -------- 1
             raise ValueError(
                 'Illegal PointCloud data with number of dim {}'.format(
                     data.ndim))
 
-        if data.shape[1] < 3:
+        if data.shape[-1] < 3:
             raise ValueError('Illegal PointCloud data with shape {}'.format(
                 data.shape))
 
@@ -47,12 +56,20 @@ class PointCloud(_Structure):
         # Rotation matrix around the z-axis
         rot_sin = np.sin(angle)
         rot_cos = np.cos(angle)
-        rotation_matrix = np.array(
-            [[rot_cos, -rot_sin, 0], [rot_sin, rot_cos, 0], [0, 0, 1]],
-            dtype=self.dtype)
+        if self.ndim == 2:
+            rotation_matrix = np.array(
+                [[rot_cos, -rot_sin, 0], [rot_sin, rot_cos, 0], [0, 0, 1]],
+                dtype=self.dtype)
+        elif self.ndim == 3:
+            zeros = np.zeros(self.shape[0])
+            ones = np.ones(self.shape[0])
+            rotation_matrix = np.array(
+                [[rot_cos, -rot_sin, zeros], [rot_sin, rot_cos, zeros],
+                 [zeros, zeros, ones]],
+                dtype=self.dtype)
+            rotation_matrix = rotation_matrix.reshape([-1, 3, 3])
 
         # Rotate x,y,z
-        #self[..., :3] = (rotation_matrix @ self[..., :3].T).T
         self[..., :3] = self[..., :3] @ rotation_matrix
 
     def flip(self, axis: int):

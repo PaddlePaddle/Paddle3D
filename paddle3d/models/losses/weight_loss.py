@@ -22,7 +22,7 @@ from paddle3d.models.common import boxes_to_corners_3d
 
 class WeightedCrossEntropyLoss(nn.Layer):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/loss_utils.py#L187
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/loss_utils.py#L187
     """
 
     def __init__(self):
@@ -49,7 +49,7 @@ class WeightedCrossEntropyLoss(nn.Layer):
 
 class WeightedSmoothL1Loss(nn.Layer):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/loss_utils.py#L80
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/loss_utils.py#L80
 
                   | 0.5 * x ** 2 / beta   if abs(x) < beta
     smoothl1(x) = |
