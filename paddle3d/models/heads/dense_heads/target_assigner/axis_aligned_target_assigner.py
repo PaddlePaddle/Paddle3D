@@ -183,9 +183,10 @@ class AxisAlignedTargetAssigner(object):
         else:
             bg_inds = paddle.arange(num_anchors)
 
-        fg_inds = (labels > 0).nonzero()[:, 0]
-
-        if self.pos_fraction is not None:
+        fg_inds = (labels > 0).nonzero()
+        if self.pos_fraction is not None and fg_inds.numel() > 0:
+            # TODO(qianhui): zero shape
+            fg_inds = fg_inds[:, 0]
             num_fg = int(self.pos_fraction * self.sample_size)
             if len(fg_inds) > num_fg:
                 num_disabled = len(fg_inds) - num_fg
@@ -203,6 +204,8 @@ class AxisAlignedTargetAssigner(object):
             if len(gt_boxes) == 0 or anchors.shape[0] == 0:
                 labels[:] = 0
             else:
+                if fg_inds.numel() > 0:
+                    fg_inds = fg_inds[:, 0]
                 bg_inds = bg_inds.cast('int32')
                 updates = paddle.zeros(bg_inds.shape, dtype='int32')
                 labels = paddle.scatter(

@@ -32,7 +32,7 @@ from paddle3d.utils.logger import logger
 
 __all__ = [
     "LoadImage", "LoadPointCloud", "RemoveCameraInvisiblePointsKITTI",
-    "LoadSemanticKITTIRange"
+    "LoadSemanticKITTIRange", "RemoveCameraInvisiblePointsKITTIV2"
 ]
 
 
@@ -183,6 +183,52 @@ class RemoveCameraInvisiblePointsKITTI(TransformABC):
         sample.data = sample.data[indices.reshape([-1])]
 
         return sample
+
+
+@manager.TRANSFORMS.add_component
+class RemoveCameraInvisiblePointsKITTIV2(TransformABC):
+    def __init__(self):
+        self.V2C = None
+        self.R0 = None
+
+    def __call__(self, sample: Sample):
+        calibs = sample.calibs
+        self.R0 = calibs[4]
+        self.V2C = calibs[5]
+        self.P2 = calibs[2]
+
+        im_path = (Path(sample.path).parents[1] / "image_2" / Path(
+            sample.path).stem).with_suffix(".png")
+        img_shape = np.array(cv2.imread(str(im_path)).shape[:2], dtype=np.int32)
+
+        pts = sample.data[:, 0:3]
+        # lidar to rect
+        pts_lidar_hom = self.cart_to_hom(pts)
+        pts_rect = np.dot(pts_lidar_hom, np.dot(self.V2C.T, self.R0.T))
+
+        # rect to img
+        pts_img, pts_rect_depth = self.rect_to_img(pts_rect)
+        val_flag_1 = np.logical_and(pts_img[:, 0] >= 0,
+                                    pts_img[:, 0] < img_shape[1])
+        val_flag_2 = np.logical_and(pts_img[:, 1] >= 0,
+                                    pts_img[:, 1] < img_shape[0])
+        val_flag_merge = np.logical_and(val_flag_1, val_flag_2)
+        pts_valid_flag = np.logical_and(val_flag_merge, pts_rect_depth >= 0)
+
+        sample.data = sample.data[pts_valid_flag]
+        return sample
+
+    def cart_to_hom(self, pts):
+        pts_hom = np.hstack((pts, np.ones((pts.shape[0], 1), dtype=np.float32)))
+        return pts_hom
+
+    def rect_to_img(self, pts_rect):
+        pts_rect_hom = self.cart_to_hom(pts_rect)
+        pts_2d_hom = np.dot(pts_rect_hom, self.P2.T)
+        pts_img = (pts_2d_hom[:, 0:2].T / pts_rect_hom[:, 2]).T  # (N, 2)
+        pts_rect_depth = pts_2d_hom[:, 2] - self.P2.T[
+            3, 2]  # depth in rect camera coord
+        return pts_img, pts_rect_depth
 
 
 @manager.TRANSFORMS.add_component

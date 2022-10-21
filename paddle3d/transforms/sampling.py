@@ -101,6 +101,54 @@ class SamplingDatabase(TransformABC):
                 len(annos), cls_name))
         return new_database_anno
 
+    def _convert_box_format(self, bboxes_3d):
+        # convert to [x,y,z,l,w,h,heading], original is [x,y,z,w,l,h,yaw]
+        bboxes_3d[:, 2] += bboxes_3d[:, 5] / 2
+        bboxes_3d[:, 3:6] = bboxes_3d[:, [4, 3, 5]]
+        bboxes_3d[:, 6] = -(bboxes_3d[:, 6] + np.pi / 2)
+        return bboxes_3d
+
+    def _convert_box_format_back(self, bboxes_3d):
+        bboxes_3d[:, 2] -= bboxes_3d[:, 5] / 2
+        bboxes_3d[:, 3:6] = bboxes_3d[:, [4, 3, 5]]
+        bboxes_3d[:, 6] = -(bboxes_3d[:, 6] + np.pi / 2)
+        return bboxes_3d
+
+    def _lidar_to_rect(self, pts_lidar, R0, V2C):
+        pts_lidar_hom = self._cart_to_hom(pts_lidar)
+        pts_rect = np.dot(pts_lidar_hom, np.dot(V2C.T, R0.T))
+        return pts_rect
+
+    def _rect_to_lidar(self, pts_rect, R0, V2C):
+        pts_rect_hom = self._cart_to_hom(pts_rect)  # (N, 4)
+        R0_ext = np.hstack((R0, np.zeros((3, 1), dtype=np.float32)))  # (3, 4)
+        R0_ext = np.vstack((R0_ext, np.zeros((1, 4),
+                                             dtype=np.float32)))  # (4, 4)
+        R0_ext[3, 3] = 1
+        V2C_ext = np.vstack((V2C, np.zeros((1, 4), dtype=np.float32)))  # (4, 4)
+        V2C_ext[3, 3] = 1
+        pts_lidar = np.dot(pts_rect_hom, np.linalg.inv(
+            np.dot(R0_ext, V2C_ext).T))
+        return pts_lidar[:, 0:3]
+
+    def _cart_to_hom(self, pts):
+        pts_hom = np.hstack((pts, np.ones((pts.shape[0], 1), dtype=np.float32)))
+        return pts_hom
+
+    def _put_boxes_on_road_planes(self, sampled_boxes, road_planes, calibs):
+        a, b, c, d = road_planes
+        R0, V2C = calibs[4], calibs[5]
+        sampled_boxes = self._convert_box_format(sampled_boxes)
+        center_cam = self._lidar_to_rect(sampled_boxes[:, 0:3], R0, V2C)
+        cur_height_cam = (-d - a * center_cam[:, 0] - c * center_cam[:, 2]) / b
+        center_cam[:, 1] = cur_height_cam
+        cur_lidar_height = self._rect_to_lidar(center_cam, R0, V2C)[:, 2]
+        mv_height = sampled_boxes[:,
+                                  2] - sampled_boxes[:, 5] / 2 - cur_lidar_height
+        sampled_boxes[:, 2] -= mv_height
+        sampled_boxes = self._convert_box_format_back(sampled_boxes)
+        return sampled_boxes, mv_height
+
     def sampling(self, sample: Sample, num_samples_per_class: Dict[str, int]):
         existing_bboxes_3d = sample.bboxes_3d.copy()
         existing_velocities = None
@@ -150,6 +198,12 @@ class SamplingDatabase(TransformABC):
                         mask.append(True)
                 indices = indices[mask]
 
+                # put all boxes(without filter) on road plane
+                sampling_bboxes_3d_copy = sampling_bboxes_3d.copy()
+                if hasattr(sample, "road_plane"):
+                    sampling_bboxes_3d, mv_height = self._put_boxes_on_road_planes(
+                        sampling_bboxes_3d, sample.road_plane, sample.calibs)
+
                 if len(indices) > 0:
                     sampling_data = []
                     sampling_labels = []
@@ -169,7 +223,9 @@ class SamplingDatabase(TransformABC):
                                      sampling_annos[i]["lidar_file"]),
                             "float32").reshape(
                                 [-1, sampling_annos[i]["lidar_dim"]])
-                        lidar_data[:, 0:3] += sampling_bboxes_3d[i, 0:3]
+                        lidar_data[:, 0:3] += sampling_bboxes_3d_copy[i, 0:3]
+                        if hasattr(sample, "road_plane"):
+                            lidar_data[:, 2] -= mv_height[i]
                         sampling_data.append(lidar_data)
 
                     existing_bboxes_3d = np.vstack(

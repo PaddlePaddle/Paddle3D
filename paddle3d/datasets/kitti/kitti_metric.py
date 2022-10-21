@@ -16,7 +16,8 @@ from typing import Dict, List
 
 import numpy as np
 
-from paddle3d.datasets.kitti.kitti_utils import box_lidar_to_camera
+from paddle3d.datasets.kitti.kitti_utils import (box_lidar_to_camera,
+                                                 filter_fake_result)
 from paddle3d.datasets.metrics import MetricABC
 from paddle3d.geometries.bbox import (BBoxes2D, BBoxes3D, CoordMode,
                                       project_to_image)
@@ -79,6 +80,7 @@ class KittiMetric(MetricABC):
             self, predictions: List[Sample]) -> List[dict]:
         res = {}
         for pred in predictions:
+            filter_fake_result(pred)
             id = pred.meta.id
             if pred.bboxes_2d is None and pred.bboxes_3d is None:
                 det = {
@@ -100,15 +102,15 @@ class KittiMetric(MetricABC):
 
                 alpha = pred.get('alpha', np.zeros([num_boxes]))
 
+                if pred.bboxes_3d.origin != [.5, .5, 0]:
+                    pred.bboxes_3d[:, :3] += pred.bboxes_3d[:, 3:6] * (
+                        np.array([.5, .5, 0]) - np.array(pred.bboxes_3d.origin))
+                    pred.bboxes_3d.origin = [.5, .5, 0]
+
                 if pred.bboxes_3d.coordmode != CoordMode.KittiCamera:
                     bboxes_3d = box_lidar_to_camera(pred.bboxes_3d, calibs)
                 else:
                     bboxes_3d = pred.bboxes_3d
-
-                if bboxes_3d.origin != [.5, 1., .5]:
-                    bboxes_3d[:, :3] += bboxes_3d[:, 3:6] * (
-                        np.array([.5, 1., .5]) - np.array(bboxes_3d.origin))
-                    bboxes_3d.origin = [.5, 1., .5]
 
                 if pred.bboxes_2d is None:
                     bboxes_2d = self.get_camera_box2d(bboxes_3d, calibs[2])

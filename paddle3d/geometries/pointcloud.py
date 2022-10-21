@@ -69,3 +69,8 @@ class PointCloud(_Structure):
     def shuffle(self):
         self[...] = np.random.permutation(
             self[...])  # permutation is fater than shuffle
+
+    def get_mask_of_points_outside_range(self, limit_range):
+        mask = (self[:, 0] >= limit_range[0]) & (self[:, 0] <= limit_range[3]) \
+            & (self[:, 1] >= limit_range[1]) & (self[:, 1] <= limit_range[4])
+        return mask

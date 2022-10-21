@@ -77,6 +77,13 @@ def uniform_init(param, a, b):
     return _no_grad_uniform_(param, a, b)
 
 
+def xavier_normal_init(tensor, gain=1, reverse=False):
+    fan_in, fan_out = _calculate_fan_in_and_fan_out(tensor, reverse=reverse)
+    std = gain * math.sqrt(2.0 / float(fan_in + fan_out))
+
+    return _no_grad_normal_(tensor, 0., std)
+
+
 def kaiming_normal_init(tensor,
                         a=0,
                         mode='fan_in',
@@ -204,9 +211,17 @@ def _no_grad_uniform_(tensor, a, b):
     return tensor
 
 
+def _no_grad_normal_(tensor, mean, std):
+    with paddle.no_grad():
+        tensor.set_value(paddle.normal(mean, std, shape=tensor.shape))
+    return tensor
+
+
 def reset_parameters(m):
-    kaiming_uniform_init(m.weight, a=math.sqrt(5))
+    kaiming_uniform_init(
+        m.weight, a=math.sqrt(5), reverse=isinstance(m, nn.Linear))
     if m.bias is not None:
-        fan_in, _ = _calculate_fan_in_and_fan_out(m.weight)
+        fan_in, _ = _calculate_fan_in_and_fan_out(
+            m.weight, reverse=isinstance(m, nn.Linear))
         bound = 1 / math.sqrt(fan_in)
         _no_grad_uniform_(m.bias, -bound, bound)

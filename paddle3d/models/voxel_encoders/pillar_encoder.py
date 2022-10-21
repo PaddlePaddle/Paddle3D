@@ -192,7 +192,7 @@ class PillarFeatureNet(nn.Layer):
         features_ls.append(f_center)
 
         if self.with_distance:
-            points_dist = paddle.norm(features[:, :, :3], 2, 2, keepdim=True)
+            points_dist = paddle.normal(features[:, :, :3], 2, 2, keepdim=True)
             features_ls.append(points_dist)
 
         features = paddle.concat(features_ls, axis=-1)

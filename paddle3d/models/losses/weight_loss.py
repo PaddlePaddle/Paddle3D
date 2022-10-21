@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
+
+from paddle3d.models.common import boxes_to_corners_3d
 
 
 class WeightedCrossEntropyLoss(nn.Layer):
@@ -65,9 +68,10 @@ class WeightedSmoothL1Loss(nn.Layer):
         """
         super(WeightedSmoothL1Loss, self).__init__()
         self.beta = beta
-        self.code_weights = code_weights
+        self.code_weights = paddle.to_tensor(code_weights)
 
-    def smooth_l1_loss(self, diff, beta):
+    @staticmethod
+    def smooth_l1_loss(diff, beta):
         if beta < 1e-5:
             loss = paddle.abs(diff)
         else:
@@ -77,7 +81,7 @@ class WeightedSmoothL1Loss(nn.Layer):
 
         return loss
 
-    def forward(self, input, target, weights):
+    def forward(self, input, target, weights=None):
         """
         Args:
             input: (B, #anchors, #codes) float tensor.
@@ -106,3 +110,30 @@ class WeightedSmoothL1Loss(nn.Layer):
                 1] == loss.shape[1]
             loss = loss * weights.unsqueeze(-1)
         return loss
+
+
+def get_corner_loss_lidar(pred_bbox3d, gt_bbox3d):
+    """
+    Args:
+        pred_bbox3d: (N, 7) float Tensor.
+        gt_bbox3d: (N, 7) float Tensor.
+
+    Returns:
+        corner_loss: (N) float Tensor.
+    """
+    assert pred_bbox3d.shape[0] == gt_bbox3d.shape[0]
+
+    pred_box_corners = boxes_to_corners_3d(pred_bbox3d)
+    gt_box_corners = boxes_to_corners_3d(gt_bbox3d)
+
+    gt_bbox3d_flip = gt_bbox3d.clone()
+    gt_bbox3d_flip[:, 6] += np.pi
+    gt_box_corners_flip = boxes_to_corners_3d(gt_bbox3d_flip)
+    # (N, 8)
+    corner_dist = paddle.minimum(
+        paddle.linalg.norm(pred_box_corners - gt_box_corners, axis=2),
+        paddle.linalg.norm(pred_box_corners - gt_box_corners_flip, axis=2))
+    # (N, 8)
+    corner_loss = WeightedSmoothL1Loss.smooth_l1_loss(corner_dist, beta=1.0)
+
+    return corner_loss.mean(axis=1)

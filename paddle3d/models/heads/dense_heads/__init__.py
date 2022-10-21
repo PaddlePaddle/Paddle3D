@@ -13,4 +13,5 @@
 # limitations under the License.
 
 from .anchor_head import *
+from .point_head import PointHeadSimple
 from .target_assigner import *

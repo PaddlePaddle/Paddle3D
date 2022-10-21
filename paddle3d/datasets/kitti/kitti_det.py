@@ -36,7 +36,8 @@ class KittiDetDataset(BaseDataset):
                  mode: str = "train",
                  transforms: Union[TransformABC, List[TransformABC]] = None,
                  class_names: Union[list, tuple] = None,
-                 class_balanced_sampling: bool = False):
+                 class_balanced_sampling: bool = False,
+                 use_road_plane: bool = False):
         super().__init__()
         self.dataset_root = dataset_root
         self.mode = mode.lower()
@@ -89,6 +90,7 @@ class KittiDetDataset(BaseDataset):
                             samples,
                             int(len(samples) * (sampling_ratio - 1.))).tolist())
             self.data = resampling_data
+        self.use_road_plane = use_road_plane
 
     def __len__(self):
         return len(self.data)

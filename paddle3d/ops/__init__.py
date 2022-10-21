@@ -62,7 +62,25 @@ custom_ops = {
         'extra_cuda_cflags': ['-arch=sm_60'],
         'version':
         '0.1.0',
-    }
+    },
+    'pointnet2_ops': {
+        'sources': [
+            'pointnet2/sampling_gpu.cu', 'pointnet2/sampling.cc',
+            'pointnet2/ball_query_gpu.cu', 'pointnet2/ball_query.cc',
+            'pointnet2/group_points.cc', 'pointnet2/group_points_gpu.cu',
+            'pointnet2/voxel_query.cc', 'pointnet2/voxel_query_gpu.cu'
+        ],
+        'version':
+        '0.1.0'
+    },
+    'roiaware_pool3d': {
+        'sources': [
+            'roiaware_pool3d/box_utils_gpu.cu',
+            'roiaware_pool3d/box_utils.cc',
+        ],
+        'version':
+        '0.1.0'
+    },
 }
 
 
