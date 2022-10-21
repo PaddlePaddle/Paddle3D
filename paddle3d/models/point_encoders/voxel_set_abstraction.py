@@ -387,10 +387,6 @@ class VoxelSetAbstraction(nn.Layer):
             point_features_list.append(pooled_features)
 
         for k, src_name in enumerate(self.sa_layer_names):
-            print(
-                "coord shape: ",
-                batch_dict['multi_scale_3d_features'][src_name].indices().shape,
-                '===')
             cur_coords = batch_dict['multi_scale_3d_features'][
                 src_name].indices().transpose([1, 0])
             cur_features = batch_dict['multi_scale_3d_features'][
