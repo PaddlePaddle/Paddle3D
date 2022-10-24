@@ -191,12 +191,12 @@ class Trainer:
         sync_bn = (getattr(self.model, 'sync_bn', False) and env.nranks > 1)
         if sync_bn:
             sparse_conv = False
-            for layer in self.model.sublayers:
+            for layer in self.model.sublayers():
                 if 'sparse' in str(type(layer)):
                     sparse_conv = True
                     break
             if sparse_conv:
-                self.model = paddle.incubate.sparse.nn.SyncBatchNorm.convert_sync_batchnorm(
+                self.model = paddle.sparse.nn.SyncBatchNorm.convert_sync_batchnorm(
                     self.model)
             else:
                 self.model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
@@ -298,12 +298,12 @@ class Trainer:
         sync_bn = (getattr(self.model, 'sync_bn', False) and env.nranks > 1)
         if sync_bn:
             sparse_conv = False
-            for layer in self.model.sublayers:
+            for layer in self.model.sublayers():
                 if 'sparse' in str(type(layer)):
                     sparse_conv = True
                     break
             if sparse_conv:
-                self.model = paddle.incubate.sparse.nn.SyncBatchNorm.convert_sync_batchnorm(
+                self.model = paddle.sparse.nn.SyncBatchNorm.convert_sync_batchnorm(
                     self.model)
             else:
                 self.model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
