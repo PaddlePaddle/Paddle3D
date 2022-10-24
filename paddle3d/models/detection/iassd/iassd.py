@@ -52,6 +52,8 @@ class IASSD(nn.Layer):
 
         self.apply(self.init_weight)
 
+        self.export_model = False
+
     def forward(self, batch_dict):
         """
         Args:
