@@ -239,7 +239,7 @@ python tools/evaluate.py --config configs/iassd/iassd_waymo.yaml --batch_size 32
 python tools/export.py --config configs/iassd/iassd_kitti.yaml --model /path/to/model.pdparams --save_dir /path/to/output
 ```
 
-| 参数 | 说明 |
+| 参数 | <center>说明</center> |
 | -- | -- |
 | config | **[必填]** 训练配置文件所在路径 |
 | model | **[必填]** 训练时保存的模型文件`model.pdparams`所在路径 |
@@ -255,7 +255,7 @@ python tools/export.py --config configs/iassd/iassd_kitti.yaml --model /path/to/
 > - Paddle Inference==2.3.2
 > - TensorRT_8.2.5.1
 #### 2）执行预测
-进入`deploy/iassd/python`，运行以下命令，执行不同配置的推理：
+进入`deploy/iassd/python`，运行以下命令，执行不同配置的推理（如果需要开启TensorRT加速，请下载带有TRT的PaddlePaddle版本）：
 - 执行原生`GPU`预测：
 ```shell
 python3.7 deploy/iassd/python/infer.py --model_file /path/to/iassd.pdmodel --params_file /path/to/iassd.pdiparams --lidar_file /.../000001.bin --gpu_id 0
@@ -292,4 +292,65 @@ python3.7 deploy/iassd/python/infer.py --model_file /path/to/iassd.pdmodel --par
 | --run_mode | 推理模式，支持`fp32`,`trt_fp32`,`trt_fp16` |
 
 ### C++部署
-coming soon...
+目前IA-SSD的模型的C++部署只支持GPU和TensorRT加速。
+#### 1）环境依赖
+> - Ubuntu 18.04
+> - Python==3.7
+> - CUDA==11.2
+> - cuDNN==8.2.0
+> - Paddle Inference==2.3.2
+> - TensorRT_8.2.5.1
+> - GCC==8.2.0
+> - CMake==3.16.0
+#### 2）编译
+- step 1：进入部署代码所在路径
+```shell
+cd deploy/iassd/cpp
+```
+- step 2：下载Paddle Inference C++预测库
+
+Paddle Inference针对是否使用GPU、是否支持TensorRT、以及不同的CUDA/cuDNN/GCC版本均提供已经编译好的库文件，请至
+[Paddle Inference C++预测库](https://www.paddlepaddle.org.cn/inference/v2.4/guides/introduction/index_intro.html#c)中下载符合的版本。
+- step 3：修改compile.sh中的编译参数
+主要修改以下参数：
+
+| 参数 | <center>说明</center> |
+|:--| :-- |
+| WITH_GPU | 是否使用gpu。ON或OFF， OFF表示使用CPU，默认ON |
+| USE_TENSORRT | 是否使用TensorRT加速。ON或OFF，默认OFF |
+| LIB_DIR | Paddle Inference C++预测库所在路径 |
+| CUDNN_LIB | cuDNN `libcudnn.so`所在路径 |
+| CUDA_LIB | CUDA `libcudart.so`所在路径 |
+| TENSORRT_ROOT | TensorRT安装路径。如果开启`USE_TENSORRT`加速，则需要填写该路径 |
+- step 4：编译
+```shell
+sh compile.sh
+```
+### 3）执行预测
+
+执行命令参数说明
+
+| 参数 | <center>说明</center> |
+| :-- | :-- |
+| model_file | 导出模型的结构文件`iassd.pdmodel`所在路径 |
+| params_file | 导出模型的参数文件`iassd.pdiparams`所在路径 |
+| lidar_file | 待预测的点云文件所在路径 |
+| rum_mode | 预测配置，支持`trt_fp32`, `trt_fp16`，默认采用`gpu_fp32`执行预测 |
+| gpu_id | 用于预测的GPU_ID |
+
+
+- 执行原生`GPU`预测：
+```shell
+./build/main --model_file /path/to/iassd.pdmodel --params_file /path/to/iassd.pdiparams  --lidar_file /.../000001.bin --gpu_id 0
+```
+- 执行`trt_fp32`预测：
+
+```shell
+./build/main --model_file /path/to/iassd.pdmodel --params_file /path/to/iassd.pdiparams --lidar_file /.../000001.bin --gpu_id 0 --run_mode trt_fp32
+```
+
+- 执行`trt_fp16`预测：
+
+```shell
+./build/main --model_file /path/to/iassd.pdmodel --params_file /path/to/iassd.pdiparams --lidar_file /.../000001.bin --gpu_id 0 --run_mode trt_fp16
+```
