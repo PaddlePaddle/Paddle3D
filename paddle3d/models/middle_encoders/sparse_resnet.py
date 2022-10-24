@@ -87,9 +87,7 @@ class SparseBasicBlock(paddle.nn.Layer):
         if self.downsample is not None:
             identity = self.downsample(x)
 
-        values = out.values() + identity.values()
-        out = sparse.sparse_coo_tensor(
-            out.indices(), values, out.shape, stop_gradient=out.stop_gradient)
+        out = sparse.add(out, identity)
         out = self.relu(out)
 
         return out
