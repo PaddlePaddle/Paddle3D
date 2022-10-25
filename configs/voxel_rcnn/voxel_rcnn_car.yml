@@ -15,7 +15,7 @@ train_dataset:
         Car: 15
       ignored_difficulty: [-1]
       database_anno_path: datasets/KITTI/kitti_train_gt_database/anno_info_train.pkl
-      database_root: datasets/KITTI/
+      database_root: datasets/KITTI
       class_names: ["Car"]
     - type: RandomVerticalFlip
     - type: GlobalRotate
@@ -25,11 +25,6 @@ train_dataset:
       min_scale: 0.95
       max_scale: 1.05
     - type: ShufflePoint
-    - type: HardVoxelize
-      point_cloud_range: [0, -40, -3, 70.4, 40, 1]
-      voxel_size: [0.05, 0.05, 0.1]
-      max_points_in_voxel: 5
-      max_voxel_num: 16000
     - type: FilterPointOutsideRange
       point_cloud_range: [0, -40, -3, 70.4, 40, 1]
     - type: FilterBBoxOutsideRange
@@ -50,17 +45,18 @@ val_dataset:
     - type: RemoveCameraInvisiblePointsKITTIV2
     - type: FilterPointOutsideRange
       point_cloud_range: [0, -40, -3, 70.4, 40, 1]
-    - type: HardVoxelize
-      point_cloud_range: [0, -40, -3, 70.4, 40, 1]
-      voxel_size: [0.05, 0.05, 0.1]
-      max_points_in_voxel: 5
-      max_voxel_num: 40000
   mode: val
   class_names: ["Car"]
 
 model:
   type: VoxelRCNN
   num_class: 1
+  voxelizer:
+    type: HardVoxelizer
+    point_cloud_range: [0, -40, -3, 70.4, 40, 1]
+    voxel_size: [0.05, 0.05, 0.1]
+    max_num_points_in_voxel: 5
+    max_num_voxels: [16000, 40000]
   voxel_encoder:
     type: VoxelMean
     in_channels: 4

@@ -777,7 +777,8 @@ def get_official_eval_result(gt_annos,
         z_center=z_center,
         metric_types=metric_types)
 
-    res = OrderedDict()
+    res_r11 = OrderedDict()
+    res_r40 = OrderedDict()
     if compute_aos and "bbox" in metric_types:
         metric_types = list(metric_types) + ["aos"]
 
@@ -785,21 +786,26 @@ def get_official_eval_result(gt_annos,
         # mAP threshold array: [num_minoverlap, metric, class]
         # mAP result: [num_class, num_diff, num_minoverlap]
         curcls = class_to_name[curcls]
-        res[curcls] = OrderedDict()
+        res_r11[curcls] = OrderedDict()
+        res_r40[curcls] = OrderedDict()
 
         for i in range(min_overlaps.shape[0]):
             overlap = tuple(min_overlaps[i, :, j].tolist())
-            res[curcls][overlap] = OrderedDict()
+            res_r11[curcls][overlap] = OrderedDict()
+            res_r40[curcls][overlap] = OrderedDict()
 
             for metric_type in metric_types:
                 if metric_type == "aos":
-                    res[curcls][overlap][metric_type] = get_mAP_r40(
+                    res_r11[curcls][overlap][metric_type] = get_mAP_v2(
+                        metrics["bbox"]["orientation"][j, :, i])
+                    res_r40[curcls][overlap][metric_type] = get_mAP_r40(
                         metrics["bbox"]["orientation"][j, :, i])
                 else:
-                    res[curcls][overlap][metric_type] = get_mAP_r40(
+                    res_r11[curcls][overlap][metric_type] = get_mAP_v2(
                         metrics[metric_type]["precision"][j, :, i])
-
-    return res
+                    res_r40[curcls][overlap][metric_type] = get_mAP_r40(
+                        metrics[metric_type]["precision"][j, :, i])
+    return res_r11, res_r40
 
 
 def get_coco_eval_result(gt_annos,

@@ -156,24 +156,34 @@ class KittiMetric(MetricABC):
                 'The number of predictions({}) is not equal to the number of GroundTruths({})'
                 .format(len(dt_annos), len(gt_annos)))
 
-        metric_dict = kitti_eval(
+        metric_r11_dict, metric_r40_dict = kitti_eval(
             gt_annos,
             dt_annos,
             current_classes=list(self.classmap.values()),
             metric_types=["bbox", "bev", "3d"])
 
         if verbose:
-            for cls, cls_metrics in metric_dict.items():
+            for cls, cls_metrics_r11 in metric_r11_dict.items():
+                cls_metrics_r40 = metric_r40_dict[cls]
                 logger.info("{}:".format(cls))
-                for overlap_thresh, metrics in cls_metrics.items():
+                for overlap_thresh, metrics_r11 in cls_metrics_r11.items():
+                    metrics_r40 = cls_metrics_r40[overlap_thresh]
+                    overlap_thresh = overlap_thresh + overlap_thresh
                     for metric_type, thresh in zip(["bbox", "bev", "3d"],
                                                    overlap_thresh):
-                        if metric_type in metrics:
+                        if metric_type in metrics_r11:
                             logger.info(
-                                "{} AP@{:.0%}: {:.2f} {:.2f} {:.2f}".format(
+                                "{} AP_R11@{:.0%}: {:.2f} {:.2f} {:.2f}".format(
                                     metric_type.upper().ljust(4), thresh,
-                                    *metrics[metric_type]))
-        return metric_dict
+                                    *metrics_r11[metric_type]))
+                    for metric_type, thresh in zip(["bbox", "bev", "3d"],
+                                                   overlap_thresh):
+                        if metric_type in metrics_r11:
+                            logger.info(
+                                "{} AP_R40@{:.0%}: {:.2f} {:.2f} {:.2f}".format(
+                                    metric_type.upper().ljust(4), thresh,
+                                    *metrics_r40[metric_type]))
+        return metric_r11_dict, metric_r40_dict
 
 
 class KittiDepthMetric(MetricABC):
@@ -275,19 +285,28 @@ class KittiDepthMetric(MetricABC):
                 'The number of predictions({}) is not equal to the number of GroundTruths({})'
                 .format(len(eval_det_annos), len(eval_gt_annos)))
 
-        metric_dict = kitti_eval(eval_gt_annos, eval_det_annos,
-                                 self.class_names)
+        metric_r11_dict, metric_r40_dict = kitti_eval(
+            eval_gt_annos, eval_det_annos, self.class_names)
 
         if verbose:
-            for cls, cls_metrics in metric_dict.items():
+            for cls, cls_metrics_r11 in metric_r11_dict.items():
+                cls_metrics_r40 = metric_r40_dict[cls]
                 logger.info("{}:".format(cls))
-                for overlap_thresh, metrics in cls_metrics.items():
+                for overlap_thresh, metrics_r11 in cls_metrics_r11.items():
+                    metrics_r40 = cls_metrics_r40[overlap_thresh]
                     overlap_thresh = overlap_thresh + overlap_thresh
                     for metric_type, thresh in zip(["bbox", "bev", "3d", "aos"],
                                                    overlap_thresh):
-                        if metric_type in metrics:
+                        if metric_type in metrics_r11:
                             logger.info(
-                                "{} AP@{:.0%}: {:.2f} {:.2f} {:.2f}".format(
+                                "{} AP_R11@{:.0%}: {:.2f} {:.2f} {:.2f}".format(
                                     metric_type.upper().ljust(4), thresh,
-                                    *metrics[metric_type]))
-        return metric_dict
+                                    *metrics_r11[metric_type]))
+                    for metric_type, thresh in zip(["bbox", "bev", "3d", "aos"],
+                                                   overlap_thresh):
+                        if metric_type in metrics_r11:
+                            logger.info(
+                                "{} AP_R40@{:.0%}: {:.2f} {:.2f} {:.2f}".format(
+                                    metric_type.upper().ljust(4), thresh,
+                                    *metrics_r40[metric_type]))
+        return metric_r11_dict, metric_r40_dict
