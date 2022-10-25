@@ -505,7 +505,7 @@ class CenterHead(nn.Layer):
             }
             return prediction_dict
 
-        return paddle.fluid.layers.control_flow.cond(
+        return paddle.static.nn.cond(
             paddle.logical_not(mask.any()), lambda: box_empty(
                 box_preds, scores, labels, self.box_n_dim), lambda:
             box_not_empty(box_preds, scores, labels, test_cfg))
