@@ -72,3 +72,29 @@ class Timer:
             remaining_time %= 60**i
 
         return result.format(*arr)
+
+
+class TimeAverager(object):
+    """ Time averager """
+
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self._cnt = 0
+        self._total_time = 0
+        self._total_samples = 0
+
+    def record(self, usetime, num_samples=None):
+        self._cnt += 1
+        self._total_time += usetime
+        if num_samples:
+            self._total_samples += num_samples
+
+    def get_average(self):
+        if self._cnt == 0:
+            return 0
+        return self._total_time / float(self._cnt)
+
+    def get_ips_average(self):
+        return self._total_samples / self._total_time
