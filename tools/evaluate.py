@@ -64,6 +64,8 @@ def main(args):
         raise RuntimeError("Config file `{}` does not exist!".format(args.cfg))
 
     cfg = Config(path=args.cfg, batch_size=args.batch_size)
+    # set None to avoid train dataset instantiation
+    cfg.dic.pop('train_dataset')
 
     if cfg.val_dataset is None:
         raise RuntimeError(
