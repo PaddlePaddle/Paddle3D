@@ -22,7 +22,7 @@ Voxel RCNN在仅使用Voxel-Based的情况下，通过调整模型参数达到�
 - Voxel-RCNN在KITTI Val set数据集上的表现：
 
 | 模型 | Car Mod@0.7 AP_R11 / AP_R40 | V100 Paddle Inference FP32(FPS) | 模型下载 | 配置文件 |  日志 |
-| ---- | ---------- | ------------------ | ------------------------- | -----------------------|
+| --- | --------------------------- | -------------------------------- | ------ | --------|--------|
 | Voxel-RCNN | 84.34 / 84.90 |  22.39 | [model]() | [config](../../../configs/voxel_rcnn/voxel_rcnn_car.yml)| [log]() \| [vdl]() |
 
 **注意：** KITTI benchmark使用8张V100 GPU训练得出。
