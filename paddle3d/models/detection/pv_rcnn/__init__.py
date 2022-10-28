@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .pvrcnn import PVRCNN
+from .pv_rcnn import PVRCNN

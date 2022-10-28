@@ -95,14 +95,14 @@ kitti_train_gt_database
 KITTI数据集上的训练使用8张GPU：
 
 ```
-python -m paddle.distributed.launch --gpus 0,1,2,3,4,5,6,7 tools/train.py --config configs/voxel_rcnn/voxel_rcnn.yml --save_dir ./output_voxel_rcnn --num_workers 4 --save_interval 1
+python -m paddle.distributed.launch --gpus 0,1,2,3,4,5,6,7 tools/train.py --config configs/voxel_rcnn/voxel_rcnn_car.yml --save_dir ./output_voxel_rcnn --num_workers 4 --save_interval 1
 ```
 
 训练启动参数介绍可参考文档[全流程速览](../../quickstart.md#模型训练)。
 #### 评估
 
 ```
-python tools/evaluate.py --config configs/voxel_rcnn/voxel_rcnn.yml --model ./output_voxel_rcnn/epoch_80/model.pdparams --batch_size 1 --num_workers 4
+python tools/evaluate.py --config configs/voxel_rcnn/voxel_rcnn_car.yml --model ./output_voxel_rcnn/epoch_80/model.pdparams --batch_size 1 --num_workers 4
 ```
 
 **注意**：Voxel-RCNN的评估目前只支持batch_size为1。
@@ -116,7 +116,7 @@ python tools/evaluate.py --config configs/voxel_rcnn/voxel_rcnn.yml --model ./ou
 运行以下命令，将训练时保存的动态图模型文件导出成推理引擎能够加载的静态图模型文件。
 
 ```
-python tools/export.py --config configs/voxel_rcnn/voxel_rcnn.yml --model /path/to/model.pdparams --save_dir /path/to/output
+python tools/export.py --config configs/voxel_rcnn/voxel_rcnn_car.yml --model /path/to/model.pdparams --save_dir /path/to/output
 ```
 
 | 参数 | 说明 |
