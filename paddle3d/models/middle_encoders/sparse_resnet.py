@@ -19,8 +19,8 @@ MIT License [see LICENSE for details].
 
 import numpy as np
 import paddle
-from paddle.incubate import sparse
-from paddle.incubate.sparse import nn
+from paddle import sparse
+from paddle.sparse import nn
 
 from paddle3d.apis import manager
 
@@ -85,9 +85,7 @@ class SparseBasicBlock(paddle.nn.Layer):
         if self.downsample is not None:
             identity = self.downsample(x)
 
-        values = out.values() + identity.values()
-        out = sparse.sparse_coo_tensor(
-            out.indices(), values, out.shape, stop_gradient=out.stop_gradient)
+        out = sparse.add(out, identity)
         out = self.relu(out)
 
         return out
@@ -172,12 +170,6 @@ class SparseResNet3D(paddle.nn.Layer):
 
         out = self.extra_conv(x_conv4)
 
-        #out = out.to_dense()
-        out = sparse.sparse_coo_tensor(
-            paddle.cast(out.indices(), 'int64'),
-            out.values(),
-            out.shape,
-            stop_gradient=False)
         out = out.to_dense()
         out = paddle.transpose(out, perm=[0, 4, 1, 2, 3])
         N, C, D, H, W = out.shape

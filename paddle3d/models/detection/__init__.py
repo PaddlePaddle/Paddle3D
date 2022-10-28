@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import caddn, centerpoint, pointpillars, pvrcnn, smoke, voxelrcnn
+from . import caddn, centerpoint, pointpillars, pv_rcnn, smoke, voxel_rcnn
 from .caddn import *
 from .centerpoint import *
 from .pointpillars import *
-from .pvrcnn import *
+from .pv_rcnn import *
 from .smoke import *
-from .voxelrcnn import *
+from .voxel_rcnn import *

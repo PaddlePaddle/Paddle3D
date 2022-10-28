@@ -232,7 +232,7 @@ class VoxelRCNN(nn.Layer):
         self.export_model = True
         self.voxelizer.export_model = True
         self.middle_encoder.export_model = True
-        save_path = os.path.join(save_dir, 'voxelrcnn')
+        save_path = os.path.join(save_dir, 'voxel_rcnn')
         points_shape = [-1, self.voxel_encoder.in_channels]
 
         input_spec = [{

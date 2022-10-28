@@ -19,8 +19,8 @@ Apache-2.0 license [see LICENSE for details].
 
 import numpy as np
 import paddle
-from paddle.incubate import sparse
-from paddle.incubate.sparse import nn
+from paddle import sparse
+from paddle.sparse import nn
 
 from paddle3d.apis import manager
 from paddle3d.models.layers import param_init
@@ -152,11 +152,6 @@ class SparseNet3D(paddle.nn.Layer):
 
         out = self.extra_conv(x_conv4)
 
-        out = sparse.sparse_coo_tensor(
-            paddle.cast(out.indices(), 'int64'),
-            out.values(),
-            out.shape,
-            stop_gradient=False)
         out = out.to_dense()
         out = paddle.transpose(out, perm=[0, 4, 1, 2, 3])
         N, C, D, H, W = out.shape

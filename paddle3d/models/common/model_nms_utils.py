@@ -42,11 +42,11 @@ def class_agnostic_nms(box_scores,
     if score_thresh is not None:
         scores_mask = box_scores >= score_thresh
 
-        def box_empty():
-            fake_score = paddle.to_tensor([-1.0], dtype='float32')
-            fake_label = paddle.to_tensor([-1.0], dtype='float32')
+        def box_empty(box_scores, box_preds, label_preds):
+            fake_score = paddle.to_tensor([-1.0], dtype=box_scores.dtype)
+            fake_label = paddle.to_tensor([-1.0], dtype=label_preds.dtype)
             fake_box = paddle.to_tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]],
-                                        dtype='float32')
+                                        dtype=box_preds.dtype)
 
             return fake_score, fake_label, fake_box
 
@@ -59,8 +59,9 @@ def class_agnostic_nms(box_scores,
             return nms(box_scores, box_preds, label_preds, nms_config)
 
         return paddle.static.nn.cond(
-            paddle.logical_not(scores_mask.any(
-            )), lambda: box_empty(), lambda: box_not_empty(
-                scores_mask, box_scores, box_preds, label_preds, nms_config))
+            paddle.logical_not(scores_mask.any()), lambda: box_empty(
+                box_scores, box_preds, label_preds), lambda: box_not_empty(
+                    scores_mask, box_scores, box_preds, label_preds, nms_config)
+        )
     else:
         return nms(box_scores, box_preds, label_preds, nms_config)

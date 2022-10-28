@@ -15,7 +15,7 @@ train_dataset:
         Car: 15
       ignored_difficulty: [-1]
       database_anno_path: datasets/KITTI/kitti_train_gt_database/anno_info_train.pkl
-      database_root: datasets/KITTI
+      database_root: datasets/KITTI/
       class_names: ["Car"]
     - type: RandomVerticalFlip
     - type: GlobalRotate

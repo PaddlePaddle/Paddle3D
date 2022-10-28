@@ -20,7 +20,7 @@ Apache-2.0 license [see LICENSE for details].
 import numpy as np
 import paddle
 import paddle.nn as nn
-from paddle.incubate import sparse
+from paddle import sparse
 
 from paddle3d.apis import manager
 from paddle3d.models.common import get_voxel_centers
