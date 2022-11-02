@@ -111,6 +111,16 @@ def parse_args():
         help='Set the random seed of paddle during training.',
         default=None,
         type=int)
+    parser.add_argument(
+        '--use_amp',
+        action='store_true',
+        help='Enable auto-mixed precision training.')
+    parser.add_argument(
+        '--amp_level',
+        dest='amp_level',
+        help='The level of auto-mixed precision training, default O1',
+        default='O1',
+        type=str)
 
     return parser.parse_args()
 
@@ -174,7 +184,9 @@ def main(args):
         'dataloader_fn': {
             'batch_size': batch_size,
             'num_workers': args.num_workers,
-        }
+        },
+        'use_amp': args.use_amp,
+        'amp_level': args.amp_level
     })
 
     if args.model is not None:

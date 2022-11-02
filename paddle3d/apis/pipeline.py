@@ -18,26 +18,43 @@ from paddle3d.sample import Sample
 
 
 def training_step(model: paddle.nn.Layer, optimizer: paddle.optimizer.Optimizer,
-                  sample: Sample, cur_iter: int) -> dict:
+                  scaler: paddle.amp.GradScaler, amp_level: str, sample: Sample,
+                  cur_iter: int) -> dict:
 
     if optimizer.__class__.__name__ == 'OneCycleAdam':
         optimizer.before_iter(cur_iter - 1)
 
     model.train()
-    outputs = model(sample)
-
-    loss = outputs['loss']
-    # model backward
-    loss.backward()
-
-    if optimizer.__class__.__name__ == 'OneCycleAdam':
-        optimizer.after_iter()
-    else:
-        optimizer.step()
+    if scaler:
+        if not isinstance(optimizer, paddle.optimizer.Optimizer):
+            raise ValueError(
+                "Optimizer should inherit from paddle.optimizer.Optimizer")
+        with paddle.amp.auto_cast(
+                custom_black_list=['matmul_v2', 'elementwise_mul'],
+                level=amp_level):
+            outputs = model(sample)
+            loss = outputs['loss']
+        scaled_loss = scaler.scale(loss)
+        scaled_loss.backward()
+        scaler.step(optimizer)
+        scaler.update()
         model.clear_gradients()
         if isinstance(optimizer._learning_rate,
                       paddle.optimizer.lr.LRScheduler):
             optimizer._learning_rate.step()
+    else:
+        outputs = model(sample)
+        loss = outputs['loss']
+        loss.backward()
+
+        if optimizer.__class__.__name__ == 'OneCycleAdam':
+            optimizer.after_iter()
+        else:
+            optimizer.step()
+            model.clear_gradients()
+            if isinstance(optimizer._learning_rate,
+                          paddle.optimizer.lr.LRScheduler):
+                optimizer._learning_rate.step()
 
     return loss
 

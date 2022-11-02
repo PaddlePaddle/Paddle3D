@@ -104,10 +104,14 @@ class Trainer:
             # TODO: Default parameters should not use mutable objects, there is a risk
             checkpoint: Union[dict, CheckpointABC] = dict(),
             scheduler: Union[dict, SchedulerABC] = dict(),
-            dataloader_fn: Union[dict, Callable] = dict()):
+            dataloader_fn: Union[dict, Callable] = dict(),
+            use_amp: bool = False,
+            amp_level: str = 'O1'):
 
         self.model = model
         self.optimizer = optimizer
+        self.use_amp = use_amp
+        self.amp_level = amp_level
 
         _dataloader_build_fn = default_dataloader_build_fn(
             **dataloader_fn) if isinstance(dataloader_fn,
@@ -193,6 +197,19 @@ class Trainer:
             self.model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
                 self.model)
 
+        if self.use_amp:
+            logger.info("Training with AMP Level {}".format(self.amp_level))
+            scaler = paddle.amp.GradScaler(enable=True, init_loss_scaling=1024)
+            # need to decorate model and optim in level O2
+            if self.amp_level == 'O2':
+                self.model, self.optimizer = paddle.amp.decorate(
+                    models=self.model,
+                    optimizers=self.optimizer,
+                    level=self.amp_level,
+                    master_weight=True)
+        else:
+            scaler = None
+
         model = self.model
         if env.nranks > 1:
             if not paddle.distributed.parallel.parallel_helper._is_parallel_ctx_initialized(
@@ -215,8 +232,8 @@ class Trainer:
                     break
 
                 lr = self.optimizer.get_lr()
-                loss = training_step(model, self.optimizer, sample,
-                                     self.cur_iter)
+                loss = training_step(model, self.optimizer, scaler,
+                                     self.amp_level, sample, self.cur_iter)
                 loss_sum += loss.numpy()[0]
 
                 timer.step()
