@@ -21,6 +21,7 @@ import paddle
 
 from paddle3d.apis.config import Config
 from paddle3d.apis.trainer import Trainer
+from paddle3d.slim import build_slim_model
 from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
 
@@ -50,6 +51,12 @@ def parse_args():
         help='Num workers for data loader',
         type=int,
         default=2)
+    parser.add_argument(
+        '--slim_config',
+        dest='slim_config',
+        help='Config for slim model.',
+        default=None,
+        type=str)
 
     return parser.parse_args()
 
@@ -64,6 +71,9 @@ def main(args):
         raise RuntimeError("Config file `{}` does not exist!".format(args.cfg))
 
     cfg = Config(path=args.cfg, batch_size=args.batch_size)
+
+    if args.slim_config:
+        cfg = build_slim_model(cfg, args.slim_config)
 
     if cfg.val_dataset is None:
         raise RuntimeError(

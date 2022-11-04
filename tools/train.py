@@ -22,6 +22,7 @@ import paddle
 import paddle3d.env as paddle3d_env
 from paddle3d.apis.config import Config
 from paddle3d.apis.trainer import Trainer
+from paddle3d.slim import build_slim_model
 from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
 
@@ -111,6 +112,12 @@ def parse_args():
         help='Set the random seed of paddle during training.',
         default=None,
         type=int)
+    parser.add_argument(
+        '--slim_config',
+        dest='slim_config',
+        help='Config for slim model.',
+        default=None,
+        type=str)
 
     return parser.parse_args()
 
@@ -139,6 +146,9 @@ def main(args):
         iters=args.iters,
         epochs=args.epochs,
         batch_size=args.batch_size)
+
+    if args.slim_config:
+        cfg = build_slim_model(cfg, args.slim_config)
 
     if cfg.train_dataset is None:
         raise RuntimeError(

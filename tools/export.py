@@ -15,6 +15,7 @@
 import argparse
 
 from paddle3d.apis.config import Config
+from paddle3d.slim import build_slim_model
 from paddle3d.utils.checkpoint import load_pretrained_model
 
 
@@ -47,6 +48,12 @@ def parse_args():
         help="Export the model with fixed input shape, such as 1 3 1024 1024.",
         type=int,
         default=None)
+    parser.add_argument(
+        '--slim_config',
+        dest='slim_config',
+        help='Config for slim model.',
+        default=None,
+        type=str)
 
     return parser.parse_args()
 
@@ -58,10 +65,16 @@ def main(args):
     model = cfg.model
     model.eval()
 
+    if args.slim_config:
+        cfg = build_slim_model(cfg, args.slim_config)
+
     if args.model is not None:
         load_pretrained_model(model, args.model)
 
-    model.export(args.save_dir, input_shape=args.input_shape)
+    model.export(
+        args.save_dir,
+        input_shape=args.input_shape,
+        slim=getattr(cfg, 'slim', None))
 
 
 if __name__ == '__main__':

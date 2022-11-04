@@ -58,7 +58,7 @@ def parse_args():
         "--trt_precision",
         type=int,
         default=0,
-        help="Precision type of tensorrt, 0: kFloat32, 1: kHalf.")
+        help="Precision type of tensorrt, 0: kFloat32, 1: kHalf., 2: Int8")
     parser.add_argument(
         "--trt_use_static",
         type=int,
@@ -118,6 +118,8 @@ def init_predictor(model_file,
         precision_mode = paddle.inference.PrecisionType.Float32
         if trt_precision == 1:
             precision_mode = paddle.inference.PrecisionType.Half
+        elif trt_precision == 2:
+            precision_mode = paddle.inference.PrecisionType.Int8
         config.enable_tensorrt_engine(
             workspace_size=1 << 20,
             max_batch_size=1,
@@ -194,7 +196,7 @@ def main(args):
                                args.collect_shape_info, args.dynamic_shape_file)
     points = preprocess(args.lidar_file, args.num_point_dim, args.use_timelag)
     box3d_lidar, label_preds, scores = run(predictor, points)
-    parse_result(box3d_lidar, label_preds, scores)
+    # parse_result(box3d_lidar, label_preds, scores)
 
 
 if __name__ == '__main__':

@@ -189,9 +189,16 @@ class CenterPoint(nn.Layer):
 
     def export(self, save_dir: str, **kwargs):
         self.export_model = True
-        self.voxelizer.export_model = True
-        self.middle_encoder.export_model = True
         self.bbox_head.export_model = True
+
+        # hacky way to contral export data flow
+        if kwargs['slim'] and kwargs['slim']['slim_type'] == "QAT":
+            self.voxelizer._layer.export_model = True
+            self.middle_encoder._layer.export_model = True
+        else:
+            self.voxelizer.export_model = True
+            self.middle_encoder.export_model = True
+
         save_path = os.path.join(save_dir, 'centerpoint')
         points_shape = [-1, -1]
 
@@ -201,6 +208,11 @@ class CenterPoint(nn.Layer):
         }]
 
         paddle.jit.to_static(self, input_spec=input_spec)
-        paddle.jit.save(self, save_path)
+
+        if kwargs['slim'] and kwargs['slim']['slim_type'] == "QAT":
+            kwargs['slim']['slim_cls'].save_quantized_model(
+                self, save_path, input_spec=None)
+        else:
+            paddle.jit.save(self, save_path)
 
         logger.info("Exported model is saved in {}".format(save_dir))
