@@ -1,4 +1,5 @@
-pretrain_weights: https://bj.bcebos.com/paddle3d/models/centerpoint//centerpoint_pillars_016voxel_kitti/model.pdparams
+pretrain_weights: /path/to/pretrained/model.pdparams
+
 slim_type: QAT
 
 slim_config:
@@ -10,14 +11,15 @@ slim_config:
       'dtype': 'int8',
       'window_size': 10000,
       'moving_rate': 0.9,
-      'quantizable_layer_type': ['Conv2D', 'Linear']}
+      'quantizable_layer_type': ['Conv2D', 'Linear']
+  }
 
 finetune_config:
-  epochs: 1
+  epochs: 80
 
   lr_scheduler:
     type: OneCycleWarmupDecayLr
-    base_learning_rate: 0.0005
+    base_learning_rate: 0.001
     lr_ratio_peak: 10
     lr_ratio_trough: 0.0001
     step_ratio_peak: 0.4
