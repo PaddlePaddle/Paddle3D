@@ -56,7 +56,6 @@ class Config(object):
         model = cfg.model
         ...
     '''
-
     def __init__(self,
                  *,
                  path: str,
@@ -78,11 +77,10 @@ class Config(object):
         else:
             raise RuntimeError('Config file should in yaml format!')
 
-        self.update(
-            learning_rate=learning_rate,
-            batch_size=batch_size,
-            iters=iters,
-            epochs=epochs)
+        self.update(learning_rate=learning_rate,
+                    batch_size=batch_size,
+                    iters=iters,
+                    epochs=epochs)
 
     def _update_dic(self, dic: Dict, base_dic: Dict):
         '''Update config from dic based base_dic
@@ -157,6 +155,7 @@ class Config(object):
                 'No `lr_scheduler` specified in the configuration file.')
 
         params = self.dic.get('lr_scheduler')
+        print('load lr scheduler!!!')
         return self._load_object(params)
 
     @property
@@ -219,9 +218,11 @@ class Config(object):
         import paddle3d.apis.manager as manager
 
         if com_name.lower().startswith('$paddleseg'):
+            print('load from paddleseg')
             return self._load_component_from_paddleseg(com_name[11:])
 
         if com_name.lower().startswith('$paddledet'):
+            print('load from paddledet')
             return self._load_component_from_paddledet(com_name[11:])
 
         for com in manager.__all__:
@@ -275,12 +276,14 @@ class Config(object):
             if recursive:
                 params = {}
                 for key, val in dic.items():
-                    params[key] = self._load_object(
-                        obj=val, recursive=recursive)
+                    params[key] = self._load_object(obj=val,
+                                                    recursive=recursive)
             else:
                 params = dic
-
-            return component(**params)
+            try:
+                return component(**params)
+            except Exception as e:
+                raise type(e)('{} {}'.format(component.__name__, e))
 
         elif isinstance(obj, Iterable) and not isinstance(obj, str):
             return [self._load_object(item) for item in obj]

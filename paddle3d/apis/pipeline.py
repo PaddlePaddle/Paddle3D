@@ -13,33 +13,70 @@
 # limitations under the License.
 
 import paddle
+from paddle.distributed.fleet.utils.hybrid_parallel_util import \
+    fused_allreduce_gradients
 
 from paddle3d.sample import Sample
 
 
-def training_step(model: paddle.nn.Layer, optimizer: paddle.optimizer.Optimizer,
-                  sample: Sample, cur_iter: int) -> dict:
+def parse_losses(losses):
+    total_loss = 0
+    if isinstance(losses, paddle.Tensor):
+        total_loss += losses
+    elif isinstance(losses, dict):
+        for k, v in losses.items():
+            total_loss += v
+    return total_loss
+
+
+def training_step(model: paddle.nn.Layer,
+                  optimizer: paddle.optimizer.Optimizer,
+                  sample: Sample,
+                  cur_iter: int,
+                  scaler=None) -> dict:
 
     if optimizer.__class__.__name__ == 'OneCycleAdam':
         optimizer.before_iter(cur_iter - 1)
 
     model.train()
-    outputs = model(sample)
 
-    loss = outputs['loss']
-    # model backward
-    loss.backward()
+    if isinstance(model, paddle.DataParallel) and hasattr(model._layers, 'use_recompute') \
+        and model._layers.use_recompute:
+        with model.no_sync():
+            if scaler is not None:
+                # with paddle.amp.auto_cast(level='O1'):
+                outputs = model(sample)
+                loss = parse_losses(outputs['loss'])
+                scaled_loss = scaler.scale(loss)
+                scaled_loss.backward()
+            else:
+                outputs = model(sample)
+                loss = parse_losses(outputs['loss'])
+                loss.backward()
+        fused_allreduce_gradients(list(model.parameters()), None)
+    else:
+        outputs = model(sample)
+
+        loss = parse_losses(outputs['loss'])
+
+        loss.backward()
 
     if optimizer.__class__.__name__ == 'OneCycleAdam':
         optimizer.after_iter()
     else:
-        optimizer.step()
+        if scaler is not None:
+            scaler.step(optimizer)
+            scaler.update()
+            optimizer.clear_grad()
+        else:
+            optimizer.step()
+
         model.clear_gradients()
         if isinstance(optimizer._learning_rate,
                       paddle.optimizer.lr.LRScheduler):
             optimizer._learning_rate.step()
-
-    return loss
+    outputs['total_loss'] = loss
+    return outputs
 
 
 def validation_step(model: paddle.nn.Layer, sample: Sample) -> dict:

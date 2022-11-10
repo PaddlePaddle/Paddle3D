@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import paddle
+import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle import nn
+
+from paddle3d.apis import manager
 
 
 class WeightedCrossEntropyLoss(nn.Layer):
     """
     This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/loss_utils.py#L187
     """
-
     def __init__(self):
         super(WeightedCrossEntropyLoss, self).__init__()
 
@@ -44,6 +45,7 @@ class WeightedCrossEntropyLoss(nn.Layer):
         return loss
 
 
+@manager.LOSSES.add_component
 class WeightedSmoothL1Loss(nn.Layer):
     """
     This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/loss_utils.py#L80
@@ -53,7 +55,6 @@ class WeightedSmoothL1Loss(nn.Layer):
                   | abs(x) - 0.5 * beta   otherwise,
     where x = input - target.
     """
-
     def __init__(self, beta=1.0 / 9.0, code_weights=None):
         """
         Args:
@@ -106,3 +107,47 @@ class WeightedSmoothL1Loss(nn.Layer):
                 1] == loss.shape[1]
             loss = loss * weights.unsqueeze(-1)
         return loss
+
+
+@manager.LOSSES.add_component
+class WeightedL1Loss(nn.Layer):
+    """
+    """
+    def __init__(self, reduction='mean', loss_weight=1.0):
+        """
+        Args:
+            beta: Scalar float.
+                L1 to L2 change point.
+                For beta values < 1e-5, L1 loss is computed.
+            code_weights: (#codes) float list if not None.
+                Code-wise weights.
+        """
+        super(WeightedL1Loss, self).__init__()
+        self.loss_weight = loss_weight
+        self.reduction = reduction
+        self.loss = nn.L1Loss(reduction='none')
+
+    def forward(self, input, target, weight=None):
+        """
+        Args:
+            input: (B, #anchors, #codes) float tensor.
+                Ecoded predicted locations of objects.
+            target: (B, #anchors, #codes) float tensor.
+                Regression targets.
+            weights: (B, #anchors) float tensor if not None.
+
+        Returns:
+            loss: (B, #anchors) float tensor.
+                Weighted smooth l1 loss without reduction.
+        """
+
+        loss = self.loss(input, target)
+        if weight is not None:
+            loss *= weight
+
+        if self.reduction == 'mean':
+            loss = loss.mean()
+        elif self.reduction == 'sum':
+            loss = loss.sum()
+
+        return loss * self.loss_weight

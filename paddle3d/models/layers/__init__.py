@@ -15,4 +15,7 @@
 from .gn import group_norm
 from .layer_libs import *
 from .param_init import *
+from .petr_transformer import (PETRTransformer, PETRTransformerDecoder,
+                               PETRTransformerDecoderLayer)
+from .positional_encoding import SinePositionalEncoding3D
 from .pyramid_pool import *

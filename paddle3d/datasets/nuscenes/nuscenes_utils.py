@@ -153,8 +153,8 @@ def filter_fake_result(detection: Sample):
         velocity_list.append(velocities[i])
         score_list.append(scores[i])
         label_list.append(labels[i])
-    detection.bboxes_3d = BBoxes3D(
-        np.asarray(box_list), velocities=np.asarray(velocity_list))
+    detection.bboxes_3d = BBoxes3D(np.asarray(box_list),
+                                   velocities=np.asarray(velocity_list))
     detection.labels = np.asarray(label_list)
     detection.confidences = np.asarray(score_list)
 
@@ -164,12 +164,18 @@ def second_bbox_to_nuscenes_box(pred_sample: Sample):
     This function refers to https://github.com/tianweiy/CenterPoint/blob/master/det3d/datasets/nuscenes/nusc_common.py#L160
     """
     pred_sample.bboxes_3d[:, -1] = -pred_sample.bboxes_3d[:, -1] - np.pi / 2
+    bottom_center = pred_sample.bboxes_3d[:, :3]
+    gravity_center = np.zeros_like(bottom_center)
+    gravity_center[:, :2] = bottom_center[:, :2]
+    gravity_center[:,
+                   2] = bottom_center[:, 2] + pred_sample.bboxes_3d[:, 5] * 0.5
     nuscenes_box_list = []
     for i in range(pred_sample.bboxes_3d.shape[0]):
         quat = Quaternion(axis=[0, 0, 1], radians=pred_sample.bboxes_3d[i, -1])
         velocity = (*pred_sample.bboxes_3d.velocities[i, 0:2], 0.0)
         box = Box(
-            pred_sample.bboxes_3d[i, :3],
+            # pred_sample.bboxes_3d[i, :3],
+            gravity_center[i],
             pred_sample.bboxes_3d[i, 3:6],
             quat,
             label=pred_sample.labels[i],
@@ -203,6 +209,6 @@ def get_nuscenes_box_attribute(box: Box, label_name: str):
             attr = None
 
     if attr is None:
-        attr = max(
-            cls_attr_dist[label_name].items(), key=operator.itemgetter(1))[0]
+        attr = max(cls_attr_dist[label_name].items(),
+                   key=operator.itemgetter(1))[0]
     return attr

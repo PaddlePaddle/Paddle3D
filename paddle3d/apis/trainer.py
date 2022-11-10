@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+from collections import defaultdict
 from typing import Callable, Optional, Union
 
 import paddle
@@ -29,7 +30,6 @@ from paddle3d.utils.timer import Timer
 def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
     """
     """
-
     def _generate_loader(dataset: paddle.io.Dataset, model: paddle.nn.Layer):
         args = kwargs.copy()
         batch_size = args.pop('batch_size', 1)
@@ -43,22 +43,20 @@ def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
             # Do eval in single device
             BatchSampler = paddle.io.BatchSampler
 
-        batch_sampler = BatchSampler(
-            dataset,
-            batch_size=batch_size,
-            shuffle=shuffle,
-            drop_last=drop_last)
+        batch_sampler = BatchSampler(dataset,
+                                     batch_size=batch_size,
+                                     shuffle=shuffle,
+                                     drop_last=drop_last)
 
         if hasattr(model, 'collate_fn'):
             collate_fn = model.collate_fn
         else:
             collate_fn = getattr(dataset, 'collate_fn', None)
-
-        return paddle.io.DataLoader(
-            dataset=dataset,
-            batch_sampler=batch_sampler,
-            collate_fn=collate_fn,
-            **args)
+        print('dataloader_args', args)
+        return paddle.io.DataLoader(dataset=dataset,
+                                    batch_sampler=batch_sampler,
+                                    collate_fn=collate_fn,
+                                    **args)
 
     return _generate_loader
 
@@ -91,20 +89,19 @@ def default_scheduler_build_fn(**kwargs) -> Scheduler:
 class Trainer:
     """
     """
-
     def __init__(
-            self,
-            model: paddle.nn.Layer,
-            optimizer: paddle.optimizer.Optimizer,
-            iters: Optional[int] = None,
-            epochs: Optional[int] = None,
-            train_dataset: Optional[paddle.io.Dataset] = None,
-            val_dataset: Optional[paddle.io.Dataset] = None,
-            resume: bool = False,
-            # TODO: Default parameters should not use mutable objects, there is a risk
-            checkpoint: Union[dict, CheckpointABC] = dict(),
-            scheduler: Union[dict, SchedulerABC] = dict(),
-            dataloader_fn: Union[dict, Callable] = dict()):
+        self,
+        model: paddle.nn.Layer,
+        optimizer: paddle.optimizer.Optimizer,
+        iters: Optional[int] = None,
+        epochs: Optional[int] = None,
+        train_dataset: Optional[paddle.io.Dataset] = None,
+        val_dataset: Optional[paddle.io.Dataset] = None,
+        resume: bool = False,
+        # TODO: Default parameters should not use mutable objects, there is a risk
+        checkpoint: Union[dict, CheckpointABC] = dict(),
+        scheduler: Union[dict, SchedulerABC] = dict(),
+        dataloader_fn: Union[dict, Callable] = dict()):
 
         self.model = model
         self.optimizer = optimizer
@@ -177,9 +174,12 @@ class Trainer:
             logger.warning(
                 "Attempt to restore parameters from an empty checkpoint")
 
+        # self.scaler = paddle.amp.GradScaler(init_loss_scaling=512.0)
+        self.scaler = None
+
         if env.local_rank == 0:
-            self.log_writer = LogWriter(
-                logdir=self.checkpoint.rootdir, file_name=vdl_file_name)
+            self.log_writer = LogWriter(logdir=self.checkpoint.rootdir,
+                                        file_name=vdl_file_name)
             self.checkpoint.record('vdl_file_name',
                                    os.path.basename(self.log_writer.file_name))
             self.checkpoint.record('train_by_epoch', self.train_by_epoch)
@@ -200,7 +200,8 @@ class Trainer:
                 paddle.distributed.init_parallel_env()
             model = paddle.DataParallel(self.model)
 
-        loss_sum = 0
+        # loss_sum = 0
+        losses_sum = defaultdict(float)
         timer = Timer(iters=self.iters - self.cur_iter)
 
         while self.cur_iter < self.iters:
@@ -215,28 +216,45 @@ class Trainer:
                     break
 
                 lr = self.optimizer.get_lr()
-                loss = training_step(model, self.optimizer, sample,
-                                     self.cur_iter)
-                loss_sum += loss.numpy()[0]
+                output = training_step(model,
+                                       self.optimizer,
+                                       sample,
+                                       self.cur_iter,
+                                       scaler=self.scaler)
+                # loss_sum += loss.numpy()[0]
+                if isinstance(output['loss'], dict):
+                    for k, v in output['loss'].items():
+                        losses_sum[k] += float(v)
+
+                losses_sum['total_loss'] += float(output['total_loss'])
 
                 timer.step()
                 status = self.scheduler.step()
 
                 if status.do_log and env.local_rank == 0:
-                    loss_sum = float(loss_sum / self.scheduler.log_interval)
+                    # loss_sum = float(loss_sum / self.scheduler.log_interval)
+                    loss_log = ''
+
+                    self.log_writer.add_scalar(tag='Training/learning_rate',
+                                               value=lr,
+                                               step=self.cur_iter)
+                    # self.log_writer.add_scalar(
+                    #     tag='Training/loss', value=loss_sum, step=self.cur_iter)
+
+                    for k, v in losses_sum.items():
+                        loss_val = v / self.scheduler.log_interval
+                        loss_log += ', {}={:.6f}'.format(k, loss_val)
+                        self.log_writer.add_scalar(tag='Training/' + k,
+                                                   value=loss_val,
+                                                   step=self.cur_iter)
+
                     logger.info(
-                        '[TRAIN] epoch={}/{}, iter={}/{}, loss={:.6f}, lr={:.6f} | ETA {}'
+                        '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f} | ETA {}'
                         .format(self.cur_epoch, self.epochs, self.cur_iter,
-                                self.iters, loss_sum, lr, timer.eta))
+                                self.iters, loss_log, lr, timer.eta))
 
-                    self.log_writer.add_scalar(
-                        tag='Training/learning_rate',
-                        value=lr,
-                        step=self.cur_iter)
-                    self.log_writer.add_scalar(
-                        tag='Training/loss', value=loss_sum, step=self.cur_iter)
-
-                    loss_sum = 0
+                    losses_sum.clear()
+                    # loss_sum = 0
 
                 if status.do_eval and env.local_rank == 0:
                     # TODO: whether to save a checkpoint based on the metric
@@ -256,11 +274,10 @@ class Trainer:
                     else:
                         tag = 'iter_{}'.format(self.cur_iter)
 
-                    self.checkpoint.push(
-                        tag=tag,
-                        params_dict=self.model.state_dict(),
-                        opt_dict=self.optimizer.state_dict(),
-                        verbose=True)
+                    self.checkpoint.push(tag=tag,
+                                         params_dict=self.model.state_dict(),
+                                         opt_dict=self.optimizer.state_dict(),
+                                         verbose=True)
 
                     self.checkpoint.record('iters', self.cur_iter)
                     self.checkpoint.record('epochs', self.cur_epoch)
@@ -274,11 +291,10 @@ class Trainer:
                 tag = 'iter_{}'.format(self.iters)
 
             if not self.checkpoint.have(tag):
-                self.checkpoint.push(
-                    tag=tag,
-                    params_dict=self.model.state_dict(),
-                    opt_dict=self.optimizer.state_dict(),
-                    verbose=True)
+                self.checkpoint.push(tag=tag,
+                                     params_dict=self.model.state_dict(),
+                                     opt_dict=self.optimizer.state_dict(),
+                                     verbose=True)
 
             self.checkpoint.record('iters', self.iters)
             self.checkpoint.record('epochs', self.epochs)

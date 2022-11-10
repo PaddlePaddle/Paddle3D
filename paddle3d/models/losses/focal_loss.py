@@ -16,13 +16,13 @@ import paddle
 import paddle.nn.functional as F
 from paddle import nn
 
+from paddle3d.apis import manager
 from paddle3d.models.layers.layer_libs import _transpose_and_gather_feat
 
 
 class FocalLoss(nn.Layer):
     """Focal loss class
     """
-
     def __init__(self, alpha=2, beta=4):
         super().__init__()
         self.alpha = alpha
@@ -65,7 +65,6 @@ class FastFocalLoss(nn.Layer):
     '''
     This function refers to https://github.com/tianweiy/CenterPoint/blob/cb25e870b271fe8259e91c5d17dcd429d74abc91/det3d/models/losses/centernet_loss.py#L26.
     '''
-
     def __init__(self):
         super(FastFocalLoss, self).__init__()
 
@@ -85,18 +84,16 @@ class FastFocalLoss(nn.Layer):
 
         bs_ind = []
         for i in range(pos_pred_pix.shape[0]):
-            bs_idx = paddle.full(
-                shape=[1, pos_pred_pix.shape[1], 1],
-                fill_value=i,
-                dtype=ind.dtype)
+            bs_idx = paddle.full(shape=[1, pos_pred_pix.shape[1], 1],
+                                 fill_value=i,
+                                 dtype=ind.dtype)
             bs_ind.append(bs_idx)
         bs_ind = paddle.concat(bs_ind, axis=0)
         m_ind = []
         for i in range(pos_pred_pix.shape[1]):
-            m_idx = paddle.full(
-                shape=[pos_pred_pix.shape[0], 1, 1],
-                fill_value=i,
-                dtype=ind.dtype)
+            m_idx = paddle.full(shape=[pos_pred_pix.shape[0], 1, 1],
+                                fill_value=i,
+                                dtype=ind.dtype)
             m_ind.append(m_idx)
         m_ind = paddle.concat(m_ind, axis=1)
         cat = paddle.concat([bs_ind, m_ind, cat.unsqueeze(2)], axis=-1)
@@ -114,7 +111,6 @@ class FastFocalLoss(nn.Layer):
 class MultiFocalLoss(nn.Layer):
     """Focal loss class
     """
-
     def __init__(self, alpha=2, beta=4):
         super().__init__()
         self.alpha = alpha
@@ -142,9 +138,9 @@ class MultiFocalLoss(nn.Layer):
         input_soft = F.softmax(prediction, axis=1) + self.eps
 
         # create the labels one hot tensor
-        target_one_hot = F.one_hot(
-            target, num_classes=prediction.shape[1]).cast(
-                prediction.dtype) + self.eps
+        target_one_hot = F.one_hot(target,
+                                   num_classes=prediction.shape[1]).cast(
+                                       prediction.dtype) + self.eps
         new_shape = [0, len(target_one_hot.shape) - 1
                      ] + [i for i in range(1,
                                            len(target_one_hot.shape) - 1)]
@@ -164,7 +160,6 @@ class SigmoidFocalClassificationLoss(nn.Layer):
     """
     This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/loss_utils.py#L14
     """
-
     def __init__(self, gamma=2.0, alpha=0.25):
         """
         Args:
@@ -221,3 +216,90 @@ class SigmoidFocalClassificationLoss(nn.Layer):
         assert weights.shape.__len__() == loss.shape.__len__()
 
         return loss * weights
+
+
+@manager.LOSSES.add_component
+class WeightedFocalLoss(nn.Layer):
+    def __init__(self,
+                 use_sigmoid=True,
+                 gamma=2.0,
+                 alpha=0.25,
+                 reduction='mean',
+                 loss_weight=1.0,
+                 activated=False):
+        """`Focal Loss <https://arxiv.org/abs/1708.02002>`_
+        """
+        super(WeightedFocalLoss, self).__init__()
+        assert use_sigmoid is True, 'Only sigmoid focal loss supported now.'
+        self.use_sigmoid = use_sigmoid
+        self.gamma = gamma
+        self.alpha = alpha
+        self.reduction = reduction
+        self.loss_weight = loss_weight
+        self.activated = activated
+
+    def forward(self,
+                pred,
+                target,
+                weight=None,
+                avg_factor=None,
+                reduction_override=None):
+        """Forward function.
+        """
+        assert reduction_override in (None, 'none', 'mean', 'sum')
+        reduction = (reduction_override
+                     if reduction_override else self.reduction)
+        if self.use_sigmoid:
+            if self.activated:
+                raise NotImplementedError
+            else:
+                num_classes = pred.shape[1]
+                target = F.one_hot(target, num_classes=num_classes + 1)
+                target = target[:, :num_classes]
+                calculate_loss_func = py_sigmoid_focal_loss
+
+            loss_cls = self.loss_weight * calculate_loss_func(
+                pred,
+                target,
+                weight,
+                gamma=self.gamma,
+                alpha=self.alpha,
+                reduction=reduction,
+            )
+
+        else:
+            raise NotImplementedError
+        return loss_cls
+
+
+def py_sigmoid_focal_loss(
+    pred,
+    target,
+    weight=None,
+    gamma=2.0,
+    alpha=0.25,
+    reduction='mean',
+):
+    """paddle version of `Focal Loss <https://arxiv.org/abs/1708.02002>`_.
+    """
+    pred_sigmoid = F.sigmoid(pred)
+    target = target.astype(pred.dtype)
+    pt = (1 - pred_sigmoid) * target + pred_sigmoid * (1 - target)
+    focal_weight = (alpha * target + (1 - alpha) * (1 - target)) * pt.pow(gamma)
+    loss = F.binary_cross_entropy_with_logits(pred, target,
+                                              reduction='none') * focal_weight
+    if weight is not None:
+        if weight.shape != loss.shape:
+            if weight.shape[0] == loss.shape[0]:
+                weight = weight.reshape([-1, 1])
+            else:
+                assert weight.numel() == loss.numel()
+                weight = weight.reshape([loss.shape[0], -1])
+        assert len(weight.shape) == len(loss.shape)
+
+    if reduction == 'mean':
+        loss = loss.mean()
+    elif reduction == 'sum':
+        loss = loss.sum()
+
+    return loss

@@ -88,7 +88,6 @@ class LoadPointCloud(TransformABC):
         use_time_lag: Whether to use time lag.
         sweep_remove_radius: The radius within which points are removed in sweeps.
     """
-
     def __init__(self,
                  dim,
                  use_dim: Union[int, List[int]] = None,
@@ -123,11 +122,12 @@ class LoadPointCloud(TransformABC):
             data_sweep_list = [
                 data,
             ]
-            for i in np.random.choice(
-                    len(sample.sweeps), len(sample.sweeps), replace=False):
+            for i in np.random.choice(len(sample.sweeps),
+                                      len(sample.sweeps),
+                                      replace=False):
                 sweep = sample.sweeps[i]
-                sweep_data = np.fromfile(sweep.path, np.float32).reshape(
-                    -1, self.dim)
+                sweep_data = np.fromfile(sweep.path,
+                                         np.float32).reshape(-1, self.dim)
                 if self.use_dim:
                     sweep_data = sweep_data[:, self.use_dim]
                 sweep_data = sweep_data.T
@@ -163,13 +163,12 @@ class RemoveCameraInvisiblePointsKITTI(TransformABC):
     """
     Remove camera invisible points for KITTI dataset.
     """
-
     def __call__(self, sample: Sample):
         calibs = sample.calibs
         C, Rinv, T = kitti_utils.projection_matrix_decomposition(calibs[2])
 
-        im_path = (Path(sample.path).parents[1] / "image_2" / Path(
-            sample.path).stem).with_suffix(".png")
+        im_path = (Path(sample.path).parents[1] / "image_2" /
+                   Path(sample.path).stem).with_suffix(".png")
         im_shape = np.array(cv2.imread(str(im_path)).shape[:2], dtype=np.int32)
         im_bbox = [0, 0, im_shape[1], im_shape[0]]
 
@@ -194,7 +193,6 @@ class LoadSemanticKITTIRange(TransformABC):
     Args:
         project_label (bool, optional): Whether project label to range view or not.
     """
-
     def __init__(self, project_label=True):
         self.project_label = project_label
         self.proj_H = 64
@@ -230,8 +228,8 @@ class LoadSemanticKITTIRange(TransformABC):
 
         # get projections in image coords
         proj_x = 0.5 * (yaw / np.pi + 1.0)  # in [0.0, 1.0]
-        proj_y = 1.0 - (
-            pitch + abs(self.lower_inclination)) / self.fov  # in [0.0, 1.0]
+        proj_y = 1.0 - (pitch +
+                        abs(self.lower_inclination)) / self.fov  # in [0.0, 1.0]
 
         # scale to image size using angular resolution
         proj_x *= self.proj_W  # in [0.0, W]
@@ -296,8 +294,8 @@ class LoadSemanticKITTIRange(TransformABC):
 
         if sample.labels is not None:
             # load labels
-            raw_label = np.fromfile(
-                sample.labels, dtype=np.uint32).reshape((-1))
+            raw_label = np.fromfile(sample.labels, dtype=np.uint32).reshape(
+                (-1))
             # only fill in attribute if the right size
             if raw_label.shape[0] == points.shape[0]:
                 sem_label = raw_label & 0xFFFF  # semantic label in lower half
@@ -337,7 +335,6 @@ class LoadSemanticKITTIPointCloud(TransformABC):
     Load SemanticKITTI range image.
     Please refer to <https://github.com/PRBonn/semantic-kitti-api/blob/master/auxiliary/laserscan.py>.
     """
-
     def __init__(self, use_dim: List[int] = None):
         self.proj_H = 64
         self.proj_W = 1024
@@ -381,5 +378,105 @@ class LoadSemanticKITTIPointCloud(TransformABC):
             # assert ((sem_label + (inst_label << 16) == raw_label).all())
 
             sample.labels = sem_label
+
+        return sample
+
+
+@manager.TRANSFORMS.add_component
+class LoadMultiViewImageFromFiles(TransformABC):
+    """
+    load multi-view image from files
+
+    Args:
+        to_float32 (bool): Whether to convert the img to float32.
+            Default: False.
+        color_type (str): Color type of the file. Default: -1.
+            - -1: cv2.IMREAD_UNCHANGED
+            -  0: cv2.IMREAD_GRAYSCALE
+            -  1: cv2.IMREAD_COLOR
+    """
+    def __init__(self, to_float32=False, imread_flag=-1):
+        self.to_float32 = to_float32
+        self.imread_flag = imread_flag
+
+    def __call__(self, sample):
+        """
+        Call function to load multi-view image from files.
+        """
+        filename = sample['img_filename']
+
+        img = np.stack(
+            [cv2.imread(name, self.imread_flag) for name in filename], axis=-1)
+        if self.to_float32:
+            img = img.astype(np.float32)
+        sample['filename'] = filename
+
+        sample['img'] = [img[..., i] for i in range(img.shape[-1])]
+        sample['img_shape'] = img.shape
+        sample['ori_shape'] = img.shape
+
+        sample['pad_shape'] = img.shape
+        sample['scale_factor'] = 1.0
+        num_channels = 1 if len(img.shape) < 3 else img.shape[2]
+
+        sample['img_norm_cfg'] = dict(mean=np.zeros(num_channels,
+                                                    dtype=np.float32),
+                                      std=np.ones(num_channels,
+                                                  dtype=np.float32),
+                                      to_rgb=False)
+        return sample
+
+
+@manager.TRANSFORMS.add_component
+class LoadAnnotations3D(TransformABC):
+    """
+    load annotation
+    """
+    def __init__(
+        self,
+        with_bbox_3d=True,
+        with_label_3d=True,
+        with_attr_label=False,
+        with_mask_3d=False,
+        with_seg_3d=False,
+    ):
+        self.with_bbox_3d = with_bbox_3d
+        self.with_label_3d = with_label_3d
+        self.with_attr_label = with_attr_label
+        self.with_mask_3d = with_mask_3d
+        self.with_seg_3d = with_seg_3d
+
+    def _load_bboxes_3d(self, sample) -> Sample:
+        """
+        """
+        sample['gt_bboxes_3d'] = sample['ann_info']['gt_bboxes_3d']
+        sample['bbox3d_fields'].append('gt_bboxes_3d')
+        return sample
+
+    def _load_labels_3d(self, sample) -> Sample:
+        """
+        """
+        sample['gt_labels_3d'] = sample['ann_info']['gt_labels_3d']
+        return sample
+
+    def _load_attr_labels(self, sample) -> Sample:
+        """
+        """
+        sample['attr_labels'] = sample['ann_info']['attr_labels']
+        return sample
+
+    def __call__(self, sample) -> Sample:
+        """Call function to load multiple types annotations.
+        """
+        if self.with_bbox_3d:
+            sample = self._load_bboxes_3d(sample)
+            if sample is None:
+                return None
+
+        if self.with_label_3d:
+            sample = self._load_labels_3d(sample)
+
+        if self.with_attr_label:
+            sample = self._load_attr_labels(sample)
 
         return sample

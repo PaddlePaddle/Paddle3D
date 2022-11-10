@@ -15,4 +15,4 @@
 from .base import BaseDataset
 from .kitti import KittiDepthDataset, KittiMonoDataset, KittiPCDataset
 from .modelnet40 import ModelNet40
-from .nuscenes import NuscenesPCDataset
+from .nuscenes import NuscenesMVDataset, NuscenesPCDataset

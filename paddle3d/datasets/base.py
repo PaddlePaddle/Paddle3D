@@ -26,7 +26,6 @@ from paddle3d.sample import Sample
 class BaseDataset(paddle.io.Dataset):
     """
     """
-
     @property
     def is_train_mode(self) -> bool:
         return 'train' in self.mode
@@ -85,6 +84,12 @@ class BaseDataset(paddle.io.Dataset):
                 for key in valid_keys
             }
         elif isinstance(sample, Mapping):
+            # out = dict()
+            # for key in sample:
+            #     print('key:', key)
+            #     # for d in batch:
+            #     out[key] = self.collate_fn([d[key] for d in batch])
+            # return out
             return {
                 key: self.collate_fn([d[key] for d in batch])
                 for key in sample
@@ -93,6 +98,7 @@ class BaseDataset(paddle.io.Dataset):
             sample_fields_num = len(sample)
             if not all(
                     len(sample) == sample_fields_num for sample in iter(batch)):
+                print(sample)
                 raise RuntimeError(
                     "fileds number not same among samples in a batch")
             return [self.collate_fn(fields) for fields in zip(*batch)]
