@@ -32,6 +32,7 @@ from .nuscenes_utils import (filter_fake_result, get_nuscenes_box_attribute,
 class NuScenesMetric(MetricABC):
     """
     """
+
     def __init__(self, nuscense: NuScenes, mode: str, channel: str,
                  class_names: list, attrmap: dict):
         self.nusc = nuscense
@@ -63,13 +64,6 @@ class NuScenesMetric(MetricABC):
                                          sample_data['calibrated_sensor_token'])
             ego_quaternion = Quaternion(ego_pose['rotation'])
             channel_quaternion = Quaternion(channel_pose['rotation'])
-            # print('aaaa', pred.meta.id)
-            # print('bbbb', channel_pose["rotation"])
-            # print('cccc', channel_pose["translation"])
-            # print('dddd', ego_pose["rotation"])
-            # print('eeee', ego_pose["translation"])
-            # import sys
-            # sys.exit(0)
 
             global_box_list = []
             for box in nus_box_list:
@@ -88,7 +82,7 @@ class NuScenesMetric(MetricABC):
                 global_box_list.append(box)
 
             res[pred.meta.id] = []
-            # for idx in range(num_boxes):
+
             for idx in range(len(global_box_list)):
                 box = global_box_list[idx]
                 label_name = self.class_names[box.label]
@@ -130,13 +124,6 @@ class NuScenesMetric(MetricABC):
         eval_config = config_factory(eval_version)
 
         dt_annos = {
-            # 'meta': {
-            #     'use_camera': True,
-            #     'use_lidar': False,
-            #     'use_radar': False,
-            #     'use_map': False,
-            #     'use_external': True,
-            # },
             'meta': {
                 'use_camera': True if self.channel.startswith('CAM') else False,
                 'use_lidar': True if self.channel == 'LIDAR_TOP' else False,
@@ -164,8 +151,8 @@ class NuScenesMetric(MetricABC):
                 verbose=False,
             )
 
-            metrics_summary = evaluator.main(plot_examples=0,
-                                             render_curves=False)
+            metrics_summary = evaluator.main(
+                plot_examples=0, render_curves=False)
             metric_file = os.path.join(tmpdir, 'metrics_summary.json')
             with open(metric_file, 'r') as file:
                 metrics = json.load(file)

@@ -41,6 +41,7 @@ from paddle3d.models.layers.param_init import (constant_init,
 class FFN(nn.Layer):
     """Implements feed-forward networks (FFNs) with identity connection.
     """
+
     def __init__(self,
                  embed_dims=256,
                  feedforward_channels=1024,
@@ -66,8 +67,9 @@ class FFN(nn.Layer):
         in_channels = embed_dims
         for _ in range(num_fcs - 1):
             layers.append(
-                nn.Sequential(nn.Linear(in_channels, feedforward_channels),
-                              self.act_layer, nn.Dropout(ffn_drop)))
+                nn.Sequential(
+                    nn.Linear(in_channels, feedforward_channels),
+                    self.act_layer, nn.Dropout(ffn_drop)))
             in_channels = feedforward_channels
         layers.append(nn.Linear(feedforward_channels, embed_dims))
         layers.append(nn.Dropout(ffn_drop))
@@ -96,23 +98,22 @@ class FFN(nn.Layer):
 class BaseTransformerLayer(nn.Layer):
     """Base `TransformerLayer` for vision transformer.
     """
-    def __init__(
-            self,
-            attns=None,
-            ffn_cfgs=dict(
-                type='FFN',
-                embed_dims=256,
-                feedforward_channels=1024,
-                num_fcs=2,
-                ffn_drop=0.,
-                act_cfg=dict(type='ReLU'),
-                #  act_cfg=dict(type='ReLU', inplace=True),
-            ),
-            operation_order=None,
-            norm_cfg=dict(type='LayerNorm'),
-            init_cfg=None,
-            batch_first=True,
-            **kwargs):
+
+    def __init__(self,
+                 attns=None,
+                 ffn_cfgs=dict(
+                     type='FFN',
+                     embed_dims=256,
+                     feedforward_channels=1024,
+                     num_fcs=2,
+                     ffn_drop=0.,
+                     act_cfg=dict(type='ReLU'),
+                 ),
+                 operation_order=None,
+                 norm_cfg=dict(type='LayerNorm'),
+                 init_cfg=None,
+                 batch_first=True,
+                 **kwargs):
 
         super(BaseTransformerLayer, self).__init__()
 
@@ -128,9 +129,7 @@ class BaseTransformerLayer(nn.Layer):
 
         num_attn = operation_order.count('self_attn') + operation_order.count(
             'cross_attn')
-        # if isinstance(attn_cfgs, dict):
-        #     attn_cfgs = [copy.deepcopy(attn_cfgs) for _ in range(num_attn)]
-        # else:
+
         assert num_attn == len(attns), f'The length ' \
             f'of attn_cfg {num_attn} is ' \
             f'not consistent with the number of attention' \
@@ -156,8 +155,7 @@ class BaseTransformerLayer(nn.Layer):
 
         self.ffns = nn.LayerList()
         num_ffns = operation_order.count('ffn')
-        # if isinstance(ffn_cfgs, dict):
-        #     ffn_cfgs = ConfigDict(ffn_cfgs)
+
         if isinstance(ffn_cfgs, dict):
             ffn_cfgs = [copy.deepcopy(ffn_cfgs) for _ in range(num_ffns)]
         assert len(ffn_cfgs) == num_ffns
@@ -167,16 +165,12 @@ class BaseTransformerLayer(nn.Layer):
             else:
                 assert ffn_cfgs[ffn_index]['embed_dims'] == self.embed_dims
             self.ffns.append(FFN(**ffn_cfgs[ffn_index]))
-            # self.ffns.append(
-            #     build_feedforward_network(ffn_cfgs[ffn_index],
-            #                               dict(type='FFN')))
 
         self.norms = nn.LayerList()
         num_norms = operation_order.count('norm')
         for _ in range(num_norms):
             # TODO hard code
             self.norms.append(nn.LayerNorm(self.embed_dims))
-            # self.norms.append(build_norm_layer(norm_cfg, self.embed_dims))
 
     def forward(self,
                 query,
@@ -212,7 +206,6 @@ class BaseTransformerLayer(nn.Layer):
         for layer in self.operation_order:
             if layer == 'self_attn':
                 temp_key = temp_value = query
-                # print('ffff,', query)
                 query = self.attentions[attn_index](
                     query,
                     temp_key,
@@ -223,15 +216,13 @@ class BaseTransformerLayer(nn.Layer):
                     attn_mask=attn_masks[attn_index],
                     key_padding_mask=query_key_padding_mask,
                     **kwargs)
-                # print('ffff,', query)
+
                 attn_index += 1
                 identity = query
 
             elif layer == 'norm':
                 query = self.norms[norm_index](query)
                 norm_index += 1
-                # print('ffff,', query)
-
             elif layer == 'cross_attn':
                 query = self.attentions[attn_index](
                     query,
@@ -245,13 +236,10 @@ class BaseTransformerLayer(nn.Layer):
                     **kwargs)
                 attn_index += 1
                 identity = query
-                # print('ffff,', query)
-
             elif layer == 'ffn':
                 query = self.ffns[ffn_index](
                     query, identity if self.pre_norm else None)
                 ffn_index += 1
-                # print('ffff,', query)
 
         return query
 
@@ -265,16 +253,12 @@ class TransformerLayerSequence(nn.Layer):
     of `transformer_layer` in `transformer_coder`.
 
     Args:
-        transformerlayer (list[obj:`mmcv.ConfigDict`] |
-            obj:`mmcv.ConfigDict`): Config of transformerlayer
-            in TransformerCoder. If it is obj:`mmcv.ConfigDict`,
-             it would be repeated `num_layer` times to a
-             list[`mmcv.ConfigDict`]. Default: None.
+        transformerlayer: paddle.nn.Layer. Default: None.
         num_layers (int): The number of `TransformerLayer`. Default: None.
-        init_cfg (obj:`mmcv.ConfigDict`): The Config for initialization.
-            Default: None.
+
     """
-    def __init__(self, transformerlayers=None, num_layers=None, init_cfg=None):
+
+    def __init__(self, transformerlayers=None, num_layers=None):
         super(TransformerLayerSequence, self).__init__()
 
         self.num_layers = num_layers
@@ -299,15 +283,16 @@ class TransformerLayerSequence(nn.Layer):
         """Forward function for `TransformerCoder`.
         """
         for layer in self.layers:
-            query = layer(query,
-                          key,
-                          value,
-                          query_pos=query_pos,
-                          key_pos=key_pos,
-                          attn_masks=attn_masks,
-                          query_key_padding_mask=query_key_padding_mask,
-                          key_padding_mask=key_padding_mask,
-                          **kwargs)
+            query = layer(
+                query,
+                key,
+                value,
+                query_pos=query_pos,
+                key_pos=key_pos,
+                attn_masks=attn_masks,
+                query_key_padding_mask=query_key_padding_mask,
+                key_padding_mask=key_padding_mask,
+                **kwargs)
         return query
 
 
@@ -315,6 +300,7 @@ class TransformerLayerSequence(nn.Layer):
 class MultiHeadAttention(nn.Layer):
     """A wrapper for ``paddle.nn.MultiheadAttention``.
     """
+
     def __init__(self,
                  embed_dims,
                  num_heads,

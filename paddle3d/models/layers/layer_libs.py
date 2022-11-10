@@ -55,10 +55,8 @@ def nms_hm(heat_map, kernel=3):
     """
     pad = (kernel - 1) // 2
 
-    hmax = F.max_pool2d(heat_map,
-                        kernel_size=(kernel, kernel),
-                        stride=1,
-                        padding=pad)
+    hmax = F.max_pool2d(
+        heat_map, kernel_size=(kernel, kernel), stride=1, padding=pad)
     eq_index = (hmax == heat_map).astype("float32")
 
     return heat_map * eq_index
@@ -264,7 +262,6 @@ def init_layer_use_config(param, cfg, *args, **kargs):
     assert 'type' in cfg
     cfg_ = copy.deepcopy(cfg)
     init_type = cfg_.pop('type')
-    print('use init func:', init_type)
     eval(init_type)(param, *args, **kargs, **cfg_)
 
 
@@ -322,11 +319,8 @@ class ConvBNReLU(nn.Layer):
                  **kwargs):
         super().__init__()
 
-        self._conv = nn.Conv2D(in_channels,
-                               out_channels,
-                               kernel_size,
-                               padding=padding,
-                               **kwargs)
+        self._conv = nn.Conv2D(
+            in_channels, out_channels, kernel_size, padding=padding, **kwargs)
 
         if 'data_format' in kwargs:
             data_format = kwargs['data_format']
@@ -350,11 +344,8 @@ class ConvBN(nn.Layer):
                  padding='same',
                  **kwargs):
         super().__init__()
-        self._conv = nn.Conv2D(in_channels,
-                               out_channels,
-                               kernel_size,
-                               padding=padding,
-                               **kwargs)
+        self._conv = nn.Conv2D(
+            in_channels, out_channels, kernel_size, padding=padding, **kwargs)
         if 'data_format' in kwargs:
             data_format = kwargs['data_format']
         else:
@@ -376,22 +367,24 @@ class SeparableConvBNReLU(nn.Layer):
                  pointwise_bias=None,
                  **kwargs):
         super().__init__()
-        self.depthwise_conv = ConvBN(in_channels,
-                                     out_channels=in_channels,
-                                     kernel_size=kernel_size,
-                                     padding=padding,
-                                     groups=in_channels,
-                                     **kwargs)
+        self.depthwise_conv = ConvBN(
+            in_channels,
+            out_channels=in_channels,
+            kernel_size=kernel_size,
+            padding=padding,
+            groups=in_channels,
+            **kwargs)
         if 'data_format' in kwargs:
             data_format = kwargs['data_format']
         else:
             data_format = 'NCHW'
-        self.piontwise_conv = ConvBNReLU(in_channels,
-                                         out_channels,
-                                         kernel_size=1,
-                                         groups=1,
-                                         data_format=data_format,
-                                         bias_attr=pointwise_bias)
+        self.piontwise_conv = ConvBNReLU(
+            in_channels,
+            out_channels,
+            kernel_size=1,
+            groups=1,
+            data_format=data_format,
+            bias_attr=pointwise_bias)
 
     def forward(self, x):
         x = self.depthwise_conv(x)
@@ -415,15 +408,16 @@ class ConvNormActLayer(nn.Layer):
         super(ConvNormActLayer, self).__init__()
 
         bias_attr = bias if bias else None
-        self.conv = conv_layer_from_config(conv_cfg,
-                                           in_channels,
-                                           out_channels,
-                                           kernel_size,
-                                           stride,
-                                           padding,
-                                           dilation,
-                                           groups,
-                                           bias_attr=bias_attr)
+        self.conv = conv_layer_from_config(
+            conv_cfg,
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride,
+            padding,
+            dilation,
+            groups,
+            bias_attr=bias_attr)
         self.norm_cfg = norm_cfg
         if self.norm_cfg is not None:
             self.norm = norm_layer_from_config(norm_cfg)
@@ -450,6 +444,7 @@ class NormedLinear(nn.Linear):
         eps (float, optional): The minimal value of divisor to
              keep numerical stability. Default to 1e-6.
     """
+
     def __init__(self, *args, tempearture=20, power=1.0, eps=1e-6, **kwargs):
         super(NormedLinear, self).__init__(*args, **kwargs)
         self.tempearture = tempearture

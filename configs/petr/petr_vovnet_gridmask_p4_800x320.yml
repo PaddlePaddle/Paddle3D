@@ -3,7 +3,7 @@ epochs: 24
 
 train_dataset:
   type: NuscenesMVDataset
-  dataset_root: /workspace/datasets/nuscene/
+  dataset_root: data/nuscenes/
   ann_file: data/nuscenes/nuscenes_infos_train.pkl
   mode: train
   class_names: [
@@ -49,7 +49,7 @@ train_dataset:
 
 val_dataset:
   type: NuscenesMVDataset
-  dataset_root: /workspace/datasets/nuscene/
+  dataset_root: data/nuscenes/
   ann_file: data/nuscenes/nuscenes_infos_val.pkl
   mode: val
   class_names: ['car', 'truck', 'construction_vehicle', 'bus', 'trailer',

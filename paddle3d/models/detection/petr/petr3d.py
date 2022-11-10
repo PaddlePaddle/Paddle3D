@@ -79,8 +79,8 @@ class GridMask(nn.Layer):
         mask = Image.fromarray(np.uint8(mask))
         mask = mask.rotate(r)
         mask = np.asarray(mask)
-        mask = mask[(hh - h) // 2:(hh - h) // 2 + h,
-                    (ww - w) // 2:(ww - w) // 2 + w]
+        mask = mask[(hh - h) // 2:(hh - h) // 2 +
+                    h, (ww - w) // 2:(ww - w) // 2 + w]
 
         mask = paddle.to_tensor(mask).astype('float32')
         if self.mode == 1:
@@ -99,9 +99,8 @@ class GridMask(nn.Layer):
 def bbox3d2result(bboxes, scores, labels, attrs=None):
     """Convert detection results to a list of numpy arrays.
     """
-    result_dict = dict(boxes_3d=bboxes.cpu(),
-                       scores_3d=scores.cpu(),
-                       labels_3d=labels.cpu())
+    result_dict = dict(
+        boxes_3d=bboxes.cpu(), scores_3d=scores.cpu(), labels_3d=labels.cpu())
 
     if attrs is not None:
         result_dict['attrs_3d'] = attrs.cpu()
@@ -112,6 +111,7 @@ def bbox3d2result(bboxes, scores, labels, attrs=None):
 @manager.MODELS.add_component
 class Petr3D(nn.Layer):
     """Petr3D."""
+
     def __init__(self,
                  use_grid_mask=False,
                  backbone=None,
@@ -131,13 +131,8 @@ class Petr3D(nn.Layer):
         self.use_recompute = use_recompute
 
         if use_grid_mask:
-            self.grid_mask = GridMask(True,
-                                      True,
-                                      rotate=1,
-                                      offset=False,
-                                      ratio=0.5,
-                                      mode=1,
-                                      prob=0.7)
+            self.grid_mask = GridMask(
+                True, True, rotate=1, offset=False, ratio=0.5, mode=1, prob=0.7)
 
         self.init_weight()
 
@@ -237,9 +232,8 @@ class Petr3D(nn.Layer):
 
         img_feats = [x.astype('float32') for x in img_feats]
         losses = dict()
-        losses_pts = self.forward_pts_train(img_feats, gt_bboxes_3d,
-                                            gt_labels_3d, img_metas,
-                                            gt_bboxes_ignore)
+        losses_pts = self.forward_pts_train(
+            img_feats, gt_bboxes_3d, gt_labels_3d, img_metas, gt_bboxes_ignore)
         losses.update(losses_pts)
         return dict(loss=losses)
 
@@ -256,9 +250,8 @@ class Petr3D(nn.Layer):
         """Test function of point cloud branch."""
 
         outs = self.pts_bbox_head(x, img_metas)
-        bbox_list = self.pts_bbox_head.get_bboxes(outs,
-                                                  img_metas,
-                                                  rescale=rescale)
+        bbox_list = self.pts_bbox_head.get_bboxes(
+            outs, img_metas, rescale=rescale)
 
         bbox_results = [
             bbox3d2result(bboxes, scores, labels)
@@ -284,6 +277,11 @@ class Petr3D(nn.Layer):
             bboxes_3d = results[i]['pts_bbox']["boxes_3d"].numpy()
             labels = results[i]['pts_bbox']["labels_3d"].numpy()
             confidences = results[i]['pts_bbox']["scores_3d"].numpy()
+            bottom_center = bboxes_3d[:, :3]
+            gravity_center = np.zeros_like(bottom_center)
+            gravity_center[:, :2] = bottom_center[:, :2]
+            gravity_center[:, 2] = bottom_center[:, 2] + bboxes_3d[:, 5] * 0.5
+            bboxes_3d[:, :3] = gravity_center
             data.bboxes_3d = BBoxes3D(bboxes_3d[:, 0:7])
             data.bboxes_3d.coordmode = 'Lidar'
             data.bboxes_3d.origin = [0.5, 0.5, 0.5]
@@ -311,9 +309,8 @@ class Petr3D(nn.Layer):
                 feats_list_level.append(feats[i][j])
             feats_list.append(paddle.stack(feats_list_level, -1).mean(-1))
         outs = self.pts_bbox_head(feats_list, img_metas)
-        bbox_list = self.pts_bbox_head.get_bboxes(outs,
-                                                  img_metas,
-                                                  rescale=rescale)
+        bbox_list = self.pts_bbox_head.get_bboxes(
+            outs, img_metas, rescale=rescale)
         bbox_results = [
             bbox3d2result(bboxes, scores, labels)
             for bboxes, scores, labels in bbox_list
