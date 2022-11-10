@@ -37,7 +37,7 @@ from paddle3d.models.heads.dense_heads.target_assigner.hungarian_assigner import
 from paddle3d.models.layers import param_init
 from paddle3d.models.layers.layer_libs import NormedLinear, inverse_sigmoid
 from paddle3d.models.losses.focal_loss import FocalLoss, WeightedFocalLoss
-from paddle3d.models.losses.weight_loss import GIoULoss, WeightedL1Loss
+from paddle3d.models.losses.weight_loss import WeightedL1Loss
 
 from .samplers.pseudo_sampler import PseudoSampler
 

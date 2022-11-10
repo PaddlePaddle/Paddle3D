@@ -26,7 +26,6 @@ import numpy as np
 import paddle
 
 from paddle3d.models.heads.dense_heads.match_costs import (BBox3DL1Cost,
-                                                           BBoxL1Cost,
                                                            FocalLossCost,
                                                            IoUCost)
 from paddle3d.sample import _EasyDict

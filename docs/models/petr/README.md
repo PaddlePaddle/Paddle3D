@@ -26,10 +26,6 @@ PETR...
 
 ## <h2 id="4">模型库</h2>
 
-| 模型 |  骨干网络  | 3DmAP Mod. | Car<br>Easy Mod. Hard | Pedestrian<br>Easy Mod. Hard | Cyclist<br>Easy Mod. Hard | 模型下载 | 配置文件 |  日志 |
-| :--: | :-------: | :--------: | :-------------------: | :--------------------------: | :-----------------------: | :------: | :-----: | :--: |
-|CADDN |  ocrnet_hrnet_w18    | 7.86 |  22.50 15.78 13.95 | 10.09 7.12 5.57 | 1.27 0.69 0.69 | [model](https://paddle3d.bj.bcebos.com/models/caddn/caddn_ocrnet_hrnet_w18_kitti/model.pdparams) | [config](../../../configs/caddn/caddn_ocrnet_hrnet_w18_kitti.yml) | [log](https://paddle3d.bj.bcebos.com/models/caddn/caddn_ocrnet_hrnet_w18_kitti/train.log) \| [vdl](https://www.paddlepaddle.org.cn/paddle/visualdl/service/app/scalar?id=36ff3161e13f37bb318fc2d78e679983) |
-|CADDN |  deeplabv3p_resnet101_os8    | 7.21 |  21.45 14.36 12.57 | 9.15 6.53 5.12 | 1.82 0.74 0.75 | [model](https://paddle3d.bj.bcebos.com/models/caddn/caddn_deeplabv3p_resnet101_os8_kitti/model.pdparams) | [config](../../../configs/caddn/caddn_deeplabv3p_resnet101_os8_kitti.yml) | [log](https://paddle3d.bj.bcebos.com/models/caddn/caddn_deeplabv3p_resnet101_os8_kitti/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=a56f45325b80ce7f7e29f185efaed28c) |
 
 ## <h2 id="5">使用教程</h2>
 
