@@ -221,8 +221,8 @@ def rotate_nms_pcdet(boxes,
     :return:
     """
     # transform back to pcdet's coordinate
-    index = paddle.to_tensor([0, 1, 2, 4, 3, 5, boxes.shape[-1] - 1],
-                             dtype='int32')
+    index = paddle.to_tensor(
+        [0, 1, 2, 4, 3, 5, int(boxes.shape[-1]) - 1], dtype='int32')
 
     boxes = paddle.index_select(boxes, index=index, axis=-1)
     #boxes = boxes[:, [0, 1, 2, 4, 3, 5, -1]]
