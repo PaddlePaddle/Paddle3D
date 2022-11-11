@@ -82,7 +82,6 @@ def normalize_bbox(bboxes, pc_range):
     return normalized_bboxes
 
 
-# @BBOX_ASSIGNERS.register_module()
 class HungarianAssigner3D(object):
     """Computes one-to-one matching between predictions and ground truth.
     This class computes an assignment between the targets and the predictions
