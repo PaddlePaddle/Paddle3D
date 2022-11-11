@@ -28,6 +28,7 @@ import paddle
 class SamplingResult(object):
     """Bbox sampling result.
     """
+
     def __init__(self, pos_inds, neg_inds, bboxes, gt_bboxes, assign_result,
                  gt_flags):
         self.pos_inds = pos_inds
@@ -58,6 +59,7 @@ class SamplingResult(object):
 
 class PseudoSampler(object):
     """A pseudo sampler that does not do sampling actually."""
+
     def __init__(self, **kwargs):
         pass
 
@@ -80,10 +82,10 @@ class PseudoSampler(object):
         Returns:
             :obj:`SamplingResult`: sampler results
         """
-        pos_inds = paddle.nonzero(assign_result.gt_inds > 0,
-                                  as_tuple=False).squeeze(-1).unique()
-        neg_inds = paddle.nonzero(assign_result.gt_inds == 0,
-                                  as_tuple=False).squeeze(-1).unique()
+        pos_inds = paddle.nonzero(
+            assign_result.gt_inds > 0, as_tuple=False).squeeze(-1).unique()
+        neg_inds = paddle.nonzero(
+            assign_result.gt_inds == 0, as_tuple=False).squeeze(-1).unique()
         gt_flags = paddle.zeros([bboxes.shape[0]], dtype='int32')
         sampling_result = SamplingResult(pos_inds, neg_inds, bboxes, gt_bboxes,
                                          assign_result, gt_flags)

@@ -31,6 +31,7 @@ from paddle3d.models.layers.layer_libs import ConvNormActLayer
 class CPFPN(nn.Layer):
     """checkpoint Feature Pyramid Network.
     """
+
     def __init__(
             self,
             in_channels,
@@ -41,8 +42,8 @@ class CPFPN(nn.Layer):
             add_extra_convs=False,
             relu_before_extra_convs=False,
             no_norm_on_lateral=False,
-            conv_cfg=dict(type='Conv2D',
-                          init_cfg=dict(type='xavier_uniform_init')),
+            conv_cfg=dict(
+                type='Conv2D', init_cfg=dict(type='xavier_uniform_init')),
             norm_cfg=None,
             act_cfg=None,
             upsample_cfg=dict(mode='nearest'),
@@ -89,13 +90,14 @@ class CPFPN(nn.Layer):
                 act_cfg=act_cfg)
             self.lateral_convs.append(l_conv)
             if i == 0:
-                fpn_conv = ConvNormActLayer(out_channels,
-                                            out_channels,
-                                            3,
-                                            padding=1,
-                                            conv_cfg=conv_cfg,
-                                            norm_cfg=norm_cfg,
-                                            act_cfg=act_cfg)
+                fpn_conv = ConvNormActLayer(
+                    out_channels,
+                    out_channels,
+                    3,
+                    padding=1,
+                    conv_cfg=conv_cfg,
+                    norm_cfg=norm_cfg,
+                    act_cfg=act_cfg)
                 self.fpn_convs.append(fpn_conv)
 
         # add extra conv layers (e.g., RetinaNet)
@@ -106,14 +108,15 @@ class CPFPN(nn.Layer):
                     in_channels = self.in_channels[self.backbone_end_level - 1]
                 else:
                     in_channels = out_channels
-                extra_fpn_conv = ConvNormActLayer(in_channels,
-                                                  out_channels,
-                                                  3,
-                                                  stride=2,
-                                                  padding=1,
-                                                  conv_cfg=conv_cfg,
-                                                  norm_cfg=norm_cfg,
-                                                  act_cfg=act_cfg)
+                extra_fpn_conv = ConvNormActLayer(
+                    in_channels,
+                    out_channels,
+                    3,
+                    stride=2,
+                    padding=1,
+                    conv_cfg=conv_cfg,
+                    norm_cfg=norm_cfg,
+                    act_cfg=act_cfg)
                 self.fpn_convs.append(extra_fpn_conv)
 
     def forward(self, inputs):
@@ -136,9 +139,8 @@ class CPFPN(nn.Layer):
                                                  **self.upsample_cfg)
             else:
                 prev_shape = laterals[i - 1].shape[2:]
-                laterals[i - 1] += F.interpolate(laterals[i],
-                                                 size=prev_shape,
-                                                 **self.upsample_cfg)
+                laterals[i - 1] += F.interpolate(
+                    laterals[i], size=prev_shape, **self.upsample_cfg)
 
         # build outputs
         # part 1: from original levels

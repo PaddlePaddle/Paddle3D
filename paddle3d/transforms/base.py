@@ -32,6 +32,7 @@ class TransformABC(abc.ABC):
 class Compose(TransformABC):
     """
     """
+
     def __init__(self, transforms):
         if not isinstance(transforms, list):
             raise TypeError('The transforms must be a list!')

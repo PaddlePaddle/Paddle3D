@@ -54,15 +54,16 @@ def build_conv_layer(in_channels,
         if bias:
             bias_attr = ParamAttr(initializer=Constant(0.))
 
-    conv_layer = nn.Conv2D(in_channels=in_channels,
-                           out_channels=out_channels,
-                           kernel_size=kernel_size,
-                           stride=stride,
-                           padding=padding,
-                           dilation=dilation,
-                           groups=groups,
-                           weight_attr=param_attr,
-                           bias_attr=bias_attr)
+    conv_layer = nn.Conv2D(
+        in_channels=in_channels,
+        out_channels=out_channels,
+        kernel_size=kernel_size,
+        stride=stride,
+        padding=padding,
+        dilation=dilation,
+        groups=groups,
+        weight_attr=param_attr,
+        bias_attr=bias_attr)
     return conv_layer
 
 
@@ -84,22 +85,24 @@ class SecondBackbone(nn.Layer):
         blocks = []
         for i, layer_num in enumerate(layer_nums):
             block = [
-                build_conv_layer(in_filters[i],
-                                 out_channels[i],
-                                 3,
-                                 stride=downsample_strides[i],
-                                 padding=1,
-                                 bias=False),
+                build_conv_layer(
+                    in_filters[i],
+                    out_channels[i],
+                    3,
+                    stride=downsample_strides[i],
+                    padding=1,
+                    bias=False),
                 build_norm_layer(norm_cfg, out_channels[i]),
                 nn.ReLU(),
             ]
             for j in range(layer_num):
                 block.append(
-                    build_conv_layer(out_channels[i],
-                                     out_channels[i],
-                                     3,
-                                     padding=1,
-                                     bias=False))
+                    build_conv_layer(
+                        out_channels[i],
+                        out_channels[i],
+                        3,
+                        padding=1,
+                        bias=False))
                 block.append(build_norm_layer(norm_cfg, out_channels[i]))
                 block.append(nn.ReLU())
 

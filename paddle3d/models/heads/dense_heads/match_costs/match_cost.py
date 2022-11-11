@@ -53,10 +53,10 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou', is_aligned=False, eps=1e-6):
         else:
             return bboxes1.new(batch_shape + (rows, cols))
 
-    area1 = (bboxes1[..., 2] - bboxes1[..., 0]) * (bboxes1[..., 3] -
-                                                   bboxes1[..., 1])
-    area2 = (bboxes2[..., 2] - bboxes2[..., 0]) * (bboxes2[..., 3] -
-                                                   bboxes2[..., 1])
+    area1 = (bboxes1[..., 2] - bboxes1[..., 0]) * (
+        bboxes1[..., 3] - bboxes1[..., 1])
+    area2 = (bboxes2[..., 2] - bboxes2[..., 0]) * (
+        bboxes2[..., 3] - bboxes2[..., 1])
 
     if is_aligned:
         lt = paddle.max(bboxes1[..., :2], bboxes2[..., :2])  # [B, rows, 2]
@@ -130,6 +130,7 @@ class BBox3DL1Cost(object):
      Args:
          weight (int | float, optional): loss_weight
     """
+
     def __init__(self, weight=1.):
         self.weight = weight
 
@@ -157,6 +158,7 @@ class ClassificationCost:
          weight (int | float, optional): loss_weight
 
     """
+
     def __init__(self, weight=1.):
         self.weight = weight
 
@@ -187,6 +189,7 @@ class IoUCost:
          weight (int | float, optional): loss weight
 
     """
+
     def __init__(self, iou_mode='giou', weight=1.):
         self.weight = weight
         self.iou_mode = iou_mode
@@ -203,10 +206,8 @@ class IoUCost:
             paddle.Tensor: iou_cost value with weight
         """
         # overlaps: [num_bboxes, num_gt]
-        overlaps = bbox_overlaps(bboxes,
-                                 gt_bboxes,
-                                 mode=self.iou_mode,
-                                 is_aligned=False)
+        overlaps = bbox_overlaps(
+            bboxes, gt_bboxes, mode=self.iou_mode, is_aligned=False)
         # The 1 is a constant that doesn't change the matching, so omitted.
         iou_cost = -overlaps
         return iou_cost * self.weight
@@ -223,6 +224,7 @@ class FocalLossCost:
          binary_input (bool, optional): Whether the input is binary,
             default False.
     """
+
     def __init__(self,
                  weight=1.,
                  alpha=0.25,

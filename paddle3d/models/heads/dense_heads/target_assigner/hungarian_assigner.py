@@ -107,6 +107,7 @@ class HungarianAssigner3D(object):
                 (intersection over foreground), or "giou" (generalized
                 intersection over union). Default "giou".
     """
+
     def __init__(self,
                  cls_cost_weight=2.,
                  reg_cost_weight=0.25,
@@ -139,9 +140,10 @@ class HungarianAssigner3D(object):
             if num_gts == 0:
                 # No ground truth, assign all to background
                 assigned_gt_inds[:] = 0
-            return _EasyDict(num_gts=num_gts,
-                             gt_inds=assigned_gt_inds,
-                             labels=assigned_labels)
+            return _EasyDict(
+                num_gts=num_gts,
+                gt_inds=assigned_gt_inds,
+                labels=assigned_labels)
 
         # 2. compute the weighted costs
         # classification and bboxcost.
@@ -170,6 +172,5 @@ class HungarianAssigner3D(object):
         assigned_gt_inds[matched_row_inds] = matched_col_inds + 1
         assigned_labels[matched_row_inds] = gt_labels[matched_col_inds]
 
-        return _EasyDict(num_gts=num_gts,
-                         gt_inds=assigned_gt_inds,
-                         labels=assigned_labels)
+        return _EasyDict(
+            num_gts=num_gts, gt_inds=assigned_gt_inds, labels=assigned_labels)

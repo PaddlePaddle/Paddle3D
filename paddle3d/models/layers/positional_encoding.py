@@ -50,6 +50,7 @@ class SinePositionalEncoding3D(nn.Layer):
         init_cfg (dict or list[dict], optional): Initialization config dict.
             Default: None
     """
+
     def __init__(self,
                  num_feats,
                  temperature=10000,
@@ -150,11 +151,12 @@ class LearnedPositionalEncoding3D(nn.Layer):
             Default 50.
         init_cfg (dict or list[dict], optional): Initialization config dict.
     """
+
     def __init__(
-        self,
-        num_feats,
-        row_num_embed=50,
-        col_num_embed=50,
+            self,
+            num_feats,
+            row_num_embed=50,
+            col_num_embed=50,
     ):
         super(LearnedPositionalEncoding3D, self).__init__()
         self.row_embed = nn.Embedding(row_num_embed, num_feats)
@@ -178,9 +180,8 @@ class LearnedPositionalEncoding3D(nn.Layer):
         y = paddle.arange(h, device=mask.device)
         x_embed = self.col_embed(x)
         y_embed = self.row_embed(y)
-        pos = paddle.concat(
-            (x_embed.unsqueeze(0).repeat(h, 1, 1), y_embed.unsqueeze(1).repeat(
-                1, w, 1)),
-            dim=-1).transpose([2, 0,
-                               1]).unsqueeze(0).repeat(mask.shape[0], 1, 1, 1)
+        pos = paddle.concat((x_embed.unsqueeze(0).repeat(h, 1, 1),
+                             y_embed.unsqueeze(1).repeat(1, w, 1)),
+                            dim=-1).transpose([2, 0, 1]).unsqueeze(0).repeat(
+                                mask.shape[0], 1, 1, 1)
         return pos

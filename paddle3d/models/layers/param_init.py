@@ -215,8 +215,8 @@ def _calculate_gain(nonlinearity, param=None):
 def _no_grad_uniform_(tensor, a, b):
     with paddle.no_grad():
         tensor.set_value(
-            paddle.uniform(shape=tensor.shape, dtype=tensor.dtype, min=a,
-                           max=b))
+            paddle.uniform(
+                shape=tensor.shape, dtype=tensor.dtype, min=a, max=b))
     return tensor
 
 

@@ -48,6 +48,7 @@ class PETRTransformer(nn.Layer):
     See `paper: End-to-End Object Detection with Transformers
     <https://arxiv.org/pdf/2005.12872>`_ for details.
     """
+
     def __init__(self,
                  decoder_embed_dims,
                  encoder=None,
@@ -125,6 +126,7 @@ class PETRDNTransformer(nn.Layer):
     """Implements the DETR transformer.
     Following the official DETR implementation, this module copy-paste
     """
+
     def __init__(self,
                  embed_dims,
                  encoder=None,
@@ -155,9 +157,8 @@ class PETRDNTransformer(nn.Layer):
         """Forward function for `Transformer`.
         """
         bs, n, c, h, w = x.shape
-        memory = x.permute(1, 3, 4, 0,
-                           2).reshape(-1, bs,
-                                      c)  # [bs, n, c, h, w] -> [n*h*w, bs, c]
+        memory = x.permute(1, 3, 4, 0, 2).reshape(
+            -1, bs, c)  # [bs, n, c, h, w] -> [n*h*w, bs, c]
         pos_embed = pos_embed.permute(1, 3, 4, 0, 2).reshape(
             -1, bs, c)  # [bs, n, c, h, w] -> [n*h*w, bs, c]
         query_embed = query_embed.transpose(
@@ -185,6 +186,7 @@ class PETRDNTransformer(nn.Layer):
 class PETRTransformerDecoderLayer(BaseTransformerLayer):
     """Implements decoder layer in DETR transformer.
     """
+
     def __init__(self,
                  attns,
                  feedforward_channels,
@@ -195,30 +197,30 @@ class PETRTransformerDecoderLayer(BaseTransformerLayer):
                  ffn_num_fcs=2,
                  use_recompute=True,
                  **kwargs):
-        super(PETRTransformerDecoderLayer,
-              self).__init__(attns=attns,
-                             feedforward_channels=feedforward_channels,
-                             ffn_dropout=ffn_dropout,
-                             operation_order=operation_order,
-                             act_cfg=act_cfg,
-                             norm_cfg=norm_cfg,
-                             ffn_num_fcs=ffn_num_fcs,
-                             **kwargs)
+        super(PETRTransformerDecoderLayer, self).__init__(
+            attns=attns,
+            feedforward_channels=feedforward_channels,
+            ffn_dropout=ffn_dropout,
+            operation_order=operation_order,
+            act_cfg=act_cfg,
+            norm_cfg=norm_cfg,
+            ffn_num_fcs=ffn_num_fcs,
+            **kwargs)
         assert len(operation_order) == 6
         assert set(operation_order) == set(
             ['self_attn', 'norm', 'cross_attn', 'ffn'])
         self.use_recompute = use_recompute
 
     def _forward(
-        self,
-        query,
-        key=None,
-        value=None,
-        query_pos=None,
-        key_pos=None,
-        attn_masks=None,
-        query_key_padding_mask=None,
-        key_padding_mask=None,
+            self,
+            query,
+            key=None,
+            value=None,
+            query_pos=None,
+            key_pos=None,
+            attn_masks=None,
+            query_key_padding_mask=None,
+            key_padding_mask=None,
     ):
         """Forward function for `TransformerCoder`.
         Returns:
@@ -265,14 +267,15 @@ class PETRTransformerDecoderLayer(BaseTransformerLayer):
                 key_padding_mask,
             )
         else:
-            x = self._forward(query,
-                              key=key,
-                              value=value,
-                              query_pos=query_pos,
-                              key_pos=key_pos,
-                              attn_masks=attn_masks,
-                              query_key_padding_mask=query_key_padding_mask,
-                              key_padding_mask=key_padding_mask)
+            x = self._forward(
+                query,
+                key=key,
+                value=value,
+                query_pos=query_pos,
+                key_pos=key_pos,
+                attn_masks=attn_masks,
+                query_key_padding_mask=query_key_padding_mask,
+                key_padding_mask=key_padding_mask)
         return x
 
 
@@ -282,6 +285,7 @@ class PETRMultiheadAttention(nn.Layer):
     This module implements MultiheadAttention with identity connection,
     and positional encoding  is also passed as input.
     """
+
     def __init__(self,
                  embed_dims,
                  num_heads,
@@ -374,6 +378,7 @@ class PETRTransformerEncoder(TransformerLayerSequence):
         post_norm (nn.Layer): normalization layer. Default：
             `LN`. Only used when `self.pre_norm` is `True`
     """
+
     def __init__(self, *args, post_norm=None, **kwargs):
         super(PETRTransformerEncoder, self).__init__(*args, **kwargs)
         if post_norm is not None:
@@ -399,6 +404,7 @@ class PETRTransformerEncoder(TransformerLayerSequence):
 class PETRTransformerDecoder(TransformerLayerSequence):
     """Implements the decoder in DETR transformer.
     """
+
     def __init__(self,
                  *args,
                  post_norm_cfg=dict(type='LN'),

@@ -23,6 +23,7 @@ class WeightedCrossEntropyLoss(nn.Layer):
     """
     This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/loss_utils.py#L187
     """
+
     def __init__(self):
         super(WeightedCrossEntropyLoss, self).__init__()
 
@@ -55,6 +56,7 @@ class WeightedSmoothL1Loss(nn.Layer):
                   | abs(x) - 0.5 * beta   otherwise,
     where x = input - target.
     """
+
     def __init__(self, beta=1.0 / 9.0, code_weights=None):
         """
         Args:
@@ -113,6 +115,7 @@ class WeightedSmoothL1Loss(nn.Layer):
 class WeightedL1Loss(nn.Layer):
     """
     """
+
     def __init__(self, reduction='mean', loss_weight=1.0):
         """
         Args:
