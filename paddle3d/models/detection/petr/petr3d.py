@@ -17,7 +17,7 @@
 # ------------------------------------------------------------------------
 # Modified from DETR3D (https://github.com/WangYueFt/detr3d)
 # Copyright (c) 2021 Wang, Yue
-
+import os
 from os import path as osp
 
 import numpy as np
@@ -151,11 +151,15 @@ class Petr3D(nn.Layer):
         if img is not None:
             input_shape = img.shape[-2:]
             # update real input shape of each single img
-            for img_meta in img_metas:
-                img_meta.update(input_shape=input_shape)
+            if not (hasattr(self, 'export_model') and self.export_model):
+                for img_meta in img_metas:
+                    img_meta.update(input_shape=input_shape)
             if img.dim() == 5:
                 if img.shape[0] == 1 and img.shape[1] != 1:
-                    img.squeeze_()
+                    if hasattr(self, 'export_model') and self.export_model:
+                        img = img.squeeze()
+                    else:
+                        img.squeeze_()
                 else:
                     B, N, C, H, W = img.shape
                     img = img.reshape([B * N, C, H, W])
@@ -326,3 +330,28 @@ class Petr3D(nn.Layer):
         for result_dict, pts_bbox in zip(bbox_list, bbox_pts):
             result_dict['pts_bbox'] = pts_bbox
         return bbox_list
+
+    def export_forward(self, img, img_metas):
+        img_metas['image_shape'] = img.shape[-2:]
+        img_feats = self.extract_feat(img=img, img_metas=None)
+
+        bbox_list = [dict() for i in range(len(img_metas))]
+        self.pts_bbox_head.export_model = True
+        outs = self.pts_bbox_head.export_forward(img_feats, img_metas)
+        bbox_list = self.pts_bbox_head.get_bboxes(outs, None, rescale=True)
+        return bbox_list
+
+    def export(self, save_dir: str, **kwargs):
+        self.forward = self.export_forward
+        self.export_model = True
+        image_spec = paddle.static.InputSpec(
+            shape=[1, 6, 3, 320, 800], dtype="float32")
+        img2lidars_spec = {
+            "img2lidars":
+            paddle.static.InputSpec(shape=[1, 6, 4, 4], name='img2lidars'),
+        }
+
+        input_spec = [image_spec, img2lidars_spec]
+
+        paddle.jit.to_static(self, input_spec=input_spec)
+        paddle.jit.save(self, os.path.join(save_dir, "petr_inference"))

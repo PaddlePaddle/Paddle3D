@@ -352,22 +352,23 @@ class PETRMultiheadAttention(nn.Layer):
                 key=key,
                 value=value,
                 attn_mask=attn_mask,
-            )[0]
+            )
         else:
             if attn_mask is None:
                 attn_mask = ~key_padding_mask
+                attn_mask = attn_mask.unsqueeze(1).unsqueeze(1)
+
                 out = self.attn(
                     query=query,
                     key=key,
                     value=value,
                     attn_mask=attn_mask,
-                )[0]
+                )
             else:
                 raise NotImplementedError('key_padding_mask is not None')
 
-        if len(out.shape) != len(query.shape):
-
-            out = out.unsqueeze(1)
+        if True:
+            out = out.transpose([1, 0, 2])
 
         return identity + self.dropout(self.proj_drop(out))
 

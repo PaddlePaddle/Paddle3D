@@ -132,7 +132,6 @@ class PETRHead(nn.Layer):
     See `paper: End-to-End Object Detection with Transformers
     <https://arxiv.org/pdf/2005.12872>`_ for details.
     """
-    _version = 2
 
     def __init__(
             self,
@@ -226,12 +225,11 @@ class PETRHead(nn.Layer):
             [len(self.code_weights)], default_initializer=initializer)
         self.code_weights.stop_gradient = True
 
-        self.bbox_coder = bbox_coder  #build_bbox_coder(bbox_coder)
+        self.bbox_coder = bbox_coder
         self.pc_range = self.bbox_coder.pc_range
         self._init_layers()
         self.transformer = transformer
         self.pd_eps = paddle.to_tensor(np.finfo('float32').eps)
-        self.cnth = 0
 
     def _init_layers(self):
         """Initialize layers of the transformer head."""
@@ -352,7 +350,10 @@ class PETRHead(nn.Layer):
 
     def position_embeding(self, img_feats, img_metas, masks=None):
         eps = 1e-5
-        pad_h, pad_w, _ = img_metas[0]['pad_shape'][0]
+        if hasattr(self, 'export_model') and self.export_model:
+            pad_h, pad_w = img_metas['image_shape']
+        else:
+            pad_h, pad_w, _ = img_metas[0]['pad_shape'][0]
 
         B, N, C, H, W = img_feats[self.position_level].shape
         coords_h = paddle.arange(H, dtype='float32') * pad_h / H
@@ -381,16 +382,20 @@ class PETRHead(nn.Layer):
             coords[..., 2:3],
             paddle.ones_like(coords[..., 2:3]) * eps)
 
-        img2lidars = []
-        for img_meta in img_metas:
-            img2lidar = []
-            for i in range(len(img_meta['lidar2img'])):
-                img2lidar.append(np.linalg.inv(img_meta['lidar2img'][i]))
-            img2lidars.append(np.asarray(img2lidar))
-        img2lidars = np.asarray(img2lidars)
+        if not (hasattr(self, 'export_model') and self.export_model):
+            img2lidars = []
+            for img_meta in img_metas:
+                img2lidar = []
+                for i in range(len(img_meta['lidar2img'])):
+                    img2lidar.append(np.linalg.inv(img_meta['lidar2img'][i]))
+                img2lidars.append(np.asarray(img2lidar))
 
-        # (B, N, 4, 4)
-        img2lidars = paddle.to_tensor(img2lidars).astype(coords.dtype)
+            img2lidars = np.asarray(img2lidars)
+
+            # (B, N, 4, 4)
+            img2lidars = paddle.to_tensor(img2lidars).astype(coords.dtype)
+        else:
+            img2lidars = img_metas['img2lidars']
 
         coords = coords.reshape([1, 1, W, H, D, 4]).tile(
             [B, N, 1, 1, 1, 1]).reshape([B, N, W, H, D, 4, 1])
@@ -411,8 +416,9 @@ class PETRHead(nn.Layer):
         coords_mask = coords_mask.astype('float32').flatten(-2).sum(-1) > (
             D * 0.5)
         coords_mask = masks | coords_mask.transpose([0, 1, 3, 2])
-        coords3d = coords3d.transpose([0, 1, 4, 5, 3,
-                                       2]).reshape([B * N, -1, H, W])
+
+        coords3d = coords3d.transpose([0, 1, 4, 5, 3, 2]).reshape(
+            [B * N, self.depth_num * 3, H, W])
 
         coords3d = inverse_sigmoid(coords3d)
         coords_position_embeding = self.position_encoder(coords3d)
@@ -550,6 +556,135 @@ class PETRHead(nn.Layer):
             'all_bbox_preds': all_bbox_preds,
             'enc_cls_scores': None,
             'enc_bbox_preds': None,
+        }
+        return outs
+
+    def export_forward(self, mlvl_feats, img_metas):
+        """Forward function.
+        Args:
+            mlvl_feats (tuple[Tensor]): Features from the upstream
+                network, each is a 5D-tensor with shape
+                (B, N, C, H, W).
+        Returns:
+            all_cls_scores (Tensor): Outputs from the classification head, \
+                shape [nb_dec, bs, num_query, cls_out_channels]. Note \
+                cls_out_channels should includes background.
+            all_bbox_preds (Tensor): Sigmoid outputs from the regression \
+                head with normalized coordinate format (cx, cy, w, l, cz, h, theta, vx, vy). \
+                Shape [nb_dec, bs, num_query, 9].
+        """
+
+        x = mlvl_feats[self.position_level]
+
+        batch_size, num_cams = x.shape[0], x.shape[1]
+
+        input_img_h, input_img_w = img_metas['image_shape']
+
+        masks = paddle.zeros([batch_size, num_cams, input_img_h, input_img_w])
+
+        x = self.input_proj(x.flatten(0, 1))
+        x = x.reshape([batch_size, num_cams, *x.shape[-3:]])
+
+        # interpolate masks to have the same spatial shape with x
+        masks = F.interpolate(masks, size=x.shape[-2:]).cast('bool')
+
+        if self.with_position:
+            coords_position_embeding, _ = self.position_embeding(
+                mlvl_feats, img_metas, masks)
+
+            if self.with_fpe:
+                coords_position_embeding = self.fpe(
+                    coords_position_embeding.flatten(0, 1),
+                    x.flatten(0, 1)).view(x.size())
+
+            pos_embed = coords_position_embeding
+
+            if self.with_multiview:
+                sin_embed = self.positional_encoding(masks)
+                sin_embed = self.adapt_pos3d(sin_embed.flatten(0, 1)).reshape(
+                    x.shape)
+                pos_embed = pos_embed + sin_embed
+            else:
+                pos_embeds = []
+                for i in range(num_cams):
+                    xy_embed = self.positional_encoding(masks[:, i, :, :])
+                    pos_embeds.append(xy_embed.unsqueeze(1))
+                sin_embed = paddle.concat(pos_embeds, 1)
+                sin_embed = self.adapt_pos3d(sin_embed.flatten(0, 1)).reshape(
+                    x.shape)
+                pos_embed = pos_embed + sin_embed
+        else:
+            if self.with_multiview:
+                pos_embed = self.positional_encoding(masks)
+                pos_embed = self.adapt_pos3d(pos_embed.flatten(0, 1)).view(
+                    x.size())
+            else:
+                pos_embeds = []
+                for i in range(num_cams):
+                    pos_embed = self.positional_encoding(masks[:, i, :, :])
+                    pos_embeds.append(pos_embed.unsqueeze(1))
+                pos_embed = paddle.concat(pos_embeds, 1)
+
+        reference_points = self.reference_points.weight
+        query_embeds = self.query_embedding(pos2posemb3d(reference_points))
+
+        reference_points = reference_points.unsqueeze(0).tile(
+            [batch_size, 1, 1])
+
+        outs_dec, _ = self.transformer(x, masks, query_embeds, pos_embed,
+                                       self.reg_branches)
+
+        outs_dec = nan_to_num(outs_dec)
+
+        if self.with_time:
+            time_stamps = []
+            for img_meta in img_metas:
+                time_stamps.append(np.asarray(img_meta['timestamp']))
+            time_stamp = x.new_tensor(time_stamps)
+            time_stamp = time_stamp.view(batch_size, -1, 6)
+            mean_time_stamp = (
+                time_stamp[:, 1, :] - time_stamp[:, 0, :]).mean(-1)
+
+        outputs_classes = []
+        outputs_coords = []
+        for lvl in range(outs_dec.shape[0]):
+            reference = inverse_sigmoid(reference_points.clone())
+            assert reference.shape[-1] == 3
+            outputs_class = self.cls_branches[lvl](outs_dec[lvl])
+            tmp = self.reg_branches[lvl](outs_dec[lvl])
+
+            tmp[..., 0:2] += reference[..., 0:2]
+
+            tmp[..., 0:2] = F.sigmoid(tmp[..., 0:2])
+            tmp[..., 4:5] += reference[..., 2:3]
+
+            tmp[..., 4:5] = F.sigmoid(tmp[..., 4:5])
+
+            if self.with_time:
+                tmp[..., 8:] = tmp[..., 8:] / mean_time_stamp[:, None, None]
+
+            outputs_coord = tmp
+            outputs_classes.append(outputs_class)
+            outputs_coords.append(outputs_coord)
+
+        all_cls_scores = paddle.stack(outputs_classes)
+        all_bbox_preds = paddle.stack(outputs_coords)
+
+        all_bbox_preds[..., 0:1] = (
+            all_bbox_preds[..., 0:1] * (self.pc_range[3] - self.pc_range[0]) +
+            self.pc_range[0])
+        all_bbox_preds[..., 1:2] = (
+            all_bbox_preds[..., 1:2] * (self.pc_range[4] - self.pc_range[1]) +
+            self.pc_range[1])
+        all_bbox_preds[..., 4:5] = (
+            all_bbox_preds[..., 4:5] * (self.pc_range[5] - self.pc_range[2]) +
+            self.pc_range[2])
+
+        outs = {
+            'all_cls_scores': all_cls_scores,
+            'all_bbox_preds': all_bbox_preds,
+            # 'enc_cls_scores': None,
+            # 'enc_bbox_preds': None,
         }
         return outs
 

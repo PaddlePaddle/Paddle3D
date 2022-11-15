@@ -120,6 +120,10 @@ class BaseTransformerLayer(nn.Layer):
         self.batch_first = batch_first
         if 'feedforward_channels' in kwargs:
             ffn_cfgs['feedforward_channels'] = kwargs['feedforward_channels']
+
+        if 'ffn_dropout' in kwargs:
+            ffn_cfgs['ffn_drop'] = kwargs['ffn_dropout']
+
         assert set(operation_order) & set(
             ['self_attn', 'norm', 'ffn', 'cross_attn']) == \
             set(operation_order), f'The operation_order of' \
@@ -368,12 +372,12 @@ class MultiHeadAttention(nn.Layer):
                 key=key,
                 value=value,
                 attn_mask=attn_mask,
-            )[0]
+            )
         else:
             raise NotImplementedError(
                 'key_padding_mask is not None not support now')
 
-        if len(out.shape) != len(query.shape):
-            out = out.unsqueeze(1)
+        if self.batch_first:
+            out = out.transpose([1, 0, 2])
 
         return identity + self.dropout_layer(self.proj_drop(out))

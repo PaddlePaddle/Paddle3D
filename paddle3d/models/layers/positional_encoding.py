@@ -97,41 +97,24 @@ class SinePositionalEncoding3D(nn.Layer):
                       (y_embed[:, :, -1:, :] + self.eps) * self.scale
             x_embed = (x_embed + self.offset) / \
                       (x_embed[:, :, :, -1:] + self.eps) * self.scale
-        # dim_t = np.arange(
-        #     self.num_feats, dtype='float32')
+
         dim_t = paddle.arange(self.num_feats, dtype='int32')
         dim_t = self.temperature**(2 * (dim_t // 2) / self.num_feats)
         pos_n = n_embed[:, :, :, :, None] / dim_t
         pos_x = x_embed[:, :, :, :, None] / dim_t
         pos_y = y_embed[:, :, :, :, None] / dim_t
-        # use `view` instead of `flatten` for dynamically exporting to ONNX
+
         B, N, H, W = mask.shape
 
-        pos_n_slice = pos_n[:, :, :, :, 1::2]
-        if pos_n_slice.shape[-1] != 0:
-            pos_n = paddle.stack(
-                (pos_n[:, :, :, :, 0::2].sin(), pos_n[:, :, :, :, 1::2].cos()),
-                axis=4).reshape([B, N, H, W, -1])
-        else:
-            pos_n = pos_n[:, :, :, :, 0::2].sin().reshape([B, N, H, W, -1])
-
-        pos_x_slice = pos_x[:, :, :, :, 1::2]
-
-        if pos_x_slice.shape[-1] != 0:
-            pos_x = paddle.stack(
-                (pos_x[:, :, :, :, 0::2].sin(), pos_x[:, :, :, :, 1::2].cos()),
-                axis=4).reshape([B, N, H, W, -1])
-        else:
-            pos_x = pos_x[:, :, :, :, 0::2].sin().reshape([B, N, H, W, -1])
-
-        pos_y_slice = pos_y[:, :, :, :, 1::2]
-
-        if pos_y_slice.shape[-1] != 0:
-            pos_y = paddle.stack(
-                (pos_y[:, :, :, :, 0::2].sin(), pos_y[:, :, :, :, 1::2].cos()),
-                axis=4).reshape([B, N, H, W, -1])
-        else:
-            pos_y = pos_y[:, :, :, :, 0::2].sin().reshape([B, N, H, W, -1])
+        pos_n = paddle.stack(
+            (pos_n[:, :, :, :, 0::2].sin(), pos_n[:, :, :, :, 1::2].cos()),
+            axis=4).reshape([B, N, H, W, self.num_feats])
+        pos_x = paddle.stack(
+            (pos_x[:, :, :, :, 0::2].sin(), pos_x[:, :, :, :, 1::2].cos()),
+            axis=4).reshape([B, N, H, W, self.num_feats])
+        pos_y = paddle.stack(
+            (pos_y[:, :, :, :, 0::2].sin(), pos_y[:, :, :, :, 1::2].cos()),
+            axis=4).reshape([B, N, H, W, self.num_feats])
 
         pos = paddle.concat((pos_n, pos_y, pos_x),
                             axis=4).transpose([0, 1, 4, 2, 3])
