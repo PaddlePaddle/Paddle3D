@@ -101,9 +101,10 @@ def parse_args():
         '--save_interval',
         dest='save_interval',
         help=
-        'How many iters/epochs to save a model snapshot once during training.',
+        'How many iters/epochs to save a model snapshot once during training.' \
+        'Default None means 1000 if using iters or 5 for epochs',
         type=int,
-        default=1000)
+        default=None)
     parser.add_argument(
         '--seed',
         dest='seed',
@@ -152,6 +153,13 @@ def main(args):
 
     dic = cfg.to_dict()
     batch_size = dic.pop('batch_size')
+    save_interval = args.save_interval
+    if save_interval is None:
+        if cfg.iters:
+            save_interval = 1000
+        if cfg.epochs:
+            save_interval = 5
+
     dic.update({
         'resume': args.resume,
         'checkpoint': {
@@ -159,7 +167,7 @@ def main(args):
             'save_dir': args.save_dir
         },
         'scheduler': {
-            'save_interval': args.save_interval,
+            'save_interval': save_interval,
             'log_interval': args.log_interval,
             'do_eval': args.do_eval
         },
