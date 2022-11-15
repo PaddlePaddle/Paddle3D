@@ -116,10 +116,12 @@ model:
             - type: MultiHeadAttention
               embed_dims: 256
               num_heads: 8
+              attn_drop: 0.1
               drop_prob: 0.1
             - type: PETRMultiheadAttention
               embed_dims: 256
               num_heads: 8
+              attn_drop: 0.1
               drop_prob: 0.1
               batch_first: True
           feedforward_channels: 2048
