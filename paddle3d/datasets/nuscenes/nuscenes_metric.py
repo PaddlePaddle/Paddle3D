@@ -42,12 +42,11 @@ class NuScenesMetric(MetricABC):
         self.attrmap = attrmap
         self.predictions = []
 
-    def _parse_predictions_to_eval_format(self, predictions: List[Sample],
-                                          eval_config) -> dict:
+    def _parse_predictions_to_eval_format(self,
+                                          predictions: List[Sample]) -> dict:
         # Nuscenes eval format:
         # https://www.nuscenes.org/object-detection?externalData=all&mapData=all&modalities=Any
         res = {}
-        index = 0
         for pred in predictions:
             filter_fake_result(pred)
             num_boxes = pred.bboxes_3d.shape[0]
@@ -64,26 +63,18 @@ class NuScenesMetric(MetricABC):
                                          sample_data['calibrated_sensor_token'])
             ego_quaternion = Quaternion(ego_pose['rotation'])
             channel_quaternion = Quaternion(channel_pose['rotation'])
-
             global_box_list = []
             for box in nus_box_list:
                 # Move box to ego vehicle coord system
                 box.rotate(Quaternion(channel_pose["rotation"]))
                 box.translate(np.array(channel_pose["translation"]))
-                # filter det in ego.
-                # cls_range_map = eval_config.class_range
-                # radius = np.linalg.norm(box.center[:2], 2)
-                # det_range = cls_range_map[self.class_names[box.label]]
-                # if radius > det_range:
-                #     continue
                 # Move box to global coord system
                 box.rotate(Quaternion(ego_pose["rotation"]))
                 box.translate(np.array(ego_pose["translation"]))
                 global_box_list.append(box)
 
             res[pred.meta.id] = []
-
-            for idx in range(len(global_box_list)):
+            for idx in range(num_boxes):
                 box = global_box_list[idx]
                 label_name = self.class_names[box.label]
                 attr = get_nuscenes_box_attribute(box, label_name)
@@ -134,8 +125,7 @@ class NuScenesMetric(MetricABC):
             'results': {}
         }
         dt_annos['results'].update(
-            self._parse_predictions_to_eval_format(self.predictions,
-                                                   eval_config))
+            self._parse_predictions_to_eval_format(self.predictions))
 
         with generate_tempdir() as tmpdir:
             result_file = os.path.join(tmpdir, 'nuscenes_pred.json')
