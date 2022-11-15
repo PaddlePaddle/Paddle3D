@@ -14,7 +14,7 @@
 
 import csv
 import os
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Dict
 
 import numpy as np
 import pandas
@@ -36,6 +36,7 @@ class KittiDetDataset(BaseDataset):
                  mode: str = "train",
                  transforms: Union[TransformABC, List[TransformABC]] = None,
                  class_names: Union[list, tuple] = None,
+                 class_map: Dict[str, int] = None,
                  class_balanced_sampling: bool = False):
         super().__init__()
         self.dataset_root = dataset_root
@@ -48,6 +49,9 @@ class KittiDetDataset(BaseDataset):
         self.class_names = class_names
         if self.class_names is None:
             self.class_names = list(self.CLASS_MAP.keys())
+        self.class_map = class_map
+        if self.class_map is None:
+            self.class_map = self.CLASS_MAP
 
         if self.mode not in ['train', 'val', 'trainval', 'test']:
             raise ValueError(

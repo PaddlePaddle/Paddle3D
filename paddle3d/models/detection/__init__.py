@@ -17,3 +17,4 @@ from .caddn import *
 from .centerpoint import *
 from .pointpillars import *
 from .smoke import *
+from .dd3d import *

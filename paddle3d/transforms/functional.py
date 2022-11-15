@@ -341,3 +341,15 @@ def random_depth_image_horizontal(data_dict=None):
     data_dict['gt_boxes'] = aug_gt_boxes
 
     return data_dict
+
+def blend_transform(img: np.ndarray, src_image: np.ndarray, src_weight: float, dst_weight: float):
+    """
+    Transforms pixel colors with PIL enhance functions.
+    """
+    if img.dtype == np.uint8:
+        img = img.astype(np.float32)
+        img = src_weight * src_image + dst_weight * img
+        out = np.clip(img, 0, 255).astype(np.uint8)
+    else:
+        out = src_weight * src_image + dst_weight * img
+    return out

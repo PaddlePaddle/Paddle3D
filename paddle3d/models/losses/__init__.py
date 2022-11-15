@@ -13,6 +13,9 @@
 # limitations under the License.
 
 from .focal_loss import (FastFocalLoss, FocalLoss, MultiFocalLoss,
-                         SigmoidFocalClassificationLoss)
+                         SigmoidFocalClassificationLoss, sigmoid_focal_loss)
 from .reg_loss import RegLoss
 from .weight_loss import WeightedCrossEntropyLoss, WeightedSmoothL1Loss
+from .iou_loss import IOULoss
+from .smooth_l1_loss import smooth_l1_loss
+from .disentangled_box3d_loss import DisentangledBox3DLoss, unproject_points2d

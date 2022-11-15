@@ -29,6 +29,7 @@ import numba
 import numpy as np
 import scipy
 from scipy.spatial import Delaunay
+from pyquaternion import Quaternion
 
 from paddle3d.geometries.structure import _Structure
 
@@ -89,9 +90,17 @@ class BBoxes2D(_Structure):
     def horizontal_flip(self, image_width: float):
         self[:, 0] = image_width - self[:, 0] - 1
 
+    def horizontal_flip_coords(self, image_width: float):
+        self[:, 0], self[:, 2] = image_width - self[:, 2], image_width - self[:, 0]
+
     def vertical_flip(self, image_height: float):
         self[:, 1] = image_height - self[:, 1] - 1
 
+    def resize(self, h: int, w: int, newh: int, neww: int):
+        factor_x = neww / w
+        factor_y = newh / h
+        self[:, 0::2] *= factor_x
+        self[:, 1::2] *= factor_y
 
 class BBoxes3D(_Structure):
     """
@@ -213,6 +222,24 @@ class BBoxes3D(_Structure):
         self[:,
              -1] = -self[:,
                          -1] + 2 * np.pi  # TODO(luoqianhui): CHECK THIS 2 * np.pi is needed
+    
+    def horizontal_flip_coords(self):
+        new_box3d_quat = np.stack([self[:, 3], -self[:, 2], -self[:, 1], self[:, 0]], 1)
+        self[:, :4] = new_box3d_quat
+        self[:, 4] = -self[:, 4]
+    
+    def to_vision_based_3d_box(self):
+        height, width, length = self[:, 3:4], self[:, 4:5], self[:, 5:6]
+        x, y, z = self[:, 0:1], self[:, 1:2], self[:, 2:3]
+        rotation = self[:, 6]
+        tvec = np.concatenate([x, y - height / 2, z], axis=1)
+        box_pose = []
+        for i in range(rotation.shape[0]):
+            wxyz=Quaternion(Quaternion(axis=[1, 0, 0], radians=np.pi / 2) * Quaternion(axis=[0, 0, 1], radians=-rotation[i]))
+            box_pose.append(wxyz.elements.astype(np.float32))
+        box_pose = np.stack(box_pose, axis=0)
+        box3d_new = np.concatenate([box_pose, tvec, width, length, height], axis=1)
+        return box3d_new
 
     def vertical_flip(self):
         self[:, 1] = -self[:, 1]

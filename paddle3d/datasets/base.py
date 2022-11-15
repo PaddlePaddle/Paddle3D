@@ -60,6 +60,15 @@ class BaseDataset(paddle.io.Dataset):
                 sample.bboxes_3d = BBoxes3D(
                     np.append(sample.bboxes_3d, empty_bbox, axis=0))
 
+    def padding_data(self, samples: List[Sample]):
+        image_sizes = [(sample.data.shape[-2], sample.data.shape[-1]) for sample in samples]
+        max_size = np.stack(image_sizes).max(0)
+        for image_size, sample in zip(image_sizes, samples):
+            sample.data = np.pad(sample.data, 
+                          ((0, 0), (0, max_size[0]-image_size[0]), (0, max_size[1]-image_size[1])),
+                          'constant',
+                          constant_values=0.0)
+
     def collate_fn(self, batch: List):
         """
         """
@@ -79,6 +88,9 @@ class BaseDataset(paddle.io.Dataset):
                 key for key, value in sample.items() if value is not None
             ]
             self.padding_sample(batch)
+            shapes = {batch_.data.shape for batch_ in batch}
+            if len(shapes) != 1:
+                self.padding_data(batch)
 
             return {
                 key: self.collate_fn([d[key] for d in batch])

@@ -15,9 +15,11 @@
 from typing import Any, List, Tuple, Union
 
 import numpy as np
+from PIL import Image
 
+import paddle.nn as nn
 from paddle3d.apis import manager
-from paddle3d.geometries.bbox import points_in_convex_polygon_3d_jit
+from paddle3d.geometries.bbox import BBoxes3D, CoordMode, points_in_convex_polygon_3d_jit
 from paddle3d.sample import Sample
 from paddle3d.transforms import functional as F
 from paddle3d.transforms.base import TransformABC
@@ -26,17 +28,22 @@ from paddle3d.transforms.functional import points_to_voxel
 __all__ = [
     "RandomHorizontalFlip", "RandomVerticalFlip", "GlobalRotate", "GlobalScale",
     "GlobalTranslate", "ShufflePoint", "FilterBBoxOutsideRange", "HardVoxelize",
-    "RandomObjectPerturb"
+    "RandomObjectPerturb", "ResizeShortestEdge", "RandomContrast", "RandomBrightness",
+    "RandomSaturation", "ToVisionBasedBox"
 ]
 
 
 @manager.TRANSFORMS.add_component
 class RandomHorizontalFlip(TransformABC):
     """
+    Note:
+        If the inputs are pixel indices, they are flipped by `(W - 1 - x, H - 1 - y)`.
+        If the inputs are floating point coordinates, they are flipped by `(W - x, H - y)`.
     """
 
-    def __init__(self, prob: float = 0.5):
+    def __init__(self, prob: float = 0.5, input_type='pixel_indices'):
         self.prob = prob
+        self.input_type = input_type
 
     def __call__(self, sample: Sample):
         if np.random.random() < self.prob:
@@ -46,18 +53,43 @@ class RandomHorizontalFlip(TransformABC):
             elif sample.modality == "lidar":
                 sample.data.flip(axis=1)
 
-            # Flip camera intrinsics
-            if "camera_intrinsic" in sample.meta:
-                sample.meta.camera_intrinsic[
-                    0, 2] = w - sample.meta.camera_intrinsic[0, 2] - 1
+            if self.input_type == 'pixel_indices':
+                # Flip camera intrinsics
+                if "camera_intrinsic" in sample.meta:
+                    sample.meta.camera_intrinsic[
+                        0, 2] = w - sample.meta.camera_intrinsic[0, 2] - 1
 
-            # Flip bbox
-            if sample.bboxes_3d is not None:
-                sample.bboxes_3d.horizontal_flip()
-            if sample.bboxes_2d is not None and sample.modality == "image":
-                sample.bboxes_2d.horizontal_flip(image_width=w)
+                # Flip bbox
+                if sample.bboxes_3d is not None:
+                    sample.bboxes_3d.horizontal_flip()
+                if sample.bboxes_2d is not None and sample.modality == "image":
+                    sample.bboxes_2d.horizontal_flip(image_width=w)
+            
+            elif self.input_type == 'floating_point_coordinates':
+                # Flip camera intrinsics
+                if "camera_intrinsic" in sample.meta:
+                    sample.meta.camera_intrinsic[
+                        0, 2] = w - sample.meta.camera_intrinsic[0, 2]
+
+                # Flip bbox
+                if sample.bboxes_3d is not None:
+                    sample.bboxes_3d.horizontal_flip_coords()
+                if sample.bboxes_2d is not None and sample.modality == "image":
+                    sample.bboxes_2d.horizontal_flip_coords(image_width=w)
         return sample
 
+@manager.TRANSFORMS.add_component
+class ToVisionBasedBox(TransformABC):
+    """
+    """
+    def __call__(self, sample: Sample):
+        bboxes_3d_new = sample.bboxes_3d.to_vision_based_3d_box()
+        sample.bboxes_3d = BBoxes3D(
+            bboxes_3d_new,
+            origin=[.5, 1, .5],
+            coordmode=CoordMode.KittiCamera,
+            rot_axis=1)
+        return sample
 
 @manager.TRANSFORMS.add_component
 class RandomVerticalFlip(TransformABC):
@@ -311,4 +343,164 @@ class RandomObjectPerturb(TransformABC):
         F.perturb_object_bboxes_3d_(sample.bboxes_3d, rotation_noises,
                                     translation_noises)
 
+        return sample
+
+@manager.TRANSFORMS.add_component
+class ResizeShortestEdge(TransformABC):
+    """
+    """
+    def __init__(self, short_edge_length, max_size, sample_style="range", interp=Image.BILINEAR):
+        super().__init__()
+        assert sample_style in ["range", "choice"], sample_style
+        self.is_range = sample_style == "range"
+        self.short_edge_length = short_edge_length
+        self.max_size = max_size
+        self.interp = interp
+        if isinstance(short_edge_length, int):
+            short_edge_length = (short_edge_length, short_edge_length)
+        if self.is_range:
+            assert len(short_edge_length) == 2, (
+                "short_edge_length must be two values using 'range' sample style."
+                f" Got {short_edge_length}!"
+            )
+    
+    def __call__(self, sample: Sample):
+        h, w = sample.data.shape[:2]
+        if self.is_range:
+            size = np.random.randint(self.short_edge_length[0], self.short_edge_length[1] + 1)
+        else:
+            size = np.random.choice(self.short_edge_length)
+        newh, neww = self.get_output_shape(h, w, size, self.max_size)
+        sample.data = self.apply_image(sample.data, h, w, newh, neww)
+        sample.image_sizes = np.asarray((h, w)) 
+        if "camera_intrinsic" in sample.meta:
+            sample.meta.camera_intrinsic = self.apply_intrinsics(sample.meta.camera_intrinsic, h, w, newh, neww)
+        if sample.bboxes_2d is not None and sample.modality == "image":
+            sample.bboxes_2d.resize(h, w, newh, neww)
+        return sample
+    
+    def apply_image(self, img, h, w, newh, neww):
+        assert len(img.shape) <= 4
+
+        if img.dtype == np.uint8:
+            if len(img.shape) > 2 and img.shape[2] == 1:
+                pil_image = Image.fromarray(img[:, :, 0], mode="L")
+            else:
+                pil_image = Image.fromarray(img)
+            pil_image = pil_image.resize((neww, newh), self.interp)
+            ret = np.asarray(pil_image)
+            if len(img.shape) > 2 and img.shape[2] == 1:
+                ret = np.expand_dims(ret, -1)
+        else:
+            # PIL only supports uint8
+            if any(x < 0 for x in img.strides):
+                img = np.ascontiguousarray(img)
+            img = paddle.to_tensor(img)
+            shape = list(img.shape)
+            shape_4d = shape[:2] + [1] * (4 - len(shape)) + shape[2:]
+            img = img.reshape(shape_4d).transpose([2, 3, 0, 1])  # hw(c) -> nchw
+            _PIL_RESIZE_TO_INTERPOLATE_MODE = {
+                Image.NEAREST: "nearest",
+                Image.BILINEAR: "bilinear",
+                Image.BICUBIC: "bicubic",
+            }
+            mode = _PIL_RESIZE_TO_INTERPOLATE_MODE[self.interp]
+            align_corners = None if mode == "nearest" else False
+            img = nn.functional.interpolate(
+                img, (newh, neww), mode=mode, align_corners=align_corners
+            )
+            shape[:2] = (newh, neww)
+            ret = img.transpose([2, 3, 0, 1]).reshape(shape).numpy()  # nchw -> hw(c)
+
+        return ret
+    
+    def apply_intrinsics(self, intrinsics, h, w, newh, neww):
+        assert intrinsics.shape == (3, 3)
+        assert intrinsics[0, 1] == 0  # undistorted
+        assert np.allclose(intrinsics, np.triu(intrinsics))  # check if upper triangular
+
+        factor_x = neww / w
+        factor_y = newh / h
+        new_intrinsics = intrinsics * np.float32([factor_x, factor_y, 1]).reshape(3, 1)
+        return new_intrinsics
+
+    @staticmethod
+    def get_output_shape(
+        oldh: int, oldw: int, short_edge_length: int, max_size: int) -> Tuple[int, int]:
+        """
+        Compute the output size given input size and target short edge length.
+        """
+        h, w = oldh, oldw
+        size = short_edge_length * 1.0
+        scale = size / min(h, w)
+        if h < w:
+            newh, neww = size, scale * w
+        else:
+            newh, neww = scale * h, size
+        if max(newh, neww) > max_size:
+            scale = max_size * 1.0 / max(newh, neww)
+            newh = newh * scale
+            neww = neww * scale
+        neww = int(neww + 0.5)
+        newh = int(newh + 0.5)
+        return (newh, neww)
+
+
+@manager.TRANSFORMS.add_component
+class RandomContrast(TransformABC):
+    """
+    Randomly transforms image contrast.
+    Contrast intensity is uniformly sampled in (intensity_min, intensity_max).
+    - intensity < 1 will reduce contrast
+    - intensity = 1 will preserve the input image
+    - intensity > 1 will increase contrast
+    """
+    def __init__(self, intensity_min: float, intensity_max: float):
+        super().__init__()
+        self.intensity_min = intensity_min
+        self.intensity_max = intensity_max
+
+    def __call__(self, sample: Sample):
+        w = np.random.uniform(self.intensity_min, self.intensity_max)
+        sample.data = F.blend_transform(sample.data, src_image=sample.data.mean(), src_weight=1 - w, dst_weight=w)
+        return sample
+
+@manager.TRANSFORMS.add_component
+class RandomBrightness(TransformABC):
+    """
+    Randomly transforms image contrast.
+    Contrast intensity is uniformly sampled in (intensity_min, intensity_max).
+    - intensity < 1 will reduce contrast
+    - intensity = 1 will preserve the input image
+    - intensity > 1 will increase contrast
+    """
+    def __init__(self, intensity_min: float, intensity_max: float):
+        super().__init__()
+        self.intensity_min = intensity_min
+        self.intensity_max = intensity_max
+
+    def __call__(self, sample: Sample):
+        w = np.random.uniform(self.intensity_min, self.intensity_max)
+        sample.data = F.blend_transform(sample.data, src_image=0, src_weight=1 - w, dst_weight=w)
+        return sample
+
+@manager.TRANSFORMS.add_component
+class RandomSaturation(TransformABC):
+    """
+    Randomly transforms image contrast.
+    Contrast intensity is uniformly sampled in (intensity_min, intensity_max).
+    - intensity < 1 will reduce contrast
+    - intensity = 1 will preserve the input image
+    - intensity > 1 will increase contrast
+    """
+    def __init__(self, intensity_min: float, intensity_max: float):
+        super().__init__()
+        self.intensity_min = intensity_min
+        self.intensity_max = intensity_max
+
+    def __call__(self, sample: Sample):
+        assert sample.data.shape[-1] == 3, "RandomSaturation only works on RGB images"
+        w = np.random.uniform(self.intensity_min, self.intensity_max)
+        grayscale = sample.data.dot([0.299, 0.587, 0.114])[:, :, np.newaxis]
+        sample.data = F.blend_transform(sample.data, src_image=grayscale, src_weight=1 - w, dst_weight=w)
         return sample

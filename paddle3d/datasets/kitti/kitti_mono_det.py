@@ -46,7 +46,7 @@ class KittiMonoDataset(KittiDetDataset):
             sample.bboxes_2d = bboxes_2d
             sample.bboxes_3d = bboxes_3d
             sample.labels = np.array(
-                [self.CLASS_MAP[label] for label in labels], dtype=np.int32)
+                [self.class_map[label] for label in labels], dtype=np.int32)
 
         if self.transforms:
             sample = self.transforms(sample)

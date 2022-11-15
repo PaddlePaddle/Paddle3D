@@ -45,6 +45,7 @@ class LoadImage(TransformABC):
     def __init__(self,
                  to_chw: bool = True,
                  to_rgb: bool = True,
+                 to_bgr: bool = False,
                  reader: str = "cv2"):
         if reader not in self._READER_MAPPER.keys():
             raise ValueError('Unsupported reader {}'.format(reader))
@@ -52,6 +53,7 @@ class LoadImage(TransformABC):
         self.reader = reader
         self.to_rgb = to_rgb
         self.to_chw = to_chw
+        self.to_bgr = to_bgr
 
     def __call__(self, sample: Sample) -> Sample:
         """
@@ -66,6 +68,13 @@ class LoadImage(TransformABC):
             if sample.meta.image_format == "bgr":
                 sample.data = cv2.cvtColor(sample.data, cv2.COLOR_BGR2RGB)
                 sample.meta.image_format = "rgb"
+            else:
+                raise RuntimeError('Unsupported image format {}'.format(
+                    sample.meta.image_format))
+        elif sample.meta.image_format != "bgr" and self.to_bgr:
+            if sample.meta.image_format == "rgb":
+                sample.data = sample.data[:, :, ::-1]
+                sample.meta.image_format = "bgr"
             else:
                 raise RuntimeError('Unsupported image format {}'.format(
                     sample.meta.image_format))

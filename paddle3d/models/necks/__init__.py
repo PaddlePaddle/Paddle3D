@@ -13,4 +13,6 @@
 # limitations under the License.
 
 from . import second_fpn
+from . import fpn
 from .second_fpn import *
+from .fpn import *

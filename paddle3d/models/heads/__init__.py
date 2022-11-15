@@ -14,3 +14,4 @@
 
 from .class_heads import *
 from .dense_heads import *
+from .fcos_heads import *
