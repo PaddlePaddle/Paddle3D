@@ -65,27 +65,6 @@ class BaseMonoModel(BaseDetectionModel):
         res.append(down_ratio)
         return res
 
-    # @property
-    # def input_spec(self) -> paddle.static.InputSpec:
-    #     image_spec = paddle.static.InputSpec(
-    #         shape=[1, 3, self.image_height, self.image_width], dtype="float32")
-
-    #     specs = [image_spec]
-
-    #     if self.need_camera_intrinsic:
-    #         intrinsic_spec = paddle.static.InputSpec(
-    #             shape=[1, 3, 3], dtype="float32")
-    #         specs.append(intrinsic_spec)
-
-    #     if self.need_camera_pose:
-    #         pose_spec = paddle.static.InputSpec(
-    #             shape=[1, 3, 4], dtype="float32")
-    #         specs.append(pose_spec)
-
-    #     down_ratio_spec = paddle.static.InputSpec(shape=[1, 2], dtype="float32")
-    #     specs.append(down_ratio_spec)
-    #     return [specs]
-
     @property
     def coord(self) -> CoordMode:
         return CoordMode.KittiCamera
@@ -93,3 +72,9 @@ class BaseMonoModel(BaseDetectionModel):
     @property
     def sensor(self) -> str:
         return "camera"
+
+    @property
+    def export_args(self) -> List[dict]:
+        image_size = {'dest': 'image_size', 'type': int, 'nargs': '+'}
+
+        return [image_size]

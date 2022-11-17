@@ -37,8 +37,6 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
             _input['name']: paddle.static.InputSpec(**_input)
             for _input in self.inputs
         }
-        import pdb
-        pdb.set_trace()
         return [data]
 
     @abc.abstractproperty
@@ -60,8 +58,6 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
         return [box3ds, labels, confidences]
 
     def forward(self, samples):
-        import pdb
-        pdb.set_trace()
         if self.in_export_mode:
             return self.export_forward(samples)
         elif self.training:
@@ -83,25 +79,20 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
         for sublayer in self.sublayers(include_self=True):
             sublayer.in_export_mode = mode
 
-    # @abc.abstractmethod
-    # def preprocess(self):
-    #     """
-    #     """
+    @abc.abstractmethod
+    def test_forward(self):
+        """
+        """
 
-    # @abc.abstractmethod
-    # def test_forward(self):
-    #     """
-    #     """
+    @abc.abstractmethod
+    def train_forward(self):
+        """
+        """
 
-    # @abc.abstractmethod
-    # def train_forward(self):
-    #     """
-    #     """
-
-    # @abc.abstractmethod
-    # def export_forward(self):
-    #     """
-    #     """
+    @abc.abstractmethod
+    def export_forward(self):
+        """
+        """
 
     @contextlib.contextmanager
     def exporting(self):
@@ -109,10 +100,14 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
         yield
         self.set_export_mode(False)
 
-    def export(self, save_dir: str, with_preprocess: bool = False):
+    def export(self, save_dir: str):
         with self.exporting():
             paddle.jit.to_static(self, input_spec=self.input_spec)
             paddle.jit.save(self, os.path.join(save_dir, "inference"))
+
+    @property
+    def export_args(self):
+        return []
 
     # def _parse_results_to_sample(self, results: dict, sample: dict):
     #     num_samples = len(results)

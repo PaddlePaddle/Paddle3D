@@ -78,10 +78,6 @@ class PointPillars(BaseLidarModel):
         num_points_per_voxel = samples["num_points_per_voxel"]
 
         # yapf: disable
-        coordinates = paddle.concat([
-            paddle.zeros([coordinates.shape[0], 1], dtype=coordinates.dtype),
-            coordinates
-        ], axis=-1)
         batch_size = len(samples["data"])
         pillar_features = self.pillar_encoder(
             voxels, num_points_per_voxel, coordinates)
@@ -112,10 +108,6 @@ class PointPillars(BaseLidarModel):
         num_points_per_voxel = samples["num_points_per_voxel"]
 
         # yapf: disable
-        coordinates = paddle.concat([
-            paddle.zeros([coordinates.shape[0], 1], dtype=coordinates.dtype),
-            coordinates
-        ], axis=-1)
         batch_size = len(samples["data"])
         pillar_features = self.pillar_encoder(
             voxels, num_points_per_voxel, coordinates)
@@ -141,9 +133,12 @@ class PointPillars(BaseLidarModel):
         coordinates = samples["coords"]
         num_points_per_voxel = samples["num_points_per_voxel"]
 
-        batch_size = None
-
         # yapf: disable
+        coordinates = paddle.concat([
+            paddle.zeros([coordinates.shape[0], 1], dtype=coordinates.dtype),
+            coordinates
+        ], axis=-1)
+        batch_size = None
         pillar_features = self.pillar_encoder(
             voxels, num_points_per_voxel, coordinates)
         spatial_features = self.middle_encoder(
