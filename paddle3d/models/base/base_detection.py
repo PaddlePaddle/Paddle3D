@@ -33,7 +33,13 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
     def input_spec(self) -> paddle.static.InputSpec:
         """
         """
-        return [[paddle.static.InputSpec(**_input) for _input in self.inputs]]
+        data = {
+            _input['name']: paddle.static.InputSpec(**_input)
+            for _input in self.inputs
+        }
+        import pdb
+        pdb.set_trace()
+        return [data]
 
     @abc.abstractproperty
     def inputs(self) -> List[dict]:
@@ -54,6 +60,8 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
         return [box3ds, labels, confidences]
 
     def forward(self, samples):
+        import pdb
+        pdb.set_trace()
         if self.in_export_mode:
             return self.export_forward(samples)
         elif self.training:

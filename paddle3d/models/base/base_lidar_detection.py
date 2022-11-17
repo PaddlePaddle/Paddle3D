@@ -22,23 +22,35 @@ from paddle3d.models.base.base_detection import BaseDetectionModel
 
 
 class BaseLidarModel(BaseDetectionModel):
-    def __init__(self, box_with_velocity: bool = False):
+    def __init__(self,
+                 box_with_velocity: bool = False,
+                 with_voxelizer: bool = False,
+                 max_num_points_in_voxel: int = None,
+                 in_channels: int = None):
         super().__init__(box_with_velocity=box_with_velocity)
+        self.with_voxelizer = with_voxelizer
+        self.max_num_points_in_voxel = max_num_points_in_voxel
+        self.in_channels = in_channels
 
     @property
-    def input_spec(self) -> paddle.static.InputSpec:
-        specs = [{
-            "data":
-            paddle.static.InputSpec(
-                shape=[None, None], name='data', dtype='float32')
-        }]
-        return specs
-
-    # @property
-    # def input(self) -> List[dict]:
-    #     input_list = [
-    #         {'data' : [None, None]}
-    #     ]
+    def inputs(self) -> List[dict]:
+        if self.with_voxelizer:
+            points = {'name': 'data', 'dtype': 'float32', 'shape': [None, None]}
+            res = [points]
+        else:
+            voxels = {
+                'name': 'voxels',
+                'dtype': 'float32',
+                'shape': [None, self.max_num_points_in_voxel, self.in_channels]
+            }
+            coords = {'name': 'coords', 'dtype': 'int32', 'shape': [None, 3]}
+            num_points_per_voxel = {
+                'name': 'num_points_per_voxel',
+                'dtype': 'int32',
+                'shape': [None]
+            }
+            res = [voxels, coords, num_points_per_voxel]
+        return res
 
     @property
     def coord(self) -> CoordMode:

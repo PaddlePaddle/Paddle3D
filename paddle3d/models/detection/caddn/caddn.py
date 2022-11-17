@@ -222,7 +222,7 @@ class CADDN(nn.Layer):
             checkpoint.load_pretrained_model(self, self.pretrained)
 
     def export(self, save_dir: str, **kwargs):
-        self.export_model = True
+        self.in_export_mode = True
         save_path = os.path.join(save_dir, 'caddn')
         input_spec = [{
             "images":

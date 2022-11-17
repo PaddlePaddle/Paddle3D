@@ -60,7 +60,7 @@ class HardVoxelizer(nn.Layer):
         else:
             max_num_voxels = self.max_num_voxels[1]
 
-        if not getattr(self, "export_model", False):
+        if not getattr(self, "in_export_mode", False):
             batch_voxels, batch_coors, batch_num_points = [], [], []
             for bs_idx, point in enumerate(points):
                 voxels, coors_pad, num_points_per_voxel = self.single_forward(
