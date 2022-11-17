@@ -74,17 +74,16 @@ def main(args):
 
     with generate_dir(args.save_dir) as _dir:
         with visualdl.LogWriter(logdir=_dir) as writer:
-            model.in_export_mode = True
-            model.export_model = True
-            paddle.jit.to_static(model, model.input_spec)
-            writer.add_graph(model, model.input_spec)
+            with model.exporting():
+                paddle.jit.to_static(model, model.input_spec)
+                writer.add_graph(model, model.input_spec)
 
-            pid = vdlapp.run(
-                logdir=writer._logdir, host=args.host, port=args.port)
+                pid = vdlapp.run(
+                    logdir=writer._logdir, host=args.host, port=args.port)
 
-            for child in multiprocessing.process._children:
-                if child.pid == pid:
-                    child.join()
+                for child in multiprocessing.process._children:
+                    if child.pid == pid:
+                        child.join()
 
 
 if __name__ == '__main__':
