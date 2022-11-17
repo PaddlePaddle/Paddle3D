@@ -82,7 +82,7 @@ class PointPillars(BaseLidarModel):
             paddle.zeros([coordinates.shape[0], 1], dtype=coordinates.dtype),
             coordinates
         ], axis=-1)
-        batch_size = None
+        batch_size = len(samples["data"])
         pillar_features = self.pillar_encoder(
             voxels, num_points_per_voxel, coordinates)
         spatial_features = self.middle_encoder(
@@ -116,27 +116,7 @@ class PointPillars(BaseLidarModel):
             paddle.zeros([coordinates.shape[0], 1], dtype=coordinates.dtype),
             coordinates
         ], axis=-1)
-        batch_size = None
-        pillar_features = self.pillar_encoder(
-            voxels, num_points_per_voxel, coordinates)
-        spatial_features = self.middle_encoder(
-            pillar_features, coordinates, batch_size)
-        # yapf: enable
-
-        final_features = self.backbone(spatial_features)
-        fused_final_features = self.neck(final_features)
-        preds = self.head(fused_final_features)
-
-        anchors_mask = self.anchor_generator(coordinates[:, 1:])
-
-    def export_forward(self, samples):
-        voxels = samples["voxels"]
-        coordinates = samples["coords"]
-        num_points_per_voxel = samples["num_points_per_voxel"]
-
-        batch_size = len(samples["voxels"])
-
-        # yapf: disable
+        batch_size = len(samples["data"])
         pillar_features = self.pillar_encoder(
             voxels, num_points_per_voxel, coordinates)
         spatial_features = self.middle_encoder(
@@ -152,6 +132,29 @@ class PointPillars(BaseLidarModel):
             batch_mask = coordinates[:, 0] == i
             this_coords = coordinates[batch_mask][:, 1:]
             anchors_mask.append(self.anchor_generator(this_coords))
+        return self.head.post_process(samples, preds,
+                                      self.anchor_generator.anchors,
+                                      anchors_mask, batch_size)
+
+    def export_forward(self, samples):
+        voxels = samples["voxels"]
+        coordinates = samples["coords"]
+        num_points_per_voxel = samples["num_points_per_voxel"]
+
+        batch_size = None
+
+        # yapf: disable
+        pillar_features = self.pillar_encoder(
+            voxels, num_points_per_voxel, coordinates)
+        spatial_features = self.middle_encoder(
+            pillar_features, coordinates, batch_size)
+        # yapf: enable
+
+        final_features = self.backbone(spatial_features)
+        fused_final_features = self.neck(final_features)
+        preds = self.head(fused_final_features)
+
+        anchors_mask = self.anchor_generator(coordinates[:, 1:])
         return self.head.post_process(samples, preds,
                                       self.anchor_generator.anchors,
                                       anchors_mask, batch_size)
