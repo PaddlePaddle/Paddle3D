@@ -25,6 +25,7 @@ from paddle.static import InputSpec
 
 from paddle3d.apis import manager
 from paddle3d.geometries import BBoxes3D
+from paddle3d.models.base import BaseLidarModel
 from paddle3d.sample import Sample, SampleMeta
 from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
@@ -40,7 +41,7 @@ class DictObject(Dict):
 
 
 @manager.MODELS.add_component
-class CenterPoint(nn.Layer):
+class CenterPoint(BaseLidarModel):
     def __init__(self,
                  voxelizer,
                  voxel_encoder,
@@ -187,20 +188,20 @@ class CenterPoint(nn.Layer):
                 ret[key] = res
         return ret
 
-    def export(self, save_dir: str, **kwargs):
-        self.export_model = True
-        self.voxelizer.export_model = True
-        self.middle_encoder.export_model = True
-        self.bbox_head.export_model = True
-        save_path = os.path.join(save_dir, 'centerpoint')
-        points_shape = [-1, -1]
+    # def export(self, save_dir: str, **kwargs):
+    #     self.export_model = True
+    #     self.voxelizer.export_model = True
+    #     self.middle_encoder.export_model = True
+    #     self.bbox_head.export_model = True
+    #     save_path = os.path.join(save_dir, 'centerpoint')
+    #     points_shape = [-1, -1]
 
-        input_spec = [{
-            "data":
-            InputSpec(shape=points_shape, name='data', dtype='float32')
-        }]
+    #     input_spec = [{
+    #         "data":
+    #         InputSpec(shape=points_shape, name='data', dtype='float32')
+    #     }]
 
-        paddle.jit.to_static(self, input_spec=input_spec)
-        paddle.jit.save(self, save_path)
+    #     paddle.jit.to_static(self, input_spec=input_spec)
+    #     paddle.jit.save(self, save_path)
 
-        logger.info("Exported model is saved in {}".format(save_dir))
+    #     logger.info("Exported model is saved in {}".format(save_dir))
