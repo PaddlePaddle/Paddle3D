@@ -37,6 +37,7 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
             _input['name']: paddle.static.InputSpec(**_input)
             for _input in self.inputs
         }
+
         return [data]
 
     @abc.abstractproperty
@@ -100,7 +101,10 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
     def export(self, save_dir: str, name: str = "inference"):
         with self.exporting():
             paddle.jit.to_static(self, input_spec=self.input_spec)
-            paddle.jit.save(self, os.path.join(save_dir, name))
+            paddle.jit.save(
+                self,
+                os.path.join(save_dir, name),
+                input_spec=[self.input_spec])
 
     @property
     def export_args(self):

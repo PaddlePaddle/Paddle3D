@@ -24,13 +24,13 @@ from paddle3d.models.base import BaseDetectionModel
 class BaseMonoModel(BaseDetectionModel):
     def __init__(self,
                  box_with_velocity: bool = False,
-                 need_camera_intrinsic: bool = True,
-                 need_camera_pose: bool = False,
+                 need_camera_to_image: bool = True,
+                 need_lidar_to_camera: bool = False,
                  image_height: Optional[int] = -1,
                  image_width: Optional[int] = -1):
         super().__init__(box_with_velocity=box_with_velocity)
-        self.need_camera_intrinsic = need_camera_intrinsic
-        self.need_camera_pose = need_camera_pose
+        self.need_camera_to_image = need_camera_to_image
+        self.need_lidar_to_camera = need_lidar_to_camera
         self.image_height = image_height
         self.image_width = image_width
 
@@ -39,30 +39,28 @@ class BaseMonoModel(BaseDetectionModel):
         """
         """
         images = {
-            'name': 'camera.data',
+            'name': 'images',
             'dtype': 'float32',
-            'shape': [1, 3, self.image_height, self.image_width]
+            'shape': [None, 3, self.image_height, self.image_width]
         }
         res = [images]
 
-        if self.need_camera_intrinsic:
+        if self.need_camera_to_image:
             intrinsics = {
-                'name': 'camera.intrinsic',
+                'name': 'trans_cam_to_img',
                 'dtype': 'float32',
-                'shape': [1, 3, 3]
+                'shape': [None, 3, 4]
             }
             res.append(intrinsics)
 
-        if self.need_camera_pose:
+        if self.need_lidar_to_camera:
             poses = {
-                'name': 'camera.pose',
+                'name': 'trans_lidar_to_cam',
                 'dtype': 'float32',
-                'shape': [1, 3, 4]
+                'shape': [None, 4, 4]
             }
             res.append(poses)
 
-        down_ratio = {'name': 'down_ratio', 'dtype': 'float32', 'shape': [1, 2]}
-        res.append(down_ratio)
         return res
 
     @property
