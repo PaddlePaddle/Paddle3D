@@ -97,10 +97,10 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
         yield
         self.set_export_mode(False)
 
-    def export(self, save_dir: str):
+    def export(self, save_dir: str, name: str = "inference"):
         with self.exporting():
             paddle.jit.to_static(self, input_spec=self.input_spec)
-            paddle.jit.save(self, os.path.join(save_dir, "inference"))
+            paddle.jit.save(self, os.path.join(save_dir, name))
 
     @property
     def export_args(self):

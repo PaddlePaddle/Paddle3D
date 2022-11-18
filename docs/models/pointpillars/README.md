@@ -168,7 +168,7 @@ python tools/export.py \
 |:------------|:-------------------------------------------------------------------------------------------------------------|:------:|:---------:|
 | config      | 配置文件                                                                                                         |   是    |     -     |
 | model       | 待导出模型参数`model.pdparams`路径                                                                                    |   是    |     -     |
-| save_dir    | 保存导出模型的路径，`save_dir`下将会生成三个文件：`pointpillars.pdiparams `、`pointpillars.pdiparams.info`和`pointpillars.pdmodel` |   否    | `deploy`  |
+| save_dir    | 保存导出模型的路径，`save_dir`下将会生成三个文件：`inference.pdiparams `、`inference.pdiparams.info`和`inference.pdmodel` |   否    | `deploy`  |
 
 ### <h3 id="55">模型部署</h3>
 
@@ -233,8 +233,8 @@ sh compile.sh
 
 | 参数名                 | 说明                                                                      | 是否必选项  | 默认值  |
 |:--------------------|:------------------------------------------------------------------------|:------:|:----:|
-| model_file          | 导出模型的结构文件`pointpillars.pdmodel`所在路径                                     |   是    |  -   |
-| params_file         | 导出模型的参数文件`pointpillars.pdiparams`所在路径                                   |   是    |  -   |
+| model_file          | 导出模型的结构文件`inference.pdmodel`所在路径                                     |   是    |  -   |
+| params_file         | 导出模型的参数文件`inference.pdiparams`所在路径                                   |   是    |  -   |
 | lidar_file          | 待预测的点云文件所在路径                                                            |   是    |  -   |
 | point_cloud_range   | 模型中将点云划分为柱体（pillars）时选取的点云范围，格式为`"X_min Y_min Z_min X_max Y_Max Z_max"` |   是    |  -   |
 | voxel_size          | 模型中将点云划分为柱体（pillars）时每个柱体的尺寸，格式为`"X_size Y_size Z_size"`                |   是    |  -   |
@@ -246,8 +246,8 @@ sh compile.sh
 
 ```shell
 ./build/main \
-  --model_file /path/to/pointpillars.pdmodel \
-  --params_file /path/to/pointpillars.pdiparams \
+  --model_file /path/to/inference.pdmodel \
+  --params_file /path/to/inference.pdiparams \
   --lidar_file /path/to/lidar.pcd.bin \
   --point_cloud_range "0 -39.68 -3 69.12 39.68 1" \
   --voxel_size ".16 .16 4" \
@@ -263,8 +263,8 @@ sh compile.sh
 
 | 参数名                 | 说明                                                                                      | 是否必选项  | 默认值  |
 |:--------------------|:----------------------------------------------------------------------------------------|:------:|:----:|
-| model_file          | 导出模型的结构文件`pointpillars.pdmodel`所在路径                                                     |   是    |  -   |
-| params_file         | 导出模型的参数文件`pointpillars.pdiparams`所在路径                                                   |   是    |  -   |
+| model_file          | 导出模型的结构文件`inference.pdmodel`所在路径                                                     |   是    |  -   |
+| params_file         | 导出模型的参数文件`inference.pdiparams`所在路径                                                   |   是    |  -   |
 | lidar_file          | 待预测的点云文件所在路径                                                                            |   是    |  -   |
 | point_cloud_range   | 模型中将点云划分为柱体（pillars）时选取的点云范围，格式为`"X_min Y_min Z_min X_max Y_Max Z_max"`                 |   是    |  -   |
 | voxel_size          | 模型中将点云划分为柱体（pillars）时每个柱体的尺寸，格式为`"X_size Y_size Z_size"`                                |   是    |  -   |
@@ -282,8 +282,8 @@ sh compile.sh
 
     ```shell
     ./build/main \
-      --model_file /path/to/pointpillars.pdmodel \
-      --params_file /path/to/pointpillars.pdiparams \
+      --model_file /path/to/inference.pdmodel \
+      --params_file /path/to/inference.pdiparams \
       --lidar_file /path/to/lidar.bin \
       --num_point_dim 4 \
       --point_cloud_range "0 -39.68 -3 69.12 39.68 1" \
@@ -299,8 +299,8 @@ sh compile.sh
 
     ```shell
     ./build/main \
-      --model_file /path/to/pointpillars.pdmodel \
-      --params_file /path/to/pointpillars.pdiparams \
+      --model_file /path/to/inference.pdmodel \
+      --params_file /path/to/inference.pdiparams \
       --lidar_file /path/to/lidar.bin \
       --num_point_dim 4 \
       --point_cloud_range "0 -39.68 -3 69.12 39.68 1" \
@@ -315,8 +315,8 @@ sh compile.sh
 
     ```shell
     ./build/main \
-      --model_file /path/to/pointpillars.pdmodel \
-      --params_file /path/to/pointpillars.pdiparams \
+      --model_file /path/to/inference.pdmodel \
+      --params_file /path/to/inference.pdiparams \
       --lidar_file /path/to/lidar.bin \
       --num_point_dim 4 \
       --point_cloud_range "0 -39.68 -3 69.12 39.68 1" \
@@ -332,8 +332,8 @@ sh compile.sh
 
   ```shell
   ./build/main \
-    --model_file /path/to/pointpillars.pdmodel \
-    --params_file /path/to/pointpillars.pdiparams \
+    --model_file /path/to/inference.pdmodel \
+    --params_file /path/to/inference.pdiparams \
     --lidar_file /path/to/lidar.bin \
     --num_point_dim 4 \
     --point_cloud_range "0 -39.68 -3 69.12 39.68 1" \
@@ -354,8 +354,8 @@ sh compile.sh
 
 | 参数名                 | 用途                                                                                    | 是否必选项 | 默认值 |
 |:--------------------|:--------------------------------------------------------------------------------------|:------|:----|
-| mdoel_file          | 导出模型的结构文件`pointpillars.pdmodel`所在路径                                                   | 是     | -   |
-| params_file         | 导出模型的参数文件`pointpillars.pdiparams`所在路径                                                 | 是     | -   |
+| mdoel_file          | 导出模型的结构文件`inference.pdmodel`所在路径                                                   | 是     | -   |
+| params_file         | 导出模型的参数文件`inference.pdiparams`所在路径                                                 | 是     | -   |
 | lidar_file          | 待预测的点云所在路径                                                                            | 是     | -   |
 | point_cloud_range   | 模型中将点云划分为柱体（pillars）时选取的点云范围，格式为`X_min Y_min Z_min X_max Y_Max Z_max`                 | 是     | -   |
 | voxel_size          | 模型中将点云划分为柱体（pillars）时每个柱体的尺寸，格式为`X_size Y_size Z_size`                                | 是     | -   |
@@ -373,8 +373,8 @@ sh compile.sh
 
 ```shell
 python infer.py \
-  --model_file /path/to/pointpillars.pdmodel \
-  --params_file /path/to/pointpillars.pdiparams \
+  --model_file /path/to/inference.pdmodel \
+  --params_file /path/to/inference.pdiparams \
   --lidar_file /path/to/lidar.bin \
   --point_cloud_range 0 -39.68 -3 69.12 39.68 1 \
   --voxel_size .16 .16 4 \
