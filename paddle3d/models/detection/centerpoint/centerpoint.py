@@ -49,9 +49,9 @@ class CenterPoint(BaseLidarModel):
                  backbone,
                  neck,
                  bbox_head,
-                 box_with_velocity: bool = False,
                  test_cfg=None,
-                 pretrained=None):
+                 pretrained=None,
+                 box_with_velocity: bool = False):
         super().__init__(
             with_voxelizer=True, box_with_velocity=box_with_velocity)
         self.voxelizer = voxelizer

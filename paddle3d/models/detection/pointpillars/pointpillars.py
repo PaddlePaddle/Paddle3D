@@ -44,9 +44,9 @@ class PointPillars(BaseLidarModel):
                  head,
                  loss,
                  anchor_configs,
-                 box_with_velocity: bool = False,
                  anchor_area_threshold=1,
-                 pretrained=None):
+                 pretrained=None,
+                 box_with_velocity: bool = False):
         super().__init__(
             with_voxelizer=False,
             box_with_velocity=box_with_velocity,

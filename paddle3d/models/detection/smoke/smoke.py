@@ -39,8 +39,12 @@ class SMOKE(BaseMonoModel):
                  depth_ref: Tuple,
                  dim_ref: Tuple,
                  max_detection: int = 50,
-                 pred_2d: bool = True):
-        super().__init__()
+                 pred_2d: bool = True,
+                 box_with_velocity: bool = False):
+        super().__init__(
+            box_with_velocity=box_with_velocity,
+            need_camera_to_image=True,
+            need_lidar_to_camera=False)
         self.backbone = backbone
         self.heads = head
         self.init_weight()

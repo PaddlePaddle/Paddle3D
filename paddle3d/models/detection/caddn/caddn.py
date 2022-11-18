@@ -46,8 +46,8 @@ class CADDN(BaseMonoModel):
                  disc_cfg,
                  map_to_bev_cfg,
                  post_process_cfg,
-                 box_with_velocity: bool = False,
-                 pretrained=None):
+                 pretrained=None,
+                 box_with_velocity: bool = False):
         super().__init__(
             box_with_velocity=box_with_velocity,
             need_camera_to_image=True,
