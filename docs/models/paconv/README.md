@@ -114,8 +114,8 @@ python tools/export.py --config configs/paconv/paconv_modelnet40.yml  --model ou
 
 | 参数 | 说明 |
 | -- | -- |
-| model_file | 导出模型的结构文件`inference.pdmodel`所在路径 |
-| params_file | 导出模型的参数文件`inference.pdiparams`所在路径 |
+| model_file | 导出模型的结构文件`paconv.pdmodel`所在路径 |
+| params_file | 导出模型的参数文件`paconv.pdiparams`所在路径 |
 | input_file | 待预测的点云文件路径 |
 | use_gpu | 是否使用GPU进行预测，默认为False|
 | precision | 模型精度可设置fp32或fp16。默认fp32 |
@@ -132,13 +132,13 @@ python tools/export.py --config configs/paconv/paconv_modelnet40.yml  --model ou
 * 执行CPU预测
 
     ```shell
-    python infer.py --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --input_file /path/to/pointcloud --use_gpu=False --batch_size=1
+    python infer.py --model_file /path/to/paconv.pdmodel --params_file /path/to/paconv.pdiparams --input_file /path/to/pointcloud --use_gpu=False --batch_size=1
     ```
 
 * 执行GPU预测
 
     ```shell
-    python infer.py --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --input_file /path/to/pointcloud --use_gpu=True --batch_size=1
+    python infer.py --model_file /path/to/paconv.pdmodel --params_file /path/to/paconv.pdiparams --input_file /path/to/pointcloud --use_gpu=True --batch_size=1
     ```
 
 

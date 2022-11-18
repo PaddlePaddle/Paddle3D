@@ -125,7 +125,7 @@ python tools/export.py \
 | config      | 配置文件                                                                                                         | 是     | -        |
 | model       | 待导出模型参数`model.pdparams`路径                                                                                    | 是     | -        |
 | input_shape | 指定模型的输入尺寸，支持`N, C, H, W`或`H, W`格式                                                                            | 是     | -        |
-| save_dir    | 保存导出模型的路径，`save_dir`下将会生成三个文件：`inference.pdiparams `、`inference.pdiparams.info`和`inference.pdmodel` | 否     | `deploy` |
+| save_dir    | 保存导出模型的路径，`save_dir`下将会生成三个文件：`squeezesegv3.pdiparams `、`squeezesegv3.pdiparams.info`和`squeezesegv3.pdmodel` | 否     | `deploy` |
 
 
 
@@ -141,8 +141,8 @@ Coming soon...
 
 | 参数 | 说明 |
 | -- | -- |
-| model_file | 导出模型的结构文件`inference.pdmodel`所在路径 |
-| params_file | 导出模型的参数文件`inference.pdiparams`所在路径 |
+| model_file | 导出模型的结构文件`squeezesegv3.pdmodel`所在路径 |
+| params_file | 导出模型的参数文件`squeezesegv3.pdiparams`所在路径 |
 | lidar_file | 待预测的点云文件所在路径 |
 | img_mean | 点云投影到range-view后所成图像的均值，例如为`12.12,10.88,0.23,-1.04,0.21` |
 | img_std | 点云投影到range-view后所成图像的方差，例如为`12.32,11.47,6.91,0.86,0.16` |
@@ -155,13 +155,13 @@ Coming soon...
 运行以下命令，执行预测：
 
 ```
-python infer.py --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --lidar_file /path/to/lidar.pcd.bin --img_mean 12.12,10.88,0.23,-1.04,0.21 --img_std 12.32,11.47,6.91,0.86,0.16
+python infer.py --model_file /path/to/squeezesegv3.pdmodel --params_file /path/to/squeezesegv3.pdiparams --lidar_file /path/to/lidar.pcd.bin --img_mean 12.12,10.88,0.23,-1.04,0.21 --img_std 12.32,11.47,6.91,0.86,0.16
 ```
 
-如果要开启TensorRT的话，请卸载掉原有的`paddlepaddel_gpu`，至[Paddle官网](https://paddleinference.paddlepaddle.org.cn/user_guides/download_lib.html#python)下载与TensorRT连编的预编译Paddle Inferece安装包，选择符合本地环境CUDA/cuDNN/TensorRT版本的安装包完成安装即可。
+如果要开启TensorRT的话，请卸载掉原有的`paddlepaddel_gpu`，至[Paddle官网](https://paddlesqueezesegv3.paddlepaddle.org.cn/user_guides/download_lib.html#python)下载与TensorRT连编的预编译Paddle Inferece安装包，选择符合本地环境CUDA/cuDNN/TensorRT版本的安装包完成安装即可。
 
 运行以下命令，开启TensorRT加速模型预测：
 
 ```
-python infer.py --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --lidar_file /path/to/lidar.pcd.bin --img_mean 12.12,10.88,0.23,-1.04,0.21 --img_std 12.32,11.47,6.91,0.86,0.16 --use_trt 1
+python infer.py --model_file /path/to/squeezesegv3.pdmodel --params_file /path/to/squeezesegv3.pdiparams --lidar_file /path/to/lidar.pcd.bin --img_mean 12.12,10.88,0.23,-1.04,0.21 --img_std 12.32,11.47,6.91,0.86,0.16 --use_trt 1
 ```
