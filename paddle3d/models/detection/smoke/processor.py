@@ -79,8 +79,8 @@ class PostProcessor(nn.Layer):
 
         pred_depths = self.smoke_coder.decode_depth(pred_depths_offset)
         pred_locations = self.smoke_coder.decode_location_without_transmat(
-            pred_proj_points, pred_proj_offsets, pred_depths, cam_info[0],
-            cam_info[1])
+            pred_proj_points, pred_proj_offsets, pred_depths,
+            cam_info[0][:, :3, :3], cam_info[1])
         pred_dimensions = self.smoke_coder.decode_dimension(
             clses, pred_dimensions_offsets)
         # we need to change center location to bottom location

@@ -44,7 +44,9 @@ class SMOKE(BaseMonoModel):
         super().__init__(
             box_with_velocity=box_with_velocity,
             need_camera_to_image=True,
-            need_lidar_to_camera=False)
+            need_lidar_to_camera=False,
+            need_down_ratios=True)
+
         self.backbone = backbone
         self.heads = head
         self.init_weight()
@@ -63,14 +65,15 @@ class SMOKE(BaseMonoModel):
             pred_2d=pred_2d)
 
     def export_forward(self, samples):
-        images = samples[0]
+        images = samples['images']
         features = self.backbone(images)
 
         if isinstance(features, (list, tuple)):
             features = features[-1]
 
         predictions = self.heads(features)
-        return self.post_process.export_forward(predictions, samples[1:])
+        return self.post_process.export_forward(
+            predictions, [samples['trans_cam_to_img'], samples['down_ratios']])
 
     def train_forward(self, samples):
         images = samples['data']

@@ -26,6 +26,7 @@ class BaseMonoModel(BaseDetectionModel):
                  box_with_velocity: bool = False,
                  need_camera_to_image: bool = True,
                  need_lidar_to_camera: bool = False,
+                 need_down_ratios: bool = False,
                  image_height: Optional[int] = -1,
                  image_width: Optional[int] = -1):
         super().__init__(box_with_velocity=box_with_velocity)
@@ -33,6 +34,7 @@ class BaseMonoModel(BaseDetectionModel):
         self.need_lidar_to_camera = need_lidar_to_camera
         self.image_height = image_height
         self.image_width = image_width
+        self.need_down_ratios = need_down_ratios
 
     @property
     def inputs(self) -> List[dict]:
@@ -41,7 +43,7 @@ class BaseMonoModel(BaseDetectionModel):
         images = {
             'name': 'images',
             'dtype': 'float32',
-            'shape': [None, 3, self.image_height, self.image_width]
+            'shape': [1, 3, self.image_height, self.image_width]
         }
         res = [images]
 
@@ -49,7 +51,7 @@ class BaseMonoModel(BaseDetectionModel):
             intrinsics = {
                 'name': 'trans_cam_to_img',
                 'dtype': 'float32',
-                'shape': [None, 3, 4]
+                'shape': [1, 3, 4]
             }
             res.append(intrinsics)
 
@@ -57,9 +59,17 @@ class BaseMonoModel(BaseDetectionModel):
             poses = {
                 'name': 'trans_lidar_to_cam',
                 'dtype': 'float32',
-                'shape': [None, 4, 4]
+                'shape': [1, 4, 4]
             }
             res.append(poses)
+
+        if self.need_down_ratios:
+            down_ratios = {
+                'name': 'down_ratios',
+                'dtype': 'float32',
+                'shape': [1, 2]
+            }
+            res.append(down_ratios)
 
         return res
 
