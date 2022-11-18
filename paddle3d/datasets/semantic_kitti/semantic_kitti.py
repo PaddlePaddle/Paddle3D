@@ -261,3 +261,7 @@ class SemanticKITTIDataset(BaseDataset):
             SemanticKITTIDataset.LEARNING_MAP.values())
 
         return remap_lut
+
+    @property
+    def name(self):
+        return "SemanticKITTI"

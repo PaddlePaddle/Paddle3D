@@ -67,3 +67,7 @@ class ModelNet40(BaseDataset):
     @property
     def metric(self):
         return AccuracyMetric(num_classes=40)
+
+    @property
+    def name(self):
+        return "ModelNet40"
