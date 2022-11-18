@@ -142,3 +142,9 @@ model:
     point_cloud_range: [0, -39.68, -3, 69.12, 39.68, 1]
     down_ratio: 2
     voxel_size: [0.16, 0.16, 4]
+
+export:
+  transforms:
+    - type: LoadPointCloud
+      dim: 4
+      use_dim: 4
