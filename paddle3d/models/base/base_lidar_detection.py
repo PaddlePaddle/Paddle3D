@@ -25,7 +25,7 @@ class BaseLidarModel(BaseDetectionModel):
     def __init__(self,
                  box_with_velocity: bool = False,
                  with_voxelizer: bool = False,
-                 max_num_points_in_voxel: int = None,
+                 max_num_points_in_voxel: int = -1,
                  in_channels: int = None):
         super().__init__(box_with_velocity=box_with_velocity)
         self.with_voxelizer = with_voxelizer
@@ -35,19 +35,19 @@ class BaseLidarModel(BaseDetectionModel):
     @property
     def inputs(self) -> List[dict]:
         if self.with_voxelizer:
-            points = {'name': 'data', 'dtype': 'float32', 'shape': [None, None]}
+            points = {'name': 'data', 'dtype': 'float32', 'shape': [-1, -1]}
             res = [points]
         else:
             voxels = {
                 'name': 'voxels',
                 'dtype': 'float32',
-                'shape': [None, self.max_num_points_in_voxel, self.in_channels]
+                'shape': [-1, self.max_num_points_in_voxel, self.in_channels]
             }
-            coords = {'name': 'coords', 'dtype': 'int32', 'shape': [None, 3]}
+            coords = {'name': 'coords', 'dtype': 'int32', 'shape': [-1, 3]}
             num_points_per_voxel = {
                 'name': 'num_points_per_voxel',
                 'dtype': 'int32',
-                'shape': [None]
+                'shape': [-1]
             }
             res = [voxels, coords, num_points_per_voxel]
         return res

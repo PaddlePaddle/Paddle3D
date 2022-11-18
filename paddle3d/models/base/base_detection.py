@@ -44,17 +44,14 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
         """
         """
 
+    @property
     def outputs(self) -> List[dict]:
         """
         """
         boxdim = 7 if not self.box_with_velocity else 9
-        box3ds = {'name': 'box3d', 'dtype': 'float32', 'shape': [None, boxdim]}
-        labels = {'name': 'label', 'dtype': 'int32', 'shape': [None]}
-        confidences = {
-            'name': 'confidence',
-            'dtype': 'float32',
-            'shape': [None]
-        }
+        box3ds = {'name': 'box3d', 'dtype': 'float32', 'shape': [-1, boxdim]}
+        labels = {'name': 'label', 'dtype': 'int32', 'shape': [-1]}
+        confidences = {'name': 'confidence', 'dtype': 'float32', 'shape': [-1]}
         return [box3ds, labels, confidences]
 
     def forward(self, samples):

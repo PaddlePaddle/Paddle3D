@@ -26,8 +26,8 @@ class BaseMonoModel(BaseDetectionModel):
                  box_with_velocity: bool = False,
                  need_camera_intrinsic: bool = True,
                  need_camera_pose: bool = False,
-                 image_height: Optional[int] = None,
-                 image_width: Optional[int] = None):
+                 image_height: Optional[int] = -1,
+                 image_width: Optional[int] = -1):
         super().__init__(box_with_velocity=box_with_velocity)
         self.need_camera_intrinsic = need_camera_intrinsic
         self.need_camera_pose = need_camera_pose
