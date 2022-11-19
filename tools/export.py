@@ -68,7 +68,7 @@ def generate_apollo_deploy_file(cfg, save_dir: str):
             'outputs': model.outputs,
             'preprocess': transforms,
             'dataset': cfg.train_dataset.name,
-            'labels': cfg.train_dataset.CLASS_MAP,
+            'labels': cfg.train_dataset.labels,
             'model': 'inference.pdmodel',
             'params': 'inference.pdiparams'
         }
