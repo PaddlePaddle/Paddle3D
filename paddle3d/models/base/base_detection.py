@@ -20,8 +20,6 @@ from typing import List
 import paddle
 import paddle.nn as nn
 
-from paddle3d.geometries import CoordMode
-
 
 class BaseDetectionModel(abc.ABC, nn.Layer):
     def __init__(self, box_with_velocity: bool = False):
@@ -62,11 +60,6 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
             return self.train_forward(samples)
 
         return self.test_forward(samples)
-
-    @abc.abstractproperty
-    def coord(self) -> CoordMode:
-        """
-        """
 
     @abc.abstractproperty
     def sensor(self) -> str:

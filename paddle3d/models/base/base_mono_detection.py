@@ -17,7 +17,6 @@ from typing import List, Optional
 import paddle
 import paddle.nn as nn
 
-from paddle3d.geometries import CoordMode
 from paddle3d.models.base import BaseDetectionModel
 
 
@@ -72,10 +71,6 @@ class BaseMonoModel(BaseDetectionModel):
             res.append(down_ratios)
 
         return res
-
-    @property
-    def coord(self) -> CoordMode:
-        return CoordMode.KittiCamera
 
     @property
     def sensor(self) -> str:

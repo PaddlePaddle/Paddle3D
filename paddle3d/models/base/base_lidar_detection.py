@@ -58,9 +58,5 @@ class BaseLidarModel(BaseDetectionModel):
         return res
 
     @property
-    def coord(self) -> CoordMode:
-        return CoordMode.KittiLidar
-
-    @property
     def sensor(self) -> str:
         return "lidar"
