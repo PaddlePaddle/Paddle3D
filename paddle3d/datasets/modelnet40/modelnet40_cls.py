@@ -71,3 +71,7 @@ class ModelNet40(BaseDataset):
     @property
     def name(self):
         return "ModelNet40"
+
+    @property
+    def labels(self):
+        return self.label

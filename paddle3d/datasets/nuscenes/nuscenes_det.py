@@ -324,3 +324,7 @@ class NuscenesDetDataset(BaseDataset):
     @property
     def name(self):
         return "nuScenes"
+
+    @property
+    def labels(self):
+        return self.class_names

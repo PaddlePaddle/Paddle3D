@@ -265,3 +265,11 @@ class SemanticKITTIDataset(BaseDataset):
     @property
     def name(self):
         return "SemanticKITTI"
+
+    @property
+    def labels(self):
+        num_classes = len(self.LEARNING_MAP_INV)
+        class_names = [
+            self.LABELS[self.LEARNING_MAP_INV[i]] for i in range(num_classes)
+        ]
+        return class_names

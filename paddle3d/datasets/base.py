@@ -107,3 +107,8 @@ class BaseDataset(abc.ABC, paddle.io.Dataset):
     def name(self):
         """
         """
+
+    @abc.abstractproperty
+    def labels(self):
+        """
+        """

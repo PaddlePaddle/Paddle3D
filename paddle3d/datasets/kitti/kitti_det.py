@@ -199,3 +199,7 @@ class KittiDetDataset(BaseDataset):
     @property
     def name(self):
         return "KITTI"
+
+    @property
+    def labels(self):
+        return self.class_names
