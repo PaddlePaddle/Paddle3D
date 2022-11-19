@@ -83,7 +83,6 @@ class SMOKE(BaseMonoModel):
             features = features[-1]
 
         predictions = self.heads(features)
-
         loss = self.loss_computation(predictions, samples['target'])
         return {'loss': loss}
 
@@ -95,16 +94,12 @@ class SMOKE(BaseMonoModel):
             features = features[-1]
 
         predictions = self.heads(features)
-        # TODO: Inefficient temporary solution, fix this by perform batched post-processing
-        res = []
         bs = predictions[0].shape[0]
-        for i in range(bs):
-            inputs = [
-                predictions[0][i].unsqueeze(0), predictions[1][i].unsqueeze(0)
-            ]
-            prediction = self.post_process(inputs, samples['target'])
-            res.append(self._parse_results_to_sample(prediction, samples, i))
-
+        predictions = self.post_process(predictions, samples['target'])
+        res = [
+            self._parse_results_to_sample(predictions, samples, i)
+            for i in range(bs)
+        ]
         return {'preds': res}
 
     def init_weight(self, bias_lr_factor=2):
@@ -118,11 +113,16 @@ class SMOKE(BaseMonoModel):
         ret.meta.update(
             {key: value[index]
              for key, value in sample['meta'].items()})
-        if 'calibs' in sample:
-            ret.calibs = sample['calibs'][index]
 
-        results = results.numpy()
+        if 'calibs' in sample:
+            ret.calibs = [
+                sample['calibs'][i][index]
+                for i in range(len(sample['calibs']))
+            ]
+
         if results.shape[0] != 0:
+            results = results[results[:, 14] == index][:, :14]
+            results = results.numpy()
             clas = results[:, 0]
             bboxes_2d = BBoxes2D(results[:, 2:6])
 
