@@ -175,6 +175,7 @@ model:
     point_cloud_range: [-51.2, -51.2]
     down_ratio: 4
     voxel_size: [0.2, 0.2]
+  box_with_velocity: True
 
 export:
   transforms:
