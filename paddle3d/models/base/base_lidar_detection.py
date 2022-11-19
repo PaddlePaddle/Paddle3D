@@ -31,11 +31,16 @@ class BaseLidarModel(BaseDetectionModel):
         self.with_voxelizer = with_voxelizer
         self.max_num_points_in_voxel = max_num_points_in_voxel
         self.in_channels = in_channels
+        self.point_dim = -1
 
     @property
     def inputs(self) -> List[dict]:
         if self.with_voxelizer:
-            points = {'name': 'data', 'dtype': 'float32', 'shape': [-1, -1]}
+            points = {
+                'name': 'data',
+                'dtype': 'float32',
+                'shape': [-1, self.point_dim]
+            }
             res = [points]
         else:
             voxels = {

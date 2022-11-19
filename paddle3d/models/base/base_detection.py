@@ -109,26 +109,3 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
     @property
     def export_args(self):
         return []
-
-    # def _parse_results_to_sample(self, results: dict, sample: dict):
-    #     num_samples = len(results)
-    #     new_results = []
-    #     for i in range(num_samples):
-    #         data = Sample(sample["path"][i], sample["modality"][i])
-    #         bboxes_3d = results[i]["box3d_lidar"].numpy()
-    #         labels = results[i]["label_preds"].numpy()
-    #         confidences = results[i]["scores"].numpy()
-    #         data.bboxes_3d = BBoxes3D(bboxes_3d[:, [0, 1, 2, 3, 4, 5, -1]])
-    #         data.bboxes_3d.coordmode = 'Lidar'
-    #         data.bboxes_3d.origin = [0.5, 0.5, 0.5]
-    #         data.bboxes_3d.rot_axis = 2
-    #         if bboxes_3d.shape[-1] == 9:
-    #             data.bboxes_3d.velocities = bboxes_3d[:, 6:8]
-    #         data.labels = labels
-    #         data.confidences = confidences
-    #         data.meta = SampleMeta(id=results[i]["meta"])
-    #         if "calibs" in sample:
-    #             calib = [calibs.numpy()[i] for calibs in sample["calibs"]]
-    #             data.calibs = calib
-    #         new_results.append(data)
-    #     return new_results

@@ -45,6 +45,12 @@ def parse_args():
         help='The directory saving inference params.',
         type=str,
         default="./exported_model")
+    parser.add_argument(
+        '--save_name',
+        dest='save_name',
+        help='The name of inference params file.',
+        type=str,
+        default="inference")
 
     return parser.parse_args()
 
@@ -77,7 +83,6 @@ def generate_apollo_deploy_file(cfg, save_dir: str):
 
 
 def main(args):
-
     cfg = Config(path=args.cfg)
 
     model = cfg.model
@@ -86,7 +91,7 @@ def main(args):
     if args.model is not None:
         load_pretrained_model(model, args.model)
 
-    model.export(args.save_dir, name="inference")
+    model.export(args.save_dir, name=args.save_name)
 
     if isinstance(model, BaseDetectionModel):
         generate_apollo_deploy_file(cfg, args.save_dir)
