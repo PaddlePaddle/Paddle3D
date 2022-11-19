@@ -71,7 +71,7 @@ visualdl --logdir output --host ${HOST_IP} --port {$PORT}
 
 ```shell
 wget https://paddle3d.bj.bcebos.com/models/smoke/smoke_dla34_no_dcn_kitti/model.pdparams
-python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --model model.pdparams --batch_size 1
+python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --model model.pdparams
 ```
 
 **评估脚本参数介绍**
