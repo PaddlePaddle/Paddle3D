@@ -226,36 +226,7 @@ class SamplePoint(TransformABC):
         self.num_points = num_points
 
     def __call__(self, sample: Sample):
-        if self.num_points == -1:
-            return sample
-
-        points = sample.data
-        if self.num_points < len(points):
-            pts_depth = np.linalg.norm(points[:, 0:3], axis=1)
-            pts_near_flag = pts_depth < 40.0
-            far_idxs_choice = np.where(pts_near_flag == 0)[0]
-            near_idxs = np.where(pts_near_flag == 1)[0]
-            choice = []
-            if self.num_points > len(far_idxs_choice):
-                near_idxs_choice = np.random.choice(
-                    near_idxs,
-                    self.num_points - len(far_idxs_choice),
-                    replace=False)
-                choice = np.concatenate((near_idxs_choice, far_idxs_choice), axis=0) \
-                    if len(far_idxs_choice) > 0 else near_idxs_choice
-            else:
-                choice = np.arange(0, len(points), dtype=np.int32)
-                choice = np.random.choice(
-                    choice, self.num_points, replace=False)
-            np.random.shuffle(choice)
-        else:
-            choice = np.arange(0, len(points), dtype=np.int32)
-            if self.num_points > len(points):
-                extra_choice = np.random.choice(choice,
-                                                self.num_points - len(points))
-                choice = np.concatenate((choice, extra_choice), axis=0)
-            np.random.shuffle(choice)
-        sample.data = sample.data[choice]
+        sample = F.sample_point(sample, self.num_points)
 
         return sample
 
@@ -269,40 +240,6 @@ class SamplePointByVoxels(TransformABC):
         self.max_num_of_voxels = max_num_of_voxels
         self.num_points = num_points
         self.point_cloud_range = point_cloud_range
-
-    def sample_point(self, sample):
-        if self.num_points == -1:
-            return sample
-
-        points = sample.data
-        if self.num_points < len(points):
-            pts_depth = np.linalg.norm(points[:, 0:3], axis=1)
-            pts_near_flag = pts_depth < 40.0
-            far_idxs_choice = np.where(pts_near_flag == 0)[0]
-            near_idxs = np.where(pts_near_flag == 1)[0]
-            choice = []
-            if self.num_points > len(far_idxs_choice):
-                near_idxs_choice = np.random.choice(
-                    near_idxs,
-                    self.num_points - len(far_idxs_choice),
-                    replace=False)
-                choice = np.concatenate((near_idxs_choice, far_idxs_choice), axis=0) \
-                    if len(far_idxs_choice) > 0 else near_idxs_choice
-            else:
-                choice = np.arange(0, len(points), dtype=np.int32)
-                choice = np.random.choice(
-                    choice, self.num_points, replace=False)
-            np.random.shuffle(choice)
-        else:
-            choice = np.arange(0, len(points), dtype=np.int32)
-            if self.num_points > len(points):
-                extra_choice = np.random.choice(choice,
-                                                self.num_points - len(points))
-                choice = np.concatenate((choice, extra_choice), axis=0)
-            np.random.shuffle(choice)
-        sample.data = sample.data[choice]
-
-        return sample
 
     def transform_points_to_voxels(self, sample):
         points = sample.data
@@ -331,7 +268,7 @@ class SamplePointByVoxels(TransformABC):
 
         sample.data = points
         # sampling
-        sample = self.sample_point(sample)
+        sample = F.sample_point(sample, self.num_points)
         sample.pop('voxels')
         sample.pop('voxel_coords')
         sample.pop('voxel_num_points')

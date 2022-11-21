@@ -39,8 +39,6 @@ class Compose(TransformABC):
     def __call__(self, sample: Sample):
         """
         """
-        import numpy as np
-        np.random.seed(1024)
         for t in self.transforms:
             sample = t(sample)
 

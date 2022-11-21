@@ -136,26 +136,18 @@ def init_predictor(model_file,
 def run(predictor, points):
     # copy points data into input_tensor
     input_names = predictor.get_input_names()
-    for i, name in enumerate(input_names):
-        if name == "data":
-            input_tensor = predictor.get_input_handle(name)
-            input_tensor.reshape(points.shape)
-            input_tensor.copy_from_cpu(points.copy())
+    input_tensor = predictor.get_input_handle(input_names[0])
+    input_tensor.reshape(points.shape)
+    input_tensor.copy_from_cpu(points.copy())
 
     # do the inference
     predictor.run()
 
     # get out data from output tensor
     output_names = predictor.get_output_names()
-    for i, name in enumerate(output_names):
-        output_tensor = predictor.get_output_handle(name)
-        if i == 0:
-            box3d_lidar = output_tensor.copy_to_cpu()
-        elif i == 1:
-            label_preds = output_tensor.copy_to_cpu()
-        elif i == 2:
-            scores = output_tensor.copy_to_cpu()
-    return box3d_lidar, label_preds, scores
+    return [
+        predictor.get_output_handle(name).copy_to_cpu() for name in output_names
+    ]
 
 
 def main(args):
