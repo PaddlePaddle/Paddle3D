@@ -26,7 +26,7 @@ from paddle3d.transforms.functional import points_to_voxel
 __all__ = [
     "RandomHorizontalFlip", "RandomVerticalFlip", "GlobalRotate", "GlobalScale",
     "GlobalTranslate", "ShufflePoint", "FilterBBoxOutsideRange", "HardVoxelize",
-    "RandomObjectPerturb"
+    "RandomObjectPerturb", "FilterPointOutsideRange"
 ]
 
 
@@ -311,4 +311,16 @@ class RandomObjectPerturb(TransformABC):
         F.perturb_object_bboxes_3d_(sample.bboxes_3d, rotation_noises,
                                     translation_noises)
 
+        return sample
+
+
+@manager.TRANSFORMS.add_component
+class FilterPointOutsideRange(TransformABC):
+    def __init__(self, point_cloud_range: Tuple[float]):
+        self.point_cloud_range = np.asarray(point_cloud_range, dtype='float32')
+
+    def __call__(self, sample: Sample):
+        mask = sample.data.get_mask_of_points_outside_range(
+            self.point_cloud_range)
+        sample.data = sample.data[mask]
         return sample
