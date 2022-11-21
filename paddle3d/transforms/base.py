@@ -50,5 +50,4 @@ class Compose(TransformABC):
         elif sample.modality == 'multiview':
             sample.img = np.stack(
                 [img.transpose(2, 0, 1) for img in sample.img], axis=0)
-            # print('sample.img', sample.img.shape)
         return sample

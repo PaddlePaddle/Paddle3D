@@ -132,6 +132,19 @@ def imnormalize(img, mean, std, to_rgb=True):
     return img
 
 
+def get_resize_crop_shape(img_shape, target_shape):
+    H, W = img_shape
+    fH, fW = target_shape
+    resize = max(fH / H, fW / W)
+    resize_shape = (int(W * resize), int(H * resize))
+    newW, newH = resize_shape
+    crop_h = int(newH) - fH
+    crop_w = int(max(0, newW - fW) / 2)
+
+    crop_shape = (crop_h, crop_w, crop_h + fH, crop_w + fW)
+    return resize_shape, crop_shape
+
+
 def get_image(filenames):
     """
     Loads image for a sample
@@ -144,9 +157,16 @@ def get_image(filenames):
     imgs = [img[..., i] for i in range(img.shape[-1])]
 
     new_imgs = []
+
+    target_shape = (320, 800)
+
     for i in range(len(imgs)):
-        img = cv2.resize(imgs[i], (800, 450), cv2.INTER_LINEAR)
-        img = img[130:, :, :]
+        img_shape = imgs[i].shape[:2]
+        resize_shape, crop_shape = get_resize_crop_shape(
+            img_shape, target_shape)
+
+        img = cv2.resize(imgs[i], resize_shape, cv2.INTER_LINEAR)
+        img = img[crop_shape[0]:crop_shape[2], crop_shape[1]:crop_shape[3], :]
 
         new_imgs.append(np.array(img).astype(np.float32))
 

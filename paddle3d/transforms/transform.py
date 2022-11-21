@@ -130,9 +130,8 @@ class GlobalScale(TransformABC):
     def __call__(self, sample: Sample):
         if sample.modality != "lidar":
             raise ValueError("GlobalScale only supports lidar data!")
-        factor = np.random.uniform(self.min_scale,
-                                   self.max_scale,
-                                   size=self.size)
+        factor = np.random.uniform(
+            self.min_scale, self.max_scale, size=self.size)
         # Scale points
         sample.data.scale(factor)
         # Scale bboxes_3d
@@ -153,10 +152,11 @@ class GlobalTranslate(TransformABC):
             The random distribution. Defaults to normal.
     """
 
-    def __init__(self,
-                 translation_std: Union[float, List[float],
-                                        Tuple[float]] = (.2, .2, .2),
-                 distribution="normal"):
+    def __init__(
+            self,
+            translation_std: Union[float, List[float], Tuple[float]] = (.2, .2,
+                                                                        .2),
+            distribution="normal"):
         if not isinstance(translation_std, (list, tuple)):
             translation_std = [
                 translation_std, translation_std, translation_std
@@ -175,9 +175,10 @@ class GlobalTranslate(TransformABC):
         if self.distribution == "normal":
             translation = np.random.normal(scale=self.translation_std, size=3)
         elif self.distribution == "uniform":
-            translation = np.random.uniform(low=-self.translation_std[0],
-                                            high=self.translation_std[0],
-                                            size=3)
+            translation = np.random.uniform(
+                low=-self.translation_std[0],
+                high=self.translation_std[0],
+                size=3)
         else:
             raise ValueError(
                 "GlobalScale only supports normal and uniform random distribution!"
@@ -192,7 +193,6 @@ class GlobalTranslate(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class ShufflePoint(TransformABC):
-
     def __call__(self, sample: Sample):
         if sample.modality != "lidar":
             raise ValueError("ShufflePoint only supports lidar data!")
@@ -202,7 +202,6 @@ class ShufflePoint(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class FilterBBoxOutsideRange(TransformABC):
-
     def __init__(self, point_cloud_range: Tuple[float]):
         self.point_cloud_range = np.asarray(point_cloud_range, dtype='float32')
 
@@ -218,7 +217,6 @@ class FilterBBoxOutsideRange(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class HardVoxelize(TransformABC):
-
     def __init__(self, point_cloud_range: Tuple[float],
                  voxel_size: Tuple[float], max_points_in_voxel: int,
                  max_voxel_num: int):
@@ -246,12 +244,10 @@ class HardVoxelize(TransformABC):
                                         -1,
                                         dtype=np.int32)
 
-        num_voxels = points_to_voxel(sample.data, self.voxel_size,
-                                     self.point_cloud_range, self.grid_size,
-                                     voxels, coords, num_points_per_voxel,
-                                     grid_idx_to_voxel_idx,
-                                     self.max_points_in_voxel,
-                                     self.max_voxel_num)
+        num_voxels = points_to_voxel(
+            sample.data, self.voxel_size, self.point_cloud_range,
+            self.grid_size, voxels, coords, num_points_per_voxel,
+            grid_idx_to_voxel_idx, self.max_points_in_voxel, self.max_voxel_num)
 
         voxels = voxels[:num_voxels]
         coords = coords[:num_voxels]
@@ -278,11 +274,11 @@ class RandomObjectPerturb(TransformABC):
         max_num_attempts (int): Maximum number of perturbation attempts. Defaults to 100.
     """
 
-    def __init__(self,
-                 rotation_range: Union[float, List[float],
-                                       Tuple[float]] = np.pi / 4,
-                 translation_std: Union[float, List[float], Tuple[float]] = 1.0,
-                 max_num_attempts: int = 100):
+    def __init__(
+            self,
+            rotation_range: Union[float, List[float], Tuple[float]] = np.pi / 4,
+            translation_std: Union[float, List[float], Tuple[float]] = 1.0,
+            max_num_attempts: int = 100):
         if not isinstance(rotation_range, (list, tuple)):
             rotation_range = [-rotation_range, rotation_range]
         self.rotation_range = rotation_range
@@ -394,9 +390,8 @@ class SampleRangeFilter(object):
         gt_labels_3d = gt_labels_3d[mask.astype(np.bool_)]
 
         # limit rad to [-pi, pi]
-        gt_bboxes_3d = self.limit_yaw(gt_bboxes_3d,
-                                      offset=0.5,
-                                      period=2 * np.pi)
+        gt_bboxes_3d = self.limit_yaw(
+            gt_bboxes_3d, offset=0.5, period=2 * np.pi)
         sample['gt_bboxes_3d'] = gt_bboxes_3d
         sample['gt_labels_3d'] = gt_labels_3d
 
@@ -555,12 +550,12 @@ class GlobalRotScaleTransImage(object):
     """
 
     def __init__(
-        self,
-        rot_range=[-0.3925, 0.3925],
-        scale_ratio_range=[0.95, 1.05],
-        translation_std=[0, 0, 0],
-        reverse_angle=False,
-        training=True,
+            self,
+            rot_range=[-0.3925, 0.3925],
+            scale_ratio_range=[0.95, 1.05],
+            translation_std=[0, 0, 0],
+            reverse_angle=False,
+            training=True,
     ):
 
         self.rot_range = rot_range
@@ -625,9 +620,8 @@ class GlobalRotScaleTransImage(object):
         ], [0, 0, 1]])
         results.gt_bboxes_3d[:, :3] = results.gt_bboxes_3d[:, :3] @ rot_mat
         results.gt_bboxes_3d[:, 6] += rot_angle
-        results.gt_bboxes_3d[:,
-                             7:9] = results.gt_bboxes_3d[:,
-                                                         7:9] @ rot_mat[:2, :2]
+        results.gt_bboxes_3d[:, 7:
+                             9] = results.gt_bboxes_3d[:, 7:9] @ rot_mat[:2, :2]
 
     def scale_xyz(self, results, scale_ratio):
         rot_mat = np.array([
@@ -649,21 +643,6 @@ class GlobalRotScaleTransImage(object):
         results.gt_bboxes_3d[:, :6] *= scale_ratio
         results.gt_bboxes_3d[:, 7:] *= scale_ratio
         return
-
-
-def imnormalize(img, mean, std, to_rgb=True):
-    """normalize an image with mean and std.
-    """
-    # cv2 inplace normalization does not accept uint8
-    img = img.copy().astype(np.float32)
-
-    mean = np.float64(mean.reshape(1, -1))
-    stdinv = 1 / np.float64(std.reshape(1, -1))
-    if to_rgb:
-        cv2.cvtColor(img, cv2.COLOR_BGR2RGB, img)  # inplace
-    cv2.subtract(img, mean, img)  # inplace
-    cv2.multiply(img, stdinv, img)  # inplace
-    return img
 
 
 @manager.TRANSFORMS.add_component
@@ -691,12 +670,11 @@ class NormalizeMultiviewImage(object):
                 result dict.
         """
         sample['img'] = [
-            imnormalize(img, self.mean, self.std, self.to_rgb)
+            F.normalize_use_cv2(img, self.mean, self.std, self.to_rgb)
             for img in sample['img']
         ]
-        sample['img_norm_cfg'] = dict(mean=self.mean,
-                                      std=self.std,
-                                      to_rgb=self.to_rgb)
+        sample['img_norm_cfg'] = dict(
+            mean=self.mean, std=self.std, to_rgb=self.to_rgb)
 
         return sample
 
@@ -736,13 +714,14 @@ def impad(img, *, shape=None, padding=None, pad_val=0, padding_mode='constant'):
         'reflect': cv2.BORDER_REFLECT_101,
         'symmetric': cv2.BORDER_REFLECT
     }
-    img = cv2.copyMakeBorder(img,
-                             padding[1],
-                             padding[3],
-                             padding[0],
-                             padding[2],
-                             border_type[padding_mode],
-                             value=pad_val)
+    img = cv2.copyMakeBorder(
+        img,
+        padding[1],
+        padding[3],
+        padding[0],
+        padding[2],
+        border_type[padding_mode],
+        value=pad_val)
 
     return img
 
