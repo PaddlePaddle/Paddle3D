@@ -190,8 +190,17 @@ class Trainer:
 
         sync_bn = (getattr(self.model, 'sync_bn', False) and env.nranks > 1)
         if sync_bn:
-            self.model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
-                self.model)
+            sparse_conv = False
+            for layer in self.model.sublayers():
+                if 'sparse' in str(type(layer)):
+                    sparse_conv = True
+                    break
+            if sparse_conv:
+                self.model = paddle.sparse.nn.SyncBatchNorm.convert_sync_batchnorm(
+                    self.model)
+            else:
+                self.model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
+                    self.model)
 
         model = self.model
         if env.nranks > 1:
@@ -288,8 +297,17 @@ class Trainer:
         """
         sync_bn = (getattr(self.model, 'sync_bn', False) and env.nranks > 1)
         if sync_bn:
-            self.model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
-                self.model)
+            sparse_conv = False
+            for layer in self.model.sublayers():
+                if 'sparse' in str(type(layer)):
+                    sparse_conv = True
+                    break
+            if sparse_conv:
+                self.model = paddle.sparse.nn.SyncBatchNorm.convert_sync_batchnorm(
+                    self.model)
+            else:
+                self.model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
+                    self.model)
 
         if self.val_dataset is None:
             raise RuntimeError('No evaluation dataset specified!')

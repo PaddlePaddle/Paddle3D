@@ -408,3 +408,15 @@ class RandomObjectPerturb(TransformABC):
                                     translation_noises)
 
         return sample
+
+
+@manager.TRANSFORMS.add_component
+class FilterPointOutsideRange(TransformABC):
+    def __init__(self, point_cloud_range: Tuple[float]):
+        self.point_cloud_range = np.asarray(point_cloud_range, dtype='float32')
+
+    def __call__(self, sample: Sample):
+        mask = sample.data.get_mask_of_points_outside_range(
+            self.point_cloud_range)
+        sample.data = sample.data[mask]
+        return sample
