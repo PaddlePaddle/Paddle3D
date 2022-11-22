@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import multiprocessing
 import os
 import pickle
@@ -212,8 +213,6 @@ def create_waymo_infos(dataset_root,
 
 
 if __name__ == "__main__":
-    import argparse
-
     parser = argparse.ArgumentParser(description="Create infos and gt database")
     parser.add_argument(
         "--processed_data_tag",

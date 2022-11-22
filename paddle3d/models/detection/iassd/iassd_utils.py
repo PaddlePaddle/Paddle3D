@@ -58,6 +58,7 @@ def boxes_to_corners_3d(boxes3d):
     Returns:
         corners_3d: (B, 8, 3), 8 corners with x, y, z coordinate
     """
+    # yapf: disable
     template = paddle.to_tensor([
         [1, 1, -1],
         [1, -1, -1],
@@ -66,9 +67,8 @@ def boxes_to_corners_3d(boxes3d):
         [1, 1, 1],
         [1, -1, 1],
         [-1, -1, 1],
-        [-1, 1, 1],
-    ],
-                                dtype=boxes3d.dtype) / 2
+        [-1, 1, 1],],dtype=boxes3d.dtype) / 2
+    # yapf: enable
 
     corners3d = boxes3d[:, None, 3:6].expand([boxes3d.shape[0], 8, 3
                                               ]) * template[None, :, :]

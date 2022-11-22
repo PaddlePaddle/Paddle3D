@@ -187,6 +187,11 @@ class RemoveCameraInvisiblePointsKITTI(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class RemoveCameraInvisiblePointsKITTIV2(TransformABC):
+    """
+    Remove camera invisible points for KITTI dataset, unlike `RemoveCameraInvisiblePointsKITTI` which projects image plane to a frustum,
+    this version projects poinst into image plane and remove the points outside the image boundary.
+    """
+
     def __init__(self):
         self.V2C = None
         self.R0 = None
