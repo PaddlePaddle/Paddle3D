@@ -27,7 +27,7 @@ def training_step(model: paddle.nn.Layer, optimizer: paddle.optimizer.Optimizer,
     model.train()
     if scaler:
         if not isinstance(optimizer, paddle.optimizer.Optimizer):
-            raise ValueError(
+            raise TypeError(
                 "Optimizer should inherit from paddle.optimizer.Optimizer")
         with paddle.amp.auto_cast(
                 custom_black_list=['matmul_v2', 'elementwise_mul'],
@@ -39,9 +39,6 @@ def training_step(model: paddle.nn.Layer, optimizer: paddle.optimizer.Optimizer,
         scaler.step(optimizer)
         scaler.update()
         model.clear_gradients()
-        if isinstance(optimizer._learning_rate,
-                      paddle.optimizer.lr.LRScheduler):
-            optimizer._learning_rate.step()
     else:
         outputs = model(sample)
         loss = outputs['loss']
@@ -52,9 +49,8 @@ def training_step(model: paddle.nn.Layer, optimizer: paddle.optimizer.Optimizer,
         else:
             optimizer.step()
             model.clear_gradients()
-            if isinstance(optimizer._learning_rate,
-                          paddle.optimizer.lr.LRScheduler):
-                optimizer._learning_rate.step()
+    if isinstance(optimizer._learning_rate, paddle.optimizer.lr.LRScheduler):
+        optimizer._learning_rate.step()
 
     return loss
 

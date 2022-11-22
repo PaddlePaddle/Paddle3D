@@ -120,6 +120,7 @@ def parse_args():
         dest='amp_level',
         help='The level of auto-mixed precision training, default O1',
         default='O1',
+        choices=['O1', 'O2'],
         type=str)
 
     return parser.parse_args()
