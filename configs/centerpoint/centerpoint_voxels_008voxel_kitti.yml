@@ -35,7 +35,7 @@ train_dataset:
       translation_std: [0.2, 0.2, 0.2]
     - type: ShufflePoint
     - type: FilterPointOutsideRange
-      point_cloud_range: [0, -40, -3, 70.4, 40, 1]
+      point_cloud_range: [0, -39.68, -3, 69.12, 39.68, 1]
     - type: FilterBBoxOutsideRange
       point_cloud_range: [0, -39.68, -3, 69.12, 39.68, 1]
     - type: Gt2CenterPointTarget
@@ -44,7 +44,7 @@ train_dataset:
           class_names: ["Car"]
         - num_class: 2
           class_names: ["Cyclist", "Pedestrian"]
-      down_ratio: 2
+      down_ratio: 8
       point_cloud_range: [0, -39.68, -3, 69.12, 39.68, 1]
       voxel_size: [0.08, 0.08, 0.1]
       gaussian_overlap: 0.1
@@ -64,7 +64,7 @@ val_dataset:
       use_dim: 4
     - type: RemoveCameraInvisiblePointsKITTI
     - type: FilterPointOutsideRange
-      point_cloud_range: [0, -40, -3, 70.4, 40, 1]
+      point_cloud_range: [0, -39.68, -3, 69.12, 39.68, 1]
   mode: val
   class_names: ["Car", "Cyclist", "Pedestrian"]
 optimizer:
