@@ -15,9 +15,9 @@ slim_config:
   }
 
 finetune_config:
-  iters: 70000
+  iters: 40000
 
   lr_scheduler:
     type: MultiStepDecay
-    milestones: [36000, 55000]
+    milestones: [32000, 36000]
     learning_rate: 1.25e-4
