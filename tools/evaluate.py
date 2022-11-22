@@ -80,7 +80,8 @@ def main(args):
         'dataloader_fn': {
             'batch_size': batch_size,
             'num_workers': args.num_workers
-        }
+        },
+        'train_dataset': None
     })
 
     if args.model is not None:
