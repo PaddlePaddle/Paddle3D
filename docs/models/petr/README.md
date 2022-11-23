@@ -27,7 +27,7 @@ PETR...
 ## <h2 id="4">模型库</h2>
 | 模型 |  骨干网络  | 3DmAP | NDS |  模型下载 | 配置文件 |  日志 |
 | :--: | :-------: | :--------: | :-------------------: | :------: | :-----: | :--: |
-|PETR v1 |  v99    | 38.35 | 43.52 | [model](https://paddle3d.bj.bcebos.com/models/petr/petr_vovnet_gridmask_p4_800x320_amp/model.pdparams) | [config](../../../configs/petr/petr_vovnet_gridmask_p4_800x320_amp.yml) | [log](https://paddle3d.bj.bcebos.com/models/petr/petr_vovnet_gridmask_p4_800x320_amp/train.log) \| [vdl](https://paddle3d.bj.bcebos.com/models/petr/petr_vovnet_gridmask_p4_800x320_amp/vdlrecords.1668600448.log) |
+|PETR v1 |  v99    | 38.35 | 43.52 | [model](https://paddle3d.bj.bcebos.com/models/petr/petr_vovnet_gridmask_p4_800x320_amp/model.pdparams) | [config](../../../configs/petr/petr_vovnet_gridmask_p4_800x320_amp.yml) | [log](https://paddle3d.bj.bcebos.com/models/petr/petr_vovnet_gridmask_p4_800x320_amp/train.log) \| [vdl](https://www.paddlepaddle.org.cn/paddle/visualdl/service/app/scalar?id=334e6a6ba257c953fe67bac17a1434a6) |
 
 
 ## <h2 id="5">使用教程</h2>

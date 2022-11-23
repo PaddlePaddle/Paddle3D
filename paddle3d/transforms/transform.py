@@ -22,15 +22,18 @@ from PIL import Image
 
 from paddle3d.apis import manager
 from paddle3d.geometries.bbox import BBoxes3D, points_in_convex_polygon_3d_jit
+from paddle3d.ops import voxelize
 from paddle3d.sample import Sample
 from paddle3d.transforms import functional as F
 from paddle3d.transforms.base import TransformABC
 from paddle3d.transforms.functional import points_to_voxel
+from paddle3d.utils import box_utils
 
 __all__ = [
     "RandomHorizontalFlip", "RandomVerticalFlip", "GlobalRotate", "GlobalScale",
-    "GlobalTranslate", "ShufflePoint", "FilterBBoxOutsideRange", "HardVoxelize",
-    "RandomObjectPerturb"
+    "GlobalTranslate", "ShufflePoint", "SamplePoint", "SamplePointByVoxels",
+    "FilterPointsOutsideRange", "FilterBBoxOutsideRange", "HardVoxelize",
+    "RandomObjectPerturb", "ConvertBoxFormat"
 ]
 
 
@@ -201,6 +204,89 @@ class ShufflePoint(TransformABC):
 
 
 @manager.TRANSFORMS.add_component
+class ConvertBoxFormat(TransformABC):
+
+    def __call__(self, sample: Sample):
+        # convert boxes from [x,y,z,w,l,h,yaw] to [x,y,z,l,w,h,heading], bottom_center -> obj_center
+        bboxes_3d = box_utils.boxes3d_kitti_lidar_to_lidar(sample.bboxes_3d)
+
+        # limit heading
+        bboxes_3d[:, -1] = box_utils.limit_period(bboxes_3d[:, -1],
+                                                  offset=0.5,
+                                                  period=2 * np.pi)
+
+        # stack labels into gt_boxes, label starts from 1, instead of 0.
+        labels = sample.labels + 1
+        bboxes_3d = np.concatenate(
+            [bboxes_3d, labels.reshape(-1, 1).astype(np.float32)], axis=-1)
+        sample.bboxes_3d = bboxes_3d
+        sample.pop('labels', None)
+
+        return sample
+
+
+@manager.TRANSFORMS.add_component
+class SamplePoint(TransformABC):
+
+    def __init__(self, num_points):
+        self.num_points = num_points
+
+    def __call__(self, sample: Sample):
+        sample = F.sample_point(sample, self.num_points)
+
+        return sample
+
+
+@manager.TRANSFORMS.add_component
+class SamplePointByVoxels(TransformABC):
+
+    def __init__(self, voxel_size, max_points_per_voxel, max_num_of_voxels,
+                 num_points, point_cloud_range):
+        self.voxel_size = voxel_size
+        self.max_points_per_voxel = max_points_per_voxel
+        self.max_num_of_voxels = max_num_of_voxels
+        self.num_points = num_points
+        self.point_cloud_range = point_cloud_range
+
+    def transform_points_to_voxels(self, sample):
+        points = sample.data
+        points = paddle.to_tensor(points)
+        voxels, coordinates, num_points, voxels_num = voxelize.hard_voxelize(
+            points, self.voxel_size, self.point_cloud_range,
+            self.max_points_per_voxel, self.max_num_of_voxels)
+        voxels = voxels[:voxels_num, :, :].numpy()
+        coordinates = coordinates[:voxels_num, :].numpy()
+        num_points = num_points[:voxels_num, :].numpy()
+
+        sample['voxels'] = voxels
+        sample['voxel_coords'] = coordinates
+        sample['voxel_num_points'] = num_points
+
+        return sample
+
+    def sample_points_by_voxels(self, sample):
+        if self.num_points == -1:  # dynamic voxelization !
+            return sample
+
+        # voxelization
+        sample = self.transform_points_to_voxels(sample)
+
+        points = sample['voxels'][:, 0]  # remain only one point per voxel
+
+        sample.data = points
+        # sampling
+        sample = F.sample_point(sample, self.num_points)
+        sample.pop('voxels')
+        sample.pop('voxel_coords')
+        sample.pop('voxel_num_points')
+
+        return sample
+
+    def __call__(self, sample):
+        return self.sample_points_by_voxels(sample)
+
+
+@manager.TRANSFORMS.add_component
 class FilterBBoxOutsideRange(TransformABC):
 
     def __init__(self, point_cloud_range: Tuple[float]):
@@ -213,6 +299,20 @@ class FilterBBoxOutsideRange(TransformABC):
             self.point_cloud_range)
         sample.bboxes_3d = sample.bboxes_3d.masked_select(mask)
         sample.labels = sample.labels[mask]
+        return sample
+
+
+@manager.TRANSFORMS.add_component
+class FilterPointsOutsideRange(TransformABC):
+
+    def __init__(self, point_cloud_range: Tuple[float]):
+        self.limit_range = np.asarray(point_cloud_range, dtype='float32')
+
+    def __call__(self, sample: Sample):
+        points = sample.data
+        mask = (points[:, 0] >= self.limit_range[0]) & (points[:, 0] <= self.limit_range[3]) \
+           & (points[:, 1] >= self.limit_range[1]) & (points[:, 1] <= self.limit_range[4])
+        sample.data = sample.data[mask]
         return sample
 
 
@@ -823,3 +923,16 @@ class SampleFilerByKey(object):
         for key in self.keys:
             filtered_sample[key] = sample[key]
         return filtered_sample
+
+
+@manager.TRANSFORMS.add_component
+class FilterPointOutsideRange(TransformABC):
+
+    def __init__(self, point_cloud_range: Tuple[float]):
+        self.point_cloud_range = np.asarray(point_cloud_range, dtype='float32')
+
+    def __call__(self, sample: Sample):
+        mask = sample.data.get_mask_of_points_outside_range(
+            self.point_cloud_range)
+        sample.data = sample.data[mask]
+        return sample
