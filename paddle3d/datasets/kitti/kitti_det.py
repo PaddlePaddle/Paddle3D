@@ -36,7 +36,8 @@ class KittiDetDataset(BaseDataset):
                  mode: str = "train",
                  transforms: Union[TransformABC, List[TransformABC]] = None,
                  class_names: Union[list, tuple] = None,
-                 class_balanced_sampling: bool = False):
+                 class_balanced_sampling: bool = False,
+                 use_road_plane: bool = False):
         super().__init__()
         self.dataset_root = dataset_root
         self.mode = mode.lower()
@@ -46,6 +47,7 @@ class KittiDetDataset(BaseDataset):
 
         self.transforms = transforms
         self.class_names = class_names
+        self.use_road_plane = use_road_plane
         if self.class_names is None:
             self.class_names = list(self.CLASS_MAP.keys())
 

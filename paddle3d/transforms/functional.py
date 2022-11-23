@@ -341,3 +341,36 @@ def random_depth_image_horizontal(data_dict=None):
     data_dict['gt_boxes'] = aug_gt_boxes
 
     return data_dict
+
+
+def sample_point(sample, num_points):
+    """ Randomly sample points by distance
+    """
+    if num_points == -1:
+        return sample
+
+    points = sample.data
+    if num_points < len(points):
+        pts_depth = np.linalg.norm(points[:, 0:3], axis=1)
+        pts_near_flag = pts_depth < 40.0
+        far_idxs_choice = np.where(pts_near_flag == 0)[0]
+        near_idxs = np.where(pts_near_flag == 1)[0]
+        choice = []
+        if num_points > len(far_idxs_choice):
+            near_idxs_choice = np.random.choice(
+                near_idxs, num_points - len(far_idxs_choice), replace=False)
+            choice = np.concatenate((near_idxs_choice, far_idxs_choice), axis=0) \
+                if len(far_idxs_choice) > 0 else near_idxs_choice
+        else:
+            choice = np.arange(0, len(points), dtype=np.int32)
+            choice = np.random.choice(choice, num_points, replace=False)
+        np.random.shuffle(choice)
+    else:
+        choice = np.arange(0, len(points), dtype=np.int32)
+        if num_points > len(points):
+            extra_choice = np.random.choice(choice, num_points - len(points))
+            choice = np.concatenate((choice, extra_choice), axis=0)
+        np.random.shuffle(choice)
+    sample.data = sample.data[choice]
+
+    return sample

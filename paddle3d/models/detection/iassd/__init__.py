@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import caddn, centerpoint, iassd, pointpillars, smoke
-from .caddn import *
-from .centerpoint import *
 from .iassd import *
-from .pointpillars import *
-from .smoke import *
+from .iassd_backbone import *
+from .iassd_head import *
+from .iassd_utils import *
