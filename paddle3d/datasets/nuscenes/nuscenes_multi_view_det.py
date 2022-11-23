@@ -56,7 +56,8 @@ class NuscenesMVDataset(NuscenesDetDataset):
                  transforms: Union[TransformABC, List[TransformABC]] = None,
                  max_sweeps: int = 10,
                  class_balanced_sampling: bool = False,
-                 class_names: Union[list, tuple] = None):
+                 class_names: Union[list, tuple] = None,
+                 use_valid_flag: bool = False):
 
         self.mode = mode
         self.dataset_root = dataset_root
@@ -89,7 +90,7 @@ class NuscenesMVDataset(NuscenesDetDataset):
             use_external=True,
         )
         self.with_velocity = True
-        self.use_valid_flag = False
+        self.use_valid_flag = use_valid_flag
         self.channel = "LIDAR_TOP"
         if class_names is not None:
             self.class_names = class_names
@@ -151,13 +152,13 @@ class NuscenesMVDataset(NuscenesDetDataset):
         dst = np.array([0.5, 0.5, 0])
         src = np.array(origin)
         gt_bboxes_3d[:, :3] += gt_bboxes_3d[:, 3:6] * (dst - src)
-        gt_bboxes_3d = BBoxes3D(
-            gt_bboxes_3d, coordmode=2, origin=[0.5, 0.5, 0.5])
+        gt_bboxes_3d = BBoxes3D(gt_bboxes_3d,
+                                coordmode=2,
+                                origin=[0.5, 0.5, 0.5])
 
-        anns_results = dict(
-            gt_bboxes_3d=gt_bboxes_3d,
-            gt_labels_3d=gt_labels_3d,
-            gt_names=gt_names_3d)
+        anns_results = dict(gt_bboxes_3d=gt_bboxes_3d,
+                            gt_labels_3d=gt_labels_3d,
+                            gt_names=gt_names_3d)
         return anns_results
 
     def get_data_info(self, index):
@@ -215,12 +216,11 @@ class NuscenesMVDataset(NuscenesDetDataset):
                 lidar2img_rts.append(lidar2img_rt)
 
             sample.update(
-                dict(
-                    img_timestamp=img_timestamp,
-                    img_filename=image_paths,
-                    lidar2img=lidar2img_rts,
-                    intrinsics=intrinsics,
-                    extrinsics=extrinsics))
+                dict(img_timestamp=img_timestamp,
+                     img_filename=image_paths,
+                     lidar2img=lidar2img_rts,
+                     intrinsics=intrinsics,
+                     extrinsics=extrinsics))
 
         # if not self.is_test_mode:
         if self.mode == 'train':
@@ -283,8 +283,8 @@ class NuscenesMVDataset(NuscenesDetDataset):
                 self.data_infos = pickle.load(open(train_ann_cache_file, 'rb'))
                 return
 
-        self.nusc = NuScenesManager.get(
-            version=self.version, dataroot=self.dataset_root)
+        self.nusc = NuScenesManager.get(version=self.version,
+                                        dataroot=self.dataset_root)
 
         if self.version == 'v1.0-trainval':
             train_scenes = nuscenes_split.train
@@ -364,10 +364,10 @@ class NuscenesMVDataset(NuscenesDetDataset):
         # Homogeneous transform of current sample from ego car coordinate to sensor coordinate
         curr_sample_cs = self.nusc.get("calibrated_sensor",
                                        sample_data["calibrated_sensor_token"])
-        curr_sensor_from_car = transform_matrix(
-            curr_sample_cs["translation"],
-            Quaternion(curr_sample_cs["rotation"]),
-            inverse=True)
+        curr_sensor_from_car = transform_matrix(curr_sample_cs["translation"],
+                                                Quaternion(
+                                                    curr_sample_cs["rotation"]),
+                                                inverse=True)
         # Homogeneous transformation matrix of current sample from global coordinate to ego car coordinate
         curr_sample_pose = self.nusc.get("ego_pose",
                                          sample_data["ego_pose_token"])
@@ -436,8 +436,8 @@ class NuscenesMVDataset(NuscenesDetDataset):
     @property
     def metric(self):
         if not hasattr(self, 'nusc'):
-            self.nusc = NuScenesManager.get(
-                version=self.version, dataroot=self.dataset_root)
+            self.nusc = NuScenesManager.get(version=self.version,
+                                            dataroot=self.dataset_root)
         return super().metric
 
     def collate_fn(self, batch: List):
@@ -678,8 +678,8 @@ def obtain_sensor2top(nusc,
     e2g_r_s_mat = Quaternion(e2g_r_s).rotation_matrix
     R = (l2e_r_s_mat.T @ e2g_r_s_mat.T) @ (
         np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
-    T = (l2e_t_s @ e2g_r_s_mat.T + e2g_t_s) @ (
-        np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
+    T = (l2e_t_s @ e2g_r_s_mat.T +
+         e2g_t_s) @ (np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
     T -= e2g_t @ (np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T
                   ) + l2e_t @ np.linalg.inv(l2e_r_mat).T
     sweep['sensor2lidar_rotation'] = R.T  # points @ R.T + T

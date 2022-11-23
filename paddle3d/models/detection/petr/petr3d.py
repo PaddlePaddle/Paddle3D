@@ -28,9 +28,11 @@ from PIL import Image
 from paddle3d.apis import manager
 from paddle3d.geometries import BBoxes3D
 from paddle3d.sample import Sample, SampleMeta
+from paddle3d.utils import dtype2float32
 
 
 class GridMask(nn.Layer):
+
     def __init__(self,
                  use_h,
                  use_w,
@@ -79,8 +81,8 @@ class GridMask(nn.Layer):
         mask = Image.fromarray(np.uint8(mask))
         mask = mask.rotate(r)
         mask = np.asarray(mask)
-        mask = mask[(hh - h) // 2:(hh - h) // 2 +
-                    h, (ww - w) // 2:(ww - w) // 2 + w]
+        mask = mask[(hh - h) // 2:(hh - h) // 2 + h,
+                    (ww - w) // 2:(ww - w) // 2 + w]
 
         mask = paddle.to_tensor(mask).astype('float32')
         if self.mode == 1:
@@ -99,8 +101,9 @@ class GridMask(nn.Layer):
 def bbox3d2result(bboxes, scores, labels, attrs=None):
     """Convert detection results to a list of numpy arrays.
     """
-    result_dict = dict(
-        boxes_3d=bboxes.cpu(), scores_3d=scores.cpu(), labels_3d=labels.cpu())
+    result_dict = dict(boxes_3d=bboxes.cpu(),
+                       scores_3d=scores.cpu(),
+                       labels_3d=labels.cpu())
 
     if attrs is not None:
         result_dict['attrs_3d'] = attrs.cpu()
@@ -131,8 +134,13 @@ class Petr3D(nn.Layer):
         self.use_recompute = use_recompute
 
         if use_grid_mask:
-            self.grid_mask = GridMask(
-                True, True, rotate=1, offset=False, ratio=0.5, mode=1, prob=0.7)
+            self.grid_mask = GridMask(True,
+                                      True,
+                                      rotate=1,
+                                      offset=False,
+                                      ratio=0.5,
+                                      mode=1,
+                                      prob=0.7)
 
         self.init_weight()
 
@@ -231,13 +239,17 @@ class Petr3D(nn.Layer):
             gt_labels_3d = samples['gt_labels_3d']
             gt_bboxes_3d = samples['gt_bboxes_3d']
 
-        # with paddle.amp.auto_cast(level='O2'):
-        img_feats = self.extract_feat(img=img, img_metas=img_metas)
+        if hasattr(self, 'amp_cfg_'):
+            with paddle.amp.auto_cast(**self.amp_cfg_):
+                img_feats = self.extract_feat(img=img, img_metas=img_metas)
+            img_feats = dtype2float32(img_feats)
+        else:
+            img_feats = self.extract_feat(img=img, img_metas=img_metas)
 
-        img_feats = [x.astype('float32') for x in img_feats]
         losses = dict()
-        losses_pts = self.forward_pts_train(
-            img_feats, gt_bboxes_3d, gt_labels_3d, img_metas, gt_bboxes_ignore)
+        losses_pts = self.forward_pts_train(img_feats, gt_bboxes_3d,
+                                            gt_labels_3d, img_metas,
+                                            gt_bboxes_ignore)
         losses.update(losses_pts)
         return dict(loss=losses)
 
@@ -254,8 +266,9 @@ class Petr3D(nn.Layer):
         """Test function of point cloud branch."""
 
         outs = self.pts_bbox_head(x, img_metas)
-        bbox_list = self.pts_bbox_head.get_bboxes(
-            outs, img_metas, rescale=rescale)
+        bbox_list = self.pts_bbox_head.get_bboxes(outs,
+                                                  img_metas,
+                                                  rescale=rescale)
 
         bbox_results = [
             bbox3d2result(bboxes, scores, labels)
@@ -313,8 +326,9 @@ class Petr3D(nn.Layer):
                 feats_list_level.append(feats[i][j])
             feats_list.append(paddle.stack(feats_list_level, -1).mean(-1))
         outs = self.pts_bbox_head(feats_list, img_metas)
-        bbox_list = self.pts_bbox_head.get_bboxes(
-            outs, img_metas, rescale=rescale)
+        bbox_list = self.pts_bbox_head.get_bboxes(outs,
+                                                  img_metas,
+                                                  rescale=rescale)
         bbox_results = [
             bbox3d2result(bboxes, scores, labels)
             for bboxes, scores, labels in bbox_list
@@ -344,8 +358,8 @@ class Petr3D(nn.Layer):
     def export(self, save_dir: str, **kwargs):
         self.forward = self.export_forward
         self.export_model = True
-        image_spec = paddle.static.InputSpec(
-            shape=[1, 6, 3, 320, 800], dtype="float32")
+        image_spec = paddle.static.InputSpec(shape=[1, 6, 3, 320, 800],
+                                             dtype="float32")
         img2lidars_spec = {
             "img2lidars":
             paddle.static.InputSpec(shape=[1, 6, 4, 4], name='img2lidars'),

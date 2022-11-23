@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import os
 from collections import defaultdict
 from typing import Callable, Optional, Union
@@ -44,22 +45,20 @@ def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
             # Do eval in single device
             BatchSampler = paddle.io.BatchSampler
 
-        batch_sampler = BatchSampler(
-            dataset,
-            batch_size=batch_size,
-            shuffle=shuffle,
-            drop_last=drop_last)
+        batch_sampler = BatchSampler(dataset,
+                                     batch_size=batch_size,
+                                     shuffle=shuffle,
+                                     drop_last=drop_last)
 
         if hasattr(model, 'collate_fn'):
             collate_fn = model.collate_fn
         else:
             collate_fn = getattr(dataset, 'collate_fn', None)
 
-        return paddle.io.DataLoader(
-            dataset=dataset,
-            batch_sampler=batch_sampler,
-            collate_fn=collate_fn,
-            **args)
+        return paddle.io.DataLoader(dataset=dataset,
+                                    batch_sampler=batch_sampler,
+                                    collate_fn=collate_fn,
+                                    **args)
 
     return _generate_loader
 
@@ -105,7 +104,8 @@ class Trainer:
             # TODO: Default parameters should not use mutable objects, there is a risk
             checkpoint: Union[dict, CheckpointABC] = dict(),
             scheduler: Union[dict, SchedulerABC] = dict(),
-            dataloader_fn: Union[dict, Callable] = dict()):
+            dataloader_fn: Union[dict, Callable] = dict(),
+            amp_cfg: Optional[dict] = None):
 
         self.model = model
         self.optimizer = optimizer
@@ -131,6 +131,28 @@ class Trainer:
             self.iters = iters
             self.epochs = (iters - 1) // self.iters_per_epoch + 1
             self.train_by_epoch = False
+
+        def set_lr_scheduler_iters_per_epoch(lr_scheduler,
+                                             iters_per_epoch,
+                                             warmup_iters=0):
+            if isinstance(lr_scheduler, paddle.optimizer.lr.LinearWarmup):
+                return set_lr_scheduler_iters_per_epoch(
+                    lr_scheduler.learning_rate, iters_per_epoch,
+                    lr_scheduler.warmup_steps)
+            elif hasattr(lr_scheduler, 'learning_rate') and isinstance(
+                    lr_scheduler.learning_rate,
+                    paddle.optimizer.lr.LRScheduler):
+                return set_lr_scheduler_iters_per_epoch(
+                    lr_scheduler.learning_rate, iters_per_epoch)
+
+            if hasattr(lr_scheduler, 'iters_per_epoch'):
+                print('set lr scheduler {} iters_per_epoch={}, warmup_iters={}'.format(lr_scheduler.__class__.__name__, \
+                        iters_per_epoch, warmup_iters))
+                lr_scheduler.iters_per_epoch = iters_per_epoch
+                lr_scheduler.warmup_iters = warmup_iters
+
+        set_lr_scheduler_iters_per_epoch(optimizer._learning_rate,
+                                         self.iters_per_epoch)
 
         self.cur_iter = 0
         self.cur_epoch = 0
@@ -179,11 +201,28 @@ class Trainer:
                 "Attempt to restore parameters from an empty checkpoint")
 
         if env.local_rank == 0:
-            self.log_writer = LogWriter(
-                logdir=self.checkpoint.rootdir, file_name=vdl_file_name)
+            self.log_writer = LogWriter(logdir=self.checkpoint.rootdir,
+                                        file_name=vdl_file_name)
             self.checkpoint.record('vdl_file_name',
                                    os.path.basename(self.log_writer.file_name))
             self.checkpoint.record('train_by_epoch', self.train_by_epoch)
+
+        self.scaler = None
+        self.amp_cfg = None
+
+        if amp_cfg is not None:
+            scaler_cfg_ = dict(init_loss_scaling=2.**15)
+            scaler_cfg_.update(**amp_cfg.pop('scaler', dict()))
+            self.scaler = paddle.amp.GradScaler(**scaler_cfg_)
+
+            self.amp_cfg = amp_cfg
+
+            amp_cfg_ = copy.deepcopy(amp_cfg)
+            amp_cfg_.pop('enable', False)
+            self.model.amp_cfg_ = amp_cfg_
+            logger.info(
+                'Use AMP train, AMP config: {}, Scaler config: {}'.format(
+                    amp_cfg_, scaler_cfg_))
 
     def train(self):
         """
@@ -216,8 +255,12 @@ class Trainer:
                     break
 
                 lr = self.optimizer.get_lr()
-                output = training_step(
-                    model, self.optimizer, sample, self.cur_iter, scaler=None)
+                output = training_step(model,
+                                       self.optimizer,
+                                       sample,
+                                       self.cur_iter,
+                                       scaler=self.scaler,
+                                       amp_cfg=self.amp_cfg)
 
                 if isinstance(output['loss'], dict):
                     for k, v in output['loss'].items():
@@ -232,18 +275,16 @@ class Trainer:
 
                     loss_log = ''
 
-                    self.log_writer.add_scalar(
-                        tag='Training/learning_rate',
-                        value=lr,
-                        step=self.cur_iter)
+                    self.log_writer.add_scalar(tag='Training/learning_rate',
+                                               value=lr,
+                                               step=self.cur_iter)
 
                     for k, v in losses_sum.items():
                         loss_val = v / self.scheduler.log_interval
                         loss_log += ', {}={:.6f}'.format(k, loss_val)
-                        self.log_writer.add_scalar(
-                            tag='Training/' + k,
-                            value=loss_val,
-                            step=self.cur_iter)
+                        self.log_writer.add_scalar(tag='Training/' + k,
+                                                   value=loss_val,
+                                                   step=self.cur_iter)
 
                     logger.info(
                         '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f} | ETA {}'
@@ -270,11 +311,10 @@ class Trainer:
                     else:
                         tag = 'iter_{}'.format(self.cur_iter)
 
-                    self.checkpoint.push(
-                        tag=tag,
-                        params_dict=self.model.state_dict(),
-                        opt_dict=self.optimizer.state_dict(),
-                        verbose=True)
+                    self.checkpoint.push(tag=tag,
+                                         params_dict=self.model.state_dict(),
+                                         opt_dict=self.optimizer.state_dict(),
+                                         verbose=True)
 
                     self.checkpoint.record('iters', self.cur_iter)
                     self.checkpoint.record('epochs', self.cur_epoch)
@@ -288,11 +328,10 @@ class Trainer:
                 tag = 'iter_{}'.format(self.iters)
 
             if not self.checkpoint.have(tag):
-                self.checkpoint.push(
-                    tag=tag,
-                    params_dict=self.model.state_dict(),
-                    opt_dict=self.optimizer.state_dict(),
-                    verbose=True)
+                self.checkpoint.push(tag=tag,
+                                     params_dict=self.model.state_dict(),
+                                     opt_dict=self.optimizer.state_dict(),
+                                     verbose=True)
 
             self.checkpoint.record('iters', self.iters)
             self.checkpoint.record('epochs', self.epochs)

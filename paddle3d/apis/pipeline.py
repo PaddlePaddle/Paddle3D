@@ -33,7 +33,8 @@ def training_step(model: paddle.nn.Layer,
                   optimizer: paddle.optimizer.Optimizer,
                   sample: Sample,
                   cur_iter: int,
-                  scaler=None) -> dict:
+                  scaler=None,
+                  amp_cfg=dict()) -> dict:
 
     if optimizer.__class__.__name__ == 'OneCycleAdam':
         optimizer.before_iter(cur_iter - 1)
@@ -44,22 +45,27 @@ def training_step(model: paddle.nn.Layer,
         and model._layers.use_recompute:
         with model.no_sync():
             if scaler is not None:
-                # with paddle.amp.auto_cast(level='O1'):
-                outputs = model(sample)
-                loss = parse_losses(outputs['loss'])
-                scaled_loss = scaler.scale(loss)
-                scaled_loss.backward()
+                with paddle.amp.auto_cast(**amp_cfg):
+                    outputs = model(sample)
+                    loss = parse_losses(outputs['loss'])
+                    scaled_loss = scaler.scale(loss)
+                    scaled_loss.backward()
             else:
                 outputs = model(sample)
                 loss = parse_losses(outputs['loss'])
                 loss.backward()
         fused_allreduce_gradients(list(model.parameters()), None)
     else:
-        outputs = model(sample)
-
-        loss = parse_losses(outputs['loss'])
-
-        loss.backward()
+        if scaler is not None:
+            with paddle.amp.auto_cast(**amp_cfg):
+                outputs = model(sample)
+                loss = parse_losses(outputs['loss'])
+                scaled_loss = scaler.scale(loss)
+                scaled_loss.backward()
+        else:
+            outputs = model(sample)
+            loss = parse_losses(outputs['loss'])
+            loss.backward()
 
     if optimizer.__class__.__name__ == 'OneCycleAdam':
         optimizer.after_iter()
@@ -75,7 +81,15 @@ def training_step(model: paddle.nn.Layer,
         if isinstance(optimizer._learning_rate,
                       paddle.optimizer.lr.LRScheduler):
             optimizer._learning_rate.step()
-    outputs['total_loss'] = loss
+
+    with paddle.no_grad():
+        if paddle.distributed.is_initialized():
+            loss_clone = loss.clone()
+            paddle.distributed.all_reduce(
+                loss_clone.scale_(1. / paddle.distributed.get_world_size()))
+            outputs['total_loss'] = loss_clone
+        else:
+            outputs['total_loss'] = loss
     return outputs
 
 
