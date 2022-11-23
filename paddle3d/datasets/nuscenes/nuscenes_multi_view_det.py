@@ -27,7 +27,6 @@ from nuscenes.utils import splits as nuscenes_split
 from nuscenes.utils.data_classes import Box as NuScenesBox
 from nuscenes.utils.geometry_utils import transform_matrix
 from pyquaternion import Quaternion
-from tqdm import tqdm
 
 import paddle3d.transforms as T
 from paddle3d.apis import manager
@@ -36,6 +35,7 @@ from paddle3d.datasets.nuscenes.nuscenes_manager import NuScenesManager
 from paddle3d.geometries import BBoxes3D, CoordMode
 from paddle3d.sample import Sample, SampleMeta
 from paddle3d.transforms import TransformABC
+from paddle3d.utils.logger import logger
 
 
 def is_filepath(x):
@@ -55,7 +55,6 @@ class NuscenesMVDataset(NuscenesDetDataset):
                  mode: str = "train",
                  transforms: Union[TransformABC, List[TransformABC]] = None,
                  max_sweeps: int = 10,
-                 class_balanced_sampling: bool = False,
                  class_names: Union[list, tuple] = None,
                  use_valid_flag: bool = False):
 
@@ -518,7 +517,10 @@ def _fill_trainval_infos(nusc,
     train_nusc_infos = []
     val_nusc_infos = []
 
-    for sample in tqdm(nusc.sample):
+    msg = "Begin to generate a info of nuScenes dataset."
+
+    for sample_idx in logger.range(len(nusc.sample), msg=msg):
+        sample = nusc.sample[sample_idx]
         lidar_token = sample['data']['LIDAR_TOP']
         sd_rec = nusc.get('sample_data', sample['data']['LIDAR_TOP'])
         cs_record = nusc.get('calibrated_sensor',

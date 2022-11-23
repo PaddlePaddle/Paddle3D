@@ -283,6 +283,7 @@ class RandomObjectPerturb(TransformABC):
                                        Tuple[float]] = np.pi / 4,
                  translation_std: Union[float, List[float], Tuple[float]] = 1.0,
                  max_num_attempts: int = 100):
+
         if not isinstance(rotation_range, (list, tuple)):
             rotation_range = [-rotation_range, rotation_range]
         self.rotation_range = rotation_range
@@ -651,21 +652,6 @@ class GlobalRotScaleTransImage(object):
         return
 
 
-def imnormalize(img, mean, std, to_rgb=True):
-    """normalize an image with mean and std.
-    """
-    # cv2 inplace normalization does not accept uint8
-    img = img.copy().astype(np.float32)
-
-    mean = np.float64(mean.reshape(1, -1))
-    stdinv = 1 / np.float64(std.reshape(1, -1))
-    if to_rgb:
-        cv2.cvtColor(img, cv2.COLOR_BGR2RGB, img)  # inplace
-    cv2.subtract(img, mean, img)  # inplace
-    cv2.multiply(img, stdinv, img)  # inplace
-    return img
-
-
 @manager.TRANSFORMS.add_component
 class NormalizeMultiviewImage(object):
     """Normalize the image.
@@ -691,7 +677,7 @@ class NormalizeMultiviewImage(object):
                 result dict.
         """
         sample['img'] = [
-            imnormalize(img, self.mean, self.std, self.to_rgb)
+            F.normalize_use_cv2(img, self.mean, self.std, self.to_rgb)
             for img in sample['img']
         ]
         sample['img_norm_cfg'] = dict(mean=self.mean,

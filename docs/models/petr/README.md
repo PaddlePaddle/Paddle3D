@@ -25,6 +25,9 @@ PETR...
 
 
 ## <h2 id="4">模型库</h2>
+| 模型 |  骨干网络  | 3DmAP | NDS |  模型下载 | 配置文件 |  日志 |
+| :--: | :-------: | :--------: | :-------------------: | :------: | :-----: | :--: |
+|PETR v1 |  v99    | 38.35 | 43.52 | [model](https://paddle3d.bj.bcebos.com/models/petr/petr_vovnet_gridmask_p4_800x320_amp/model.pdparams) | [config](../../../configs/petr/petr_vovnet_gridmask_p4_800x320_amp.yml) | [log](https://paddle3d.bj.bcebos.com/models/petr/petr_vovnet_gridmask_p4_800x320_amp/train.log) \| [vdl](https://paddle3d.bj.bcebos.com/models/petr/petr_vovnet_gridmask_p4_800x320_amp/vdlrecords.1668600448.log) |
 
 
 ## <h2 id="5">使用教程</h2>
@@ -85,22 +88,22 @@ python tools/evaluate.py --config configs/petr/petr_vovnet_gridmask_p4_800x320.y
 运行以下命令，将训练时保存的动态图模型文件导出成推理引擎能够加载的静态图模型文件。
 
 ```
-TODO
+python tools/export.py --config configs/petr/petr_vovnet_gridmask_p4_800x320.yml --model /path/to/model.pdparams --save_dir /path/to/output
 ```
 
 | 参数 | 说明 |
 | -- | -- |
 | config | **[必填]** 训练配置文件所在路径 |
 | model | **[必填]** 训练时保存的模型文件`model.pdparams`所在路径 |
-| save_dir | **[必填]** 保存导出模型的路径，`save_dir`下将会生成三个文件：`caddn.pdiparams `、`caddn.pdiparams.info`和`caddn.pdmodel` |
+| save_dir | **[必填]** 保存导出模型的路径，`save_dir`下将会生成三个文件：`petr.pdiparams `、`petr.pdiparams.info`和`petr.pdmodel` |
 
 提供训练好的导出模型
 | 配置文件 | 下载 |
 | -- | -- |
-| PETR | [下载](https://paddle3d.bj.bcebos.com/models/caddn/caddn_ocrnet_hrnet_w18_kitti/model.zip) |
-| PETR | [下载](https://paddle3d.bj.bcebos.com/models/caddn/caddn_deeplabv3p_resnet101_os8_kitti/model.zip) |
+| PETR | [下载](https://paddle3d.bj.bcebos.com/models/petr/petr_exported_model.tar) |
 
-### C++部署(TODO)
+
+### C++部署
 
 #### Linux系统
 
@@ -117,8 +120,129 @@ TODO
 - Cmake==3.16.0
 - Ubuntu 18.04
 - CUDA 11.2
-- cuDNN==8.1.1
-- Paddle Inferece==2.3.1
+- cuDNN==8.2
+- Paddle Inferece==2.4.0rc0
 - TensorRT-8.2.5.1.Linux.x86_64-gnu.cuda-11.4.cudnn8.2
 
 #### 编译步骤
+
+**注意：目前CADDN的仅支持使用GPU进行推理。**
+
+- step 1: 进入部署代码所在路径
+
+```
+cd deploy/petr/cpp
+```
+
+- step 2: 下载Paddle Inference C++预编译库
+
+Paddle Inference针对**是否使用GPU**、**是否支持TensorRT**、以及**不同的CUDA/cuDNN/GCC版本**均提供已经编译好的库文件，请至[Paddle Inference C++预编译库下载列表](https://www.paddlepaddle.org.cn/inference/user_guides/download_lib.html#c)选择符合的版本。
+
+- step 3: 修改`compile.sh`中的编译参数
+
+主要修改编译脚本`compile.sh`中的以下参数：
+
+| 参数 | 说明 |
+| -- | -- |
+| WITH_GPU | 是否使用gpu。ON或OFF， OFF表示使用CPU，默认ON|
+| USE_TENSORRT | 是否使用TensorRT加速。ON或OFF，默认OFF|
+| LIB_DIR | Paddle Inference C++预编译包所在路径，该路径下的内容应有：`CMakeCache.txt`、`paddle`、`third_party`和`version.txt` |
+| CUDNN_LIB | cuDNN`libcudnn.so`所在路径 |
+| CUDA_LIB | CUDA`libcudart.so `所在路径 |
+| TENSORRT_ROOT | TensorRT所在路径。**非必须**，如果`USE_TENSORRT`设置为`ON`时，需要填写该路径，该路径下的内容应有`bin`、`lib`和`include`等|
+
+- step 4: 开始编译
+
+```
+sh compile.sh
+```
+
+### 执行预测
+
+**注意：目前CADDN的仅支持使用GPU进行推理。**
+
+执行命令参数说明
+
+| 参数 | 说明 |
+| -- | -- |
+| model_file | 导出模型的结构文件`petr.pdmodel`所在路径 |
+| params_file | 导出模型的参数文件`petr.pdiparams`所在路径 |
+| image_files | 待预测的图像文件路径列表，每个文件用逗号分开 |
+
+执行命令：
+
+```
+./build/main --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --image_files /path/to/img0.png,/path/to/img1.png,/path/to/img2.png,/path/to/img3.png,/path/to/img4.png,/path/to/img5.png
+```
+
+### 开启TensorRT加速预测【可选】
+
+**注意：请根据编译步骤的step 3，修改`compile.sh`中TensorRT相关的编译参数，并重新编译。**
+
+运行命令参数说明如下：
+
+| 参数 | 说明 |
+| -- | -- |
+| model_file | 导出模型的结构文件`petr.pdmodel`所在路径 |
+| params_file | 导出模型的参数文件`petr.pdiparams`所在路径 |
+| image_files | 待预测的图像文件路径列表，每个文件用逗号分开  |
+| use_trt | 是否使用TensorRT进行加速，默认false|
+| trt_precision | 当use_trt设置为1时，模型精度可设置0或1，0表示fp32, 1表示fp16。默认0 |
+| trt_use_static | 当trt_use_static设置为true时，**在首次运行程序的时候会将TensorRT的优化信息进行序列化到磁盘上，下次运行时直接加载优化的序列化信息而不需要重新生成**。默认false |
+| trt_static_dir | 当trt_use_static设置为true时，保存优化信息的路径 |
+| collect_shape_info | 是否收集模型动态shape信息。默认false。**只需首次运行，下次运行时直接加载生成的shape信息文件即可进行TensorRT加速推理** |
+| dynamic_shape_file | 保存模型动态shape信息的文件路径。 默认:petr_shape_info.txt|
+
+* **首次运行TensorRT**，收集模型动态shape信息，并保存至`--dynamic_shape_file`指定的文件中
+
+    ```
+    ./build/main --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --image_files /path/to/img0.png,/path/to/img1.png,/path/to/img2.png,/path/to/img3.png,/path/to/img4.png,/path/to/img5.png --use_trt --collect_shape_info --dynamic_shape_file /path/to/shape_info.txt
+    ```
+
+* 加载`--dynamic_shape_file`指定的模型动态shape信息，使用FP32精度进行预测
+
+    ```
+    ./build/main --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --image_files /path/to/img0.png,/path/to/img1.png,/path/to/img2.png,/path/to/img3.png,/path/to/img4.png,/path/to/img5.png  --use_trt --dynamic_shape_file /path/to/shape_info.txt
+    ```
+
+* 加载`--dynamic_shape_file`指定的模型动态shape信息，使用FP16精度进行预测
+
+    ```
+    ./build/main --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --image_files /path/to/img0.png,/path/to/img1.png,/path/to/img2.png,/path/to/img3.png,/path/to/img4.png,/path/to/img5.png  --use_trt --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1
+    ```
+
+* 如果觉得每次运行时模型加载的时间过长，可以设置`trt_use_static`和`trt_static_dir`，首次运行时将TensorRT的优化信息保存在硬盘中，后续直接反序列化优化信息即可
+
+    ```
+    ./build/main --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --image_files /path/to/img0.png,/path/to/img1.png,/path/to/img2.png,/path/to/img3.png,/path/to/img4.png,/path/to/img5.png  --use_trt --collect_shape_info --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1 --trt_use_static --trt_static_dir /path/to/OptimCacheDir
+    ```
+
+### Python部署
+
+进入部署代码所在路径
+
+```
+cd deploy/petr/python
+```
+
+**注意：目前CADDN仅支持使用GPU进行推理。**
+
+命令参数说明如下：
+
+| 参数 | 说明 |
+| -- | -- |
+| model_file | 导出模型的结构文件`petr.pdmodel`所在路径 |
+| params_file | 导出模型的参数文件`petr.pdiparams`所在路径 |
+| img_paths | 待预测的图像文件路径列表，每个文件用逗号分开  |
+| use_trt | 是否使用TensorRT进行加速，默认False|
+| trt_precision | 当use_trt设置为1时，模型精度可设置0或1，0表示fp32, 1表示fp16。默认0 |
+| trt_use_static | 当trt_use_static设置为True时，**在首次运行程序的时候会将TensorRT的优化信息进行序列化到磁盘上，下次运行时直接加载优化的序列化信息而不需要重新生成**。默认0 |
+| trt_static_dir | 当trt_use_static设置为1时，保存优化信息的路径 |
+| collect_shape_info | 是否收集模型动态shape信息。默认False。**只需首次运行，后续直接加载生成的shape信息文件即可进行TensorRT加速推理** |
+| dynamic_shape_file | 保存模型动态shape信息的文件路径。 |
+
+运行以下命令，执行预测：
+
+```
+python infer.py --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --img_paths /path/to/img0.png /path/to/img1.png /path/to/img2.png /path/to/img3.png /path/to/img4.png /path/to/img5.png
+```

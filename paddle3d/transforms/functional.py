@@ -15,6 +15,7 @@
 import copy
 from typing import Tuple
 
+import cv2
 import numba
 import numpy as np
 
@@ -43,6 +44,26 @@ def normalize(im: np.ndarray, mean: Tuple[float, float, float],
     im -= mean
     im /= std
     return im
+
+
+def normalize_use_cv2(im: np.ndarray,
+                      mean: np.ndarray,
+                      std: np.ndarray,
+                      to_rgb=True):
+    """normalize an image with mean and std use cv2.
+    """
+    img = im.copy().astype(np.float32)
+
+    mean = np.float64(mean.reshape(1, -1))
+    stdinv = 1 / np.float64(std.reshape(1, -1))
+    if to_rgb:
+        # inplace
+        cv2.cvtColor(img, cv2.COLOR_BGR2RGB, img)
+    # inplace
+    cv2.subtract(img, mean, img)
+    # inplace
+    cv2.multiply(img, stdinv, img)
+    return img
 
 
 def get_frustum(im_bbox, C, near_clip=0.001, far_clip=100):

@@ -516,8 +516,10 @@ class PETRHead(nn.Layer):
             time_stamps = []
             for img_meta in img_metas:
                 time_stamps.append(np.asarray(img_meta['timestamp']))
+
             time_stamp = paddle.to_tensor(time_stamps, dtype=x.dtype)
             time_stamp = time_stamp.reshape([batch_size, -1, 6])
+
             mean_time_stamp = (time_stamp[:, 1, :] -
                                time_stamp[:, 0, :]).mean(-1)
 
@@ -647,6 +649,7 @@ class PETRHead(nn.Layer):
                 time_stamps.append(np.asarray(img_meta['timestamp']))
             time_stamp = x.new_tensor(time_stamps)
             time_stamp = time_stamp.reshape([batch_size, -1, 6])
+
             mean_time_stamp = (time_stamp[:, 1, :] -
                                time_stamp[:, 0, :]).mean(-1)
 
