@@ -20,7 +20,7 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 
 from paddle3d.apis import manager
-from paddle3d.geometries import BBoxes2D, BBoxes3D
+from paddle3d.geometries import BBoxes2D, BBoxes3D, CoordMode
 from paddle3d.models.detection.smoke.processor import PostProcessor
 from paddle3d.models.detection.smoke.smoke_loss import SMOKELossComputation
 from paddle3d.sample import Sample
@@ -76,18 +76,12 @@ class SMOKE(nn.Layer):
 
         predictions = self.heads(features)
         if not self.training:
-            # TODO: Inefficient temporary solution, fix this by perform batched post-processing
-            res = []
             bs = predictions[0].shape[0]
-            for i in range(bs):
-                inputs = [
-                    predictions[0][i].unsqueeze(0),
-                    predictions[1][i].unsqueeze(0)
-                ]
-                prediction = self.post_process(inputs, samples['target'])
-                res.append(
-                    self._parse_results_to_sample(prediction, samples, i))
-
+            predictions = self.post_process(predictions, samples['target'])
+            res = [
+                self._parse_results_to_sample(predictions, samples, i)
+                for i in range(bs)
+            ]
             return {'preds': res}
 
         loss = self.loss_computation(predictions, samples['target'])
@@ -104,12 +98,26 @@ class SMOKE(nn.Layer):
         ret.meta.update(
             {key: value[index]
              for key, value in sample['meta'].items()})
-        results = results.numpy()
+
+        if 'calibs' in sample:
+            ret.calibs = [
+                sample['calibs'][i][index]
+                for i in range(len(sample['calibs']))
+            ]
 
         if results.shape[0] != 0:
+            results = results[results[:, 14] == index][:, :14]
+            results = results.numpy()
             clas = results[:, 0]
             bboxes_2d = BBoxes2D(results[:, 2:6])
-            bboxes_3d = BBoxes3D(results[:, 6:13])
+
+            # TODO: fix hard code here
+            bboxes_3d = BBoxes3D(
+                results[:, [9, 10, 11, 8, 6, 7, 12]],
+                coordmode=CoordMode.KittiCamera,
+                origin=(0.5, 1, 0.5),
+                rot_axis=1)
+
             confidences = results[:, 13]
 
             ret.confidences = confidences

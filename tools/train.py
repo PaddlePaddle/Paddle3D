@@ -22,6 +22,7 @@ import paddle
 import paddle3d.env as paddle3d_env
 from paddle3d.apis.config import Config
 from paddle3d.apis.trainer import Trainer
+from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
 
 
@@ -47,6 +48,12 @@ def parse_args():
         '--iters',
         dest='iters',
         help='iters for training',
+        type=int,
+        default=None)
+    parser.add_argument(
+        '--epochs',
+        dest='epochs',
+        help='epochs for training',
         type=int,
         default=None)
     parser.add_argument(
@@ -79,6 +86,12 @@ def parse_args():
         help='Whether to resume training from checkpoint',
         action='store_true')
     parser.add_argument(
+        '--model',
+        dest='model',
+        help='pretrained parameters of the model',
+        type=str,
+        default=None)
+    parser.add_argument(
         '--save_dir',
         dest='save_dir',
         help='The directory for saving the model snapshot',
@@ -87,9 +100,11 @@ def parse_args():
     parser.add_argument(
         '--save_interval',
         dest='save_interval',
-        help='How many iters to save a model snapshot once during training.',
+        help=
+        'How many iters/epochs to save a model snapshot once during training.' \
+        'Default None means 1000 if using iters or 5 for epochs',
         type=int,
-        default=1000)
+        default=None)
     parser.add_argument(
         '--seed',
         dest='seed',
@@ -122,6 +137,7 @@ def main(args):
         path=args.cfg,
         learning_rate=args.learning_rate,
         iters=args.iters,
+        epochs=args.epochs,
         batch_size=args.batch_size)
 
     if cfg.train_dataset is None:
@@ -137,6 +153,13 @@ def main(args):
 
     dic = cfg.to_dict()
     batch_size = dic.pop('batch_size')
+    save_interval = args.save_interval
+    if save_interval is None:
+        if cfg.iters:
+            save_interval = 1000
+        if cfg.epochs:
+            save_interval = 5
+
     dic.update({
         'resume': args.resume,
         'checkpoint': {
@@ -144,7 +167,7 @@ def main(args):
             'save_dir': args.save_dir
         },
         'scheduler': {
-            'save_interval': args.save_interval,
+            'save_interval': save_interval,
             'log_interval': args.log_interval,
             'do_eval': args.do_eval
         },
@@ -153,6 +176,9 @@ def main(args):
             'num_workers': args.num_workers,
         }
     })
+
+    if args.model is not None:
+        load_pretrained_model(cfg.model, args.model)
 
     trainer = Trainer(**dic)
     trainer.train()

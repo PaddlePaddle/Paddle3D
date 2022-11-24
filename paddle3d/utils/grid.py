@@ -46,7 +46,7 @@ def create_meshgrid3d(depth,
 
 def normalize_coords(coords, shape):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/grid_utils.py#L4
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/grid_utils.py#L4
 
     Normalize coordinates of a grid between [-1, 1]
     Args:

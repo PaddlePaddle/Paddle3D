@@ -46,7 +46,4 @@ def validation_step(model: paddle.nn.Layer, sample: Sample) -> dict:
     model.eval()
     with paddle.no_grad():
         outputs = model(sample)
-    if model.__class__.__name__ == 'CADDN':
-        return outputs
-
     return outputs['preds']

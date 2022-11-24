@@ -60,16 +60,15 @@ class PostProcessor(nn.Layer):
         pred_regression = select_point_of_interest(batch, indexs,
                                                    pred_regression)
 
-        # pred_regression_pois = paddle.reshape(pred_regression, (pred_regression.numel()//10, 10))
-        # pred_proj_points = paddle.concat([paddle.reshape(xs, (xs.numel(), 1)), paddle.reshape(ys, (ys.numel(), 1))], axis=1)
-
         pred_regression_pois = paddle.reshape(
             pred_regression, (numel_t(pred_regression) // 10, 10))
+
+        # yapf: disable
         pred_proj_points = paddle.concat([
             paddle.reshape(xs, (numel_t(xs), 1)),
             paddle.reshape(ys, (numel_t(ys), 1))
-        ],
-                                         axis=1)
+        ], axis=1)
+        # yapf: enable
 
         # FIXME: fix hard code here
         pred_depths_offset = pred_regression_pois[:, 0]
@@ -100,11 +99,12 @@ class PostProcessor(nn.Layer):
         l, h, w = pred_dimensions.chunk(3, 1)
         pred_dimensions = paddle.concat([h, w, l], axis=1)
 
+        # yapf: disable
         result = paddle.concat([
             clses, pred_alphas, box2d, pred_dimensions, pred_locations,
             pred_rotys, scores
-        ],
-                               axis=1)
+        ], axis=1)
+        # yapf: enable
 
         return result
 
@@ -168,16 +168,25 @@ class PostProcessor(nn.Layer):
         l, h, w = pred_dimensions.chunk(3, 1)
         pred_dimensions = paddle.concat([h, w, l], axis=1)
 
+        # yapf: disable
         result = paddle.concat([
             clses, pred_alphas, box2d, pred_dimensions, pred_locations,
             pred_rotys, scores
-        ],
-                               axis=1)
+        ], axis=1)
+        # yapf: enable
 
         keep_idx = result[:, -1] > self.det_threshold
 
         if paddle.sum(keep_idx.astype("int32")) >= 1:
-            keep_idx = paddle.nonzero(result[:, -1] > self.det_threshold)
+            # Add indexs to determine which sample each box belongs to
+            batch_size = targets['K'].shape[0]
+            ids = paddle.arange(batch_size, dtype=paddle.float32)
+            ids = ids.unsqueeze(0).expand([self.max_detection, batch_size])
+            ids = ids.transpose([1, 0]).reshape([-1, 1])
+            result = paddle.concat([result, ids], 1)
+
+            # Filter out low confidence boxes
+            keep_idx = paddle.nonzero(keep_idx)
             result = paddle.gather(result, keep_idx)
         else:
             result = paddle.to_tensor([])
@@ -185,6 +194,7 @@ class PostProcessor(nn.Layer):
         return result
 
 
+# Use numel_t(Tensor) instead of Tensor.numel to avoid shape uncertainty when exporting the model
 def numel_t(var):
     from numpy import prod
     assert -1 not in var.shape

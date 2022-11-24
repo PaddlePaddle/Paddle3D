@@ -24,7 +24,7 @@ from paddle3d.utils.transform import project_to_image, transform_points_3d
 
 class FrustumGridGenerator(nn.Layer):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/models/backbones_3d/f2v/frustum_grid_generator.py#L8
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/models/backbones_3d/f2v/frustum_grid_generator.py#L8
     """
 
     def __init__(self, grid_size, pc_range, disc_cfg):

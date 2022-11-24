@@ -20,7 +20,7 @@ from paddle3d.utils.box import boxes3d_nearest_bev_iou
 
 class AxisAlignedTargetAssigner(object):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/models/dense_heads/target_assigner/axis_aligned_target_assigner.py#L8
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/models/dense_heads/target_assigner/axis_aligned_target_assigner.py#L8
     """
 
     def __init__(self, anchor_generator_cfg, anchor_target_cfg, class_names,

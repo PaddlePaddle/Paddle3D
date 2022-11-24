@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <vector>
+
 #include "paddle/include/experimental/ext_all.h"
 
 template <typename T, typename T_int>
@@ -80,11 +81,10 @@ bool hard_voxelize_cpu_kernel(
   return true;
 }
 
-std::vector<paddle::Tensor>
-hard_voxelize_cpu(const paddle::Tensor &points,
-                  const std::vector<float> &voxel_size,
-                  const std::vector<float> &point_cloud_range,
-                  const int max_num_points_in_voxel, const int max_voxels) {
+std::vector<paddle::Tensor> hard_voxelize_cpu(
+    const paddle::Tensor &points, const std::vector<float> &voxel_size,
+    const std::vector<float> &point_cloud_range,
+    const int max_num_points_in_voxel, const int max_voxels) {
   auto num_points = points.shape()[0];
   auto num_point_dim = points.shape()[1];
 
@@ -101,27 +101,28 @@ hard_voxelize_cpu(const paddle::Tensor &points,
   int grid_size_z = static_cast<int>(
       round((point_cloud_range[5] - point_cloud_range[2]) / voxel_size_z));
 
-  auto voxels = paddle::empty(
-        {max_voxels, max_num_points_in_voxel, num_point_dim},
-        paddle::DataType::FLOAT32, paddle::CPUPlace());
+  auto voxels =
+      paddle::empty({max_voxels, max_num_points_in_voxel, num_point_dim},
+                    paddle::DataType::FLOAT32, paddle::CPUPlace());
 
   auto coords = paddle::full({max_voxels, 3}, 0, paddle::DataType::INT32,
-                                    paddle::CPUPlace());
+                             paddle::CPUPlace());
   auto *coords_data = coords.data<int>();
 
-  auto num_points_per_voxel = paddle::full({max_voxels}, 0, paddle::DataType::INT32,
-      paddle::CPUPlace());
+  auto num_points_per_voxel = paddle::full(
+      {max_voxels}, 0, paddle::DataType::INT32, paddle::CPUPlace());
   auto *num_points_per_voxel_data = num_points_per_voxel.data<int>();
   std::fill(num_points_per_voxel_data,
             num_points_per_voxel_data + num_points_per_voxel.size(),
             static_cast<int>(0));
 
-  auto num_voxels = paddle::full({1}, 0, paddle::DataType::INT32,
-      paddle::CPUPlace());
+  auto num_voxels =
+      paddle::full({1}, 0, paddle::DataType::INT32, paddle::CPUPlace());
   auto *num_voxels_data = num_voxels.data<int>();
 
-  auto grid_idx_to_voxel_idx = paddle::full({grid_size_z, grid_size_y, grid_size_x},
-      -1, paddle::DataType::INT32, paddle::CPUPlace());
+  auto grid_idx_to_voxel_idx =
+      paddle::full({grid_size_z, grid_size_y, grid_size_x}, -1,
+                   paddle::DataType::INT32, paddle::CPUPlace());
   auto *grid_idx_to_voxel_idx_data = grid_idx_to_voxel_idx.data<int>();
 
   PD_DISPATCH_FLOATING_TYPES(
@@ -131,46 +132,43 @@ hard_voxelize_cpu(const paddle::Tensor &points,
             point_cloud_range_y_min, point_cloud_range_z_min, voxel_size_x,
             voxel_size_y, voxel_size_z, grid_size_x, grid_size_y, grid_size_z,
             num_points, num_point_dim, max_num_points_in_voxel, max_voxels,
-            voxels.data<data_t>(), coords_data,
-            num_points_per_voxel_data, grid_idx_to_voxel_idx_data,
-            num_voxels_data);
+            voxels.data<data_t>(), coords_data, num_points_per_voxel_data,
+            grid_idx_to_voxel_idx_data, num_voxels_data);
       }));
 
   return {voxels, coords, num_points_per_voxel, num_voxels};
 }
 
 #ifdef PADDLE_WITH_CUDA
-std::vector<paddle::Tensor>
-hard_voxelize_cuda(const paddle::Tensor &points,
-                   const std::vector<float> &voxel_size,
-                   const std::vector<float> &point_cloud_range,
-                   int max_num_points_in_voxel, int max_voxels);
+std::vector<paddle::Tensor> hard_voxelize_cuda(
+    const paddle::Tensor &points, const std::vector<float> &voxel_size,
+    const std::vector<float> &point_cloud_range, int max_num_points_in_voxel,
+    int max_voxels);
 #endif
 
-std::vector<paddle::Tensor>
-hard_voxelize(const paddle::Tensor &points,
-              const std::vector<float> &voxel_size,
-              const std::vector<float> &point_cloud_range,
-              const int max_num_points_in_voxel, const int max_voxels) {
+std::vector<paddle::Tensor> hard_voxelize(
+    const paddle::Tensor &points, const std::vector<float> &voxel_size,
+    const std::vector<float> &point_cloud_range,
+    const int max_num_points_in_voxel, const int max_voxels) {
   if (points.is_cpu()) {
     return hard_voxelize_cpu(points, voxel_size, point_cloud_range,
                              max_num_points_in_voxel, max_voxels);
 #ifdef PADDLE_WITH_CUDA
-  } else if (points.is_gpu()) {
+  } else if (points.is_gpu() || points.is_gpu_pinned()) {
     return hard_voxelize_cuda(points, voxel_size, point_cloud_range,
                               max_num_points_in_voxel, max_voxels);
 #endif
   } else {
-    PD_THROW("Unsupported device type for hard_voxelize "
-             "operator.");
+    PD_THROW(
+        "Unsupported device type for hard_voxelize "
+        "operator.");
   }
 }
 
-std::vector<std::vector<int64_t>>
-HardInferShape(std::vector<int64_t> points_shape,
-               const std::vector<float> &voxel_size,
-               const std::vector<float> &point_cloud_range,
-               const int &max_num_points_in_voxel, const int &max_voxels) {
+std::vector<std::vector<int64_t>> HardInferShape(
+    std::vector<int64_t> points_shape, const std::vector<float> &voxel_size,
+    const std::vector<float> &point_cloud_range,
+    const int &max_num_points_in_voxel, const int &max_voxels) {
   return {{max_voxels, max_num_points_in_voxel, points_shape[1]},
           {max_voxels, 3},
           {max_voxels},

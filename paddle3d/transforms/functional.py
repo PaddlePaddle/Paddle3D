@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 from typing import Tuple
 
 import numba
@@ -287,3 +288,89 @@ def nearest_iou_similarity(bboxes_3d_1, bboxes_3d_2):
     boxes_bv_1 = rbbox2d_to_near_bbox(bboxes_3d_1[:, [0, 1, 3, 4, 6]])
     boxes_bv_2 = rbbox2d_to_near_bbox(bboxes_3d_2[:, [0, 1, 3, 4, 6]])
     return iou_2d_jit(boxes_bv_1, boxes_bv_2)
+
+
+def random_depth_image_horizontal(data_dict=None):
+    """
+    Performs random horizontal flip augmentation
+    Args:
+    data_dict:
+        image [np.ndarray(H_image, W_image, 3)]: Image
+        depth_map [np.ndarray(H_depth, W_depth]: Depth map
+        gt_boxes [np.ndarray(N, 7)]: 3D box labels in LiDAR coordinates [x, y, z, w, l, h, ry]
+        calib [calibration.Calibration]: Calibration object
+    Returns:
+    data_dict:
+        aug_image [np.ndarray(H_image, W_image, 3)]: Augmented image
+        aug_depth_map [np.ndarray(H_depth, W_depth]: Augmented depth map
+        aug_gt_boxes [np.ndarray(N, 7)]: Augmented 3D box labels in LiDAR coordinates [x, y, z, w, l, h, ry]
+    """
+    if data_dict is None:
+        return
+    image = data_dict["images"]
+    depth_map = data_dict["depth_maps"]
+    gt_boxes = data_dict['gt_boxes']
+    calib = data_dict["calib"]
+
+    # Randomly augment with 50% chance
+    enable = np.random.choice([False, True], replace=False, p=[0.5, 0.5])
+
+    if enable:
+        # Flip images
+        aug_image = np.fliplr(image)
+        aug_depth_map = np.fliplr(depth_map)
+
+        # Flip 3D gt_boxes by flipping the centroids in image space
+        aug_gt_boxes = copy.copy(gt_boxes)
+        locations = aug_gt_boxes[:, :3]
+        img_pts, img_depth = calib.lidar_to_img(locations)
+        W = image.shape[1]
+        img_pts[:, 0] = W - img_pts[:, 0]
+        pts_rect = calib.img_to_rect(
+            u=img_pts[:, 0], v=img_pts[:, 1], depth_rect=img_depth)
+        pts_lidar = calib.rect_to_lidar(pts_rect)
+        aug_gt_boxes[:, :3] = pts_lidar
+        aug_gt_boxes[:, 6] = -1 * aug_gt_boxes[:, 6]
+    else:
+        aug_image = image
+        aug_depth_map = depth_map
+        aug_gt_boxes = gt_boxes
+
+    data_dict['images'] = aug_image
+    data_dict['depth_maps'] = aug_depth_map
+    data_dict['gt_boxes'] = aug_gt_boxes
+
+    return data_dict
+
+
+def sample_point(sample, num_points):
+    """ Randomly sample points by distance
+    """
+    if num_points == -1:
+        return sample
+
+    points = sample.data
+    if num_points < len(points):
+        pts_depth = np.linalg.norm(points[:, 0:3], axis=1)
+        pts_near_flag = pts_depth < 40.0
+        far_idxs_choice = np.where(pts_near_flag == 0)[0]
+        near_idxs = np.where(pts_near_flag == 1)[0]
+        choice = []
+        if num_points > len(far_idxs_choice):
+            near_idxs_choice = np.random.choice(
+                near_idxs, num_points - len(far_idxs_choice), replace=False)
+            choice = np.concatenate((near_idxs_choice, far_idxs_choice), axis=0) \
+                if len(far_idxs_choice) > 0 else near_idxs_choice
+        else:
+            choice = np.arange(0, len(points), dtype=np.int32)
+            choice = np.random.choice(choice, num_points, replace=False)
+        np.random.shuffle(choice)
+    else:
+        choice = np.arange(0, len(points), dtype=np.int32)
+        if num_points > len(points):
+            extra_choice = np.random.choice(choice, num_points - len(points))
+            choice = np.concatenate((choice, extra_choice), axis=0)
+        np.random.shuffle(choice)
+    sample.data = sample.data[choice]
+
+    return sample

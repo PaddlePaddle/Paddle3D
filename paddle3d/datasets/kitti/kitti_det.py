@@ -19,7 +19,7 @@ from typing import List, Tuple, Union
 import numpy as np
 import pandas
 
-import paddle3d.transforms as T
+from paddle3d import transforms as T
 from paddle3d.datasets import BaseDataset
 from paddle3d.datasets.kitti.kitti_metric import KittiMetric
 from paddle3d.transforms import TransformABC
@@ -36,7 +36,8 @@ class KittiDetDataset(BaseDataset):
                  mode: str = "train",
                  transforms: Union[TransformABC, List[TransformABC]] = None,
                  class_names: Union[list, tuple] = None,
-                 class_balanced_sampling: bool = False):
+                 class_balanced_sampling: bool = False,
+                 use_road_plane: bool = False):
         super().__init__()
         self.dataset_root = dataset_root
         self.mode = mode.lower()
@@ -46,6 +47,7 @@ class KittiDetDataset(BaseDataset):
 
         self.transforms = transforms
         self.class_names = class_names
+        self.use_road_plane = use_road_plane
         if self.class_names is None:
             self.class_names = list(self.CLASS_MAP.keys())
 
@@ -119,10 +121,13 @@ class KittiDetDataset(BaseDataset):
         return os.path.join(self.dataset_root, 'ImageSets',
                             '{}.txt'.format(self.mode))
 
-    def load_calibration_info(self, index: int) -> Tuple:
+    def load_calibration_info(self, index: int, use_data: bool = True) -> Tuple:
         """
         """
-        filename = '{}.txt'.format(self.data[index])
+        if use_data:
+            filename = '{}.txt'.format(self.data[index])
+        else:
+            filename = '{}.txt'.format(index)
 
         with open(os.path.join(self.calib_dir, filename), 'r') as csv_file:
             reader = list(csv.reader(csv_file, delimiter=' '))

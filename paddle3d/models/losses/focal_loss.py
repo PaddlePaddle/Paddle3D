@@ -162,7 +162,7 @@ class MultiFocalLoss(nn.Layer):
 
 class SigmoidFocalClassificationLoss(nn.Layer):
     """
-    This function refers to https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/loss_utils.py#L14
+    This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/loss_utils.py#L14
     """
 
     def __init__(self, gamma=2.0, alpha=0.25):

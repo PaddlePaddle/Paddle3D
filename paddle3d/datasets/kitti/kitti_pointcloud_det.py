@@ -55,10 +55,31 @@ class KittiPCDataset(KittiDetDataset):
                 [self.class_names.index(name) for name in cls_names])
             sample.difficulties = difficulties
             sample.ignored_bboxes_3d = ignored_bboxes_3d
+            if self.use_road_plane:
+                sample.road_plane = self.load_road_plane(index)
 
         if self.transforms:
             sample = self.transforms(sample)
         return sample
+
+    def load_road_plane(self, index):
+        file_name = '{}.txt'.format(self.data[index])
+        plane_file = os.path.join(self.base_dir, 'planes', file_name)
+        if not os.path.exists(plane_file):
+            return None
+
+        with open(plane_file, 'r') as f:
+            lines = f.readlines()
+        lines = [float(i) for i in lines[3].split()]
+        plane = np.asarray(lines)
+
+        # Ensure normal is always facing up, this is in the rectified camera coordinate
+        if plane[1] > 0:
+            plane = -plane
+
+        norm = np.linalg.norm(plane[0:3])
+        plane = plane / norm
+        return plane
 
     @property
     def pointcloud_dir(self) -> str:
