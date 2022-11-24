@@ -28,6 +28,7 @@ PETR...
 | 模型 |  骨干网络  | 3DmAP | NDS |  模型下载 | 配置文件 |  日志 |
 | :--: | :-------: | :--------: | :-------------------: | :------: | :-----: | :--: |
 |PETR v1 |  v99    | 38.35 | 43.52 | [model](https://paddle3d.bj.bcebos.com/models/petr/petr_vovnet_gridmask_p4_800x320_amp/model.pdparams) | [config](../../../configs/petr/petr_vovnet_gridmask_p4_800x320_amp.yml) | [log](https://paddle3d.bj.bcebos.com/models/petr/petr_vovnet_gridmask_p4_800x320_amp/train.log) \| [vdl](https://www.paddlepaddle.org.cn/paddle/visualdl/service/app/scalar?id=334e6a6ba257c953fe67bac17a1434a6) |
+|PETR v2 |  v99    | 41.05 | 49.86 | [model](https://paddle3d.bj.bcebos.com/models/petr/petrv2_vovnet_gridmask_p4_800x320/model.pdparams) | [config](../../../configs/petr/petrv2_vovnet_gridmask_p4_800x320.yml) | [log](https://paddle3d.bj.bcebos.com/models/petr/petrv2_vovnet_gridmask_p4_800x320/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=8888769be49447d6bbabebe78a5fa3ed) |
 
 
 ## <h2 id="5">使用教程</h2>
