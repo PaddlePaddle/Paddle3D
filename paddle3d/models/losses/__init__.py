@@ -13,6 +13,6 @@
 # limitations under the License.
 
 from .focal_loss import (FastFocalLoss, FocalLoss, MultiFocalLoss,
-                         SigmoidFocalClassificationLoss)
+                         SigmoidFocalClassificationLoss, WeightedFocalLoss)
 from .reg_loss import RegLoss
 from .weight_loss import WeightedCrossEntropyLoss, WeightedSmoothL1Loss
