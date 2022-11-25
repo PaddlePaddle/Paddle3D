@@ -13,4 +13,6 @@
 # limitations under the License.
 
 from .anchor_head import *
+from .coders import NMSFreeCoder
+from .petr_head import PETRHead
 from .target_assigner import *

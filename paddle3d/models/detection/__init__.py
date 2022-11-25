@@ -16,5 +16,6 @@ from . import caddn, centerpoint, iassd, pointpillars, smoke
 from .caddn import *
 from .centerpoint import *
 from .iassd import *
+from .petr import *
 from .pointpillars import *
 from .smoke import *
