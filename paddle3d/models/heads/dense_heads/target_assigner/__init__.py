@@ -14,3 +14,4 @@
 
 from .anchor_generator import *
 from .axis_aligned_target_assigner import *
+from .hungarian_assigner import HungarianAssigner3D

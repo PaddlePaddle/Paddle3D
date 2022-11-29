@@ -97,10 +97,10 @@ class VoxelQueryAndGrouping(nn.Layer):
         idx = idx1
         empty_ball_mask = empty_ball_mask1
 
-        grouped_xyz = pointnet2_ops.grouping_operation(xyz, xyz_batch_cnt, idx,
-                                                       new_xyz_batch_cnt)
+        grouped_xyz = pointnet2_ops.grouping_operation_stack(
+            xyz, xyz_batch_cnt, idx, new_xyz_batch_cnt)
         # grouped_features: (M1 + M2, C, nsample)
-        grouped_features = pointnet2_ops.grouping_operation(
+        grouped_features = pointnet2_ops.grouping_operation_stack(
             features, xyz_batch_cnt, idx, new_xyz_batch_cnt)
 
         return grouped_features, grouped_xyz, empty_ball_mask

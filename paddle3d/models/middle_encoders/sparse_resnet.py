@@ -23,6 +23,7 @@ from paddle import sparse
 from paddle.sparse import nn
 
 from paddle3d.apis import manager
+from paddle3d.models.layers import param_init
 
 __all__ = ['SparseResNet3D']
 
@@ -62,7 +63,6 @@ class SparseBasicBlock(paddle.nn.Layer):
         super(SparseBasicBlock, self).__init__()
 
         bias_attr = True
-
         self.conv1 = conv3x3(
             in_channels, out_channels, stride, bias_attr=bias_attr)
         self.bn1 = nn.BatchNorm(out_channels, epsilon=1e-3, momentum=0.01)
@@ -152,6 +152,15 @@ class SparseResNet3D(paddle.nn.Layer):
 
         self.sparse_shape = np.array(grid_size[::-1]) + [1, 0, 0]
         self.in_channels = in_channels
+        self.init_weight()
+
+    def init_weight(self):
+        for layer in self.sublayers():
+            if isinstance(layer, (nn.Conv3D, nn.SubmConv3D)):
+                param_init.reset_parameters(layer)
+            if isinstance(layer, nn.BatchNorm):
+                param_init.constant_init(layer.weight, value=1)
+                param_init.constant_init(layer.bias, value=0)
 
     def forward(self, voxel_features, coors, batch_size):
         shape = [batch_size] + list(self.sparse_shape) + [self.in_channels]

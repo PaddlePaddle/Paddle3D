@@ -258,6 +258,7 @@ std::vector<paddle::Tensor> hard_voxelize_cuda(
   auto points_flag_prefix_sum =
       paddle::experimental::cumsum(points_flag, 0, false, true, false);
   int *points_flag_prefix_sum_data = points_flag_prefix_sum.data<int>();
+
   get_voxel_idx_kernel<int><<<blocks, threads, 0, points.stream()>>>(
       points_flag_data, points_to_grid_idx_data, points_flag_prefix_sum_data,
       num_points, max_voxels, num_voxels_data, grid_idx_to_voxel_idx_data);

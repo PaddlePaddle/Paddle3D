@@ -172,6 +172,7 @@ class SamplingDatabase(TransformABC):
                 indices = np.arange(num_sampling)
                 sampling_bboxes_3d = np.vstack(
                     [sampling_annos[i]["bbox_3d"] for i in range(num_sampling)])
+
                 sampling_bboxes = BBoxes3D(
                     sampling_bboxes_3d,
                     coordmode=sample.bboxes_3d.coordmode,
@@ -217,6 +218,7 @@ class SamplingDatabase(TransformABC):
                         if existing_difficulties is not None:
                             sampling_difficulties.append(
                                 sampling_annos[i]["difficulty"])
+
                         sampling_labels.append(label)
                         lidar_data = np.fromfile(
                             osp.join(self.database_root,

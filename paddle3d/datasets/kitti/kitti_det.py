@@ -47,6 +47,7 @@ class KittiDetDataset(BaseDataset):
 
         self.transforms = transforms
         self.class_names = class_names
+        self.use_road_plane = use_road_plane
         if self.class_names is None:
             self.class_names = list(self.CLASS_MAP.keys())
 

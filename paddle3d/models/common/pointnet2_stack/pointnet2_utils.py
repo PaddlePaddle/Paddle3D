@@ -59,19 +59,20 @@ class QueryAndGroup(nn.Layer):
             'new_xyz: %s, new_xyz_batch_cnt: %s' % (str(new_xyz.shape), str(new_xyz_batch_cnt))
 
         # idx: (M1 + M2 ..., nsample), empty_ball_mask: (M1 + M2 ...)
-        idx = pointnet2_ops.ball_query(new_xyz, new_xyz_batch_cnt, xyz,
-                                       xyz_batch_cnt, self.radius, self.nsample)
+        idx = pointnet2_ops.ball_query_stack(new_xyz, new_xyz_batch_cnt, xyz,
+                                             xyz_batch_cnt, self.radius,
+                                             self.nsample)
         empty_ball_mask = (idx[:, 0] == -1)
         idx[empty_ball_mask] = 0
 
-        grouped_xyz = pointnet2_ops.grouping_operation(
+        grouped_xyz = pointnet2_ops.grouping_operation_stack(
             xyz, xyz_batch_cnt, idx, new_xyz_batch_cnt)  # (M1 + M2, 3, nsample)
         grouped_xyz -= new_xyz.unsqueeze(-1)
 
         grouped_xyz[empty_ball_mask] = 0
 
         if features is not None:
-            grouped_features = pointnet2_ops.grouping_operation(
+            grouped_features = pointnet2_ops.grouping_operation_stack(
                 features, xyz_batch_cnt, idx,
                 new_xyz_batch_cnt)  # (M1 + M2, C, nsample)
             grouped_features[empty_ball_mask] = 0

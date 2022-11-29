@@ -13,4 +13,5 @@
 # limitations under the License.
 
 from . import second_fpn
+from .cp_fpn import CPFPN
 from .second_fpn import *
