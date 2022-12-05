@@ -11,7 +11,7 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
 
 * 【灵活的框架设计】针对各类3D数据格式，灵活构建数据处理、骨干网络等核心模块，支持基于PaddleDet/PaddleSeg灵活扩展2D视觉感知能力，并提供API与脚本两种训练评估方式，满足开发者灵活定制的差异化需求
 
-* 【端到端全流程】支持KITTI、nuScenes等主流3D数据集，提供从数据处理、模型搭建、训练调优到部署落地的全流程能力
+* 【端到端全流程】支持KITTI、nuScenes、Waymo等主流3D数据集，提供从数据处理、模型搭建、训练调优到部署落地的全流程能力
 
 * 【工业级部署方案】极致优化模型性能，适配多种自动驾驶主流芯片，支持计算图优化、TensorRT/OpenVINO等加速库，并提供了开箱即用的部署教程，5分钟即可完成模型部署
 
@@ -57,6 +57,7 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
         <ul>
           <li> PointPillars </li>
           <li> CenterPoint </li>
+          <li> IA-SSD </li>
         </ul>
       </td>
       <td>
@@ -85,7 +86,7 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
 
 - [x] SemanticKITTI
 
-- [ ] waymo - 支持中
+- [x] Waymo
 
 ## 使用教程
 
@@ -104,6 +105,8 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
   * [CenterPoint](./docs/models/centerpoint)
 
   * [SequeezeSeg v3](./docs/models/squeezesegv3)
+
+  * [IA-SSD](./docs/models/iassd)
 
 * [自定义数据准备](./docs/datasets/custom.md)
 

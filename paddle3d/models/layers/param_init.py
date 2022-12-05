@@ -125,6 +125,22 @@ def kaiming_uniform_init(param,
     return _no_grad_uniform_(param, -k, k)
 
 
+def xavier_uniform_init(param, gain=1., reverse=False):
+    """
+    Modified tensor inspace using xavier_uniform method
+    Args:
+        param (paddle.Tensor): paddle Tensor
+        gain (float): a factor apply to std. Default: 1.
+    Return:
+        tensor
+    """
+    fan_in, fan_out = _calculate_fan_in_and_fan_out(param, reverse=reverse)
+    std = gain * math.sqrt(2.0 / float(fan_in + fan_out))
+    a = math.sqrt(3.0) * std  # Calculate uniform bounds from standard deviation
+
+    return _no_grad_uniform_(param, -a, a)
+
+
 def _calculate_fan_in_and_fan_out(tensor, reverse=False):
     """
     Calculate (fan_in, _fan_out) for tensor
@@ -199,14 +215,27 @@ def _calculate_gain(nonlinearity, param=None):
 def _no_grad_uniform_(tensor, a, b):
     with paddle.no_grad():
         tensor.set_value(
-            paddle.uniform(
-                shape=tensor.shape, dtype=tensor.dtype, min=a, max=b))
+            paddle.uniform(shape=tensor.shape, dtype=tensor.dtype, min=a,
+                           max=b))
     return tensor
 
 
-def reset_parameters(m):
-    kaiming_uniform_init(m.weight, a=math.sqrt(5))
+def reset_parameters(m, reverse=False):
+    if not hasattr(m, 'weight'):
+        return
+    if m.weight.ndim < 2:
+        return
+
+    if isinstance(m, nn.Linear):
+        reverse = True
+
+    kaiming_uniform_init(m.weight, a=math.sqrt(5), reverse=reverse)
     if m.bias is not None:
-        fan_in, _ = _calculate_fan_in_and_fan_out(m.weight)
+        fan_in, _ = _calculate_fan_in_and_fan_out(m.weight, reverse=reverse)
         bound = 1 / math.sqrt(fan_in)
         _no_grad_uniform_(m.bias, -bound, bound)
+
+
+def init_bias_by_prob(prob):
+    bias_val = float(-np.log((1 - prob) / prob))
+    return bias_val

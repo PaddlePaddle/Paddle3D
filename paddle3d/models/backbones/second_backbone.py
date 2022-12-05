@@ -53,6 +53,7 @@ def build_conv_layer(in_channels,
         bias_attr = False
         if bias:
             bias_attr = ParamAttr(initializer=Constant(0.))
+
     conv_layer = nn.Conv2D(
         in_channels=in_channels,
         out_channels=out_channels,
