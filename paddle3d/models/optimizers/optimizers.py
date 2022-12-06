@@ -46,7 +46,7 @@ class OneCycleAdam(object):
             name=name,
             lazy_mode=lazy_mode)
         self.weight_decay = weight_decay
-        self.learning_rate = learning_rate
+        self._learning_rate = learning_rate
         self.beta1 = beta1
 
     def _set_beta1(self, beta1, pow):
@@ -61,14 +61,14 @@ class OneCycleAdam(object):
 
     def before_run(self, max_iters):
         """before_run"""
-        if self.learning_rate is not None:
-            self.learning_rate.before_run(max_iters)
+        if self._learning_rate is not None:
+            self._learning_rate.before_run(max_iters)
         if self.beta1 is not None:
             self.beta1.before_run(max_iters)
 
     def before_iter(self, curr_iter):
         """before_iter"""
-        lr = self.learning_rate.get_lr(curr_iter=curr_iter)
+        lr = self._learning_rate.get_lr(curr_iter=curr_iter)
         self.optimizer.set_lr(lr)
         beta1 = self.beta1.get_momentum(curr_iter=curr_iter)
         self._set_beta1(beta1, pow=curr_iter + 1)
