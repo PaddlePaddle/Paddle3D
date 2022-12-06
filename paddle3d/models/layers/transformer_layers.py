@@ -367,6 +367,8 @@ class MultiHeadAttention(nn.Layer):
             value = value.transpose([1, 0, 2])
 
         if key_padding_mask is None:
+            if attn_mask is not None:
+                attn_mask=~attn_mask
             out = self.attn(
                 query=query,
                 key=key,

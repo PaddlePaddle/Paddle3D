@@ -3,7 +3,7 @@ epochs: 24
 
 train_dataset:
   type: NuscenesMVDataset
-  dataset_root: /workspace/datasets/nuscene/
+  dataset_root: data/nuscenes/
   ann_file: data/nuscenes/mmdet3d_nuscenes_30f_infos_train.pkl
   mode: train
   use_valid_flag: True
@@ -60,7 +60,7 @@ train_dataset:
 
 val_dataset:
   type: NuscenesMVDataset
-  dataset_root: /workspace/datasets/nuscene/
+  dataset_root: data/nuscenes/
   ann_file: data/nuscenes/mmdet3d_nuscenes_30f_infos_val.pkl
   mode: val
   class_names: ['car', 'truck', 'construction_vehicle', 'bus', 'trailer',
