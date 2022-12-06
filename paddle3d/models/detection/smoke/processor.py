@@ -79,8 +79,8 @@ class PostProcessor(nn.Layer):
 
         pred_depths = self.smoke_coder.decode_depth(pred_depths_offset)
         pred_locations = self.smoke_coder.decode_location_without_transmat(
-            pred_proj_points, pred_proj_offsets, pred_depths,
-            cam_info[0][:, :3, :3], cam_info[1])
+            pred_proj_points, pred_proj_offsets, pred_depths, cam_info[0],
+            cam_info[1])
         pred_dimensions = self.smoke_coder.decode_dimension(
             clses, pred_dimensions_offsets)
         # we need to change center location to bottom location
@@ -96,10 +96,17 @@ class PostProcessor(nn.Layer):
         pred_rotys = paddle.reshape(pred_rotys, (-1, 1))
         scores = paddle.reshape(scores, (-1, 1))
 
-        result = paddle.concat([pred_locations, pred_dimensions, pred_rotys],
-                               axis=1)
+        l, h, w = pred_dimensions.chunk(3, 1)
+        pred_dimensions = paddle.concat([h, w, l], axis=1)
 
-        return result, clses, scores
+        # yapf: disable
+        result = paddle.concat([
+            clses, pred_alphas, box2d, pred_dimensions, pred_locations,
+            pred_rotys, scores
+        ], axis=1)
+        # yapf: enable
+
+        return result
 
     def forward(self, predictions, targets):
 

@@ -62,22 +62,8 @@ class BaseMonoModel(BaseDetectionModel):
             }
             res.append(poses)
 
-        if self.need_down_ratios:
-            down_ratios = {
-                'name': 'down_ratios',
-                'dtype': 'float32',
-                'shape': [1, 2]
-            }
-            res.append(down_ratios)
-
         return res
 
     @property
     def sensor(self) -> str:
         return "camera"
-
-    @property
-    def export_args(self) -> List[dict]:
-        image_size = {'dest': 'image_size', 'type': int, 'nargs': '+'}
-
-        return [image_size]

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import os
-from typing import Tuple
+from typing import List, Tuple
 
 import paddle
 import paddle.nn as nn
@@ -49,6 +49,8 @@ class SMOKE(BaseMonoModel):
 
         self.backbone = backbone
         self.heads = head
+        self.max_detection = max_detection
+
         self.init_weight()
         self.loss_computation = SMOKELossComputation(
             depth_ref=depth_ref,
@@ -141,3 +143,36 @@ class SMOKE(BaseMonoModel):
             ret.labels = clas
 
         return ret
+
+    @property
+    def inputs(self) -> List[dict]:
+        images = {
+            'name': 'images',
+            'dtype': 'float32',
+            'shape': [1, 3, self.image_height, self.image_width]
+        }
+        res = [images]
+
+        intrinsics = {
+            'name': 'trans_cam_to_img',
+            'dtype': 'float32',
+            'shape': [1, 3, 3]
+        }
+        res.append(intrinsics)
+
+        down_ratios = {
+            'name': 'down_ratios',
+            'dtype': 'float32',
+            'shape': [1, 2]
+        }
+        res.append(down_ratios)
+        return res
+
+    @property
+    def outputs(self) -> List[dict]:
+        data = {
+            'name': 'smoke_output',
+            'dtype': 'float32',
+            'shape': [self.max_detection, 14]
+        }
+        return [data]

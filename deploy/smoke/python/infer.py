@@ -107,13 +107,20 @@ def init_predictor(args):
     return predictor
 
 
-def run(predictor, img):
+def run(predictor, image, K, down_ratio):
     # copy img data to input tensor
     input_names = predictor.get_input_names()
     for i, name in enumerate(input_names):
         input_tensor = predictor.get_input_handle(name)
-        input_tensor.reshape(img[i].shape)
-        input_tensor.copy_from_cpu(img[i].copy())
+        if name == "images":
+            input_tensor.reshape(image.shape)
+            input_tensor.copy_from_cpu(image.copy())
+        elif name == "trans_cam_to_img":
+            input_tensor.reshape(K.shape)
+            input_tensor.copy_from_cpu(K.copy())
+        elif name == "down_ratios":
+            input_tensor.reshape(down_ratio.shape)
+            input_tensor.copy_from_cpu(down_ratio.copy())
 
     # do the inference
     predictor.run()
@@ -140,6 +147,6 @@ if __name__ == '__main__':
     img, ori_img_size, output_size = get_img(args.image)
     ratio = get_ratio(ori_img_size, output_size)
 
-    results = run(pred, [img, K, ratio])
+    results = run(pred, img, K, ratio)
 
     total_pred = results[0]
