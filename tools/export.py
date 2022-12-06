@@ -21,18 +21,24 @@ import yaml
 from paddle3d.apis.config import Config
 from paddle3d.models.base import BaseDetectionModel
 from paddle3d.utils.checkpoint import load_pretrained_model
+from paddle3d.utils.logger import logger
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Model Export')
 
-    # params of evaluate
+    # params of export
     parser.add_argument(
         "--config",
         dest="cfg",
         help="The config file.",
         required=True,
         type=str)
+    parser.add_argument(
+        "--export_for_apollo",
+        dest="export_for_apollo",
+        help="Whether to export to the deployment format supported by Apollo.",
+        action='store_true')
     parser.add_argument(
         '--model',
         dest='model',
@@ -60,23 +66,52 @@ def generate_apollo_deploy_file(cfg, save_dir: str):
     model = cfg.model
 
     with open(yml_file, 'w') as file:
-        data = {
-            'name': model.__class__.__name__,
-            'date': datetime.date.today(),
-            'task_type': '3d_detection',
-            'sensor_type': model.sensor,
-            'framework': 'PaddlePaddle'
-        }
+        # Save the content one by one to ensure the content order of the output file
+        file.write('# base information\n')
+        yaml.dump({'name': model.__class__.__name__}, file)
+        yaml.dump({'date': datetime.date.today()}, file)
+        yaml.dump({'task_type': '3d_detection'}, file)
+        yaml.dump({'sensor_type': model.sensor}, file)
+        yaml.dump({'framework': 'PaddlePaddle'}, file)
 
+        file.write('\n# dataset information\n')
+        yaml.dump({
+            'dataset': {
+                'name': cfg.train_dataset.name,
+                'labels': cfg.train_dataset.labels
+            }
+        }, file)
+
+        file.write('\n# model information\n')
         transforms = cfg.export_config.get('transforms', [])
-        data['model'] = {
-            'inputs': model.inputs,
-            'outputs': model.outputs,
-            'preprocess': transforms,
-            'dataset': cfg.train_dataset.name,
-            'labels': cfg.train_dataset.labels,
-            'model': 'inference.pdmodel',
-            'params': 'inference.pdiparams'
+        model_file = '{}.pdmodel'.format(args.save_name)
+        params_file = '{}.pdiparams'.format(args.save_name)
+        data = {
+            'model': {
+                'inputs':
+                model.inputs,
+                'outputs':
+                model.outputs,
+                'preprocess':
+                transforms,
+                'model_files':
+                [{
+                    'name':
+                    model_file,
+                    'type':
+                    'model',
+                    'size':
+                    os.path.getsize(os.path.join(args.save_dir, model_file))
+                },
+                 {
+                     'name':
+                     params_file,
+                     'type':
+                     'params',
+                     'size':
+                     os.path.getsize(os.path.join(args.save_dir, params_file))
+                 }]
+            }
         }
 
         yaml.dump(data, file)
@@ -93,8 +128,12 @@ def main(args):
 
     model.export(args.save_dir, name=args.save_name)
 
-    if isinstance(model, BaseDetectionModel):
-        generate_apollo_deploy_file(cfg, args.save_dir)
+    if args.export_for_apollo:
+        if not isinstance(model, BaseDetectionModel):
+            logger.error('Model {} does not support Apollo yet!'.format(
+                model.__class__.__name__))
+        else:
+            generate_apollo_deploy_file(cfg, args.save_dir)
 
 
 if __name__ == '__main__':
