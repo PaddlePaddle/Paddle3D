@@ -1134,6 +1134,37 @@ class PETRHead(nn.Layer):
                                               all_gt_bboxes_ignore_list)
 
         loss_dict = dict()
+        # loss of proposal generated from encode feature map.
+        if enc_cls_scores is not None:
+            binary_labels_list = [
+                paddle.zeros_like(gt_labels_list[i])
+                for i in range(len(all_gt_labels_list))
+            ]
+            enc_loss_cls, enc_losses_bbox = \
+                self.loss_single(enc_cls_scores, enc_bbox_preds,
+                                 gt_bboxes_list, binary_labels_list, gt_bboxes_ignore)
+            loss_dict['enc_loss_cls'] = enc_loss_cls
+            loss_dict['enc_loss_bbox'] = enc_losses_bbox
+        
+        if preds_dicts['dn_mask_dict'] is not None:
+            known_labels, known_bboxs, output_known_class, output_known_coord, num_tgt = self.prepare_for_loss(preds_dicts['dn_mask_dict'])
+            all_known_bboxs_list = [known_bboxs for _ in range(num_dec_layers)]
+            all_known_labels_list = [known_labels for _ in range(num_dec_layers)]
+            all_num_tgts_list = [
+                num_tgt for _ in range(num_dec_layers)
+            ]
+            dn_losses_cls, dn_losses_bbox = multi_apply(
+                self.dn_loss_single, output_known_class, output_known_coord,
+                all_known_bboxs_list, all_known_labels_list, 
+                all_num_tgts_list)
+            loss_dict['dn_loss_cls'] = dn_losses_cls[-1]
+            loss_dict['dn_loss_bbox'] = dn_losses_bbox[-1]
+            num_dec_layer = 0
+            for loss_cls_i, loss_bbox_i in zip(dn_losses_cls[:-1],
+                                            dn_losses_bbox[:-1]):
+                loss_dict[f'd{num_dec_layer}.dn_loss_cls'] = loss_cls_i
+                loss_dict[f'd{num_dec_layer}.dn_loss_bbox'] = loss_bbox_i
+                num_dec_layer += 1
 
         # loss from the last decoder layer
         loss_dict['loss_cls'] = losses_cls[-1]

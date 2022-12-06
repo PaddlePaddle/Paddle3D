@@ -23,6 +23,7 @@ from os import path as osp
 import numpy as np
 import paddle
 import paddle.nn as nn
+import paddle.nn.functional as F
 from PIL import Image
 
 from paddle3d.apis import manager
@@ -125,13 +126,18 @@ class Petr3D(nn.Layer):
                  train_cfg=None,
                  test_cfg=None,
                  pretrained=None,
-                 use_recompute=False):
+                 use_recompute=False,
+                 us_ms=False,
+                 multi_scale=None):
         super(Petr3D, self).__init__()
         self.pts_bbox_head = pts_bbox_head
         self.backbone = backbone
         self.neck = neck
         self.use_grid_mask = use_grid_mask
         self.use_recompute = use_recompute
+        self.us_ms = us_ms
+        if self.us_ms:
+            self.multi_scale = multi_scale
 
         if use_grid_mask:
             self.grid_mask = GridMask(True,
@@ -173,13 +179,32 @@ class Petr3D(nn.Layer):
                     img = img.reshape([B * N, C, H, W])
             if self.use_grid_mask:
                 img = self.grid_mask(img)
-            img_feats = self.backbone(img)
-            if isinstance(img_feats, dict):
-                img_feats = list(img_feats.values())
+            if self.us_ms:
+                ms_img = []
+                img_feats = []
+                for scale in self.multi_scale:
+                    s_img = F.interpolate(img, scale_factor=scale, mode='bilinear', align_corners=True)
+                    ms_img.append(ms_img)
+                    img_feat = self.backbone(s_img)
+                    if isinstance(img_feat, dict):
+                        img_feat = list(img_feat.values())
+                    img_feats.append(img_feat)
+                if len(self.multi_scale) > 1:
+                    for i, scale in enumerate(self.multi_scale):
+                        img_feats[i] = self.neck(img_feats[i])
+                    if len(self.multi_scale) == 2:
+                        img_feats = [paddle.concat((img_feats[1][-2], F.interpolate(img_feats[0][-2], scale_factor=self.multi_scale[1]/self.multi_scale[0], mode='bilinear', align_corners=True)), 1)]
+                    if len(self.multi_scale) == 3:
+                        img_feats = [paddle.concat((img_feats[2][-2], F.interpolate(img_feats[0][-2], scale_factor=self.multi_scale[2]/self.multi_scale[0], mode='bilinear', align_corners=True), F.interpolate(img_feats[1][-2], scale_factor=self.multi_scale[2]/self.multi_scale[1], mode='bilinear', align_corners=True)), 1)]
+                else:
+                    img_feats = self.neck(img_feats[-1])
+            else:
+                img_feats = self.backbone(img)
+                if isinstance(img_feats, dict):
+                    img_feats = list(img_feats.values())
+                img_feats = self.neck(img_feats)
         else:
             return None
-
-        img_feats = self.neck(img_feats)
 
         img_feats_reshaped = []
         for img_feat in img_feats:

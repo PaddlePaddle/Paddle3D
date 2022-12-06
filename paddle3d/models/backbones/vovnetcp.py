@@ -454,3 +454,18 @@ class VoVNetCP(nn.Layer):
             for m in self.sublayers():
                 if isinstance(m, nn.layer.norm._BatchNormBase):
                     m.eval()
+
+@manager.BACKBONES.add_component
+class VoVNet(VoVNetCP):
+    
+    def forward(self, x):
+        outputs = {}
+        x = self.stem(x)
+        if "stem" in self._out_features:
+            outputs["stem"] = x
+        for name in self.stage_names:
+            x = getattr(self, name)(x)
+            if name in self._out_features:
+                outputs[name] = x
+
+        return outputs
