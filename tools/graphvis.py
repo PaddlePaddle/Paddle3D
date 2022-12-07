@@ -75,9 +75,8 @@ def main(args):
     with generate_dir(args.save_dir) as _dir:
         with visualdl.LogWriter(logdir=_dir) as writer:
             with model.exporting():
-                paddle.jit.to_static(model, model.input_spec)
-                writer.add_graph(model, model.input_spec)
 
+                writer.add_graph(model, model.input_spec)
                 pid = vdlapp.run(
                     logdir=writer._logdir, host=args.host, port=args.port)
 
