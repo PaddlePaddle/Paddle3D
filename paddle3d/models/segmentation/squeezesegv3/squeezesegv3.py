@@ -20,6 +20,7 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 
 from paddle3d.apis import manager
+from paddle3d.models.base import add_export_args
 from paddle3d.models.layers import param_init
 from paddle3d.sample import Sample
 from paddle3d.utils import checkpoint
@@ -120,6 +121,7 @@ class SqueezeSegV3(nn.Layer):
 
         return prediction
 
+    @add_export_args('--input_shape', nargs='+', type=int, required=True)
     def export(self, save_dir: str, input_shape: list = None, **kwargs):
         self.forward = self.export_forward
         save_path = os.path.join(save_dir, 'squeezesegv3')

@@ -12,7 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .base_detection import BaseDetectionModel
-from .base_lidar_detection import BaseLidarModel
-from .base_model import add_export_args
-from .base_mono_detection import BaseMonoModel
+
+def add_export_args(*args, **kwargs):
+    def _wrapper(func):
+        if not hasattr(func, 'arg_dict'):
+            func.arg_dict = {}
+
+        key = args[0]
+        if not key.startswith('--'):
+            key = '--{}'.format(key)
+
+        func.arg_dict[key] = kwargs.copy()
+        return func
+
+    return _wrapper

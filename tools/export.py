@@ -23,40 +23,50 @@ from paddle3d.models.base import BaseDetectionModel
 from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
 
+parser = argparse.ArgumentParser(description='Model Export')
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Model Export')
+
+def parse_normal_args():
+    normal_args = parser.add_argument_group('model args')
 
     # params of export
-    parser.add_argument(
+    normal_args.add_argument(
         "--config",
         dest="cfg",
         help="The config file.",
         required=True,
         type=str)
-    parser.add_argument(
+    normal_args.add_argument(
         "--export_for_apollo",
         dest="export_for_apollo",
         help="Whether to export to the deployment format supported by Apollo.",
         action='store_true')
-    parser.add_argument(
+    normal_args.add_argument(
         '--model',
         dest='model',
         help='pretrained parameters of the model',
         type=str,
         default=None)
-    parser.add_argument(
+    normal_args.add_argument(
         '--save_dir',
         dest='save_dir',
         help='The directory saving inference params.',
         type=str,
         default="./exported_model")
-    parser.add_argument(
+    normal_args.add_argument(
         '--save_name',
         dest='save_name',
         help='The name of inference params file.',
         type=str,
         default="inference")
+
+    return parser.parse_known_args()
+
+
+def parse_model_args(arg_dict: dict):
+    model_args = parser.add_argument_group('model args')
+    for key, value in arg_dict.items():
+        model_args.add_argument(key, **value)
 
     return parser.parse_args()
 
@@ -117,7 +127,7 @@ def generate_apollo_deploy_file(cfg, save_dir: str):
         yaml.dump(data, file)
 
 
-def main(args):
+def main(args, rest_args):
     cfg = Config(path=args.cfg)
 
     model = cfg.model
@@ -126,7 +136,12 @@ def main(args):
     if args.model is not None:
         load_pretrained_model(model, args.model)
 
-    model.export(args.save_dir, name=args.save_name)
+    arg_dict = {} if not hasattr(model.export,
+                                 'arg_dict') else model.export.arg_dict
+    args = parse_model_args(arg_dict)
+    kwargs = {key[2:]: getattr(args, key[2:]) for key in arg_dict}
+
+    model.export(args.save_dir, name=args.save_name, **kwargs)
 
     if args.export_for_apollo:
         if not isinstance(model, BaseDetectionModel):
@@ -137,5 +152,5 @@ def main(args):
 
 
 if __name__ == '__main__':
-    args = parse_args()
-    main(args)
+    args, rest_args = parse_normal_args()
+    main(args, rest_args)
