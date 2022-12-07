@@ -160,11 +160,11 @@ class PETRHead(nn.Layer):
             position_level=0,
             position_range=[-65, -65, -8.0, 65, 65, 8.0],
             group_reg_dims=(2, 1, 3, 2, 2),  # xy, z, size, rot, velo
-            scalar = 5,
-            noise_scale = 0.4,
-            noise_trans = 0.0,
-            dn_weight = 1.0,
-            split = 0.5,
+            scalar=5,
+            noise_scale=0.4,
+            noise_trans=0.0,
+            dn_weight=1.0,
+            split=0.5,
             init_cfg=None,
             normedlinear=False,
             with_fpe=False,
@@ -219,7 +219,7 @@ class PETRHead(nn.Layer):
         self.bbox_noise_scale = noise_scale
         self.bbox_noise_trans = noise_trans
         self.dn_weight = dn_weight
-        self.split = split 
+        self.split = split
         self.with_denoise = with_denoise
         super(PETRHead, self).__init__()
 
@@ -452,7 +452,13 @@ class PETRHead(nn.Layer):
                 gravity_center[:, 2] = bottom_center[:, 2] + bboxes[:, 5] * 0.5
                 return gravity_center
 
-            targets = [paddle.concat((paddle.to_tensor(get_gravity_center(img_meta['gt_bboxes_3d'])), paddle.to_tensor(img_meta['gt_bboxes_3d'][:, 3:])),axis=1) for img_meta in img_metas]
+            targets = [
+                paddle.concat(
+                    (paddle.to_tensor(
+                        get_gravity_center(img_meta['gt_bboxes_3d'])),
+                     paddle.to_tensor(img_meta['gt_bboxes_3d'][:, 3:])),
+                    axis=1) for img_meta in img_metas
+            ]
             labels = [img_meta['gt_labels_3d'] for img_meta in img_metas]
             known = [(paddle.ones_like(t)) for t in labels]
             know_idx = known
@@ -460,14 +466,16 @@ class PETRHead(nn.Layer):
             known_num = [t.shape[0] for t in targets]
             labels = paddle.concat([t for t in labels])
             boxes = paddle.concat([t for t in targets])
-            batch_idx = paddle.concat([paddle.full((t.shape[0], ), i) for i, t in enumerate(targets)])
+            batch_idx = paddle.concat(
+                [paddle.full((t.shape[0], ), i) for i, t in enumerate(targets)])
 
             known_indice = paddle.nonzero(unmask_label + unmask_bbox)
             known_indice = known_indice.reshape([-1])
             # add noise
             groups = min(self.scalar, self.num_query // max(known_num))
             known_indice = known_indice.tile([self.scalar, 1]).reshape([-1])
-            known_labels = labels.tile([self.scalar, 1]).reshape([-1]).astype('int64')
+            known_labels = labels.tile([self.scalar,
+                                        1]).reshape([-1]).astype('int64')
             known_bid = batch_idx.tile([self.scalar, 1]).reshape([-1])
             known_bboxs = boxes.tile([self.scalar, 1])
             known_bbox_center = known_bboxs[:, :3].clone()
@@ -476,25 +484,38 @@ class PETRHead(nn.Layer):
             if self.bbox_noise_scale > 0:
                 diff = known_bbox_scale / 2 + self.bbox_noise_trans
                 rand_prob = paddle.rand(known_bbox_center.shape) * 2 - 1.0
-                known_bbox_center += paddle.multiply(rand_prob,
-                                            diff) * self.bbox_noise_scale
-                known_bbox_center[..., 0:1] = (known_bbox_center[..., 0:1] - self.pc_range[0]) / (self.pc_range[3] - self.pc_range[0])
-                known_bbox_center[..., 1:2] = (known_bbox_center[..., 1:2] - self.pc_range[1]) / (self.pc_range[4] - self.pc_range[1])
-                known_bbox_center[..., 2:3] = (known_bbox_center[..., 2:3] - self.pc_range[2]) / (self.pc_range[5] - self.pc_range[2])
+                known_bbox_center += paddle.multiply(
+                    rand_prob, diff) * self.bbox_noise_scale
+                known_bbox_center[..., 0:1] = (
+                    known_bbox_center[..., 0:1] -
+                    self.pc_range[0]) / (self.pc_range[3] - self.pc_range[0])
+                known_bbox_center[..., 1:2] = (
+                    known_bbox_center[..., 1:2] -
+                    self.pc_range[1]) / (self.pc_range[4] - self.pc_range[1])
+                known_bbox_center[..., 2:3] = (
+                    known_bbox_center[..., 2:3] -
+                    self.pc_range[2]) / (self.pc_range[5] - self.pc_range[2])
                 known_bbox_center = known_bbox_center.clip(min=0.0, max=1.0)
                 mask = paddle.norm(rand_prob, 2, 1) > self.split
                 known_labels[mask] = self.num_classes
-            
+
             single_pad = int(max(known_num))
             pad_size = int(single_pad * self.scalar)
-            padding_bbox = paddle.zeros([pad_size, 3])#.to(reference_points.device)
-            padded_reference_points = paddle.concat([padding_bbox, reference_points], axis=0).unsqueeze(0).tile([batch_size, 1, 1])
+            padding_bbox = paddle.zeros([pad_size, 3])
+            padded_reference_points = paddle.concat(
+                [padding_bbox, reference_points],
+                axis=0).unsqueeze(0).tile([batch_size, 1, 1])
 
             if len(known_num):
-                map_known_indice = paddle.concat([paddle.to_tensor(list(range(num))) for num in known_num])  # [1,2, 1,2,3]
-                map_known_indice = paddle.concat([map_known_indice + single_pad * i for i in range(self.scalar)]).astype('int64')#.long()
+                map_known_indice = paddle.concat(
+                    [paddle.to_tensor(list(range(num))) for num in known_num])
+                map_known_indice = paddle.concat([
+                    map_known_indice + single_pad * i
+                    for i in range(self.scalar)
+                ]).astype('int64')
             if len(known_bid):
-                padded_reference_points[(known_bid.astype('int64'), map_known_indice)] = known_bbox_center#.to(reference_points.device)
+                padded_reference_points[(known_bid.astype('int64'),
+                                         map_known_indice)] = known_bbox_center
 
             tgt_size = pad_size + self.num_query
             attn_mask = paddle.ones([tgt_size, tgt_size]) < 0
@@ -503,24 +524,34 @@ class PETRHead(nn.Layer):
             # reconstruct cannot see each other
             for i in range(self.scalar):
                 if i == 0:
-                    attn_mask[single_pad * i:single_pad * (i + 1), single_pad * (i + 1):pad_size] = True
+                    attn_mask[single_pad * i:single_pad * (i + 1),
+                              single_pad * (i + 1):pad_size] = True
                 if i == self.scalar - 1:
-                    attn_mask[single_pad * i:single_pad * (i + 1), :single_pad * i] = True
+                    attn_mask[single_pad * i:single_pad * (i + 1), :single_pad *
+                              i] = True
                 else:
-                    attn_mask[single_pad * i:single_pad * (i + 1), single_pad * (i + 1):pad_size] = True
-                    attn_mask[single_pad * i:single_pad * (i + 1), :single_pad * i] = True
+                    attn_mask[single_pad * i:single_pad * (i + 1),
+                              single_pad * (i + 1):pad_size] = True
+                    attn_mask[single_pad * i:single_pad * (i + 1), :single_pad *
+                              i] = True
 
             mask_dict = {
-                'known_indice': paddle.to_tensor(known_indice, dtype='int64'),
-                'batch_idx': paddle.to_tensor(batch_idx, dtype='int64'),
-                'map_known_indice': paddle.to_tensor(map_known_indice, dtype='int64'),
+                'known_indice':
+                paddle.to_tensor(known_indice, dtype='int64'),
+                'batch_idx':
+                paddle.to_tensor(batch_idx, dtype='int64'),
+                'map_known_indice':
+                paddle.to_tensor(map_known_indice, dtype='int64'),
                 'known_lbs_bboxes': (known_labels, known_bboxs),
-                'know_idx': know_idx,
-                'pad_size': pad_size
+                'know_idx':
+                know_idx,
+                'pad_size':
+                pad_size
             }
-            
+
         else:
-            padded_reference_points = reference_points.unsqueeze(0).tile([batch_size, 1, 1])
+            padded_reference_points = reference_points.unsqueeze(0).tile(
+                [batch_size, 1, 1])
             attn_mask = None
             mask_dict = None
 
@@ -598,9 +629,11 @@ class PETRHead(nn.Layer):
 
         reference_points = self.reference_points.weight
         if self.with_denoise:
-            reference_points, attn_mask, mask_dict = self.prepare_for_dn(batch_size, reference_points, img_metas)
+            reference_points, attn_mask, mask_dict = self.prepare_for_dn(
+                batch_size, reference_points, img_metas)
             query_embeds = self.query_embedding(pos2posemb3d(reference_points))
-            outs_dec, _ = self.transformer(x, masks, query_embeds, pos_embed, attn_mask, self.reg_branches)
+            outs_dec, _ = self.transformer(x, masks, query_embeds, pos_embed,
+                                           attn_mask, self.reg_branches)
         else:
             mask_dict = None
             query_embeds = self.query_embedding(pos2posemb3d(reference_points))
@@ -608,7 +641,7 @@ class PETRHead(nn.Layer):
                 [batch_size, 1, 1])
 
             outs_dec, _ = self.transformer(x, masks, query_embeds, pos_embed,
-                                        self.reg_branches)
+                                           self.reg_branches)
 
             outs_dec = nan_to_num(outs_dec)
 
@@ -663,12 +696,13 @@ class PETRHead(nn.Layer):
             output_known_coord = all_bbox_preds[:, :, :mask_dict['pad_size'], :]
             outputs_class = all_cls_scores[:, :, mask_dict['pad_size']:, :]
             outputs_coord = all_bbox_preds[:, :, mask_dict['pad_size']:, :]
-            mask_dict['output_known_lbs_bboxes']=(output_known_class,output_known_coord)
+            mask_dict['output_known_lbs_bboxes'] = (output_known_class,
+                                                    output_known_coord)
             outs = {
                 'all_cls_scores': outputs_class,
                 'all_bbox_preds': outputs_coord,
                 'enc_cls_scores': None,
-                'enc_bbox_preds': None, 
+                'enc_bbox_preds': None,
                 'dn_mask_dict': mask_dict,
             }
         else:
@@ -688,24 +722,27 @@ class PETRHead(nn.Layer):
         Args:
             mask_dict: a dict that contains dn information
         """
-        output_known_class, output_known_coord = mask_dict['output_known_lbs_bboxes']
+        output_known_class, output_known_coord = mask_dict[
+            'output_known_lbs_bboxes']
         known_labels, known_bboxs = mask_dict['known_lbs_bboxes']
         map_known_indice = mask_dict['map_known_indice'].astype('int64')
         known_indice = mask_dict['known_indice'].astype('int64')
         batch_idx = mask_dict['batch_idx'].astype('int64')
         bid = batch_idx[known_indice]
         if len(output_known_class) > 0:
-            output_known_class = output_known_class.transpose([1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
-            output_known_coord = output_known_coord.transpose([1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
+            output_known_class = output_known_class.transpose(
+                [1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
+            output_known_coord = output_known_coord.transpose(
+                [1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
         num_tgt = known_indice.numel()
         return known_labels, known_bboxs, output_known_class, output_known_coord, num_tgt
 
     def dn_loss_single(self,
-                    cls_scores,
-                    bbox_preds,
-                    known_bboxs,
-                    known_labels,
-                    num_total_pos=None):
+                       cls_scores,
+                       bbox_preds,
+                       known_bboxs,
+                       known_labels,
+                       num_total_pos=None):
         """"Loss function for outputs from a single decoder layer of a single
         feature level.
         Args:
@@ -727,15 +764,15 @@ class PETRHead(nn.Layer):
         # classification loss
         cls_scores = cls_scores.reshape([-1, self.cls_out_channels])
         # construct weighted avg_factor to match with the official DETR repo
-        cls_avg_factor = num_total_pos * 3.14159 / 6 * self.split * self.split  * self.split ### positive rate
+        cls_avg_factor = num_total_pos * 3.14159 / 6 * self.split * self.split * self.split  ### positive rate
         if self.sync_cls_avg_factor:
             cls_avg_factor = reduce_mean(
                 paddle.to_tensor([cls_avg_factor], dtype=cls_scores.dtype))
         bbox_weights = paddle.ones_like(bbox_preds)
         label_weights = paddle.ones_like(known_labels)
         cls_avg_factor = max(cls_avg_factor, 1)
-        loss_cls = self.loss_cls(
-            cls_scores, known_labels.astype('int64'), label_weights) / (cls_avg_factor + self.pd_eps)
+        loss_cls = self.loss_cls(cls_scores, known_labels.astype('int64'),
+                                 label_weights) / (cls_avg_factor + self.pd_eps)
         # Compute the average number of gt boxes accross all gpus, for
         # normalization purposes
         num_total_pos = paddle.to_tensor([num_total_pos], dtype=loss_cls.dtype)
@@ -746,12 +783,14 @@ class PETRHead(nn.Layer):
         normalized_bbox_targets = normalize_bbox(known_bboxs, self.pc_range)
         isnotnan = paddle.isfinite(normalized_bbox_targets).all(axis=-1)
         bbox_weights = bbox_weights * self.code_weights
-        bbox_weights[:, 6:8] = 0  ###dn alaways reduce the mAOE, which is useless when training for a long time.
+        bbox_weights[:, 6:
+                     8] = 0  ###dn alaways reduce the mAOE, which is useless when training for a long time.
         loss_bbox = self.loss_bbox(
-            bbox_preds[isnotnan], normalized_bbox_targets[isnotnan], bbox_weights[isnotnan]) / (num_total_pos + self.pd_eps)
+            bbox_preds[isnotnan], normalized_bbox_targets[isnotnan],
+            bbox_weights[isnotnan]) / (num_total_pos + self.pd_eps)
         loss_cls = nan_to_num(loss_cls)
         loss_bbox = nan_to_num(loss_bbox)
-        
+
         return self.dn_weight * loss_cls, self.dn_weight * loss_bbox
 
     def export_forward(self, mlvl_feats, img_metas):
@@ -1145,23 +1184,23 @@ class PETRHead(nn.Layer):
                                  gt_bboxes_list, binary_labels_list, gt_bboxes_ignore)
             loss_dict['enc_loss_cls'] = enc_loss_cls
             loss_dict['enc_loss_bbox'] = enc_losses_bbox
-        
+
         if preds_dicts['dn_mask_dict'] is not None:
-            known_labels, known_bboxs, output_known_class, output_known_coord, num_tgt = self.prepare_for_loss(preds_dicts['dn_mask_dict'])
+            known_labels, known_bboxs, output_known_class, output_known_coord, num_tgt = self.prepare_for_loss(
+                preds_dicts['dn_mask_dict'])
             all_known_bboxs_list = [known_bboxs for _ in range(num_dec_layers)]
-            all_known_labels_list = [known_labels for _ in range(num_dec_layers)]
-            all_num_tgts_list = [
-                num_tgt for _ in range(num_dec_layers)
+            all_known_labels_list = [
+                known_labels for _ in range(num_dec_layers)
             ]
+            all_num_tgts_list = [num_tgt for _ in range(num_dec_layers)]
             dn_losses_cls, dn_losses_bbox = multi_apply(
                 self.dn_loss_single, output_known_class, output_known_coord,
-                all_known_bboxs_list, all_known_labels_list, 
-                all_num_tgts_list)
+                all_known_bboxs_list, all_known_labels_list, all_num_tgts_list)
             loss_dict['dn_loss_cls'] = dn_losses_cls[-1]
             loss_dict['dn_loss_bbox'] = dn_losses_bbox[-1]
             num_dec_layer = 0
             for loss_cls_i, loss_bbox_i in zip(dn_losses_cls[:-1],
-                                            dn_losses_bbox[:-1]):
+                                               dn_losses_bbox[:-1]):
                 loss_dict[f'd{num_dec_layer}.dn_loss_cls'] = loss_cls_i
                 loss_dict[f'd{num_dec_layer}.dn_loss_bbox'] = loss_bbox_i
                 num_dec_layer += 1

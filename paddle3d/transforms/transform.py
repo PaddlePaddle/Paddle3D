@@ -655,7 +655,11 @@ class MSResizeCropFlipImage(object):
         size (tuple, optional): Fixed padding size.
     """
 
-    def __init__(self, sample_aug_cfg=None, training=True, view_num=1, center_size=2.0):
+    def __init__(self,
+                 sample_aug_cfg=None,
+                 training=True,
+                 view_num=1,
+                 center_size=2.0):
         self.sample_aug_cfg = sample_aug_cfg
         self.training = training
         self.view_num = view_num
@@ -692,9 +696,11 @@ class MSResizeCropFlipImage(object):
                 rotate=rotate,
             )
             new_imgs.append(np.array(img).astype(np.float32))
-            sample['intrinsics'][i][:3, :3] = ida_mat @ sample['intrinsics'][i][:3, :3]
-        
-        resize, resize_dims, crop, flip, rotate = self._crop_augmentation(resize)
+            sample['intrinsics'][
+                i][:3, :3] = ida_mat @ sample['intrinsics'][i][:3, :3]
+
+        resize, resize_dims, crop, flip, rotate = self._crop_augmentation(
+            resize)
         for i in range(self.view_num):
             img = Image.fromarray(np.copy(np.uint8(imgs[i])))
             img, ida_mat = self._img_transform(
@@ -709,18 +715,22 @@ class MSResizeCropFlipImage(object):
             copy_intrinsics[i][:3, :3] = ida_mat @ copy_intrinsics[i][:3, :3]
             sample['intrinsics'].append(copy_intrinsics[i])
             sample['extrinsics'].append(copy_extrinsics[i])
-            sample['filename'].append(sample['filename'][i].replace(".jpg","_crop.jpg"))
+            sample['filename'].append(sample['filename'][i].replace(
+                ".jpg", "_crop.jpg"))
             sample['timestamp'].append(sample['timestamp'][i])
 
         sample["img"] = new_imgs
-        sample['lidar2img'] = [sample['intrinsics'][i] @ sample['extrinsics'][i].T for i in range(len(sample['extrinsics']))]
+        sample['lidar2img'] = [
+            sample['intrinsics'][i] @ sample['extrinsics'][i].T
+            for i in range(len(sample['extrinsics']))
+        ]
         return sample
 
     def _get_rot(self, h):
 
         return np.array([
-                [np.cos(h), np.sin(h)],
-                [-np.sin(h), np.cos(h)],
+            [np.cos(h), np.sin(h)],
+            [-np.sin(h), np.cos(h)],
         ])
 
     def _img_transform(self, img, resize, resize_dims, crop, flip, rotate):
@@ -760,7 +770,9 @@ class MSResizeCropFlipImage(object):
             resize = np.random.uniform(*self.sample_aug_cfg["resize_lim"])
             resize_dims = (int(W * resize), int(H * resize))
             newW, newH = resize_dims
-            crop_h = int((1 - np.random.uniform(*self.sample_aug_cfg["bot_pct_lim"])) * newH) - fH
+            crop_h = int(
+                (1 - np.random.uniform(*self.sample_aug_cfg["bot_pct_lim"])) *
+                newH) - fH
             crop_w = int(np.random.uniform(0, max(0, newW - fW)))
             crop = (crop_w, crop_h, crop_w + fW, crop_h + fH)
             flip = False
@@ -771,21 +783,22 @@ class MSResizeCropFlipImage(object):
             resize = max(fH / H, fW / W)
             resize_dims = (int(W * resize), int(H * resize))
             newW, newH = resize_dims
-            crop_h = int((1 - np.mean(self.sample_aug_cfg["bot_pct_lim"])) * newH) - fH
+            crop_h = int(
+                (1 - np.mean(self.sample_aug_cfg["bot_pct_lim"])) * newH) - fH
             crop_w = int(max(0, newW - fW) / 2)
             crop = (crop_w, crop_h, crop_w + fW, crop_h + fH)
             flip = False
             rotate = 0
         return resize, resize_dims, crop, flip, rotate
-    
+
     def _crop_augmentation(self, resize):
         H, W = self.sample_aug_cfg["H"], self.sample_aug_cfg["W"]
         fH, fW = self.sample_aug_cfg["final_dim"]
         resize = self.center_size * resize
         resize_dims = (int(W * resize), int(H * resize))
         newW, newH = resize_dims
-        crop_h = int(max(0, newH - fH)/2)
-        crop_w = int(max(0, newW - fW)/2)
+        crop_h = int(max(0, newH - fH) / 2)
+        crop_w = int(max(0, newW - fW) / 2)
         crop = (crop_w, crop_h, crop_w + fW, crop_h + fH)
         flip = False
         rotate = 0

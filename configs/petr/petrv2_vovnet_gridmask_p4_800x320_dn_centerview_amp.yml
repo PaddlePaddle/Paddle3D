@@ -62,8 +62,8 @@ train_dataset:
     - type: SampleFilerByKey
       keys: ['gt_bboxes_3d', 'gt_labels_3d', 'img']
       meta_keys: ['filename', 'ori_shape', 'img_shape', 'lidar2img',
-                  'intrinsics', 'extrinsics', 'pad_shape',
-                  'scale_factor', 'flip', 'box_type_3d', 'img_norm_cfg', 'sample_idx',
+                  'intrinsics', 'extrinsics', 'pad_shape', 'scale_factor',
+                  'flip', 'box_type_3d', 'img_norm_cfg', 'sample_idx',
                   'timestamp', 'gt_bboxes_3d','gt_labels_3d']
 
 val_dataset:
@@ -153,7 +153,7 @@ model:
     with_multi: true
     with_denoise: true
     scalar: 10 ##noise groups
-    noise_scale: 1.0 
+    noise_scale: 1.0
     dn_weight: 1.0 ##dn loss weight
     split: 0.75 ###positive rate
     position_range: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
