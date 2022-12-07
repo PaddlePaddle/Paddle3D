@@ -98,7 +98,3 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
                 self,
                 os.path.join(save_dir, name),
                 input_spec=[self.input_spec])
-
-    @property
-    def export_args(self):
-        return []
