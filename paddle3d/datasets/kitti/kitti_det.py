@@ -199,9 +199,9 @@ class KittiDetDataset(BaseDataset):
             indexes=self.data)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return "KITTI"
 
     @property
-    def labels(self):
+    def labels(self) -> List[str]:
         return self.class_names

@@ -104,11 +104,9 @@ class BaseDataset(abc.ABC, paddle.io.Dataset):
                 type(sample)))
 
     @abc.abstractproperty
-    def name(self):
-        """
-        """
+    def name(self) -> str:
+        """Name of dataset."""
 
     @abc.abstractproperty
-    def labels(self):
-        """
-        """
+    def labels(self) -> List[str]:
+        """The category labels for the dataset."""

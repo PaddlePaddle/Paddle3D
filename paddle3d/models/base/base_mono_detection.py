@@ -37,8 +37,6 @@ class BaseMonoModel(BaseDetectionModel):
 
     @property
     def inputs(self) -> List[dict]:
-        """
-        """
         images = {
             'name': 'images',
             'dtype': 'float32',

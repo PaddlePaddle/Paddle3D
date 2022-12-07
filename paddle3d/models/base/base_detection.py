@@ -29,8 +29,7 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
 
     @property
     def input_spec(self) -> paddle.static.InputSpec:
-        """
-        """
+        """Input Tensor specifier when exporting the model."""
         data = {
             _input['name']: paddle.static.InputSpec(**_input)
             for _input in self.inputs
@@ -40,13 +39,12 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
 
     @abc.abstractproperty
     def inputs(self) -> List[dict]:
-        """
-        """
+        """Model input description. This attribute will be used to construct input_spec."""
 
     @property
     def outputs(self) -> List[dict]:
-        """
-        """
+        """Model output description."""
+
         boxdim = 7 if not self.box_with_velocity else 9
         box3ds = {'name': 'box3d', 'dtype': 'float32', 'shape': [-1, boxdim]}
         labels = {'name': 'label', 'dtype': 'int32', 'shape': [-1]}
@@ -63,8 +61,7 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
 
     @abc.abstractproperty
     def sensor(self) -> str:
-        """
-        """
+        """The sensor type used in the model sample, usually camera or lidar."""
 
     def set_export_mode(self, mode: bool = True):
         for sublayer in self.sublayers(include_self=True):
@@ -72,18 +69,15 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
 
     @abc.abstractmethod
     def test_forward(self):
-        """
-        """
+        """Test forward function."""
 
     @abc.abstractmethod
     def train_forward(self):
-        """
-        """
+        """Training forward function."""
 
     @abc.abstractmethod
     def export_forward(self):
-        """
-        """
+        """Export forward function."""
 
     @contextlib.contextmanager
     def exporting(self):

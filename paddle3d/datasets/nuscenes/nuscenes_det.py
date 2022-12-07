@@ -322,9 +322,9 @@ class NuscenesDetDataset(BaseDataset):
             attrmap=self.ATTRIBUTE_MAP_REVERSE)
 
     @property
-    def name(self):
+    def name(self) -> str:
         return "nuScenes"
 
     @property
-    def labels(self):
+    def labels(self) -> List[str]:
         return self.class_names
