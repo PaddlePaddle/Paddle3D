@@ -196,30 +196,30 @@ class PETRTransformerDecoderLayer(BaseTransformerLayer):
                  ffn_num_fcs=2,
                  use_recompute=True,
                  **kwargs):
-        super(PETRTransformerDecoderLayer,
-              self).__init__(attns=attns,
-                             feedforward_channels=feedforward_channels,
-                             ffn_dropout=ffn_dropout,
-                             operation_order=operation_order,
-                             act_cfg=act_cfg,
-                             norm_cfg=norm_cfg,
-                             ffn_num_fcs=ffn_num_fcs,
-                             **kwargs)
+        super(PETRTransformerDecoderLayer, self).__init__(
+            attns=attns,
+            feedforward_channels=feedforward_channels,
+            ffn_dropout=ffn_dropout,
+            operation_order=operation_order,
+            act_cfg=act_cfg,
+            norm_cfg=norm_cfg,
+            ffn_num_fcs=ffn_num_fcs,
+            **kwargs)
         assert len(operation_order) == 6
         assert set(operation_order) == set(
             ['self_attn', 'norm', 'cross_attn', 'ffn'])
         self.use_recompute = use_recompute
 
     def _forward(
-        self,
-        query,
-        key=None,
-        value=None,
-        query_pos=None,
-        key_pos=None,
-        attn_masks=None,
-        query_key_padding_mask=None,
-        key_padding_mask=None,
+            self,
+            query,
+            key=None,
+            value=None,
+            query_pos=None,
+            key_pos=None,
+            attn_masks=None,
+            query_key_padding_mask=None,
+            key_padding_mask=None,
     ):
         """Forward function for `TransformerCoder`.
         Returns:
@@ -266,14 +266,15 @@ class PETRTransformerDecoderLayer(BaseTransformerLayer):
                 key_padding_mask,
             )
         else:
-            x = self._forward(query,
-                              key=key,
-                              value=value,
-                              query_pos=query_pos,
-                              key_pos=key_pos,
-                              attn_masks=attn_masks,
-                              query_key_padding_mask=query_key_padding_mask,
-                              key_padding_mask=key_padding_mask)
+            x = self._forward(
+                query,
+                key=key,
+                value=value,
+                query_pos=query_pos,
+                key_pos=key_pos,
+                attn_masks=attn_masks,
+                query_key_padding_mask=query_key_padding_mask,
+                key_padding_mask=key_padding_mask)
         return x
 
 

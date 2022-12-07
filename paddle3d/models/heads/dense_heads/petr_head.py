@@ -79,7 +79,6 @@ def pos2posemb3d(pos, num_pos_feats=128, temperature=10000):
 
 
 class SELayer(nn.Layer):
-
     def __init__(self, channels, act_layer=nn.ReLU, gate_layer=nn.Sigmoid):
         super().__init__()
         self.conv_reduce = nn.Conv2D(channels, channels, 1, bias_attr=True)
@@ -95,7 +94,6 @@ class SELayer(nn.Layer):
 
 
 class RegLayer(nn.Layer):
-
     def __init__(
             self,
             embed_dims=256,
@@ -114,9 +112,9 @@ class RegLayer(nn.Layer):
 
         self.task_heads = nn.LayerList()
         for reg_dim in group_reg_dims:
-            task_head = nn.Sequential(nn.Linear(embed_dims, embed_dims),
-                                      act_layer(),
-                                      nn.Linear(embed_dims, reg_dim))
+            task_head = nn.Sequential(
+                nn.Linear(embed_dims, embed_dims), act_layer(),
+                nn.Linear(embed_dims, reg_dim))
             self.task_heads.append(task_head)
 
     def forward(self, x):
@@ -248,13 +246,11 @@ class PETRHead(nn.Layer):
     def _init_layers(self):
         """Initialize layers of the transformer head."""
         if self.with_position:
-            self.input_proj = nn.Conv2D(self.in_channels,
-                                        self.embed_dims,
-                                        kernel_size=1)
+            self.input_proj = nn.Conv2D(
+                self.in_channels, self.embed_dims, kernel_size=1)
         else:
-            self.input_proj = nn.Conv2D(self.in_channels,
-                                        self.embed_dims,
-                                        kernel_size=1)
+            self.input_proj = nn.Conv2D(
+                self.in_channels, self.embed_dims, kernel_size=1)
 
         cls_branch = []
         for _ in range(self.num_reg_fcs):
@@ -286,46 +282,52 @@ class PETRHead(nn.Layer):
 
         if self.with_multiview:
             self.adapt_pos3d = nn.Sequential(
-                nn.Conv2D(self.embed_dims * 3 // 2,
-                          self.embed_dims * 4,
-                          kernel_size=1,
-                          stride=1,
-                          padding=0),
+                nn.Conv2D(
+                    self.embed_dims * 3 // 2,
+                    self.embed_dims * 4,
+                    kernel_size=1,
+                    stride=1,
+                    padding=0),
                 nn.ReLU(),
-                nn.Conv2D(self.embed_dims * 4,
-                          self.embed_dims,
-                          kernel_size=1,
-                          stride=1,
-                          padding=0),
+                nn.Conv2D(
+                    self.embed_dims * 4,
+                    self.embed_dims,
+                    kernel_size=1,
+                    stride=1,
+                    padding=0),
             )
         else:
             self.adapt_pos3d = nn.Sequential(
-                nn.Conv2D(self.embed_dims,
-                          self.embed_dims,
-                          kernel_size=1,
-                          stride=1,
-                          padding=0),
+                nn.Conv2D(
+                    self.embed_dims,
+                    self.embed_dims,
+                    kernel_size=1,
+                    stride=1,
+                    padding=0),
                 nn.ReLU(),
-                nn.Conv2D(self.embed_dims,
-                          self.embed_dims,
-                          kernel_size=1,
-                          stride=1,
-                          padding=0),
+                nn.Conv2D(
+                    self.embed_dims,
+                    self.embed_dims,
+                    kernel_size=1,
+                    stride=1,
+                    padding=0),
             )
 
         if self.with_position:
             self.position_encoder = nn.Sequential(
-                nn.Conv2D(self.position_dim,
-                          self.embed_dims * 4,
-                          kernel_size=1,
-                          stride=1,
-                          padding=0),
+                nn.Conv2D(
+                    self.position_dim,
+                    self.embed_dims * 4,
+                    kernel_size=1,
+                    stride=1,
+                    padding=0),
                 nn.ReLU(),
-                nn.Conv2D(self.embed_dims * 4,
-                          self.embed_dims,
-                          kernel_size=1,
-                          stride=1,
-                          padding=0),
+                nn.Conv2D(
+                    self.embed_dims * 4,
+                    self.embed_dims,
+                    kernel_size=1,
+                    stride=1,
+                    padding=0),
             )
 
         self.reference_points = nn.Embedding(self.num_query, 3)
@@ -370,28 +372,23 @@ class PETRHead(nn.Layer):
         coords_w = paddle.arange(W, dtype='float32') * pad_w / W
 
         if self.LID:
-            index = paddle.arange(start=0,
-                                  end=self.depth_num,
-                                  step=1,
-                                  dtype='float32')
+            index = paddle.arange(
+                start=0, end=self.depth_num, step=1, dtype='float32')
             index_1 = index + 1
-            bin_size = (self.position_range[3] -
-                        self.depth_start) / (self.depth_num *
-                                             (1 + self.depth_num))
+            bin_size = (self.position_range[3] - self.depth_start) / (
+                self.depth_num * (1 + self.depth_num))
             coords_d = self.depth_start + bin_size * index * index_1
         else:
-            index = paddle.arange(start=0,
-                                  end=self.depth_num,
-                                  step=1,
-                                  dtype='float32')
-            bin_size = (self.position_range[3] -
-                        self.depth_start) / self.depth_num
+            index = paddle.arange(
+                start=0, end=self.depth_num, step=1, dtype='float32')
+            bin_size = (
+                self.position_range[3] - self.depth_start) / self.depth_num
             coords_d = self.depth_start + bin_size * index
 
         D = coords_d.shape[0]
         # W, H, D, 3
-        coords = paddle.stack(paddle.meshgrid([coords_w, coords_h, coords_d
-                                               ])).transpose([1, 2, 3, 0])
+        coords = paddle.stack(paddle.meshgrid(
+            [coords_w, coords_h, coords_d])).transpose([1, 2, 3, 0])
         coords = paddle.concat((coords, paddle.ones_like(coords[..., :1])), -1)
         coords[..., :2] = coords[..., :2] * paddle.maximum(
             coords[..., 2:3],
@@ -412,9 +409,8 @@ class PETRHead(nn.Layer):
         else:
             img2lidars = img_metas['img2lidars']
 
-        coords = coords.reshape([1, 1, W, H, D,
-                                 4]).tile([B, N, 1, 1, 1,
-                                           1]).reshape([B, N, W, H, D, 4, 1])
+        coords = coords.reshape([1, 1, W, H, D, 4]).tile(
+            [B, N, 1, 1, 1, 1]).reshape([B, N, W, H, D, 4, 1])
 
         img2lidars = img2lidars.reshape([B, N, 1, 1, 1, 16]).tile(
             [1, 1, W, H, D, 1]).reshape([B, N, W, H, D, 4, 4])
@@ -429,8 +425,8 @@ class PETRHead(nn.Layer):
             self.position_range[5] - self.position_range[2])
 
         coords_mask = (coords3d > 1.0) | (coords3d < 0.0)
-        coords_mask = coords_mask.astype('float32').flatten(-2).sum(-1) > (D *
-                                                                           0.5)
+        coords_mask = coords_mask.astype('float32').flatten(-2).sum(-1) > (
+            D * 0.5)
         coords_mask = masks | coords_mask.transpose([0, 1, 3, 2])
 
         coords3d = coords3d.transpose([0, 1, 4, 5, 3, 2]).reshape(
@@ -487,14 +483,14 @@ class PETRHead(nn.Layer):
                 known_bbox_center += paddle.multiply(
                     rand_prob, diff) * self.bbox_noise_scale
                 known_bbox_center[..., 0:1] = (
-                    known_bbox_center[..., 0:1] -
-                    self.pc_range[0]) / (self.pc_range[3] - self.pc_range[0])
+                    known_bbox_center[..., 0:1] - self.pc_range[0]) / (
+                        self.pc_range[3] - self.pc_range[0])
                 known_bbox_center[..., 1:2] = (
-                    known_bbox_center[..., 1:2] -
-                    self.pc_range[1]) / (self.pc_range[4] - self.pc_range[1])
+                    known_bbox_center[..., 1:2] - self.pc_range[1]) / (
+                        self.pc_range[4] - self.pc_range[1])
                 known_bbox_center[..., 2:3] = (
-                    known_bbox_center[..., 2:3] -
-                    self.pc_range[2]) / (self.pc_range[5] - self.pc_range[2])
+                    known_bbox_center[..., 2:3] - self.pc_range[2]) / (
+                        self.pc_range[5] - self.pc_range[2])
                 known_bbox_center = known_bbox_center.clip(min=0.0, max=1.0)
                 mask = paddle.norm(rand_prob, 2, 1) > self.split
                 known_labels[mask] = self.num_classes
@@ -503,8 +499,8 @@ class PETRHead(nn.Layer):
             pad_size = int(single_pad * self.scalar)
             padding_bbox = paddle.zeros([pad_size, 3])
             padded_reference_points = paddle.concat(
-                [padding_bbox, reference_points],
-                axis=0).unsqueeze(0).tile([batch_size, 1, 1])
+                [padding_bbox, reference_points], axis=0).unsqueeze(0).tile(
+                    [batch_size, 1, 1])
 
             if len(known_num):
                 map_known_indice = paddle.concat(
@@ -524,14 +520,14 @@ class PETRHead(nn.Layer):
             # reconstruct cannot see each other
             for i in range(self.scalar):
                 if i == 0:
-                    attn_mask[single_pad * i:single_pad * (i + 1),
-                              single_pad * (i + 1):pad_size] = True
+                    attn_mask[single_pad * i:single_pad * (i + 1), single_pad *
+                              (i + 1):pad_size] = True
                 if i == self.scalar - 1:
                     attn_mask[single_pad * i:single_pad * (i + 1), :single_pad *
                               i] = True
                 else:
-                    attn_mask[single_pad * i:single_pad * (i + 1),
-                              single_pad * (i + 1):pad_size] = True
+                    attn_mask[single_pad * i:single_pad * (i + 1), single_pad *
+                              (i + 1):pad_size] = True
                     attn_mask[single_pad * i:single_pad * (i + 1), :single_pad *
                               i] = True
 
@@ -653,8 +649,8 @@ class PETRHead(nn.Layer):
             time_stamp = paddle.to_tensor(time_stamps, dtype=x.dtype)
             time_stamp = time_stamp.reshape([batch_size, -1, 6])
 
-            mean_time_stamp = (time_stamp[:, 1, :] -
-                               time_stamp[:, 0, :]).mean(-1)
+            mean_time_stamp = (
+                time_stamp[:, 1, :] - time_stamp[:, 0, :]).mean(-1)
 
         outputs_classes = []
         outputs_coords = []
@@ -681,15 +677,15 @@ class PETRHead(nn.Layer):
         all_cls_scores = paddle.stack(outputs_classes)
         all_bbox_preds = paddle.stack(outputs_coords)
 
-        all_bbox_preds[..., 0:1] = (all_bbox_preds[..., 0:1] *
-                                    (self.pc_range[3] - self.pc_range[0]) +
-                                    self.pc_range[0])
-        all_bbox_preds[..., 1:2] = (all_bbox_preds[..., 1:2] *
-                                    (self.pc_range[4] - self.pc_range[1]) +
-                                    self.pc_range[1])
-        all_bbox_preds[..., 4:5] = (all_bbox_preds[..., 4:5] *
-                                    (self.pc_range[5] - self.pc_range[2]) +
-                                    self.pc_range[2])
+        all_bbox_preds[..., 0:1] = (
+            all_bbox_preds[..., 0:1] * (self.pc_range[3] - self.pc_range[0]) +
+            self.pc_range[0])
+        all_bbox_preds[..., 1:2] = (
+            all_bbox_preds[..., 1:2] * (self.pc_range[4] - self.pc_range[1]) +
+            self.pc_range[1])
+        all_bbox_preds[..., 4:5] = (
+            all_bbox_preds[..., 4:5] * (self.pc_range[5] - self.pc_range[2]) +
+            self.pc_range[2])
 
         if mask_dict and mask_dict['pad_size'] > 0:
             output_known_class = all_cls_scores[:, :, :mask_dict['pad_size'], :]
@@ -877,8 +873,8 @@ class PETRHead(nn.Layer):
             time_stamp = x.new_tensor(time_stamps)
             time_stamp = time_stamp.reshape([batch_size, -1, 6])
 
-            mean_time_stamp = (time_stamp[:, 1, :] -
-                               time_stamp[:, 0, :]).mean(-1)
+            mean_time_stamp = (
+                time_stamp[:, 1, :] - time_stamp[:, 0, :]).mean(-1)
 
         outputs_classes = []
         outputs_coords = []
@@ -905,15 +901,15 @@ class PETRHead(nn.Layer):
         all_cls_scores = paddle.stack(outputs_classes)
         all_bbox_preds = paddle.stack(outputs_coords)
 
-        all_bbox_preds[..., 0:1] = (all_bbox_preds[..., 0:1] *
-                                    (self.pc_range[3] - self.pc_range[0]) +
-                                    self.pc_range[0])
-        all_bbox_preds[..., 1:2] = (all_bbox_preds[..., 1:2] *
-                                    (self.pc_range[4] - self.pc_range[1]) +
-                                    self.pc_range[1])
-        all_bbox_preds[..., 4:5] = (all_bbox_preds[..., 4:5] *
-                                    (self.pc_range[5] - self.pc_range[2]) +
-                                    self.pc_range[2])
+        all_bbox_preds[..., 0:1] = (
+            all_bbox_preds[..., 0:1] * (self.pc_range[3] - self.pc_range[0]) +
+            self.pc_range[0])
+        all_bbox_preds[..., 1:2] = (
+            all_bbox_preds[..., 1:2] * (self.pc_range[4] - self.pc_range[1]) +
+            self.pc_range[1])
+        all_bbox_preds[..., 4:5] = (
+            all_bbox_preds[..., 4:5] * (self.pc_range[5] - self.pc_range[2]) +
+            self.pc_range[2])
 
         outs = {
             'all_cls_scores': all_cls_scores,
@@ -1024,11 +1020,10 @@ class PETRHead(nn.Layer):
         num_imgs = len(cls_scores_list)
         gt_bboxes_ignore_list = [gt_bboxes_ignore_list for _ in range(num_imgs)]
 
-        (labels_list, label_weights_list, bbox_targets_list, bbox_weights_list,
-         pos_inds_list,
-         neg_inds_list) = multi_apply(self._get_target_single, cls_scores_list,
-                                      bbox_preds_list, gt_labels_list,
-                                      gt_bboxes_list, gt_bboxes_ignore_list)
+        (labels_list, label_weights_list, bbox_targets_list,
+         bbox_weights_list, pos_inds_list, neg_inds_list) = multi_apply(
+             self._get_target_single, cls_scores_list, bbox_preds_list,
+             gt_labels_list, gt_bboxes_list, gt_bboxes_ignore_list)
         num_total_pos = sum((inds.numel() for inds in pos_inds_list))
         num_total_neg = sum((inds.numel() for inds in neg_inds_list))
         return (labels_list, label_weights_list, bbox_targets_list,
@@ -1166,11 +1161,9 @@ class PETRHead(nn.Layer):
             gt_bboxes_ignore for _ in range(num_dec_layers)
         ]
 
-        losses_cls, losses_bbox = multi_apply(self.loss_single, all_cls_scores,
-                                              all_bbox_preds,
-                                              all_gt_bboxes_list,
-                                              all_gt_labels_list,
-                                              all_gt_bboxes_ignore_list)
+        losses_cls, losses_bbox = multi_apply(
+            self.loss_single, all_cls_scores, all_bbox_preds,
+            all_gt_bboxes_list, all_gt_labels_list, all_gt_bboxes_ignore_list)
 
         loss_dict = dict()
         # loss of proposal generated from encode feature map.

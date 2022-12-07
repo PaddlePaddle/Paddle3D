@@ -121,23 +121,25 @@ def dw_conv3x3(in_channels,
     """3x3 convolution with padding"""
     return [
         ('{}_{}/dw_conv3x3'.format(module_name, postfix),
-         nn.Conv2D(in_channels,
-                   out_channels,
-                   kernel_size=kernel_size,
-                   stride=stride,
-                   padding=padding,
-                   groups=out_channels,
-                   bias_attr=False)),
+         nn.Conv2D(
+             in_channels,
+             out_channels,
+             kernel_size=kernel_size,
+             stride=stride,
+             padding=padding,
+             groups=out_channels,
+             bias_attr=False)),
         ('{}_{}/pw_conv1x1'.format(module_name, postfix),
-         nn.Conv2D(in_channels,
-                   out_channels,
-                   kernel_size=1,
-                   stride=1,
-                   padding=0,
-                   groups=1,
-                   bias_attr=False)),
-        ('{}_{}/pw_norm'.format(module_name,
-                                postfix), nn.BatchNorm2D(out_channels)),
+         nn.Conv2D(
+             in_channels,
+             out_channels,
+             kernel_size=1,
+             stride=1,
+             padding=0,
+             groups=1,
+             bias_attr=False)),
+        ('{}_{}/pw_norm'.format(module_name, postfix),
+         nn.BatchNorm2D(out_channels)),
         ('{}_{}/pw_relu'.format(module_name, postfix), nn.ReLU()),
     ]
 
@@ -197,7 +199,6 @@ def conv1x1(in_channels,
 
 
 class Hsigmoid(nn.Layer):
-
     def __init__(self):
         super(Hsigmoid, self).__init__()
 
@@ -206,7 +207,6 @@ class Hsigmoid(nn.Layer):
 
 
 class eSEModule(nn.Layer):
-
     def __init__(self, channel, reduction=4):
         super(eSEModule, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2D(1)
@@ -222,7 +222,6 @@ class eSEModule(nn.Layer):
 
 
 class _OSA_layer(nn.Layer):
-
     def __init__(self,
                  in_ch,
                  stage_ch,
@@ -297,7 +296,6 @@ class _OSA_layer(nn.Layer):
 
 
 class _OSA_stage(nn.Sequential):
-
     def __init__(self,
                  in_ch,
                  stage_ch,
@@ -312,41 +310,42 @@ class _OSA_stage(nn.Sequential):
 
         if not stage_num == 2:
             self.add_sublayer(
-                "Pooling", nn.MaxPool2D(kernel_size=3, stride=2,
-                                        ceil_mode=True))
+                "Pooling", nn.MaxPool2D(
+                    kernel_size=3, stride=2, ceil_mode=True))
 
         if block_per_stage != 1:
             SE = False
         module_name = f"OSA{stage_num}_1"
         self.add_sublayer(
             module_name,
-            _OSA_layer(in_ch,
-                       stage_ch,
-                       concat_ch,
-                       layer_per_block,
-                       module_name,
-                       SE,
-                       depthwise=depthwise))
+            _OSA_layer(
+                in_ch,
+                stage_ch,
+                concat_ch,
+                layer_per_block,
+                module_name,
+                SE,
+                depthwise=depthwise))
         for i in range(block_per_stage - 1):
             if i != block_per_stage - 2:  # last block
                 SE = False
             module_name = f"OSA{stage_num}_{i + 2}"
             self.add_sublayer(
                 module_name,
-                _OSA_layer(concat_ch,
-                           stage_ch,
-                           concat_ch,
-                           layer_per_block,
-                           module_name,
-                           SE,
-                           identity=True,
-                           depthwise=depthwise),
+                _OSA_layer(
+                    concat_ch,
+                    stage_ch,
+                    concat_ch,
+                    layer_per_block,
+                    module_name,
+                    SE,
+                    identity=True,
+                    depthwise=depthwise),
             )
 
 
 @manager.BACKBONES.add_component
 class VoVNetCP(nn.Layer):
-
     def __init__(self,
                  spec_name,
                  input_ch=3,
@@ -459,7 +458,6 @@ class VoVNetCP(nn.Layer):
 
 @manager.BACKBONES.add_component
 class VoVNet(VoVNetCP):
-
     def forward(self, x):
         outputs = {}
         x = self.stem(x)
