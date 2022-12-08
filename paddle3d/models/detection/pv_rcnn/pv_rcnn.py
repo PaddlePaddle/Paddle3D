@@ -46,7 +46,6 @@ class PVRCNN(nn.Layer):
         self.point_head = point_head
         self.roi_head = roi_head
         self.post_process_cfg = post_process_cfg
-        self.sync_bn = True
 
     def voxelize(self, points):
         voxels, coordinates, num_points_in_voxel = self.voxelizer(points)
