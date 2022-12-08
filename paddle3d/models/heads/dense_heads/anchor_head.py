@@ -161,7 +161,7 @@ class AnchorHeadSingle(nn.Layer):
         ans = val - paddle.floor(val / period + offset) * period
         return ans
 
-    def forward(self, data_dict):
+    def forward(self, data_dict, export_model=False):
 
         spatial_features_2d = data_dict['spatial_features_2d']
         cls_preds = self.conv_cls(spatial_features_2d)
@@ -182,8 +182,12 @@ class AnchorHeadSingle(nn.Layer):
             self.forward_ret_dict.update(targets_dict)
 
         else:
+            if export_model:
+                batch_size = 1
+            else:
+                batch_size = data_dict['batch_size']
             batch_cls_preds, batch_box_preds = self.generate_predicted_boxes(
-                batch_size=1,
+                batch_size=batch_size,
                 cls_preds=cls_preds,
                 box_preds=box_preds,
                 dir_cls_preds=dir_cls_preds)

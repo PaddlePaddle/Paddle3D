@@ -63,7 +63,7 @@ class CADDN(nn.Layer):
         if not self.training:
             b, c, h, w = paddle.shape(images)
             data["batch_size"] = b
-            data["image_shape"] = paddle.concat([h, w]).unsqueeze(0)
+
         # ffe
         image_features = self.backbone_3d(images)
 
@@ -74,7 +74,6 @@ class CADDN(nn.Layer):
         data = self.f2v(data)
 
         # map_to_bev
-        # voxel_features = voxel_features.reshape([])
         voxel_features = data["voxel_features"]
         bev_features = voxel_features.flatten(
             start_axis=1, stop_axis=2)  # (B, C, Z, Y, X) -> (B, C*Z, Y, X)
@@ -87,7 +86,8 @@ class CADDN(nn.Layer):
 
         # backbone_2d
         data = self.backbone_2d(data)
-        predictions = self.dense_head(data)
+        export_model = getattr(self, "export_model", False)
+        predictions = self.dense_head(data, export_model)
 
         if not self.training:
             return self.post_process(predictions)
@@ -130,7 +130,10 @@ class CADDN(nn.Layer):
         Returns:
 
         """
-        batch_size = 1  # batch_dict['batch_size']
+        if getattr(self, "export_model", False):
+            batch_size = 1
+        else:
+            batch_size = batch_dict['batch_size']
         recall_dict = {}
         pred_dicts = []
         for index in range(batch_size):
@@ -226,11 +229,11 @@ class CADDN(nn.Layer):
         save_path = os.path.join(save_dir, 'caddn')
         input_spec = [{
             "images":
-            InputSpec(shape=[None, 3, None, None], name="images"),
+            InputSpec(shape=[1, 3, None, None], name="images"),
             "trans_lidar_to_cam":
-            InputSpec(shape=[None, 4, 4], name='trans_lidar_to_cam'),
+            InputSpec(shape=[1, 4, 4], name='trans_lidar_to_cam'),
             "trans_cam_to_img":
-            InputSpec(shape=[None, 3, 4], name='trans_cam_to_img'),
+            InputSpec(shape=[1, 3, 4], name='trans_cam_to_img'),
         }]
 
         paddle.jit.to_static(self, input_spec=input_spec)
