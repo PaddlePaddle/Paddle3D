@@ -204,7 +204,7 @@ python tools/export.py --config configs/centerpoint/centerpoint_pillars_02voxel_
 | -- | -- |
 | config | **[必填]** 训练配置文件所在路径 |
 | model | **[必填]** 训练时保存的模型文件`model.pdparams`所在路径 |
-| save_dir | **[必填]** 保存导出模型的路径，`save_dir`下将会生成三个文件：`inference.pdiparams `、`inference.pdiparams.info`和`inference.pdmodel` |
+| save_dir | **[必填]** 保存导出模型的路径，`save_dir`下将会生成三个文件：`centerpoint.pdiparams `、`centerpoint.pdiparams.info`和`centerpoint.pdmodel` |
 
 ### C++部署
 
@@ -277,15 +277,15 @@ sh compile.sh
 
 | 参数 | 说明 |
 | -- | -- |
-| model_file | 导出模型的结构文件`inference.pdmodel`所在路径 |
-| params_file | 导出模型的参数文件`inference.pdiparams`所在路径 |
+| model_file | 导出模型的结构文件`centerpoint.pdmodel`所在路径 |
+| params_file | 导出模型的参数文件`centerpoint.pdiparams`所在路径 |
 | lidar_file | 待预测的点云文件所在路径 |
 | num_point_dim | 点云文件中每个点的维度大小。例如，若每个点的信息是`x, y, z, intensity`，则`num_point_dim`填写为4 |
 | with_timelag | 该参数仅针对由多帧融合而成的点云文件，融合后的点云文件通常每个点都会包含时间差(timelag)。若点云维度大于等于5且第5维信息是timelag，需设置为1，默认0 |
 
 
 ```
-./build/main --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5
+./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5
 ```
 
 **注意：** 请预先确认实际待测试点云文件的维度是否是5，如果不是5，`--num_point_dim`请修改为实际值。如果待测试的点云文件是由多帧融合而成且点云维度大于等于5且第5维信息是timelag，可将`--with_timelag`设置为1。
@@ -298,8 +298,8 @@ sh compile.sh
 
 | 参数 | 说明 |
 | -- | -- |
-| model_file | 导出模型的结构文件`inference.pdmodel`所在路径 |
-| params_file | 导出模型的参数文件`inference.pdiparams`所在路径 |
+| model_file | 导出模型的结构文件`centerpoint.pdmodel`所在路径 |
+| params_file | 导出模型的参数文件`centerpoint.pdiparams`所在路径 |
 | lidar_file | 待预测的点云文件所在路径 |
 | num_point_dim | 点云文件中每个点的维度大小。例如，若每个点的信息是`x, y, z, intensity`，则`num_point_dim`填写为4 |
 | with_timelag | 仅针对`nuscenes`数据集，若使用`nuscenes`数据集训练的模型，需设置为1，默认0 |
@@ -313,25 +313,25 @@ sh compile.sh
 * **首次运行TensorRT**，收集模型动态shape信息，并保存至`--dynamic_shape_file`指定的文件中
 
     ```
-    ./build/main --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5 --use_trt 1 --collect_shape_info 1 --dynamic_shape_file /path/to/shape_info.txt
+    ./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5 --use_trt 1 --collect_shape_info 1 --dynamic_shape_file /path/to/shape_info.txt
     ```
 
 * 加载`--dynamic_shape_file`指定的模型动态shape信息，使用FP32精度进行预测
 
     ```
-    ./build/main --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5 --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt
+    ./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5 --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt
     ```
 
 * 加载`--dynamic_shape_file`指定的模型动态shape信息，使用FP16精度进行预测
 
     ```
-    ./build/main --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5 --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1
+    ./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5 --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1
     ```
 
 * 如果觉得每次运行时模型加载的时间过长，可以设置`trt_use_static`和`trt_static_dir`，首次运行时将TensorRT的优化信息保存在硬盘中，后续直接反序列化优化信息即可
 
 ```
-./build/main --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 4 --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1 --trt_use_static 1 --trt_static_dir /path/to/OptimCacheDir
+./build/main --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 4 --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1 --trt_use_static 1 --trt_static_dir /path/to/OptimCacheDir
 ```
 
 ### Python部署
@@ -342,8 +342,8 @@ sh compile.sh
 
 | 参数 | 说明 |
 | -- | -- |
-| model_file | 导出模型的结构文件`inference.pdmodel`所在路径 |
-| params_file | 导出模型的参数文件`inference.pdiparams`所在路径 |
+| model_file | 导出模型的结构文件`centerpoint.pdmodel`所在路径 |
+| params_file | 导出模型的参数文件`centerpoint.pdiparams`所在路径 |
 | lidar_file | 待预测的点云文件所在路径 |
 | num_point_dim | 点云文件中每个点的维度大小。例如，若每个点的信息是`x, y, z, intensity`，则`num_point_dim`填写为4 |
 | with_timelag | 该参数仅针对由多帧融合而成的点云文件，融合后的点云文件通常每个点都会包含时间差(timelag)。若点云维度大于等于5且第5维信息是timelag，需设置为1>，默认0 |
@@ -357,7 +357,7 @@ sh compile.sh
 运行以下命令，执行预测：
 
 ```
-python infer.py --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5
+python infer.py --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5
 ```
 
 ## <h2 id="9">自定义数据集</h2>

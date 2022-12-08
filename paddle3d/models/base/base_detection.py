@@ -15,7 +15,7 @@
 import abc
 import contextlib
 import os
-from typing import List
+from typing import List, Optional
 
 import paddle
 import paddle.nn as nn
@@ -85,7 +85,12 @@ class BaseDetectionModel(abc.ABC, nn.Layer):
         yield
         self.set_export_mode(False)
 
-    def export(self, save_dir: str, name: str = "inference"):
+    @property
+    def save_name(self):
+        return self.__class__.__name__.lower()
+
+    def export(self, save_dir: str, name: Optional[str] = None):
+        name = name or self.save_name
         with self.exporting():
             paddle.jit.to_static(self, input_spec=self.input_spec)
             paddle.jit.save(

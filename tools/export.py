@@ -58,7 +58,7 @@ def parse_normal_args():
         dest='save_name',
         help='The name of inference params file.',
         type=str,
-        default="inference")
+        default=None)
 
     return parser.parse_known_args()
 

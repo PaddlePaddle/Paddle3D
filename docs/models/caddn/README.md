@@ -112,7 +112,7 @@ python tools/export.py --config configs/caddn/caddn_deeplabv3p_resnet101_os8_kit
 | -- | -- |
 | config | **[必填]** 训练配置文件所在路径 |
 | model | **[必填]** 训练时保存的模型文件`model.pdparams`所在路径 |
-| save_dir | **[必填]** 保存导出模型的路径，`save_dir`下将会生成三个文件：`inference.pdiparams `、`inference.pdiparams.info`和`inference.pdmodel` |
+| save_dir | **[必填]** 保存导出模型的路径，`save_dir`下将会生成三个文件：`caddn.pdiparams `、`caddn.pdiparams.info`和`caddn.pdmodel` |
 
 提供训练好的导出模型
 | 配置文件 | 下载 |
@@ -182,14 +182,14 @@ sh compile.sh
 
 | 参数 | 说明 |
 | -- | -- |
-| model_file | 导出模型的结构文件`inference.pdmodel`所在路径 |
-| params_file | 导出模型的参数文件`inference.pdiparams`所在路径 |
+| model_file | 导出模型的结构文件`caddn.pdmodel`所在路径 |
+| params_file | 导出模型的参数文件`caddn.pdiparams`所在路径 |
 | image_file | 待预测的图像文件所在路径 |
 
 执行命令：
 
 ```
-./build/main --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --image_file /path/to/image.png
+./build/main --model_file /path/to/caddn.pdmodel --params_file /path/to/caddn.pdiparams --image_file /path/to/image.png
 ```
 
 ### 开启TensorRT加速预测【可选】
@@ -200,8 +200,8 @@ sh compile.sh
 
 | 参数 | 说明 |
 | -- | -- |
-| model_file | 导出模型的结构文件`inference.pdmodel`所在路径 |
-| params_file | 导出模型的参数文件`inference.pdiparams`所在路径 |
+| model_file | 导出模型的结构文件`caddn.pdmodel`所在路径 |
+| params_file | 导出模型的参数文件`caddn.pdiparams`所在路径 |
 | image_file | 待预测的图像文件所在路径 |
 | use_trt | 是否使用TensorRT进行加速，默认0|
 | trt_precision | 当use_trt设置为1时，模型精度可设置0或1，0表示fp32, 1表示fp16。默认0 |
@@ -213,25 +213,25 @@ sh compile.sh
 * **首次运行TensorRT**，收集模型动态shape信息，并保存至`--dynamic_shape_file`指定的文件中
 
     ```
-    ./build/main --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --image_file /path/to/image.png --use_trt 1 --collect_shape_info 1 --dynamic_shape_file /path/to/shape_info.txt
+    ./build/main --model_file /path/to/caddn.pdmodel --params_file /path/to/caddn.pdiparams --image_file /path/to/image.png --use_trt 1 --collect_shape_info 1 --dynamic_shape_file /path/to/shape_info.txt
     ```
 
 * 加载`--dynamic_shape_file`指定的模型动态shape信息，使用FP32精度进行预测
 
     ```
-    ./build/main --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --image_file /path/to/image.png  --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt
+    ./build/main --model_file /path/to/caddn.pdmodel --params_file /path/to/caddn.pdiparams --image_file /path/to/image.png  --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt
     ```
 
 * 加载`--dynamic_shape_file`指定的模型动态shape信息，使用FP16精度进行预测
 
     ```
-    ./build/main --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --image_file /path/to/image.png  --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1
+    ./build/main --model_file /path/to/caddn.pdmodel --params_file /path/to/caddn.pdiparams --image_file /path/to/image.png  --use_trt 1 --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1
     ```
 
 * 如果觉得每次运行时模型加载的时间过长，可以设置`trt_use_static`和`trt_static_dir`，首次运行时将TensorRT的优化信息保存在硬盘中，后续直接反序列化优化信息即可
 
     ```
-    ./build/main --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --image_file /path/to/image.png  --use_trt 1 --collect_shape_info 1 --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1 --trt_use_static 1 --trt_static_dir /path/to/OptimCacheDir
+    ./build/main --model_file /path/to/caddn.pdmodel --params_file /path/to/caddn.pdiparams --image_file /path/to/image.png  --use_trt 1 --collect_shape_info 1 --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1 --trt_use_static 1 --trt_static_dir /path/to/OptimCacheDir
     ```
 
 ### Python部署
@@ -248,8 +248,8 @@ cd deploy/caddn/python
 
 | 参数 | 说明 |
 | -- | -- |
-| model_file | 导出模型的结构文件`inference.pdmodel`所在路径 |
-| params_file | 导出模型的参数文件`inference.pdiparams`所在路径 |
+| model_file | 导出模型的结构文件`caddn.pdmodel`所在路径 |
+| params_file | 导出模型的参数文件`caddn.pdiparams`所在路径 |
 | img_path | 待预测的图像文件所在路径 |
 | use_trt | 是否使用TensorRT进行加速，默认0|
 | trt_precision | 当use_trt设置为1时，模型精度可设置0或1，0表示fp32, 1表示fp16。默认0 |
@@ -261,7 +261,7 @@ cd deploy/caddn/python
 运行以下命令，执行预测：
 
 ```
-python infer.py --model_file /path/to/inference.pdmodel --params_file /path/to/inference.pdiparams --img_path /path/to/image.png
+python infer.py --model_file /path/to/caddn.pdmodel --params_file /path/to/caddn.pdiparams --img_path /path/to/image.png
 ```
 
 ## <h2 id="9">自定义数据集</h2>
