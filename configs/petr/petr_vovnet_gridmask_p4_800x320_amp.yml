@@ -84,6 +84,7 @@ val_dataset:
       keys: ['img']
 
 model:
+  fused_linear: True
   type: Petr3D
   use_recompute: True
   use_grid_mask: True
@@ -160,6 +161,7 @@ model:
 optimizer:
   type: AdamW
   weight_decay: 0.01
+  tensor_fusion: True
   grad_clip:
     type: ClipGradByGlobalNorm
     clip_norm: 35

@@ -121,7 +121,8 @@ class Trainer:
             checkpoint: Union[dict, CheckpointABC] = dict(),
             scheduler: Union[dict, SchedulerABC] = dict(),
             dataloader_fn: Union[dict, Callable] = dict(),
-            amp_cfg: Optional[dict] = None):
+            amp_cfg: Optional[dict] = None,
+            do_bind: Optional[bool] = True):
 
         self.model = model
         self.optimizer = optimizer
@@ -138,6 +139,8 @@ class Trainer:
         self.resume = resume
         vdl_file_name = None
         self.iters_per_epoch = len(self.train_dataloader)
+
+        self.do_bind = do_bind
 
         if iters is None:
             self.epochs = epochs
@@ -260,10 +263,11 @@ class Trainer:
                     self.model)
 
         model = self.model
+        group = None
         if env.nranks > 1:
             if not paddle.distributed.parallel.parallel_helper._is_parallel_ctx_initialized(
             ):
-                paddle.distributed.init_parallel_env()
+                group = paddle.distributed.init_parallel_env()
             model = paddle.DataParallel(self.model)
 
         losses_sum = defaultdict(float)
@@ -272,6 +276,20 @@ class Trainer:
         while self.cur_iter < self.iters:
 
             for sample in self.train_dataloader:
+                if self.cur_iter == 1 and self.do_bind and int(
+                        os.environ.get('FLAGS_selected_gpus', 0)) == 0:
+                    # Skip the first iter, let all necessary threads to be inited.
+                    # Each thread will assign three cpu cores. If the hardware doesn't have enough cpu cores,
+                    # can delete one or two `"(( i++ )) \n" \` in the line 287/288.
+                    cmd = "ps aux | grep \" -u tools/train.py\" | grep -v grep | awk '{print $2}' > taskset.log \n" \
+                          "i=0 \n" \
+                          "for pid in `cat taskset.log`; do \n" \
+                          "(( i++ )) \n" \
+                          "taskset -pc  $i,$(( i + 1 )),$(( i + 2 )) $pid \n" \
+                          "(( i++ )) \n" \
+                          "(( i++ )) \n" \
+                          "done \n"
+                    os.system(cmd)
                 self.cur_iter += 1
 
                 if self.cur_iter % self.iters_per_epoch == 1:
@@ -287,7 +305,10 @@ class Trainer:
                     sample,
                     self.cur_iter,
                     scaler=self.scaler,
-                    amp_cfg=self.amp_cfg)
+                    amp_cfg=self.amp_cfg,
+                    all_fused_tensors=getattr(self.optimizer,
+                                              'all_fused_tensors', None),
+                    group=group)
 
                 if isinstance(output['loss'], dict):
                     for k, v in output['loss'].items():

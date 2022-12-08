@@ -27,6 +27,15 @@ from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
 
 
+def str2bool(v):
+    if v.lower() in ("yes", "true", "t", "y", "1"):
+        return True
+    elif v.lower() in ("no", "false", "f", "n", "0"):
+        return False
+    else:
+        raise argparse.ArgumentTypeError("Unsupported value encountered.")
+
+
 def parse_args():
     """
     """
@@ -113,11 +122,24 @@ def parse_args():
         default=None,
         type=int)
     parser.add_argument(
+        '--seed',
+        dest='seed',
+        help='Set the random seed of paddle during training.',
+        default=None,
+        type=int)
+    parser.add_argument(
         '--quant_config',
         dest='quant_config',
         help='Config for quant model.',
         default=None,
         type=str)
+    parser.add_argument(
+        '--do_bind',
+        dest='do_bind',
+        help='Whether to cpu bind core. '
+        'Only valid when use `python -m paddle.distributed.launch tools.train.py <other args>` to train.',
+        default=True,
+        type=str2bool)
 
     return parser.parse_args()
 
@@ -139,6 +161,9 @@ def main(args):
 
     if not os.path.exists(args.cfg):
         raise RuntimeError("Config file `{}` does not exist!".format(args.cfg))
+
+    if not args.do_bind:
+        logger.info("not use cpu bind core")
 
     cfg = Config(path=args.cfg)
 
@@ -190,7 +215,8 @@ def main(args):
         'dataloader_fn': {
             'batch_size': batch_size,
             'num_workers': args.num_workers,
-        }
+        },
+        'do_bind': args.do_bind
     })
 
     trainer = Trainer(**dic)
