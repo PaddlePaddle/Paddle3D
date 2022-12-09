@@ -66,6 +66,11 @@ class CADDN(BaseMonoModel):
 
     def train_forward(self, data):
         images = data["images"]
+        if not self.training:
+            b, c, h, w = paddle.shape(images)
+            data["batch_size"] = b
+
+        # ffe
         image_features = self.backbone_3d(images)
 
         depth_logits = self.class_head(image_features, data["image_shape"])
@@ -75,7 +80,6 @@ class CADDN(BaseMonoModel):
         data = self.f2v(data)
 
         # map_to_bev
-        # voxel_features = voxel_features.reshape([])
         voxel_features = data["voxel_features"]
         bev_features = voxel_features.flatten(
             start_axis=1, stop_axis=2)  # (B, C, Z, Y, X) -> (B, C*Z, Y, X)
@@ -190,7 +194,10 @@ class CADDN(BaseMonoModel):
         Returns:
 
         """
-        batch_size = 1  # batch_dict['batch_size']
+        if getattr(self, "in_export_mode", False):
+            batch_size = 1
+        else:
+            batch_size = batch_dict['batch_size']
         recall_dict = {}
         pred_dicts = []
         for index in range(batch_size):
