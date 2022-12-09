@@ -130,6 +130,7 @@ class CADDN(BaseMonoModel):
         images = data["images"]
         b, c, h, w = paddle.shape(images)
         data["batch_size"] = b
+        data["image_shape"] = paddle.concat([h, w]).unsqueeze(0)
 
         image_features = self.backbone_3d(images)
 
