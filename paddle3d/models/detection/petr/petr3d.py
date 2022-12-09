@@ -32,7 +32,6 @@ from paddle3d.utils import dtype2float32
 
 
 class GridMask(nn.Layer):
-
     def __init__(self,
                  use_h,
                  use_w,
@@ -81,8 +80,8 @@ class GridMask(nn.Layer):
         mask = Image.fromarray(np.uint8(mask))
         mask = mask.rotate(r)
         mask = np.asarray(mask)
-        mask = mask[(hh - h) // 2:(hh - h) // 2 + h,
-                    (ww - w) // 2:(ww - w) // 2 + w]
+        mask = mask[(hh - h) // 2:(hh - h) // 2 +
+                    h, (ww - w) // 2:(ww - w) // 2 + w]
 
         mask = paddle.to_tensor(mask).astype('float32')
         if self.mode == 1:
@@ -101,9 +100,8 @@ class GridMask(nn.Layer):
 def bbox3d2result(bboxes, scores, labels, attrs=None):
     """Convert detection results to a list of numpy arrays.
     """
-    result_dict = dict(boxes_3d=bboxes.cpu(),
-                       scores_3d=scores.cpu(),
-                       labels_3d=labels.cpu())
+    result_dict = dict(
+        boxes_3d=bboxes.cpu(), scores_3d=scores.cpu(), labels_3d=labels.cpu())
 
     if attrs is not None:
         result_dict['attrs_3d'] = attrs.cpu()
@@ -134,13 +132,8 @@ class Petr3D(nn.Layer):
         self.use_recompute = use_recompute
 
         if use_grid_mask:
-            self.grid_mask = GridMask(True,
-                                      True,
-                                      rotate=1,
-                                      offset=False,
-                                      ratio=0.5,
-                                      mode=1,
-                                      prob=0.7)
+            self.grid_mask = GridMask(
+                True, True, rotate=1, offset=False, ratio=0.5, mode=1, prob=0.7)
 
         self.init_weight()
 
@@ -247,10 +240,10 @@ class Petr3D(nn.Layer):
             img_feats = self.extract_feat(img=img, img_metas=img_metas)
 
         losses = dict()
-        losses_pts = self.forward_pts_train(img_feats, gt_bboxes_3d,
-                                            gt_labels_3d, img_metas,
-                                            gt_bboxes_ignore)
+        losses_pts = self.forward_pts_train(
+            img_feats, gt_bboxes_3d, gt_labels_3d, img_metas, gt_bboxes_ignore)
         losses.update(losses_pts)
+
         return dict(loss=losses)
 
     def forward_test(self, samples, img=None, **kwargs):
@@ -266,9 +259,8 @@ class Petr3D(nn.Layer):
         """Test function of point cloud branch."""
 
         outs = self.pts_bbox_head(x, img_metas)
-        bbox_list = self.pts_bbox_head.get_bboxes(outs,
-                                                  img_metas,
-                                                  rescale=rescale)
+        bbox_list = self.pts_bbox_head.get_bboxes(
+            outs, img_metas, rescale=rescale)
 
         bbox_results = [
             bbox3d2result(bboxes, scores, labels)
@@ -326,9 +318,8 @@ class Petr3D(nn.Layer):
                 feats_list_level.append(feats[i][j])
             feats_list.append(paddle.stack(feats_list_level, -1).mean(-1))
         outs = self.pts_bbox_head(feats_list, img_metas)
-        bbox_list = self.pts_bbox_head.get_bboxes(outs,
-                                                  img_metas,
-                                                  rescale=rescale)
+        bbox_list = self.pts_bbox_head.get_bboxes(
+            outs, img_metas, rescale=rescale)
         bbox_results = [
             bbox3d2result(bboxes, scores, labels)
             for bboxes, scores, labels in bbox_list
@@ -345,27 +336,39 @@ class Petr3D(nn.Layer):
             result_dict['pts_bbox'] = pts_bbox
         return bbox_list
 
-    def export_forward(self, img, img_metas):
+    def export_forward(self, img, img_metas, time_stamp=None):
         img_metas['image_shape'] = img.shape[-2:]
         img_feats = self.extract_feat(img=img, img_metas=None)
 
         bbox_list = [dict() for i in range(len(img_metas))]
         self.pts_bbox_head.export_model = True
-        outs = self.pts_bbox_head.export_forward(img_feats, img_metas)
+        outs = self.pts_bbox_head.export_forward(img_feats, img_metas,
+                                                 time_stamp)
         bbox_list = self.pts_bbox_head.get_bboxes(outs, None, rescale=True)
         return bbox_list
 
     def export(self, save_dir: str, **kwargs):
         self.forward = self.export_forward
         self.export_model = True
-        image_spec = paddle.static.InputSpec(shape=[1, 6, 3, 320, 800],
-                                             dtype="float32")
+
+        num_cams = 12 if self.pts_bbox_head.with_time else 6
+        image_spec = paddle.static.InputSpec(
+            shape=[1, num_cams, 3, 320, 800], dtype="float32")
         img2lidars_spec = {
             "img2lidars":
-            paddle.static.InputSpec(shape=[1, 6, 4, 4], name='img2lidars'),
+            paddle.static.InputSpec(
+                shape=[1, num_cams, 4, 4], name='img2lidars'),
         }
 
         input_spec = [image_spec, img2lidars_spec]
 
+        model_name = "petr_inference"
+        if self.pts_bbox_head.with_time:
+            time_spec = paddle.static.InputSpec(
+                shape=[1, num_cams], dtype="float32")
+            input_spec.append(time_spec)
+            model_name = "petrv2_inference"
+
         paddle.jit.to_static(self, input_spec=input_spec)
-        paddle.jit.save(self, os.path.join(save_dir, "petr_inference"))
+
+        paddle.jit.save(self, os.path.join(save_dir, model_name))

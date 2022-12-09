@@ -101,7 +101,8 @@ python tools/export.py --config configs/petr/petr_vovnet_gridmask_p4_800x320.yml
 提供训练好的导出模型
 | 配置文件 | 下载 |
 | -- | -- |
-| PETR | [下载](https://paddle3d.bj.bcebos.com/models/petr/petr_exported_model.tar) |
+| PETR v1 | [下载](https://paddle3d.bj.bcebos.com/models/petr/petr_exported_model.tar) |
+| PETR v2 | [下载](https://paddle3d.bj.bcebos.com/models/petr/petrv2_exported_model.tar) |
 
 
 ### C++部署
@@ -169,11 +170,16 @@ sh compile.sh
 | model_file | 导出模型的结构文件`petr.pdmodel`所在路径 |
 | params_file | 导出模型的参数文件`petr.pdiparams`所在路径 |
 | image_files | 待预测的图像文件路径列表，每个文件用逗号分开 |
+| with_timestamp | 是否需要时间戳，为True时表示运行petrv2的模型 |
 
 执行命令：
 
 ```
+# petrv1
 ./build/main --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --image_files /path/to/img0.png,/path/to/img1.png,/path/to/img2.png,/path/to/img3.png,/path/to/img4.png,/path/to/img5.png
+
+# petrv2
+./build/main --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --image_files /path/to/img0.png,/path/to/img1.png,/path/to/img2.png,/path/to/img3.png,/path/to/img4.png,/path/to/img5.png,/path/to/img0_pre.png,/path/to/img1_pre.png,/path/to/img2_pre.png,/path/to/img3_pre.png,/path/to/img4_pre.png,/path/to/img5_pre.png --with_timestamp
 ```
 
 ### 开启TensorRT加速预测【可选】
@@ -193,29 +199,46 @@ sh compile.sh
 | trt_static_dir | 当trt_use_static设置为true时，保存优化信息的路径 |
 | collect_shape_info | 是否收集模型动态shape信息。默认false。**只需首次运行，下次运行时直接加载生成的shape信息文件即可进行TensorRT加速推理** |
 | dynamic_shape_file | 保存模型动态shape信息的文件路径。 默认:petr_shape_info.txt|
+| with_timestamp | 是否需要时间戳，为True时表示运行petrv2的模型 |
 
 * **首次运行TensorRT**，收集模型动态shape信息，并保存至`--dynamic_shape_file`指定的文件中
 
     ```
+    # petrv1
     ./build/main --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --image_files /path/to/img0.png,/path/to/img1.png,/path/to/img2.png,/path/to/img3.png,/path/to/img4.png,/path/to/img5.png --use_trt --collect_shape_info --dynamic_shape_file /path/to/shape_info.txt
+
+    # petrv2
+    ./build/main --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --image_files /path/to/img0.png,/path/to/img1.png,/path/to/img2.png,/path/to/img3.png,/path/to/img4.png,/path/to/img5.png,/path/to/img0_pre.png,/path/to/img1_pre.png,/path/to/img2_pre.png,/path/to/img3_pre.png,/path/to/img4_pre.png,/path/to/img5_pre.png --use_trt --collect_shape_info --dynamic_shape_file /path/to/shape_info.txt --with_timestamp
     ```
 
 * 加载`--dynamic_shape_file`指定的模型动态shape信息，使用FP32精度进行预测
 
     ```
+    # petrv1
     ./build/main --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --image_files /path/to/img0.png,/path/to/img1.png,/path/to/img2.png,/path/to/img3.png,/path/to/img4.png,/path/to/img5.png  --use_trt --dynamic_shape_file /path/to/shape_info.txt
+
+    # petrv2
+    ./build/main --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --image_files /path/to/img0.png,/path/to/img1.png,/path/to/img2.png,/path/to/img3.png,/path/to/img4.png,/path/to/img5.png,/path/to/img0_pre.png,/path/to/img1_pre.png,/path/to/img2_pre.png,/path/to/img3_pre.png,/path/to/img4_pre.png,/path/to/img5_pre.png --use_trt --dynamic_shape_file /path/to/shape_info.txt --with_timestamp
     ```
 
 * 加载`--dynamic_shape_file`指定的模型动态shape信息，使用FP16精度进行预测
 
     ```
+    # petrv1
     ./build/main --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --image_files /path/to/img0.png,/path/to/img1.png,/path/to/img2.png,/path/to/img3.png,/path/to/img4.png,/path/to/img5.png  --use_trt --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1
+
+    # petrv2
+    ./build/main --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --image_files /path/to/img0.png,/path/to/img1.png,/path/to/img2.png,/path/to/img3.png,/path/to/img4.png,/path/to/img5.png,/path/to/img0_pre.png,/path/to/img1_pre.png,/path/to/img2_pre.png,/path/to/img3_pre.png,/path/to/img4_pre.png,/path/to/img5_pre.png --use_trt --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1 --with_timestamp
     ```
 
 * 如果觉得每次运行时模型加载的时间过长，可以设置`trt_use_static`和`trt_static_dir`，首次运行时将TensorRT的优化信息保存在硬盘中，后续直接反序列化优化信息即可
 
     ```
+    # petrv1
     ./build/main --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --image_files /path/to/img0.png,/path/to/img1.png,/path/to/img2.png,/path/to/img3.png,/path/to/img4.png,/path/to/img5.png  --use_trt --collect_shape_info --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1 --trt_use_static --trt_static_dir /path/to/OptimCacheDir
+
+    # petrv2
+    ./build/main --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --image_files /path/to/img0.png,/path/to/img1.png,/path/to/img2.png,/path/to/img3.png,/path/to/img4.png,/path/to/img5.png,/path/to/img0_pre.png,/path/to/img1_pre.png,/path/to/img2_pre.png,/path/to/img3_pre.png,/path/to/img4_pre.png,/path/to/img5_pre.png --use_trt --dynamic_shape_file /path/to/shape_info.txt --trt_precision 1 --with_timestamp --trt_use_static --trt_static_dir /path/to/OptimCacheDir
     ```
 
 ### Python部署
@@ -241,9 +264,14 @@ cd deploy/petr/python
 | trt_static_dir | 当trt_use_static设置为1时，保存优化信息的路径 |
 | collect_shape_info | 是否收集模型动态shape信息。默认False。**只需首次运行，后续直接加载生成的shape信息文件即可进行TensorRT加速推理** |
 | dynamic_shape_file | 保存模型动态shape信息的文件路径。 |
+| with_timestamp | 是否需要时间戳，为True时表示运行petrv2的模型 |
 
 运行以下命令，执行预测：
 
 ```
+# petrv1
 python infer.py --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --img_paths /path/to/img0.png /path/to/img1.png /path/to/img2.png /path/to/img3.png /path/to/img4.png /path/to/img5.png
+
+# petrv2
+python infer.py --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --img_paths /path/to/img0.png /path/to/img1.png /path/to/img2.png /path/to/img3.png /path/to/img4.png /path/to/img5.png /path/to/img0_pre.png /path/to/img1_pre.png /path/to/img2_pre.png /path/to/img3_pre.png /path/to/img4_pre.png /path/to/img5_pre.png
 ```
