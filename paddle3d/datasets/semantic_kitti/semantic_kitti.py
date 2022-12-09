@@ -261,3 +261,15 @@ class SemanticKITTIDataset(BaseDataset):
             SemanticKITTIDataset.LEARNING_MAP.values())
 
         return remap_lut
+
+    @property
+    def name(self) -> str:
+        return "SemanticKITTI"
+
+    @property
+    def labels(self) -> List[str]:
+        num_classes = len(self.LEARNING_MAP_INV)
+        class_names = [
+            self.LABELS[self.LEARNING_MAP_INV[i]] for i in range(num_classes)
+        ]
+        return class_names

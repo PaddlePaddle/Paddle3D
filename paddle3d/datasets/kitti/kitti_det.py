@@ -197,3 +197,11 @@ class KittiDetDataset(BaseDataset):
             classmap={i: name
                       for i, name in enumerate(self.class_names)},
             indexes=self.data)
+
+    @property
+    def name(self) -> str:
+        return "KITTI"
+
+    @property
+    def labels(self) -> List[str]:
+        return self.class_names

@@ -63,7 +63,7 @@ class PointPillarsScatter(nn.Layer):
                 The first column indicates the sample ID.
             batch_size (int): Number of samples in the current batch.
         """
-        if not getattr(self, "export_model", False):
+        if not getattr(self, "in_export_mode", False):
             # batch_canvas will be the final output.
             batch_canvas = []
             for batch_itt in range(batch_size):

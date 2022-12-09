@@ -131,3 +131,11 @@ class WaymoDetDataset(BaseDataset):
         eval_gt_annos = [copy.deepcopy(info['annos']) for info in self.infos]
         return WaymoMetric(
             eval_gt_annos, self.class_names, distance_thresh=1000)
+
+    @property
+    def name(self) -> str:
+        return "Waymo"
+
+    @property
+    def labels(self) -> List[str]:
+        return self.class_names

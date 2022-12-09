@@ -20,6 +20,7 @@ import paddle.nn.functional as F
 from paddle.static import InputSpec
 
 from paddle3d.apis import manager
+from paddle3d.models.base import BaseMonoModel
 from paddle3d.models.layers import ConvBNReLU
 from paddle3d.ops import iou3d_nms_cuda
 from paddle3d.utils import checkpoint
@@ -31,7 +32,7 @@ from .ffe import FFE
 
 
 @manager.MODELS.add_component
-class CADDN(nn.Layer):
+class CADDN(BaseMonoModel):
     """
     """
 
@@ -45,8 +46,13 @@ class CADDN(nn.Layer):
                  disc_cfg,
                  map_to_bev_cfg,
                  post_process_cfg,
-                 pretrained=None):
-        super().__init__()
+                 pretrained=None,
+                 box_with_velocity: bool = False):
+        super().__init__(
+            box_with_velocity=box_with_velocity,
+            need_camera_to_image=True,
+            need_lidar_to_camera=True)
+
         self.backbone_3d = backbone_3d
         self.class_head = class_head
         self.ffe = FFE(ffe_cfg, disc_cfg=disc_cfg)
@@ -58,7 +64,7 @@ class CADDN(nn.Layer):
         self.pretrained = pretrained
         self.init_weight()
 
-    def forward(self, data):
+    def train_forward(self, data):
         images = data["images"]
         if not self.training:
             b, c, h, w = paddle.shape(images)
@@ -70,7 +76,7 @@ class CADDN(nn.Layer):
         depth_logits = self.class_head(image_features, data["image_shape"])
         data = self.ffe(image_features[0], depth_logits, data)
 
-        #   frustum_to_voxel
+        # frustum_to_voxel
         data = self.f2v(data)
 
         # map_to_bev
@@ -86,14 +92,69 @@ class CADDN(nn.Layer):
 
         # backbone_2d
         data = self.backbone_2d(data)
-        export_model = getattr(self, "export_model", False)
-        predictions = self.dense_head(data, export_model)
+        predictions = self.dense_head(data)
 
-        if not self.training:
-            return self.post_process(predictions)
-        else:
-            loss = self.get_loss(predictions)
-            return loss
+        loss = self.get_loss(predictions)
+        return loss
+
+    def test_forward(self, data):
+        images = data["images"]
+        b, c, h, w = paddle.shape(images)
+        data["batch_size"] = b
+
+        image_features = self.backbone_3d(images)
+
+        depth_logits = self.class_head(image_features, data["image_shape"])
+        data = self.ffe(image_features[0], depth_logits, data)
+
+        # frustum_to_voxel
+        data = self.f2v(data)
+
+        # map_to_bev
+        voxel_features = data["voxel_features"]
+        bev_features = voxel_features.flatten(
+            start_axis=1, stop_axis=2)  # (B, C, Z, Y, X) -> (B, C*Z, Y, X)
+        b, c, h, w = paddle.shape(bev_features)
+        bev_features = bev_features.reshape(
+            [b, self.map_to_bev._conv._in_channels, h, w])
+        bev_features = self.map_to_bev(
+            bev_features)  # (B, C*Z, Y, X) -> (B, C, Y, X)
+        data["spatial_features"] = bev_features
+
+        # backbone_2d
+        data = self.backbone_2d(data)
+        predictions = self.dense_head(data)
+        return self.post_process(predictions)
+
+    def export_forward(self, data):
+        images = data["images"]
+        b, c, h, w = paddle.shape(images)
+        data["batch_size"] = b
+        data["image_shape"] = paddle.concat([h, w]).unsqueeze(0)
+
+        image_features = self.backbone_3d(images)
+
+        depth_logits = self.class_head(image_features, data["image_shape"])
+        data = self.ffe(image_features[0], depth_logits, data)
+
+        # frustum_to_voxel
+        data = self.f2v(data)
+
+        # map_to_bev
+        voxel_features = data["voxel_features"]
+        bev_features = voxel_features.flatten(
+            start_axis=1, stop_axis=2)  # (B, C, Z, Y, X) -> (B, C*Z, Y, X)
+        b, c, h, w = paddle.shape(bev_features)
+        bev_features = bev_features.reshape(
+            [b, self.map_to_bev._conv._in_channels, h, w])
+        bev_features = self.map_to_bev(
+            bev_features)  # (B, C*Z, Y, X) -> (B, C, Y, X)
+        data["spatial_features"] = bev_features
+
+        # backbone_2d
+        data = self.backbone_2d(data)
+        predictions = self.dense_head(data)
+        return self.post_process(predictions)
 
     def get_loss(self, predictions):
         disp_dict = {}
@@ -130,7 +191,7 @@ class CADDN(nn.Layer):
         Returns:
 
         """
-        if getattr(self, "export_model", False):
+        if getattr(self, "in_export_mode", False):
             batch_size = 1
         else:
             batch_size = batch_dict['batch_size']
@@ -183,6 +244,7 @@ class CADDN(nn.Layer):
             }
 
             pred_dicts.append(record_dict)
+
         return {'preds': pred_dicts}
 
     def class_agnostic_nms(self, box_scores, box_preds, label_preds, nms_config,
@@ -223,20 +285,3 @@ class CADDN(nn.Layer):
     def init_weight(self):
         if self.pretrained:
             checkpoint.load_pretrained_model(self, self.pretrained)
-
-    def export(self, save_dir: str, **kwargs):
-        self.export_model = True
-        save_path = os.path.join(save_dir, 'caddn')
-        input_spec = [{
-            "images":
-            InputSpec(shape=[1, 3, None, None], name="images"),
-            "trans_lidar_to_cam":
-            InputSpec(shape=[1, 4, 4], name='trans_lidar_to_cam'),
-            "trans_cam_to_img":
-            InputSpec(shape=[1, 3, 4], name='trans_cam_to_img'),
-        }]
-
-        paddle.jit.to_static(self, input_spec=input_spec)
-        paddle.jit.save(self, save_path, input_spec=[input_spec])
-
-        logger.info("Exported model is saved in {}".format(save_dir))

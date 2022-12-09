@@ -265,13 +265,13 @@ class PAConv(nn.Layer):
             loss = self.get_loss(point, label)
             return loss
         else:
-            if not getattr(self, "export_model", False):
+            if not getattr(self, "in_export_mode", False):
                 return {'preds': point}
             else:
                 return F.softmax(point, axis=-1)
 
     def export(self, save_dir: str, input_shape=(1, 1024, 3), **kwargs):
-        self.export_model = True
+        self.in_export_mode = True
         save_path = os.path.join(save_dir, 'paconv')
 
         paddle.jit.to_static(
