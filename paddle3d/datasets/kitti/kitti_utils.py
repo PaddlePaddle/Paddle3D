@@ -260,7 +260,11 @@ def filter_fake_result(detection: Sample):
         detection.labels = None
         detection.confidences = None
     else:
-        detection.bboxes_3d = BBoxes3D(np.asarray(box_list))
+        detection.bboxes_3d = BBoxes3D(
+            np.asarray(box_list),
+            origin=box3d.origin,
+            rot_axis=box3d.rot_axis,
+            coordmode=box3d.coordmode)
         detection.labels = np.asarray(label_list)
         detection.confidences = np.asarray(score_list)
 

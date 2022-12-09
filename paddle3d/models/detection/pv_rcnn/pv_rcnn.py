@@ -210,6 +210,13 @@ class PVRCNN(nn.Layer):
 
         return pred_dicts
 
+    def _convert_origin_for_eval(self, sample: dict):
+        if sample.bboxes_3d.origin != [.5, .5, 0]:
+            sample.bboxes_3d[:, :3] += sample.bboxes_3d[:, 3:6] * (
+                np.array([.5, .5, 0]) - np.array(sample.bboxes_3d.origin))
+            sample.bboxes_3d.origin = [.5, .5, 0]
+        return sample
+
     def _parse_results_to_sample(self, results: dict, sample: dict):
         num_samples = len(results)
         new_results = []
@@ -229,6 +236,7 @@ class PVRCNN(nn.Layer):
             data.meta = SampleMeta(id=sample["meta"][i])
             if "calibs" in sample:
                 data.calibs = [calib.numpy() for calib in sample["calibs"][i]]
+            data = self._convert_origin_for_eval(data)
             new_results.append(data)
         return new_results
 

@@ -25,22 +25,7 @@ from paddle3d.apis import manager
 from paddle3d.models.layers import param_init
 from paddle3d.models.losses import SigmoidFocalClassificationLoss
 from paddle3d.ops import roiaware_pool3d
-
-
-def enlarge_box3d(boxes3d, extra_width=(0, 0, 0)):
-    """
-    Args:
-        boxes3d: [x, y, z, dx, dy, dz, heading], (x, y, z) is the box center
-        extra_width: [extra_x, extra_y, extra_z]
-
-    Returns:
-
-    """
-    large_boxes3d = boxes3d.clone()
-
-    large_boxes3d[:, 3:6] += paddle.to_tensor(
-        extra_width, dtype=large_boxes3d.dtype).reshape([1, -1])
-    return large_boxes3d
+from paddle3d.models.common import enlarge_box3d
 
 
 @manager.HEADS.add_component

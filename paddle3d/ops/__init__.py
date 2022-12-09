@@ -73,10 +73,9 @@ custom_ops = {
             'pointnet2/pointnet2_batch/group_points_gpu_batch.cu',
             'pointnet2/pointnet2_stack/group_points_stack.cc',
             'pointnet2/pointnet2_stack/group_points_gpu_stack.cu',
-            'pointnet2/voxel_query.cc',
-            'pointnet2/voxel_query_gpu.cu',
-            'pointnet2/sampling.cc',
-            'pointnet2/sampling_gpu.cu',
+            'pointnet2/voxel_query.cc', 'pointnet2/voxel_query_gpu.cu',
+            'pointnet2/sampling.cc', 'pointnet2/sampling_gpu.cu',
+            'pointnet2/gather_points.cc', 'pointnet2/gather_points_gpu.cu'
         ],
         'version':
         '0.1.0'

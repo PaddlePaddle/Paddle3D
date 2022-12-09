@@ -108,3 +108,19 @@ def generate_voxel2pinds(sparse_tensor_shape, sparse_tensor_indices):
         index=sparse_tensor_indices,
         updates=point_indices + 1,
         shape=output_shape) - 1
+
+
+def enlarge_box3d(boxes3d, extra_width=(0, 0, 0)):
+    """
+    Args:
+        boxes3d: [x, y, z, dx, dy, dz, heading], (x, y, z) is the box center
+        extra_width: [extra_x, extra_y, extra_z]
+
+    Returns:
+
+    """
+    large_boxes3d = boxes3d.clone()
+
+    large_boxes3d[:, 3:6] += paddle.to_tensor(
+        extra_width, dtype=large_boxes3d.dtype).reshape([1, -1])
+    return large_boxes3d

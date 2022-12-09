@@ -92,7 +92,7 @@ std::vector<paddle::DataType> GroupInferDtypeBatch(
 }
 
 // build forward op
-PD_BUILD_OP(group_operation_batch)
+PD_BUILD_OP(grouping_operation_batch)
     .Inputs({"points_tensor", "idx_tensor"})
     .Outputs({"out_tensor"})
     .SetKernelFn(PD_KERNEL(group_points_cuda_forward_batch))
@@ -100,7 +100,7 @@ PD_BUILD_OP(group_operation_batch)
     .SetInferDtypeFn(PD_INFER_DTYPE(GroupInferDtypeBatch));
 
 // build backward op
-PD_BUILD_GRAD_OP(group_operation_batch)
+PD_BUILD_GRAD_OP(grouping_operation_batch)
     .Inputs({paddle::Grad("out_tensor"), "idx_tensor", "points_tensor"})
     .Outputs({paddle::Grad("points_tensor")})
     .SetKernelFn(PD_KERNEL(group_points_cuda_backward_batch));
