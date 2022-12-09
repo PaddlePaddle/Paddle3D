@@ -145,8 +145,9 @@ __global__ void assign_coords_kernel(const T_int *grid_idx_to_voxel_idx,
                                      const T_int *num_points_in_grid,
                                      const int num_grids, const int grid_size_x,
                                      const int grid_size_y,
-                                     const int grid_size_z, T *coords,
-                                     T *num_points_per_voxel) {
+                                     const int grid_size_z,
+                                     const int max_num_points_in_voxel,
+                                     T *coords, T *num_points_per_voxel) {
   int64_t grid_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (grid_idx > num_grids || grid_idx == num_grids) {
     return;
@@ -161,7 +162,8 @@ __global__ void assign_coords_kernel(const T_int *grid_idx_to_voxel_idx,
     coords[voxel_idx * 3 + 0] = coord_z;
     coords[voxel_idx * 3 + 1] = coord_y;
     coords[voxel_idx * 3 + 2] = coord_x;
-    num_points_per_voxel[voxel_idx] = num_points_in_grid[grid_idx];
+    num_points_per_voxel[voxel_idx] =
+        min(num_points_in_grid[grid_idx], max_num_points_in_voxel);
   }
 }
 
@@ -288,8 +290,8 @@ std::vector<paddle::Tensor> hard_voxelize_cuda(
   blocks = (num_grids + threads - 1) / threads;
   assign_coords_kernel<int><<<blocks, threads, 0, points.stream()>>>(
       grid_idx_to_voxel_idx_data, num_points_in_grid_data, num_grids,
-      grid_size_x, grid_size_y, grid_size_z, coords_data,
-      num_points_per_voxel_data);
+      grid_size_x, grid_size_y, grid_size_z, max_num_points_in_voxel,
+      coords_data, num_points_per_voxel_data);
 
   return {voxels, coords, num_points_per_voxel, num_voxels};
 }
