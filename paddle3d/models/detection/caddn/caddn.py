@@ -76,7 +76,7 @@ class CADDN(BaseMonoModel):
         depth_logits = self.class_head(image_features, data["image_shape"])
         data = self.ffe(image_features[0], depth_logits, data)
 
-        #   frustum_to_voxel
+        # frustum_to_voxel
         data = self.f2v(data)
 
         # map_to_bev
@@ -101,18 +101,16 @@ class CADDN(BaseMonoModel):
         images = data["images"]
         b, c, h, w = paddle.shape(images)
         data["batch_size"] = b
-        data["image_shape"] = paddle.concat([h, w]).unsqueeze(0)
 
         image_features = self.backbone_3d(images)
 
         depth_logits = self.class_head(image_features, data["image_shape"])
         data = self.ffe(image_features[0], depth_logits, data)
 
-        #   frustum_to_voxel
+        # frustum_to_voxel
         data = self.f2v(data)
 
         # map_to_bev
-        # voxel_features = voxel_features.reshape([])
         voxel_features = data["voxel_features"]
         bev_features = voxel_features.flatten(
             start_axis=1, stop_axis=2)  # (B, C, Z, Y, X) -> (B, C*Z, Y, X)
@@ -132,18 +130,16 @@ class CADDN(BaseMonoModel):
         images = data["images"]
         b, c, h, w = paddle.shape(images)
         data["batch_size"] = b
-        data["image_shape"] = paddle.concat([h, w]).unsqueeze(0)
 
         image_features = self.backbone_3d(images)
 
         depth_logits = self.class_head(image_features, data["image_shape"])
         data = self.ffe(image_features[0], depth_logits, data)
 
-        #   frustum_to_voxel
+        # frustum_to_voxel
         data = self.f2v(data)
 
         # map_to_bev
-        # voxel_features = voxel_features.reshape([])
         voxel_features = data["voxel_features"]
         bev_features = voxel_features.flatten(
             start_axis=1, stop_axis=2)  # (B, C, Z, Y, X) -> (B, C*Z, Y, X)
@@ -247,6 +243,7 @@ class CADDN(BaseMonoModel):
             }
 
             pred_dicts.append(record_dict)
+
         return {'preds': pred_dicts}
 
     def class_agnostic_nms(self, box_scores, box_preds, label_preds, nms_config,

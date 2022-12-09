@@ -182,7 +182,7 @@ class AnchorHeadSingle(nn.Layer):
             self.forward_ret_dict.update(targets_dict)
 
         else:
-            if getattr(self, 'export_model', False):
+            if getattr(self, 'in_export_mode', False):
                 batch_size = 1
             else:
                 batch_size = data_dict['batch_size']
