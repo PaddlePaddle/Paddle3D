@@ -40,7 +40,7 @@ train_dataset:
     - type: ResizeCropFlipImage
       sample_aug_cfg:
         resize_lim: [0.94, 1.25]
-        final_dim: [320, 800]
+        final_dim: [640, 1600]
         bot_pct_lim: [0.0, 0.0]
         rot_lim: [0.0, 0.0]
         H: 900
@@ -84,7 +84,7 @@ val_dataset:
     - type: ResizeCropFlipImage
       sample_aug_cfg:
           resize_lim: [0.94, 1.25]
-          final_dim: [320, 800]
+          final_dim: [640, 1600]
           bot_pct_lim: [0.0, 0.0]
           rot_lim: [0.0, 0.0]
           H: 900
