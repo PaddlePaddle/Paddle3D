@@ -177,7 +177,7 @@ model:
     bbox_coder:
       type: NMSFreeCoder
       post_center_range: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
-      pc_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+      point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
       max_num: 300
       voxel_size: [0.2, 0.2, 8]
       num_classes: 10

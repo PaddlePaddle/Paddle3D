@@ -33,7 +33,8 @@ __all__ = [
     "RandomHorizontalFlip", "RandomVerticalFlip", "GlobalRotate", "GlobalScale",
     "GlobalTranslate", "ShufflePoint", "SamplePoint", "SamplePointByVoxels",
     "FilterPointsOutsideRange", "FilterBBoxOutsideRange", "HardVoxelize",
-    "RandomObjectPerturb", "ConvertBoxFormat"
+    "RandomObjectPerturb", "ConvertBoxFormat",
+    "PhotoMetricDistortionMultiViewImage", "RandomScaleImageMultiViewImage"
 ]
 
 
@@ -133,9 +134,8 @@ class GlobalScale(TransformABC):
     def __call__(self, sample: Sample):
         if sample.modality != "lidar":
             raise ValueError("GlobalScale only supports lidar data!")
-        factor = np.random.uniform(self.min_scale,
-                                   self.max_scale,
-                                   size=self.size)
+        factor = np.random.uniform(
+            self.min_scale, self.max_scale, size=self.size)
         # Scale points
         sample.data.scale(factor)
         # Scale bboxes_3d
@@ -156,10 +156,11 @@ class GlobalTranslate(TransformABC):
             The random distribution. Defaults to normal.
     """
 
-    def __init__(self,
-                 translation_std: Union[float, List[float],
-                                        Tuple[float]] = (.2, .2, .2),
-                 distribution="normal"):
+    def __init__(
+            self,
+            translation_std: Union[float, List[float], Tuple[float]] = (.2, .2,
+                                                                        .2),
+            distribution="normal"):
         if not isinstance(translation_std, (list, tuple)):
             translation_std = [
                 translation_std, translation_std, translation_std
@@ -178,9 +179,10 @@ class GlobalTranslate(TransformABC):
         if self.distribution == "normal":
             translation = np.random.normal(scale=self.translation_std, size=3)
         elif self.distribution == "uniform":
-            translation = np.random.uniform(low=-self.translation_std[0],
-                                            high=self.translation_std[0],
-                                            size=3)
+            translation = np.random.uniform(
+                low=-self.translation_std[0],
+                high=self.translation_std[0],
+                size=3)
         else:
             raise ValueError(
                 "GlobalScale only supports normal and uniform random distribution!"
@@ -195,7 +197,6 @@ class GlobalTranslate(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class ShufflePoint(TransformABC):
-
     def __call__(self, sample: Sample):
         if sample.modality != "lidar":
             raise ValueError("ShufflePoint only supports lidar data!")
@@ -205,15 +206,13 @@ class ShufflePoint(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class ConvertBoxFormat(TransformABC):
-
     def __call__(self, sample: Sample):
         # convert boxes from [x,y,z,w,l,h,yaw] to [x,y,z,l,w,h,heading], bottom_center -> obj_center
         bboxes_3d = box_utils.boxes3d_kitti_lidar_to_lidar(sample.bboxes_3d)
 
         # limit heading
-        bboxes_3d[:, -1] = box_utils.limit_period(bboxes_3d[:, -1],
-                                                  offset=0.5,
-                                                  period=2 * np.pi)
+        bboxes_3d[:, -1] = box_utils.limit_period(
+            bboxes_3d[:, -1], offset=0.5, period=2 * np.pi)
 
         # stack labels into gt_boxes, label starts from 1, instead of 0.
         labels = sample.labels + 1
@@ -227,7 +226,6 @@ class ConvertBoxFormat(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class SamplePoint(TransformABC):
-
     def __init__(self, num_points):
         self.num_points = num_points
 
@@ -239,7 +237,6 @@ class SamplePoint(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class SamplePointByVoxels(TransformABC):
-
     def __init__(self, voxel_size, max_points_per_voxel, max_num_of_voxels,
                  num_points, point_cloud_range):
         self.voxel_size = voxel_size
@@ -288,7 +285,6 @@ class SamplePointByVoxels(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class FilterBBoxOutsideRange(TransformABC):
-
     def __init__(self, point_cloud_range: Tuple[float]):
         self.point_cloud_range = np.asarray(point_cloud_range, dtype='float32')
 
@@ -304,7 +300,6 @@ class FilterBBoxOutsideRange(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class FilterPointsOutsideRange(TransformABC):
-
     def __init__(self, point_cloud_range: Tuple[float]):
         self.limit_range = np.asarray(point_cloud_range, dtype='float32')
 
@@ -318,7 +313,6 @@ class FilterPointsOutsideRange(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class HardVoxelize(TransformABC):
-
     def __init__(self, point_cloud_range: Tuple[float],
                  voxel_size: Tuple[float], max_points_in_voxel: int,
                  max_voxel_num: int):
@@ -346,12 +340,10 @@ class HardVoxelize(TransformABC):
                                         -1,
                                         dtype=np.int32)
 
-        num_voxels = points_to_voxel(sample.data, self.voxel_size,
-                                     self.point_cloud_range, self.grid_size,
-                                     voxels, coords, num_points_per_voxel,
-                                     grid_idx_to_voxel_idx,
-                                     self.max_points_in_voxel,
-                                     self.max_voxel_num)
+        num_voxels = points_to_voxel(
+            sample.data, self.voxel_size, self.point_cloud_range,
+            self.grid_size, voxels, coords, num_points_per_voxel,
+            grid_idx_to_voxel_idx, self.max_points_in_voxel, self.max_voxel_num)
 
         voxels = voxels[:num_voxels]
         coords = coords[:num_voxels]
@@ -378,11 +370,11 @@ class RandomObjectPerturb(TransformABC):
         max_num_attempts (int): Maximum number of perturbation attempts. Defaults to 100.
     """
 
-    def __init__(self,
-                 rotation_range: Union[float, List[float],
-                                       Tuple[float]] = np.pi / 4,
-                 translation_std: Union[float, List[float], Tuple[float]] = 1.0,
-                 max_num_attempts: int = 100):
+    def __init__(
+            self,
+            rotation_range: Union[float, List[float], Tuple[float]] = np.pi / 4,
+            translation_std: Union[float, List[float], Tuple[float]] = 1.0,
+            max_num_attempts: int = 100):
 
         if not isinstance(rotation_range, (list, tuple)):
             rotation_range = [-rotation_range, rotation_range]
@@ -495,9 +487,8 @@ class SampleRangeFilter(object):
         gt_labels_3d = gt_labels_3d[mask.astype(np.bool_)]
 
         # limit rad to [-pi, pi]
-        gt_bboxes_3d = self.limit_yaw(gt_bboxes_3d,
-                                      offset=0.5,
-                                      period=2 * np.pi)
+        gt_bboxes_3d = self.limit_yaw(
+            gt_bboxes_3d, offset=0.5, period=2 * np.pi)
         sample['gt_bboxes_3d'] = gt_bboxes_3d
         sample['gt_labels_3d'] = gt_labels_3d
 
@@ -656,12 +647,12 @@ class GlobalRotScaleTransImage(object):
     """
 
     def __init__(
-        self,
-        rot_range=[-0.3925, 0.3925],
-        scale_ratio_range=[0.95, 1.05],
-        translation_std=[0, 0, 0],
-        reverse_angle=False,
-        training=True,
+            self,
+            rot_range=[-0.3925, 0.3925],
+            scale_ratio_range=[0.95, 1.05],
+            translation_std=[0, 0, 0],
+            reverse_angle=False,
+            training=True,
     ):
 
         self.rot_range = rot_range
@@ -726,9 +717,8 @@ class GlobalRotScaleTransImage(object):
         ], [0, 0, 1]])
         results.gt_bboxes_3d[:, :3] = results.gt_bboxes_3d[:, :3] @ rot_mat
         results.gt_bboxes_3d[:, 6] += rot_angle
-        results.gt_bboxes_3d[:,
-                             7:9] = results.gt_bboxes_3d[:,
-                                                         7:9] @ rot_mat[:2, :2]
+        results.gt_bboxes_3d[:, 7:
+                             9] = results.gt_bboxes_3d[:, 7:9] @ rot_mat[:2, :2]
 
     def scale_xyz(self, results, scale_ratio):
         rot_mat = np.array([
@@ -780,9 +770,8 @@ class NormalizeMultiviewImage(object):
             F.normalize_use_cv2(img, self.mean, self.std, self.to_rgb)
             for img in sample['img']
         ]
-        sample['img_norm_cfg'] = dict(mean=self.mean,
-                                      std=self.std,
-                                      to_rgb=self.to_rgb)
+        sample['img_norm_cfg'] = dict(
+            mean=self.mean, std=self.std, to_rgb=self.to_rgb)
 
         return sample
 
@@ -822,13 +811,14 @@ def impad(img, *, shape=None, padding=None, pad_val=0, padding_mode='constant'):
         'reflect': cv2.BORDER_REFLECT_101,
         'symmetric': cv2.BORDER_REFLECT
     }
-    img = cv2.copyMakeBorder(img,
-                             padding[1],
-                             padding[3],
-                             padding[0],
-                             padding[2],
-                             border_type[padding_mode],
-                             value=pad_val)
+    img = cv2.copyMakeBorder(
+        img,
+        padding[1],
+        padding[3],
+        padding[0],
+        padding[2],
+        border_type[padding_mode],
+        value=pad_val)
 
     return img
 
@@ -891,14 +881,16 @@ class SampleFilerByKey(object):
     """Collect data from the loader relevant to the specific task.
     """
 
-    def __init__(self,
-                 keys,
-                 meta_keys=('filename', 'ori_shape', 'img_shape', 'lidar2img',
-                            'depth2img', 'cam2img', 'pad_shape', 'scale_factor',
-                            'flip', 'pcd_horizontal_flip', 'pcd_vertical_flip',
-                            'box_type_3d', 'img_norm_cfg', 'pcd_trans',
-                            'sample_idx', 'pcd_scale_factor', 'pcd_rotation',
-                            'pts_filename', 'transformation_3d_flow')):
+    def __init__(
+            self,
+            keys,
+            meta_keys=('filename', 'ori_shape', 'img_shape', 'lidar2img',
+                       'depth2img', 'cam2img', 'pad_shape', 'scale_factor',
+                       'flip', 'pcd_horizontal_flip', 'pcd_vertical_flip',
+                       'box_mode_3d', 'box_type_3d', 'img_norm_cfg',
+                       'pcd_trans', 'sample_idx', 'prev_idx', 'next_idx',
+                       'pcd_scale_factor', 'pcd_rotation', 'pts_filename',
+                       'transformation_3d_flow', 'scene_token', 'can_bus')):
         self.keys = keys
         self.meta_keys = meta_keys
 
@@ -927,7 +919,6 @@ class SampleFilerByKey(object):
 
 @manager.TRANSFORMS.add_component
 class FilterPointOutsideRange(TransformABC):
-
     def __init__(self, point_cloud_range: Tuple[float]):
         self.point_cloud_range = np.asarray(point_cloud_range, dtype='float32')
 
@@ -936,3 +927,218 @@ class FilterPointOutsideRange(TransformABC):
             self.point_cloud_range)
         sample.data = sample.data[mask]
         return sample
+
+
+@manager.TRANSFORMS.add_component
+class PhotoMetricDistortionMultiViewImage(object):
+    """Apply photometric distortion to image sequentially, every transformation
+    is applied with a probability of 0.5. The position of np.random.contrast is in
+    second or second to last.
+    1. np.random.brightness
+    2. np.random.contrast (mode 0)
+    3. convert color from BGR to HSV
+    4. np.random.saturation
+    5. np.random.hue
+    6. convert color from HSV to BGR
+    7. np.random.contrast (mode 1)
+    8. np.random.y swap channels
+    Args:
+        brightness_delta (int): delta of brightness.
+        contrast_range (tuple): range of contrast.
+        saturation_range (tuple): range of saturation.
+        hue_delta (int): delta of hue.
+    """
+
+    def __init__(self,
+                 brightness_delta=32,
+                 contrast_range=(0.5, 1.5),
+                 saturation_range=(0.5, 1.5),
+                 hue_delta=18):
+        self.brightness_delta = brightness_delta
+        self.contrast_lower, self.contrast_upper = contrast_range
+        self.saturation_lower, self.saturation_upper = saturation_range
+        self.hue_delta = hue_delta
+
+    def convert_color_factory(self, src, dst):
+
+        code = getattr(cv2, f'COLOR_{src.upper()}2{dst.upper()}')
+
+        def convert_color(img):
+            out_img = cv2.cvtColor(img, code)
+            return out_img
+
+        convert_color.__doc__ = f"""Convert a {src.upper()} image to {dst.upper()}
+            image.
+
+        Args:
+            img (ndarray or str): The input image.
+
+        Returns:
+            ndarray: The converted {dst.upper()} image.
+        """
+
+        return convert_color
+
+    def __call__(self, sample):
+        """Call function to perform photometric distortion on images.
+        Args:
+            sample (dict): Result dict from loading pipeline.
+        Returns:
+            dict: Result dict with images distorted.
+        """
+        imgs = sample['img']
+        new_imgs = []
+        for img in imgs:
+            assert img.dtype == np.float32, \
+                'PhotoMetricDistortion needs the input image of dtype np.float32,'\
+                ' please set "to_float32=True" in "LoadImageFromFile" pipeline'
+            # np.random.brightness
+            if np.random.randint(2):
+                delta = np.random.uniform(-self.brightness_delta,
+                                          self.brightness_delta)
+                img += delta
+
+            # mode == 0 --> do np.random.contrast first
+            # mode == 1 --> do np.random.contrast last
+            mode = np.random.randint(2)
+            if mode == 1:
+                if np.random.randint(2):
+                    alpha = np.random.uniform(self.contrast_lower,
+                                              self.contrast_upper)
+                    img *= alpha
+
+            # convert color from BGR to HSV
+            img = self.convert_color_factory('bgr', 'hsv')(img)
+
+            # np.random.saturation
+            if np.random.randint(2):
+                img[..., 1] *= np.random.uniform(self.saturation_lower,
+                                                 self.saturation_upper)
+
+            # np.random.hue
+            if np.random.randint(2):
+                img[..., 0] += np.random.uniform(-self.hue_delta,
+                                                 self.hue_delta)
+                img[..., 0][img[..., 0] > 360] -= 360
+                img[..., 0][img[..., 0] < 0] += 360
+
+            # convert color from HSV to BGR
+            img = self.convert_color_factory('hsv', 'bgr')(img)
+
+            # np.random.contrast
+            if mode == 0:
+                if np.random.randint(2):
+                    alpha = np.random.uniform(self.contrast_lower,
+                                              self.contrast_upper)
+                    img *= alpha
+
+            # np.random.y swap channels
+            if np.random.randint(2):
+                img = img[..., np.random.permutation(3)]
+            new_imgs.append(img)
+        sample['img'] = new_imgs
+        return sample
+
+
+@manager.TRANSFORMS.add_component
+class RandomScaleImageMultiViewImage(object):
+    """Random scale the image
+    Args:
+        scales
+    """
+
+    def __init__(self, scales=[]):
+        self.scales = scales
+        assert len(self.scales) == 1
+
+    def __call__(self, sample):
+        """Call function to pad images, masks, semantic segmentation maps.
+        Args:
+            sample (dict): Result dict from loading pipeline.
+        Returns:
+            dict: Updated result dict.
+        """
+        rand_ind = np.random.permutation(range(len(self.scales)))[0]
+        rand_scale = self.scales[rand_ind]
+
+        y_size = [int(img.shape[0] * rand_scale) for img in sample['img']]
+        x_size = [int(img.shape[1] * rand_scale) for img in sample['img']]
+        scale_factor = np.eye(4)
+        scale_factor[0, 0] *= rand_scale
+        scale_factor[1, 1] *= rand_scale
+        sample['img'] = [
+            imresize(img, (x_size[idx], y_size[idx]), return_scale=False)
+            for idx, img in enumerate(sample['img'])
+        ]
+        lidar2img = [scale_factor @ l2i for l2i in sample['lidar2img']]
+        sample['lidar2img'] = lidar2img
+        sample['img_shape'] = [img.shape for img in sample['img']]
+        sample['ori_shape'] = [img.shape for img in sample['img']]
+
+        return sample
+
+
+def imresize(img,
+             size,
+             return_scale=False,
+             interpolation='bilinear',
+             out=None,
+             backend=None):
+    """Resize image to a given size.
+
+    Args:
+        img (ndarray): The input image.
+        size (tuple[int]): Target size (w, h).
+        return_scale (bool): Whether to return `w_scale` and `h_scale`.
+        interpolation (str): Interpolation method, accepted values are
+            "nearest", "bilinear", "bicubic", "area", "lanczos" for 'cv2'
+            backend, "nearest", "bilinear" for 'pillow' backend.
+        out (ndarray): The output destination.
+        backend (str | None): The image resize backend type. Options are `cv2`,
+            `pillow`, `None`. If backend is None, the global imread_backend
+            specified by ``cv2`` will be used. Default: None.
+
+    Returns:
+        tuple | ndarray: (`resized_img`, `w_scale`, `h_scale`) or
+            `resized_img`.
+    """
+    h, w = img.shape[:2]
+    if backend is None:
+        backend = 'cv2'
+    if backend not in ['cv2', 'pillow']:
+        raise ValueError(f'backend: {backend} is not supported for resize.'
+                         f"Supported backends are 'cv2', 'pillow'")
+
+    if backend == 'pillow':
+        assert img.dtype == np.uint8, 'Pillow backend only support uint8 type'
+        pil_image = Image.fromarray(img)
+        pil_image = pil_image.resize(size, pillow_interp_codes[interpolation])
+        resized_img = np.array(pil_image)
+    else:
+        resized_img = cv2.resize(
+            img, size, dst=out, interpolation=cv2_interp_codes[interpolation])
+    if not return_scale:
+        return resized_img
+    else:
+        w_scale = size[0] / w
+        h_scale = size[1] / h
+        return resized_img, w_scale, h_scale
+
+
+cv2_interp_codes = {
+    'nearest': cv2.INTER_NEAREST,
+    'bilinear': cv2.INTER_LINEAR,
+    'bicubic': cv2.INTER_CUBIC,
+    'area': cv2.INTER_AREA,
+    'lanczos': cv2.INTER_LANCZOS4
+}
+
+if Image is not None:
+    pillow_interp_codes = {
+        'nearest': Image.NEAREST,
+        'bilinear': Image.BILINEAR,
+        'bicubic': Image.BICUBIC,
+        'box': Image.BOX,
+        'lanczos': Image.LANCZOS,
+        'hamming': Image.HAMMING
+    }

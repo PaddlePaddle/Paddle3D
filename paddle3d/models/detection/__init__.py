@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import caddn, centerpoint, iassd, pointpillars, smoke
+from . import bevformer, caddn, centerpoint, iassd, petr, pointpillars, smoke
+from .bevformer import *
 from .caddn import *
 from .centerpoint import *
 from .iassd import *

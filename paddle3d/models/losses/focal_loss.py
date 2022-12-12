@@ -18,6 +18,7 @@ from paddle import nn
 
 from paddle3d.apis import manager
 from paddle3d.models.layers.layer_libs import _transpose_and_gather_feat
+from paddle3d.models.losses.utils import weight_reduce_loss
 
 
 class FocalLoss(nn.Layer):
@@ -231,9 +232,20 @@ class WeightedFocalLoss(nn.Layer):
                  gamma=2.0,
                  alpha=0.25,
                  reduction='mean',
-                 loss_weight=1.0,
-                 activated=False):
+                 loss_weight=1.0):
         """`Focal Loss <https://arxiv.org/abs/1708.02002>`_
+
+        Args:
+            use_sigmoid (bool, optional): Whether to the prediction is
+                used for sigmoid or softmax. Defaults to True.
+            gamma (float, optional): The gamma for calculating the modulating
+                factor. Defaults to 2.0.
+            alpha (float, optional): A balanced form for Focal Loss.
+                Defaults to 0.25.
+            reduction (str, optional): The method used to reduce the loss into
+                a scalar. Defaults to 'mean'. Options are "none", "mean" and
+                "sum".
+            loss_weight (float, optional): Weight of loss. Defaults to 1.0.
         """
         super(WeightedFocalLoss, self).__init__()
         assert use_sigmoid is True, 'Only sigmoid focal loss supported now.'
@@ -242,7 +254,6 @@ class WeightedFocalLoss(nn.Layer):
         self.alpha = alpha
         self.reduction = reduction
         self.loss_weight = loss_weight
-        self.activated = activated
 
     def forward(self,
                 pred,
@@ -251,41 +262,48 @@ class WeightedFocalLoss(nn.Layer):
                 avg_factor=None,
                 reduction_override=None):
         """Forward function.
+
+        Args:
+            pred (paddle.Tensor): The prediction.
+            target (paddle.Tensor): The learning label of the prediction.
+            weight (paddle.Tensor, optional): The weight of loss for each
+                prediction. Defaults to None.
+            avg_factor (int, optional): Average factor that is used to average
+                the loss. Defaults to None.
+            reduction_override (str, optional): The reduction method used to
+                override the original reduction method of the loss.
+                Options are "none", "mean" and "sum".
+
+        Returns:
+            paddle.Tensor: The calculated loss
         """
         assert reduction_override in (None, 'none', 'mean', 'sum')
         reduction = (reduction_override
                      if reduction_override else self.reduction)
         if self.use_sigmoid:
-            if self.activated:
-                raise NotImplementedError
-            else:
-                num_classes = pred.shape[1]
-                target = F.one_hot(target, num_classes=num_classes + 1)
-                target = target[:, :num_classes]
-                calculate_loss_func = py_sigmoid_focal_loss
-
-            loss_cls = self.loss_weight * calculate_loss_func(
+            num_classes = pred.shape[1]
+            target = F.one_hot(target, num_classes=num_classes + 1)
+            target = target[:, :num_classes]
+            loss_cls = self.loss_weight * py_sigmoid_focal_loss(
                 pred,
                 target,
                 weight,
                 gamma=self.gamma,
                 alpha=self.alpha,
                 reduction=reduction,
-            )
-
+                avg_factor=avg_factor)
         else:
             raise NotImplementedError
         return loss_cls
 
 
-def py_sigmoid_focal_loss(
-        pred,
-        target,
-        weight=None,
-        gamma=2.0,
-        alpha=0.25,
-        reduction='mean',
-):
+def py_sigmoid_focal_loss(pred,
+                          target,
+                          weight=None,
+                          gamma=2.0,
+                          alpha=0.25,
+                          reduction='mean',
+                          avg_factor=None):
     """paddle version of `Focal Loss <https://arxiv.org/abs/1708.02002>`_.
     """
     pred_sigmoid = F.sigmoid(pred)
@@ -297,15 +315,17 @@ def py_sigmoid_focal_loss(
     if weight is not None:
         if weight.shape != loss.shape:
             if weight.shape[0] == loss.shape[0]:
+                # For most cases, weight is of shape (num_priors, ),
+                #  which means it does not have the second axis num_class
                 weight = weight.reshape([-1, 1])
             else:
+                # Sometimes, weight per anchor per class is also needed. e.g.
+                #  in FSAF. But it may be flattened of shape
+                #  (num_priors x num_class, ), while loss is still of shape
+                #  (num_priors, num_class).
                 assert weight.numel() == loss.numel()
                 weight = weight.reshape([loss.shape[0], -1])
-        assert len(weight.shape) == len(loss.shape)
-
-    if reduction == 'mean':
-        loss = loss.mean()
-    elif reduction == 'sum':
-        loss = loss.sum()
+        assert weight.ndim == loss.ndim
+    loss = weight_reduce_loss(loss, weight, reduction, avg_factor)
 
     return loss

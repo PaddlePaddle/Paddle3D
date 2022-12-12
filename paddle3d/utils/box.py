@@ -79,3 +79,109 @@ def boxes3d_nearest_bev_iou(boxes_a, boxes_b):
     boxes_bev_b = boxes3d_lidar_to_aligned_bev_boxes(boxes_b)
 
     return boxes_iou_normal(boxes_bev_a, boxes_bev_b)
+
+
+def normalize_bbox(bboxes, pc_range):
+
+    cx = bboxes[..., 0:1]
+    cy = bboxes[..., 1:2]
+    cz = bboxes[..., 2:3]
+    w = bboxes[..., 3:4].log()
+    l = bboxes[..., 4:5].log()
+    h = bboxes[..., 5:6].log()
+
+    rot = bboxes[..., 6:7]
+    if bboxes.shape[-1] > 7:
+        vx = bboxes[..., 7:8]
+        vy = bboxes[..., 8:9]
+        normalized_bboxes = paddle.concat(
+            (cx, cy, w, l, cz, h, rot.sin(), rot.cos(), vx, vy), axis=-1)
+    else:
+        normalized_bboxes = paddle.concat(
+            (cx, cy, w, l, cz, h, rot.sin(), rot.cos()), axis=-1)
+    return normalized_bboxes
+
+
+def denormalize_bbox(normalized_bboxes, pc_range):
+    # rotation
+    rot_sine = normalized_bboxes[..., 6:7]
+
+    rot_cosine = normalized_bboxes[..., 7:8]
+    rot = paddle.atan2(rot_sine, rot_cosine)
+
+    # center in the bev
+    cx = normalized_bboxes[..., 0:1]
+    cy = normalized_bboxes[..., 1:2]
+    cz = normalized_bboxes[..., 4:5]
+
+    # size
+    w = normalized_bboxes[..., 2:3]
+    l = normalized_bboxes[..., 3:4]
+    h = normalized_bboxes[..., 5:6]
+
+    w = w.exp()
+    l = l.exp()
+    h = h.exp()
+    if normalized_bboxes.shape[-1] > 8:
+        # velocity
+        vx = normalized_bboxes[:, 8:9]
+        vy = normalized_bboxes[:, 9:10]
+        denormalized_bboxes = paddle.concat([cx, cy, cz, w, l, h, rot, vx, vy],
+                                            axis=-1)
+    else:
+        denormalized_bboxes = paddle.concat([cx, cy, cz, w, l, h, rot], axis=-1)
+    return denormalized_bboxes
+
+
+def bbox_overlaps(bboxes1, bboxes2, mode='iou', eps=1e-6):
+
+    assert mode in ['iou', 'iof', 'giou'], f'Unsupported mode {mode}'
+    # Either the boxes are empty or the length of boxes' last dimension is 4
+    assert (bboxes1.shape[-1] == 4 or bboxes1.shape[0] == 0)
+    assert (bboxes2.shape[-1] == 4 or bboxes2.shape[0] == 0)
+
+    # Batch dim must be the same
+    # Batch dim: (B1, B2, ... Bn)
+    assert bboxes1.shape[:-2] == bboxes2.shape[:-2]
+    batch_shape = bboxes1.shape[:-2]
+
+    rows = bboxes1.shape[-2]
+    cols = bboxes2.shape[-2]
+
+    if rows * cols == 0:
+        return paddle.to_tensor(batch_shape + (rows, cols))
+
+    area1 = (bboxes1[..., 2] - bboxes1[..., 0]) * (
+        bboxes1[..., 3] - bboxes1[..., 1])
+    area2 = (bboxes2[..., 2] - bboxes2[..., 0]) * (
+        bboxes2[..., 3] - bboxes2[..., 1])
+
+    lt = paddle.maximum(bboxes1[..., :, None, :2],
+                        bboxes2[..., None, :, :2])  # [B, rows, cols, 2]
+    rb = paddle.minimum(bboxes1[..., :, None, 2:],
+                        bboxes2[..., None, :, 2:])  # [B, rows, cols, 2]
+
+    wh = paddle.clip(rb - lt, min=0)
+    overlap = wh[..., 0] * wh[..., 1]
+
+    if mode in ['iou', 'giou']:
+        union = area1[..., None] + area2[..., None, :] - overlap
+    else:
+        union = area1[..., None]
+    if mode == 'giou':
+        enclosed_lt = paddle.minimum(bboxes1[..., :, None, :2],
+                                     bboxes2[..., None, :, :2])
+        enclosed_rb = paddle.maximum(bboxes1[..., :, None, 2:],
+                                     bboxes2[..., None, :, 2:])
+
+    eps = paddle.to_tensor([eps])
+    union = paddle.maximum(union, eps)
+    ious = overlap / union
+    if mode in ['iou', 'iof']:
+        return ious
+    # calculate gious
+    enclose_wh = paddle.clip(enclosed_rb - enclosed_lt, min=0)
+    enclose_area = enclose_wh[..., 0] * enclose_wh[..., 1]
+    enclose_area = paddle.maximum(enclose_area, eps)
+    gious = ious - (enclose_area - union) / enclose_area
+    return gious

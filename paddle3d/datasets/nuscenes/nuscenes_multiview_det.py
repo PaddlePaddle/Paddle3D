@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import numbers
 import os
 import os.path as osp
 import pickle
+import random
 from collections.abc import Mapping, Sequence
 from functools import reduce
 from pathlib import Path
@@ -23,10 +25,12 @@ from typing import List, Optional, Union
 
 import numpy as np
 import paddle
+from nuscenes.eval.common.utils import Quaternion, quaternion_yaw
 from nuscenes.utils import splits as nuscenes_split
 from nuscenes.utils.data_classes import Box as NuScenesBox
 from nuscenes.utils.geometry_utils import transform_matrix
 from pyquaternion import Quaternion
+from tqdm import tqdm
 
 import paddle3d.transforms as T
 from paddle3d.apis import manager
@@ -35,7 +39,6 @@ from paddle3d.datasets.nuscenes.nuscenes_manager import NuScenesManager
 from paddle3d.geometries import BBoxes3D, CoordMode
 from paddle3d.sample import Sample, SampleMeta
 from paddle3d.transforms import TransformABC
-from paddle3d.utils.logger import logger
 
 
 def is_filepath(x):
@@ -55,8 +58,13 @@ class NuscenesMVDataset(NuscenesDetDataset):
                  mode: str = "train",
                  transforms: Union[TransformABC, List[TransformABC]] = None,
                  max_sweeps: int = 10,
+                 class_balanced_sampling: bool = False,
                  class_names: Union[list, tuple] = None,
-                 use_valid_flag: bool = False):
+                 queue_length=4,
+                 bev_size=(200, 200),
+                 overlap_test=False,
+                 use_valid_flag=False,
+                 with_velocity=True):
 
         self.mode = mode
         self.dataset_root = dataset_root
@@ -78,7 +86,7 @@ class NuscenesMVDataset(NuscenesDetDataset):
 
         self.transforms = transforms
 
-        if not self.is_test_mode:
+        if 'train' in self.mode:
             self.flag = np.zeros(len(self), dtype=np.uint8)
 
         self.modality = dict(
@@ -88,20 +96,23 @@ class NuscenesMVDataset(NuscenesDetDataset):
             use_map=False,
             use_external=True,
         )
-        self.with_velocity = True
+        self.with_velocity = with_velocity
         self.use_valid_flag = use_valid_flag
         self.channel = "LIDAR_TOP"
         if class_names is not None:
             self.class_names = class_names
         else:
             self.class_names = list(self.CLASS_MAP.keys())
+        self.queue_length = queue_length
+        self.overlap_test = overlap_test
+        self.bev_size = bev_size
+        # self.data_infos = self.data_infos[0:2]
 
     def __len__(self):
         return len(self.data_infos)
 
     def _rand_another(self, idx):
         """Randomly get another item with the same flag.
-
         Returns:
             int: Another index of item with the same flag.
         """
@@ -110,13 +121,10 @@ class NuscenesMVDataset(NuscenesDetDataset):
 
     def get_ann_info(self, index):
         """Get annotation info according to the given index.
-
         Args:
             index (int): Index of the annotation data to get.
-
         Returns:
             dict: Annotation information consists of the following keys:
-
                 - gt_bboxes_3d (:obj:`LiDARInstance3DBoxes`): \
                     3D ground truth bboxes
                 - gt_labels_3d (np.ndarray): Labels of ground truths.
@@ -148,16 +156,16 @@ class NuscenesMVDataset(NuscenesDetDataset):
         # the nuscenes box center is [0.5, 0.5, 0.5], we change it to be
         # the same as KITTI (0.5, 0.5, 0)
         origin = [0.5, 0.5, 0.5]
-        dst = np.array([0.5, 0.5, 0])
-        src = np.array(origin)
+        dst = np.array([0.5, 0.5, 0], dtype=gt_bboxes_3d.dtype)
+        src = np.array(origin, dtype=gt_bboxes_3d.dtype)
         gt_bboxes_3d[:, :3] += gt_bboxes_3d[:, 3:6] * (dst - src)
-        gt_bboxes_3d = BBoxes3D(gt_bboxes_3d,
-                                coordmode=2,
-                                origin=[0.5, 0.5, 0.5])
+        gt_bboxes_3d = BBoxes3D(
+            gt_bboxes_3d, coordmode=2, origin=[0.5, 0.5, 0.5])
 
-        anns_results = dict(gt_bboxes_3d=gt_bboxes_3d,
-                            gt_labels_3d=gt_labels_3d,
-                            gt_names=gt_names_3d)
+        anns_results = dict(
+            gt_bboxes_3d=gt_bboxes_3d,
+            gt_labels_3d=gt_labels_3d,
+            gt_names=gt_names_3d)
         return anns_results
 
     def get_data_info(self, index):
@@ -167,7 +175,6 @@ class NuscenesMVDataset(NuscenesDetDataset):
         Returns:
             dict: Data information that will be passed to the data \
                 preprocessing pipelines. It includes the following keys:
-
                 - sample_idx (str): Sample index.
                 - pts_filename (str): Filename of point clouds.
                 - sweeps (list[dict]): Infos of sweeps.
@@ -185,15 +192,20 @@ class NuscenesMVDataset(NuscenesDetDataset):
         sample.pts_filename = info['lidar_path']
         sample.sweeps = info['sweeps']
         sample.timestamp = info['timestamp'] / 1e6
+        sample.ego2global_translation = info['ego2global_translation']
+        sample.ego2global_rotation = info['ego2global_rotation']
+        sample.prev_idx = info['prev']
+        sample.next_idx = info['next']
+        sample.scene_token = info['scene_token']
+        sample.can_bus = info['can_bus']
+        sample.frame_idx = info['frame_idx']
 
         if self.modality['use_camera']:
             image_paths = []
             lidar2img_rts = []
             intrinsics = []
             extrinsics = []
-            img_timestamp = []
             for cam_type, cam_info in info['cams'].items():
-                img_timestamp.append(cam_info['timestamp'] / 1e6)
                 image_paths.append(cam_info['data_path'])
                 # obtain lidar to image transformation matrix
                 lidar2cam_r = np.linalg.inv(cam_info['sensor2lidar_rotation'])
@@ -215,29 +227,36 @@ class NuscenesMVDataset(NuscenesDetDataset):
                 lidar2img_rts.append(lidar2img_rt)
 
             sample.update(
-                dict(img_timestamp=img_timestamp,
-                     img_filename=image_paths,
-                     lidar2img=lidar2img_rts,
-                     intrinsics=intrinsics,
-                     extrinsics=extrinsics))
+                dict(
+                    img_filename=image_paths,
+                    lidar2img=lidar2img_rts,
+                    intrinsics=intrinsics,
+                    extrinsics=extrinsics))
 
         # if not self.is_test_mode:
-        if self.mode == 'train':
+        if 'train' in self.mode:
             annos = self.get_ann_info(index)
             sample.ann_info = annos
+
+        rotation = Quaternion(sample['ego2global_rotation'])
+        translation = sample['ego2global_translation']
+        can_bus = sample['can_bus']
+        can_bus[:3] = translation
+        can_bus[3:7] = rotation
+        patch_angle = quaternion_yaw(rotation) / np.pi * 180
+        if patch_angle < 0:
+            patch_angle += 360
+        can_bus[-2] = patch_angle / 180 * np.pi
+        can_bus[-1] = patch_angle
+
         return sample
 
-    def __getitem__(self, idx):
-        if self.is_test_mode:
-            pass
-
-        while True:
-            sample = self.get_data_info(idx)
-
-            if sample is None:
-                idx = self._rand_another(idx)
-                continue
-
+    def __getitem__(self, index):
+        # index = 500
+        # index = 635
+        # index = 0
+        if 'train' not in self.mode:
+            sample = self.get_data_info(index)
             sample['img_fields'] = []
             sample['bbox3d_fields'] = []
             sample['pts_mask_fields'] = []
@@ -247,15 +266,70 @@ class NuscenesMVDataset(NuscenesDetDataset):
             sample['seg_fields'] = []
             sample['box_type_3d'] = self.box_type_3d
             sample['box_mode_3d'] = self.box_mode_3d
-
             sample = self.transforms(sample)
-
-            if self.is_train_mode and self.filter_empty_gt and \
-                    (sample is None or len(sample['gt_labels_3d']) == 0 ):
-                idx = self._rand_another(idx)
-                continue
-
             return sample
+
+        while True:
+            queue = []
+            index_list = list(range(index - self.queue_length, index))
+            # random.seed(0)
+            random.shuffle(index_list)
+            index_list = sorted(index_list[1:])
+            index_list.append(index)
+            for i in index_list:
+                i = max(0, i)
+                sample = self.get_data_info(i)
+                if sample is None:
+                    break
+
+                sample['img_fields'] = []
+                sample['bbox3d_fields'] = []
+                sample['pts_mask_fields'] = []
+                sample['pts_seg_fields'] = []
+                sample['bbox_fields'] = []
+                sample['mask_fields'] = []
+                sample['seg_fields'] = []
+                sample['box_type_3d'] = self.box_type_3d
+                sample['box_mode_3d'] = self.box_mode_3d
+
+                sample = self.transforms(sample)
+                if self.filter_empty_gt and \
+                        (sample is None or len(sample['gt_labels_3d']) == 0):
+                    sample = None
+                    break
+                queue.append(sample)
+            if sample is None:
+                index = self._rand_another(index)
+                continue
+            return self.union2one(queue)
+
+    def union2one(self, queue):
+        imgs_list = [each['img'] for each in queue]
+        metas_map = SampleMeta()
+        prev_scene_token = None
+        prev_pos = None
+        prev_angle = None
+        for i, each in enumerate(queue):
+            metas_map[i] = each['meta']
+            if metas_map[i]['scene_token'] != prev_scene_token:
+                metas_map[i]['prev_bev_exists'] = False
+                prev_scene_token = metas_map[i]['scene_token']
+                prev_pos = copy.deepcopy(metas_map[i]['can_bus'][:3])
+                prev_angle = copy.deepcopy(metas_map[i]['can_bus'][-1])
+                metas_map[i]['can_bus'][:3] = 0
+                metas_map[i]['can_bus'][-1] = 0
+            else:
+                metas_map[i]['prev_bev_exists'] = True
+                tmp_pos = copy.deepcopy(metas_map[i]['can_bus'][:3])
+                tmp_angle = copy.deepcopy(metas_map[i]['can_bus'][-1])
+                metas_map[i]['can_bus'][:3] -= prev_pos
+                metas_map[i]['can_bus'][-1] -= prev_angle
+                prev_pos = copy.deepcopy(tmp_pos)
+                prev_angle = copy.deepcopy(tmp_angle)
+        queue[-1]['img'] = np.stack(imgs_list)
+        queue[-1]['meta'] = metas_map
+        queue = queue[-1]
+        return queue
 
     def _build_data(self):
         test = 'test' in self.version
@@ -282,8 +356,8 @@ class NuscenesMVDataset(NuscenesDetDataset):
                 self.data_infos = pickle.load(open(train_ann_cache_file, 'rb'))
                 return
 
-        self.nusc = NuScenesManager.get(version=self.version,
-                                        dataroot=self.dataset_root)
+        self.nusc = NuScenesManager.get(
+            version=self.version, dataroot=self.dataset_root)
 
         if self.version == 'v1.0-trainval':
             train_scenes = nuscenes_split.train
@@ -363,10 +437,10 @@ class NuscenesMVDataset(NuscenesDetDataset):
         # Homogeneous transform of current sample from ego car coordinate to sensor coordinate
         curr_sample_cs = self.nusc.get("calibrated_sensor",
                                        sample_data["calibrated_sensor_token"])
-        curr_sensor_from_car = transform_matrix(curr_sample_cs["translation"],
-                                                Quaternion(
-                                                    curr_sample_cs["rotation"]),
-                                                inverse=True)
+        curr_sensor_from_car = transform_matrix(
+            curr_sample_cs["translation"],
+            Quaternion(curr_sample_cs["rotation"]),
+            inverse=True)
         # Homogeneous transformation matrix of current sample from global coordinate to ego car coordinate
         curr_sample_pose = self.nusc.get("ego_pose",
                                          sample_data["ego_pose_token"])
@@ -435,8 +509,9 @@ class NuscenesMVDataset(NuscenesDetDataset):
     @property
     def metric(self):
         if not hasattr(self, 'nusc'):
-            self.nusc = NuScenesManager.get(version=self.version,
-                                            dataroot=self.dataset_root)
+            self.nusc = NuScenesManager.get(
+                version=self.version, dataroot=self.dataset_root)
+            # self.nusc = None
         return super().metric
 
     def collate_fn(self, batch: List):
@@ -456,13 +531,10 @@ class NuscenesMVDataset(NuscenesDetDataset):
 
 def get_available_scenes(nusc):
     """Get available scenes from the input nuscenes class.
-
     Given the raw data, get the information of available scenes for
     further info generation.
-
     Args:
         nusc (class): Dataset class in the nuScenes dataset.
-
     Returns:
         available_scenes (list[dict]): List of basic information for the
             available scenes.
@@ -501,7 +573,6 @@ def _fill_trainval_infos(nusc,
                          test=False,
                          max_sweeps=10):
     """Generate the train/val infos from the raw data.
-
     Args:
         nusc (:obj:`NuScenes`): Dataset class in the nuScenes dataset.
         train_scenes (list[str]): Basic information of training scenes.
@@ -509,7 +580,6 @@ def _fill_trainval_infos(nusc,
         test (bool, optional): Whether use the test mode. In test mode, no
             annotations can be accessed. Default: False.
         max_sweeps (int, optional): Max number of sweeps. Default: 10.
-
     Returns:
         tuple[list[dict]]: Information of training set and validation set
             that will be saved to the info file.
@@ -517,10 +587,7 @@ def _fill_trainval_infos(nusc,
     train_nusc_infos = []
     val_nusc_infos = []
 
-    msg = "Begin to generate a info of nuScenes dataset."
-
-    for sample_idx in logger.range(len(nusc.sample), msg=msg):
-        sample = nusc.sample[sample_idx]
+    for sample in tqdm(nusc.sample):
         lidar_token = sample['data']['LIDAR_TOP']
         sd_rec = nusc.get('sample_data', sample['data']['LIDAR_TOP'])
         cs_record = nusc.get('calibrated_sensor',
@@ -637,7 +704,6 @@ def obtain_sensor2top(nusc,
                       e2g_r_mat,
                       sensor_type='lidar'):
     """Obtain the info with RT matric from general sensor to Top LiDAR.
-
     Args:
         nusc (class): Dataset class in the nuScenes dataset.
         sensor_token (str): Sample data token corresponding to the
@@ -649,7 +715,6 @@ def obtain_sensor2top(nusc,
         e2g_r_mat (np.ndarray): Rotation matrix from ego to global
             in shape (3, 3).
         sensor_type (str, optional): Sensor to calibrate. Default: 'lidar'.
-
     Returns:
         sweep (dict): Sweep information after transformation.
     """
@@ -680,8 +745,8 @@ def obtain_sensor2top(nusc,
     e2g_r_s_mat = Quaternion(e2g_r_s).rotation_matrix
     R = (l2e_r_s_mat.T @ e2g_r_s_mat.T) @ (
         np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
-    T = (l2e_t_s @ e2g_r_s_mat.T +
-         e2g_t_s) @ (np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
+    T = (l2e_t_s @ e2g_r_s_mat.T + e2g_t_s) @ (
+        np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
     T -= e2g_t @ (np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T
                   ) + l2e_t @ np.linalg.inv(l2e_r_mat).T
     sweep['sensor2lidar_rotation'] = R.T  # points @ R.T + T

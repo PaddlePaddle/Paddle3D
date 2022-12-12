@@ -21,5 +21,6 @@ from .middle_encoders import *
 from .necks import *
 from .optimizers import *
 from .segmentation import *
+from .transformers import *
 from .voxel_encoders import *
 from .voxelizers import *
