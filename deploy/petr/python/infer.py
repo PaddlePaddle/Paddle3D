@@ -67,7 +67,10 @@ def parse_args():
         type=str,
         default="petr_shape_info.txt",
         help="Path of a dynamic shape file for tensorrt.")
-
+    parser.add_argument(
+        "--with_timestamp",
+        action='store_true',
+        help="Whether to timestamp(for petrv2).")
     return parser.parse_args()
 
 
@@ -88,7 +91,7 @@ def load_predictor(model_file,
 
     # enable memory optim
     config.enable_memory_optim()
-    config.disable_glog_info()
+    # config.disable_glog_info()
 
     config.switch_use_feed_fetch_ops(False)
     config.switch_ir_optim(True)
@@ -177,11 +180,16 @@ def get_image(filenames):
     return np.array(new_imgs).transpose([0, 3, 1, 2])[np.newaxis, ...]
 
 
-def run(predictor, img):
+def run(predictor, img, with_timestamp):
     input_names = predictor.get_input_names()
 
     input_tensor0 = predictor.get_input_handle(input_names[0])
     input_tensor1 = predictor.get_input_handle(input_names[1])
+
+    num_cams = 6
+    if with_timestamp:
+        input_tensor2 = predictor.get_input_handle(input_names[2])
+        num_cams = 12
 
     img2lidars = [
         -1.40307297e-03, 9.07780395e-06, 4.84838307e-01, -5.43047376e-02,
@@ -210,13 +218,23 @@ def run(predictor, img):
         0.0000000e+00, 0.0000000e+00, 0.0000000e+00, 1.0000000e+00
     ]
 
-    img2lidars = np.array(img2lidars).reshape([6, 4, 4]).astype('float32')
+    if with_timestamp:
+        img2lidars += img2lidars
 
-    input_tensor0.reshape([1, 6, 3, 320, 800])
+    img2lidars = np.array(img2lidars).reshape([num_cams, 4,
+                                               4]).astype('float32')
+
+    input_tensor0.reshape([1, num_cams, 3, 320, 800])
     input_tensor0.copy_from_cpu(img)
 
-    input_tensor1.reshape([6, 4, 4])
+    input_tensor1.reshape([num_cams, 4, 4])
     input_tensor1.copy_from_cpu(img2lidars)
+
+    if with_timestamp:
+        timestamp = np.zeros([num_cams]).astype('float32')
+        timestamp[num_cams // 2:] = 1.0
+        input_tensor2.reshape([1, num_cams])
+        input_tensor2.copy_from_cpu(timestamp)
 
     predictor.run()
     outs = []
@@ -243,7 +261,7 @@ def main(args):
 
     image = get_image(args.img_paths)
 
-    result = run(predictor, image)
+    result = run(predictor, image, args.with_timestamp)
 
     for k, v in result.items():
         print(k, v.shape, v.dtype)

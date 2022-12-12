@@ -13,6 +13,7 @@
 # limitations under the License.
 import glob
 import os
+from typing import List
 
 import h5py
 import numpy as np
@@ -67,3 +68,11 @@ class ModelNet40(BaseDataset):
     @property
     def metric(self):
         return AccuracyMetric(num_classes=40)
+
+    @property
+    def name(self) -> str:
+        return "ModelNet40"
+
+    @property
+    def labels(self) -> List[str]:
+        return self.label

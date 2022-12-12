@@ -25,6 +25,7 @@ from paddle.static import InputSpec
 
 from paddle3d.apis import manager
 from paddle3d.geometries import BBoxes3D
+from paddle3d.models.base import BaseLidarModel
 from paddle3d.sample import Sample, SampleMeta
 from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
@@ -40,7 +41,7 @@ class DictObject(Dict):
 
 
 @manager.MODELS.add_component
-class CenterPoint(nn.Layer):
+class CenterPoint(BaseLidarModel):
     def __init__(self,
                  voxelizer,
                  voxel_encoder,
@@ -49,8 +50,10 @@ class CenterPoint(nn.Layer):
                  neck,
                  bbox_head,
                  test_cfg=None,
-                 pretrained=None):
-        super(CenterPoint, self).__init__()
+                 pretrained=None,
+                 box_with_velocity: bool = False):
+        super().__init__(
+            with_voxelizer=True, box_with_velocity=box_with_velocity)
         self.voxelizer = voxelizer
         self.voxel_encoder = voxel_encoder
         self.middle_encoder = middle_encoder
@@ -97,31 +100,40 @@ class CenterPoint(nn.Layer):
         x = self.neck(x)
         return x
 
-    def forward(self, example, **kwargs):
-        if not getattr(self, "export_model", False):
-            batch_size = len(example["data"])
-            points = example["data"]
-        else:
-            batch_size = 1
-            points = example["data"]
-            points = self.deploy_preprocess(points)
+    def train_forward(self, samples):
+        batch_size = len(samples["data"])
+        points = samples["data"]
 
         data = dict(points=points, batch_size=batch_size)
-
         x = self.extract_feat(data)
         preds, x = self.bbox_head(x)
 
-        if self.training:
-            return self.bbox_head.loss(example, preds, self.test_cfg)
-        else:
-            if not getattr(self, "export_model", False):
-                preds = self.bbox_head.predict_by_custom_op(
-                    example, preds, self.test_cfg)
-                preds = self._parse_results_to_sample(preds, example)
-                return {'preds': preds}
-            else:
-                return self.bbox_head.predict_by_custom_op(
-                    example, preds, self.test_cfg)
+        return self.bbox_head.loss(samples, preds, self.test_cfg)
+
+    def test_forward(self, samples):
+        batch_size = len(samples["data"])
+        points = samples["data"]
+
+        data = dict(points=points, batch_size=batch_size)
+        x = self.extract_feat(data)
+        preds, x = self.bbox_head(x)
+
+        preds = self.bbox_head.predict_by_custom_op(samples, preds,
+                                                    self.test_cfg)
+        preds = self._parse_results_to_sample(preds, samples)
+        return {'preds': preds}
+
+    def export_forward(self, samples):
+        batch_size = 1
+        points = samples["data"]
+        points = self.deploy_preprocess(points)
+
+        data = dict(points=points, batch_size=batch_size)
+        x = self.extract_feat(data)
+        preds, x = self.bbox_head(x)
+
+        return self.bbox_head.predict_by_custom_op(samples, preds,
+                                                   self.test_cfg)
 
     def _parse_results_to_sample(self, results: dict, sample: dict):
         num_samples = len(results)
@@ -186,21 +198,3 @@ class CenterPoint(nn.Layer):
                     res.append(np.stack(vv))
                 ret[key] = res
         return ret
-
-    def export(self, save_dir: str, **kwargs):
-        self.export_model = True
-        self.voxelizer.export_model = True
-        self.middle_encoder.export_model = True
-        self.bbox_head.export_model = True
-        save_path = os.path.join(save_dir, 'centerpoint')
-        points_shape = [-1, -1]
-
-        input_spec = [{
-            "data":
-            InputSpec(shape=points_shape, name='data', dtype='float32')
-        }]
-
-        paddle.jit.to_static(self, input_spec=input_spec)
-        paddle.jit.save(self, save_path)
-
-        logger.info("Exported model is saved in {}".format(save_dir))

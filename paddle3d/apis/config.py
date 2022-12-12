@@ -217,6 +217,10 @@ class Config(object):
             self._val_dataset = self._load_object(_val_dataset)
         return self._val_dataset
 
+    @property
+    def export_config(self) -> Dict:
+        return self.dic.get('export', {})
+
     def _load_component(self, com_name: str) -> Any:
         # lazy import
         import paddle3d.apis.manager as manager

@@ -95,7 +95,7 @@ class SSDHead(nn.Layer):
                      batch_size=None):
         preds["box_preds"] = PointPillarsCoder.decode(preds["box_preds"],
                                                       anchors)
-        if getattr(self, "export_model", False):
+        if getattr(self, "in_export_mode", False):
             box_preds = preds["box_preds"].squeeze(0)
             cls_preds = preds["cls_preds"].squeeze(0)
 
