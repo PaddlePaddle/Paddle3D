@@ -2,7 +2,7 @@
 
 ## 环境要求
 
-- PaddlePaddle >= 2.3.1
+- PaddlePaddle >= 2.4.0
 - Python >= 3.6
 - CUDA >= 10.1
 - cuDNN >= 7.6
@@ -13,7 +13,7 @@
 
 ```shell
 # CUDA10.1
-python -m pip install paddlepaddle-gpu==2.3.1
+python -m pip install paddlepaddle-gpu==2.4.0
 ```
 
 * 由于3D感知模型对算力要求都比较高，我们建议您下载GPU版本
