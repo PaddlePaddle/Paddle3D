@@ -94,8 +94,9 @@ def generate_apollo_deploy_file(cfg, save_dir: str):
 
         file.write('\n# model information\n')
         transforms = cfg.export_config.get('transforms', [])
-        model_file = '{}.pdmodel'.format(args.save_name)
-        params_file = '{}.pdiparams'.format(args.save_name)
+        save_name = args.save_name or cfg.model.save_name
+        model_file = '{}.pdmodel'.format(save_name)
+        params_file = '{}.pdiparams'.format(save_name)
         data = {
             'model': {
                 'inputs':
