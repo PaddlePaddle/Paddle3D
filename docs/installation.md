@@ -21,7 +21,7 @@
 
 ## 1.1. 环境要求
 
-- PaddlePaddle >= 2.4.1
+- PaddlePaddle >= 2.4.0
 - Python >= 3.6
 - CUDA 10.2、11.2、11.6、11.7
 
