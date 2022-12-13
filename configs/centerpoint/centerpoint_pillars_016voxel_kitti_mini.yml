@@ -1,0 +1,152 @@
+# This is a training configuration for a simplified version of KITTI. It is just for a quick start,
+# all the hyperparameters are not strictly tuned, so the training result is not optimal
+batch_size: 4
+epochs: 20
+train_dataset:
+  type: KittiPCDataset
+  dataset_root: datasets/KITTI
+  transforms:
+    - type: LoadPointCloud
+      dim: 4
+      use_dim: 4
+    - type: RemoveCameraInvisiblePointsKITTI
+    - type: SamplingDatabase
+      min_num_points_in_box_per_class:
+        Car: 5
+        Cyclist: 5
+        Pedestrian: 5
+      max_num_samples_per_class:
+        Car: 15
+        Cyclist: 10
+      ignored_difficulty: [-1]
+      database_anno_path: datasets/KITTI/kitti_train_gt_database/anno_info_train.pkl
+      database_root: datasets/KITTI/
+      class_names: ["Car", "Cyclist", "Pedestrian"]
+    - type: RandomObjectPerturb
+      rotation_range: [-0.15707963267, 0.15707963267]
+      translation_std: [0.25, 0.25, 0.25]
+      max_num_attempts: 100
+    - type: RandomVerticalFlip
+    - type: GlobalRotate
+      min_rot: -0.78539816
+      max_rot: 0.78539816
+    - type: GlobalScale
+      min_scale: 0.95
+      max_scale: 1.05
+    - type: GlobalTranslate
+      translation_std: [0.2, 0.2, 0.2]
+    - type: ShufflePoint
+    - type: FilterBBoxOutsideRange
+      point_cloud_range: [0, -39.68, -3, 69.12, 39.68, 1]
+    - type: Gt2CenterPointTarget
+      tasks:
+        - num_class: 1
+          class_names: ["Car"]
+        - num_class: 2
+          class_names: ["Cyclist", "Pedestrian"]
+      down_ratio: 2
+      point_cloud_range: [0, -39.68, -3, 69.12, 39.68, 1]
+      voxel_size: [0.16, 0.16, 4]
+      gaussian_overlap: 0.1
+      max_objs: 500
+      min_radius: 2
+  mode: train
+  class_balanced_sampling: False
+  class_names: ["Car", "Cyclist", "Pedestrian"]
+
+
+val_dataset:
+  type: KittiPCDataset
+  dataset_root: datasets/KITTI
+  transforms:
+    - type: LoadPointCloud
+      dim: 4
+      use_dim: 4
+    - type: RemoveCameraInvisiblePointsKITTI
+  mode: val
+  class_names: ["Car", "Cyclist", "Pedestrian"]
+optimizer:
+  type: OneCycleAdam
+  beta2: 0.99
+  weight_decay: 0.01
+  grad_clip:
+    type: ClipGradByGlobalNorm
+    clip_norm: 35
+  beta1:
+    type: OneCycleDecayWarmupMomentum
+    momentum_peak: 0.95
+    momentum_trough: 0.85
+    step_ratio_peak: 0.4
+
+lr_scheduler:
+  type: OneCycleWarmupDecayLr
+  base_learning_rate: 0.001
+  lr_ratio_peak: 10
+  lr_ratio_trough: 0.0001
+  step_ratio_peak: 0.4
+
+model:
+  type: CenterPoint
+  voxelizer:
+    type: HardVoxelizer
+    point_cloud_range: [0, -39.68, -3, 69.12, 39.68, 1]
+    voxel_size: [0.16, 0.16, 4]
+    max_num_points_in_voxel: 100
+    max_num_voxels: [12000, 40000]
+  voxel_encoder:
+    type: PillarFeatureNet
+    in_channels: 4
+    feat_channels: [64, 64]
+    with_distance: False
+    max_num_points_in_voxel: 100
+    voxel_size: [0.16, 0.16, 4]
+    point_cloud_range: [0, -39.68, -3, 69.12, 39.68, 1]
+    legacy: False
+  middle_encoder:
+    type: PointPillarsScatter
+    in_channels: 64
+    voxel_size: [0.16, 0.16, 4]
+    point_cloud_range: [0, -39.68, -3, 69.12, 39.68, 1]
+  backbone:
+    type: SecondBackbone
+    in_channels: 64
+    out_channels: [64, 128, 256]
+    layer_nums: [3, 5, 5]
+    downsample_strides: [1, 2, 2]
+  neck:
+    type: SecondFPN
+    in_channels: [64, 128, 256]
+    out_channels: [128, 128, 128]
+    upsample_strides: [0.5, 1, 2]
+    use_conv_for_no_stride: True
+  bbox_head:
+    type: CenterHead
+    in_channels: 384 # sum([128, 128, 128])
+    tasks:
+        - num_class: 1
+          class_names: ["Car"]
+        - num_class: 2
+          class_names: ["Cyclist", "Pedestrian"]
+    weight: 2.5 # loc_loss weight
+    code_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0] # [x, y, z, w, h, l, sin(angle), cos(angle)] weight in loc loss
+    common_heads:
+      reg: [2, 2] # classes, num_conv
+      height: [1, 2]
+      dim: [3, 2]
+      rot: [2, 2]
+  test_cfg:
+    post_center_limit_range: [-10., -50., -10., 80., 50., 10.]
+    nms:
+      nms_pre_max_size: 1000
+      nms_post_max_size: 83
+      nms_iou_threshold: 0.1
+    score_threshold: 0.1
+    point_cloud_range: [0, -39.68, -3, 69.12, 39.68, 1]
+    down_ratio: 2
+    voxel_size: [0.16, 0.16, 4]
+
+export:
+  transforms:
+    - type: LoadPointCloud
+      dim: 4
+      use_dim: 4
