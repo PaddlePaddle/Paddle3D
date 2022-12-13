@@ -1,1 +1,1 @@
-docs/models/paconv/README.md
+../../docs/models/paconv/README.md
