@@ -39,7 +39,7 @@
 说明：如果已安装Anaconda则无需再安装Miniconda。
 ```
 
-Miniconda是一款小巧的python环境管理工具，其安装程序中包含conda软件包管理器和Python。MiniConda的包使用软件包管理系统Conda进行管理。Conda是一个开源包管理系统和环境管理系统，可在Windows、macOS和Linux上运行。
+Miniconda是一款小巧的Python环境管理工具，其安装程序中包含conda软件包管理器和Python。MiniConda的包使用软件包管理系统Conda进行管理。Conda是一个开源包管理系统和环境管理系统，可在Windows、macOS和Linux上运行。
 
 `传送门：`[MiniConda安装教程](https://docs.conda.io/en/latest/miniconda.html#linux-installers)
 
