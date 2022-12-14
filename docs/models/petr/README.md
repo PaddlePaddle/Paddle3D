@@ -272,6 +272,9 @@ cd deploy/petr/python
 # petrv1
 python infer.py --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --img_paths /path/to/img0.png /path/to/img1.png /path/to/img2.png /path/to/img3.png /path/to/img4.png /path/to/img5.png
 
+# petrv1 使用nuscenes数据集推理
+python infer_nus_dataset.py --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --data_root /path/to/nuscenes
+
 # petrv2
 python infer.py --model_file /path/to/petr.pdmodel --params_file /path/to/petr.pdiparams --img_paths /path/to/img0.png /path/to/img1.png /path/to/img2.png /path/to/img3.png /path/to/img4.png /path/to/img5.png /path/to/img0_pre.png /path/to/img1_pre.png /path/to/img2_pre.png /path/to/img3_pre.png /path/to/img4_pre.png /path/to/img5_pre.png
 ```
