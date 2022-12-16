@@ -23,8 +23,8 @@ from paddle3d.apis import manager
 from .iassd_coder import PointResidual_BinOri_Coder
 from .iassd_loss import (WeightedClassificationLoss, WeightedSmoothL1Loss,
                          get_corner_loss_lidar)
-from .iassd_modules import pointnet2_ops
-from .iassd_utils import enlarge_box3d, rotate_points_along_z
+from paddle3d.ops import roiaware_pool3d
+from paddle3d.models.common import enlarge_box3d, rotate_points_along_z
 
 __all__ = ["IASSD_Head"]
 
@@ -407,13 +407,13 @@ class IASSD_Head(nn.Layer):
             points_single = points[bs_mask][:, 1:4]
             point_cls_labels_single = paddle.zeros([bs_mask.sum()],
                                                    dtype=point_cls_labels.dtype)
-            box_idxs_of_pts = (pointnet2_ops.points_in_boxes_gpu(
+            box_idxs_of_pts = (roiaware_pool3d.points_in_boxes_gpu(
                 points_single.unsqueeze(axis=0),
                 gt_boxes[k:k + 1, :, 0:7]).astype("int64").squeeze(axis=0))
             box_fg_flag = box_idxs_of_pts >= 0
 
             if use_ex_gt_assign:
-                extend_box_idxs_of_pts = (pointnet2_ops.points_in_boxes_gpu(
+                extend_box_idxs_of_pts = (roiaware_pool3d.points_in_boxes_gpu(
                     points_single.unsqueeze(axis=0),
                     extend_gt_boxes[k:k + 1, :, 0:7],
                 ).astype("int64").squeeze(axis=0))
@@ -431,7 +431,7 @@ class IASSD_Head(nn.Layer):
                     box_idxs_of_pts = extend_box_idxs_of_pts
 
             elif set_ignore_flag:
-                extend_box_idxs_of_pts = (pointnet2_ops.points_in_boxes_gpu(
+                extend_box_idxs_of_pts = (roiaware_pool3d.points_in_boxes_gpu(
                     points_single.unsqueeze(axis=0),
                     extend_gt_boxes[k:k + 1, :, 0:7],
                 ).astype("int64").squeeze(axis=0))

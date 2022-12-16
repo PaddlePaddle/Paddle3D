@@ -17,7 +17,7 @@ import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 
-from .iassd_utils import boxes_to_corners_3d
+from paddle3d.models.common import boxes_to_corners_3d
 
 
 class WeightedClassificationLoss(nn.Layer):

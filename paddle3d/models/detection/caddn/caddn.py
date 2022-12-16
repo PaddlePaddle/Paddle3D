@@ -20,9 +20,9 @@ import paddle.nn.functional as F
 from paddle.static import InputSpec
 
 from paddle3d.apis import manager
+from paddle3d.models.common import class_agnostic_nms
 from paddle3d.models.base import BaseMonoModel
 from paddle3d.models.layers import ConvBNReLU
-from paddle3d.ops import iou3d_nms_cuda
 from paddle3d.utils import checkpoint
 from paddle3d.utils.logger import logger
 
@@ -225,7 +225,7 @@ class CADDN(BaseMonoModel):
 
             label_preds = paddle.argmax(cls_preds, axis=-1) + 1.0
             cls_preds = paddle.max(cls_preds, axis=-1)
-            selected_score, selected_label, selected_box = self.class_agnostic_nms(
+            selected_score, selected_label, selected_box = class_agnostic_nms(
                 box_scores=cls_preds,
                 box_preds=box_preds,
                 label_preds=label_preds,
@@ -246,41 +246,6 @@ class CADDN(BaseMonoModel):
             pred_dicts.append(record_dict)
 
         return {'preds': pred_dicts}
-
-    def class_agnostic_nms(self, box_scores, box_preds, label_preds, nms_config,
-                           score_thresh):
-
-        scores_mask = paddle.nonzero(box_scores >= score_thresh)
-
-        fake_score = paddle.to_tensor([0.0], dtype='float32')
-        fake_label = paddle.to_tensor([-1.0], dtype='float32')
-        fake_box = paddle.to_tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]],
-                                    dtype='float32')
-        if paddle.shape(scores_mask)[0] == 0:
-            return fake_score, fake_label, fake_box
-        else:
-            scores_mask = scores_mask
-            box_scores = paddle.gather(box_scores, index=scores_mask)
-            box_preds = paddle.gather(box_preds, index=scores_mask)
-            label_preds = paddle.gather(label_preds, index=scores_mask)
-            order = box_scores.argsort(0, descending=True)
-            order = order[:nms_config['nms_pre_maxsize']]
-            box_preds = paddle.gather(box_preds, index=order)
-            box_scores = paddle.gather(box_scores, index=order)
-            label_preds = paddle.gather(label_preds, index=order)
-            # When order is one-value tensor,
-            # boxes[order] loses a dimension, so we add a reshape
-            keep, num_out = iou3d_nms_cuda.nms_gpu(box_preds,
-                                                   nms_config['nms_thresh'])
-            if num_out.cast("int64") == 0:
-                return fake_score, fake_label, fake_box
-            else:
-                selected = keep[0:num_out]
-                selected = selected[:nms_config['nms_post_maxsize']]
-                selected_score = paddle.gather(box_scores, index=selected)
-                selected_box = paddle.gather(box_preds, index=selected)
-                selected_label = paddle.gather(label_preds, index=selected)
-                return selected_score, selected_label, selected_box
 
     def init_weight(self):
         if self.pretrained:

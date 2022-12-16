@@ -14,7 +14,7 @@
 
 import itertools
 import random
-from typing import Optional, Tuple
+from typing import Tuple
 
 import numpy as np
 from PIL import Image
@@ -25,7 +25,6 @@ from paddle3d.geometries.bbox import BBoxes3D, second_box_encode
 from paddle3d.sample import Sample
 from paddle3d.transforms import functional as F
 from paddle3d.transforms.base import TransformABC
-
 """
 The smoke heatmap processing(encode_label/get_transfrom_matrix/affine_transform/get_3rd_point/gaussian_radius/gaussian2D/draw_umich_gaussian)
 is based on https://github.com/lzccccc/SMOKE/blob/master/smoke/modeling/heatmap_coder.py
@@ -732,4 +731,39 @@ class Gt2PointPillarsTarget(object):
         sample.pop("difficulties", None)
         sample.pop("ignored_bboxes_3d", None)
 
+        return sample
+
+
+@manager.TRANSFORMS.add_component
+class Gt2PVRCNNTarget(TransformABC):
+    def __init__(self):
+        pass
+
+    def __call__(self, sample: Sample):
+        # Reorder the bboxes_3d and labels for each task
+        labels = sample.labels
+        bboxes_3d = sample.bboxes_3d
+        bboxes_3d_origin = sample.bboxes_3d.origin
+        required_origin = [0.5, 0.5, 0.5]
+        if list(bboxes_3d_origin) != required_origin:
+            bboxes_3d_origin = np.asarray(bboxes_3d_origin)
+            required_origin = np.asarray([0.5, 0.5, 0.5])
+            bboxes_3d[..., :3] += bboxes_3d[..., 3:6] * (
+                required_origin - bboxes_3d_origin)
+
+        bboxes_3d[..., 3:5] = bboxes_3d[..., [4, 3]]
+        bboxes_3d[..., -1] = -(bboxes_3d[..., -1] + np.pi / 2.)
+        bboxes_3d[..., -1] = BBoxes3D.limit_period(
+            bboxes_3d[..., -1], offset=0.5, period=2 * np.pi)
+        labels = labels + 1
+        gt_boxes = np.concatenate(
+            (bboxes_3d, labels.reshape(-1, 1).astype(np.float32)), axis=1)
+        sample.gt_boxes = gt_boxes
+
+        sample.pop('bboxes_2d', None)
+        sample.pop('bboxes_3d', None)
+        sample.pop('path', None)
+        sample.pop('labels', None)
+        sample.pop('attrs', None)
+        sample.pop('ignored_bboxes_3d', None)
         return sample

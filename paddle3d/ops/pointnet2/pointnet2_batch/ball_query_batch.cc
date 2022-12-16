@@ -19,12 +19,13 @@
 #define CHECK_INPUT(x) PD_CHECK(x.is_gpu(), #x " must be a GPU Tensor.")
 
 // cuda launcher declaration
-void ball_query_cuda_launcher(const int b, const int n, const int m,
-                              const float radius, const int nsample,
-                              const float *new_xyz, const float *xyz, int *idx);
+void ball_query_cuda_launcher_batch(const int b, const int n, const int m,
+                                    const float radius, const int nsample,
+                                    const float *new_xyz, const float *xyz,
+                                    int *idx);
 
 // op forward wrapper
-std::vector<paddle::Tensor> ball_query_cuda_forward(
+std::vector<paddle::Tensor> ball_query_cuda_forward_batch(
     const paddle::Tensor &new_xyz_tensor, const paddle::Tensor &xyz_tensor,
     const float &radius, const int &nsample) {
   CHECK_INPUT(new_xyz_tensor);
@@ -38,29 +39,29 @@ std::vector<paddle::Tensor> ball_query_cuda_forward(
                                   paddle::GPUPlace());
   auto *idx = idx_tensor.data<int>();
 
-  ball_query_cuda_launcher(b, n, m, radius, nsample, new_xyz, xyz, idx);
+  ball_query_cuda_launcher_batch(b, n, m, radius, nsample, new_xyz, xyz, idx);
 
   return {idx_tensor};
 }
 
 // shape infer
-std::vector<std::vector<int64_t>> BallQueryInferShape(
+std::vector<std::vector<int64_t>> BallQueryInferShapeBatch(
     std::vector<int64_t> new_xyz_shape, std::vector<int64_t> xyz_shape,
     const float &radius, const int &nsample) {
   return {{new_xyz_shape[0], new_xyz_shape[1], nsample}};
 }
 
 // data type infer
-std::vector<paddle::DataType> BallQueryInferDtype(paddle::DataType t1,
-                                                  paddle::DataType t2) {
+std::vector<paddle::DataType> BallQueryInferDtypeBatch(paddle::DataType t1,
+                                                       paddle::DataType t2) {
   return {paddle::DataType::INT32};
 }
 
 // build forward op
-PD_BUILD_OP(ball_query)
+PD_BUILD_OP(ball_query_batch)
     .Inputs({"new_xyz_tensor", "xyz_tensor"})
     .Outputs({"idx"})
     .Attrs({"radius: float", "nsample: int"})
-    .SetKernelFn(PD_KERNEL(ball_query_cuda_forward))
-    .SetInferShapeFn(PD_INFER_SHAPE(BallQueryInferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(BallQueryInferDtype));
+    .SetKernelFn(PD_KERNEL(ball_query_cuda_forward_batch))
+    .SetInferShapeFn(PD_INFER_SHAPE(BallQueryInferShapeBatch))
+    .SetInferDtypeFn(PD_INFER_DTYPE(BallQueryInferDtypeBatch));

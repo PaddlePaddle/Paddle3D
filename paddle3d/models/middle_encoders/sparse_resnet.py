@@ -17,8 +17,6 @@ Ths copyright of tianweiy/CenterPoint is as follows:
 MIT License [see LICENSE for details].
 """
 
-import math
-
 import numpy as np
 import paddle
 from paddle import sparse

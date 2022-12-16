@@ -33,7 +33,7 @@ train_dataset:
       max_scale: 1.05
     - type: FilterBBoxOutsideRange
       point_cloud_range: &point_cloud_range [ 0, -40, -3, 70.4, 40, 1 ]
-    - type: FilterPointsOutsideRange
+    - type: FilterPointOutsideRange
       point_cloud_range: *point_cloud_range
     - type: SamplePoint
       num_points: 16384
@@ -50,7 +50,7 @@ val_dataset:
       dim: 4
       use_dim: 4
     - type: RemoveCameraInvisiblePointsKITTIV2
-    - type: FilterPointsOutsideRange
+    - type: FilterPointOutsideRange
       point_cloud_range: *point_cloud_range
     - type: SamplePoint
       num_points: 16384

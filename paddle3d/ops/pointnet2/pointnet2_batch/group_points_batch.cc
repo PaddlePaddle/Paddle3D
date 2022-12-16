@@ -19,17 +19,18 @@
 #define CHECK_INPUT(x) PD_CHECK(x.is_gpu(), #x " must be a GPU Tensor.")
 
 // cuda launcher declaration
-void group_points_cuda_launcher(const int b, const int c, const int n,
-                                const int npoints, const int nsample,
-                                const float *points, const int *idx,
-                                float *out);
-void group_points_grad_cuda_launcher(const int b, const int c, const int n,
-                                     const int npoints, const int nsample,
-                                     const float *grad_out, const int *idx,
-                                     float *grad_points);
+void group_points_cuda_launcher_batch(const int b, const int c, const int n,
+                                      const int npoints, const int nsample,
+                                      const float *points, const int *idx,
+                                      float *out);
+void group_points_grad_cuda_launcher_batch(const int b, const int c,
+                                           const int n, const int npoints,
+                                           const int nsample,
+                                           const float *grad_out,
+                                           const int *idx, float *grad_points);
 
 // op forward wrapper
-std::vector<paddle::Tensor> group_points_cuda_forward(
+std::vector<paddle::Tensor> group_points_cuda_forward_batch(
     const paddle::Tensor &points_tensor, const paddle::Tensor &idx_tensor) {
   CHECK_INPUT(points_tensor);
   CHECK_INPUT(idx_tensor);
@@ -45,13 +46,13 @@ std::vector<paddle::Tensor> group_points_cuda_forward(
       {b, c, npoints, nsample}, paddle::DataType::FLOAT32, paddle::GPUPlace());
   auto *out = out_tensor.data<float>();
 
-  group_points_cuda_launcher(b, c, n, npoints, nsample, points, idx, out);
+  group_points_cuda_launcher_batch(b, c, n, npoints, nsample, points, idx, out);
 
   return {out_tensor};
 }
 
 // op backward wrapper
-std::vector<paddle::Tensor> group_points_cuda_backward(
+std::vector<paddle::Tensor> group_points_cuda_backward_batch(
     const paddle::Tensor &grad_out_tensor, const paddle::Tensor &idx_tensor,
     const paddle::Tensor &points_tensor) {
   CHECK_INPUT(grad_out_tensor);
@@ -68,14 +69,14 @@ std::vector<paddle::Tensor> group_points_cuda_backward(
       {b, c, n}, 0.0, paddle::DataType::FLOAT32, paddle::GPUPlace());
   auto *grad_points = grad_points_tensor.data<float>();
 
-  group_points_grad_cuda_launcher(b, c, n, npoints, nsample, grad_out, idx,
-                                  grad_points);
+  group_points_grad_cuda_launcher_batch(b, c, n, npoints, nsample, grad_out,
+                                        idx, grad_points);
 
   return {grad_points_tensor};
 }
 
 // shape infer
-std::vector<std::vector<int64_t>> GroupInferShape(
+std::vector<std::vector<int64_t>> GroupInferShapeBatch(
     std::vector<int64_t> points_shape, std::vector<int64_t> idx_shape) {
   const int b = points_shape[0];
   const int c = points_shape[1];
@@ -85,21 +86,21 @@ std::vector<std::vector<int64_t>> GroupInferShape(
 }
 
 // data type infer
-std::vector<paddle::DataType> GroupInferDtype(paddle::DataType points_dtype,
-                                              paddle::DataType idx_dtype) {
+std::vector<paddle::DataType> GroupInferDtypeBatch(
+    paddle::DataType points_dtype, paddle::DataType idx_dtype) {
   return {points_dtype};
 }
 
 // build forward op
-PD_BUILD_OP(group_operation)
+PD_BUILD_OP(grouping_operation_batch)
     .Inputs({"points_tensor", "idx_tensor"})
     .Outputs({"out_tensor"})
-    .SetKernelFn(PD_KERNEL(group_points_cuda_forward))
-    .SetInferShapeFn(PD_INFER_SHAPE(GroupInferShape))
-    .SetInferDtypeFn(PD_INFER_DTYPE(GroupInferDtype));
+    .SetKernelFn(PD_KERNEL(group_points_cuda_forward_batch))
+    .SetInferShapeFn(PD_INFER_SHAPE(GroupInferShapeBatch))
+    .SetInferDtypeFn(PD_INFER_DTYPE(GroupInferDtypeBatch));
 
 // build backward op
-PD_BUILD_GRAD_OP(group_operation)
+PD_BUILD_GRAD_OP(grouping_operation_batch)
     .Inputs({paddle::Grad("out_tensor"), "idx_tensor", "points_tensor"})
     .Outputs({paddle::Grad("points_tensor")})
-    .SetKernelFn(PD_KERNEL(group_points_cuda_backward));
+    .SetKernelFn(PD_KERNEL(group_points_cuda_backward_batch));

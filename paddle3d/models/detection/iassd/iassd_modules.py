@@ -38,15 +38,16 @@ class QueryAndGroup(nn.Layer):
         new_xyz: (B, npoint, 3)
         features: (B, C, N)
         """
-        idx = pointnet2_ops.ball_query(new_xyz, xyz, self.radius,
-                                       self.nsample)  # (B, npoints, nsample)
+        idx = pointnet2_ops.ball_query_batch(
+            new_xyz, xyz, self.radius, self.nsample)  # (B, npoints, nsample)
         xyz_trans = xyz.transpose([0, 2, 1])  # (B, 3, N)
-        grouped_xyz = pointnet2_ops.group_operation(
+        grouped_xyz = pointnet2_ops.grouping_operation_batch(
             xyz_trans, idx)  # (B, 3, npoint, nsample)
         grouped_xyz -= new_xyz.transpose([0, 2, 1]).unsqueeze(-1)
 
         if features is not None:
-            grouped_features = pointnet2_ops.group_operation(features, idx)
+            grouped_features = pointnet2_ops.grouping_operation_batch(
+                features, idx)
             if self.use_xyz:
                 new_features = paddle.concat(
                     [grouped_xyz, grouped_features],
