@@ -43,12 +43,27 @@ nuscenes
    ├── maps
    ├── samples
    ├── sweeps
-   ├── nuscenes_infos_train.pkl
-   ├── nuscenes_infos_val.pkl
+   ├── v1.0-trainval
+   ├── v1.0-test
    ...
 ```
 将nuscenes数据软链至data/nuscenes，或更改配置文件数据集路径。
+运行如下命令生成petr模型所需的annotation文件。
 
+```
+python tools/create_petr_nus_infos.py
+```
+生成完后的数据集目录
+```
+nuscenes
+   ├── maps
+   ├── samples
+   ├── sweeps
+   ├── v1.0-trainval
+   ├── v1.0-test
+   ├── petr_nuscenes_annotation_train.pk
+   ├── petr_nuscenes_annotation_val.pkl
+```
 
 ## <h2 id="7">训练</h2>
 
