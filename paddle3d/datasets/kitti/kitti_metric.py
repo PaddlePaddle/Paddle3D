@@ -83,7 +83,7 @@ class KittiMetric(MetricABC):
         for pred in predictions:
             filter_fake_result(pred)
             id = pred.meta.id
-            if pred.bboxes_2d is None and pred.bboxes_3d is None:
+            if pred.bboxes_2d is None or pred.bboxes_3d is None:
                 det = {
                     'truncated': np.zeros([0]),
                     'occluded': np.zeros([0]),
