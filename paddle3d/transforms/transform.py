@@ -32,7 +32,7 @@ from paddle3d.utils import box_utils
 __all__ = [
     "RandomHorizontalFlip", "RandomVerticalFlip", "GlobalRotate", "GlobalScale",
     "GlobalTranslate", "ShufflePoint", "SamplePoint", "SamplePointByVoxels",
-    "FilterPointsOutsideRange", "FilterBBoxOutsideRange", "HardVoxelize",
+    "FilterPointOutsideRange", "FilterBBoxOutsideRange", "HardVoxelize",
     "RandomObjectPerturb", "ConvertBoxFormat"
 ]
 
@@ -298,14 +298,13 @@ class FilterBBoxOutsideRange(TransformABC):
 
 
 @manager.TRANSFORMS.add_component
-class FilterPointsOutsideRange(TransformABC):
+class FilterPointOutsideRange(TransformABC):
     def __init__(self, point_cloud_range: Tuple[float]):
-        self.limit_range = np.asarray(point_cloud_range, dtype='float32')
+        self.point_cloud_range = np.asarray(point_cloud_range, dtype='float32')
 
     def __call__(self, sample: Sample):
-        points = sample.data
-        mask = (points[:, 0] >= self.limit_range[0]) & (points[:, 0] <= self.limit_range[3]) \
-           & (points[:, 1] >= self.limit_range[1]) & (points[:, 1] <= self.limit_range[4])
+        mask = sample.data.get_mask_of_points_outside_range(
+            self.point_cloud_range)
         sample.data = sample.data[mask]
         return sample
 
@@ -1069,15 +1068,3 @@ class SampleFilerByKey(object):
         for key in self.keys:
             filtered_sample[key] = sample[key]
         return filtered_sample
-
-
-@manager.TRANSFORMS.add_component
-class FilterPointOutsideRange(TransformABC):
-    def __init__(self, point_cloud_range: Tuple[float]):
-        self.point_cloud_range = np.asarray(point_cloud_range, dtype='float32')
-
-    def __call__(self, sample: Sample):
-        mask = sample.data.get_mask_of_points_outside_range(
-            self.point_cloud_range)
-        sample.data = sample.data[mask]
-        return sample
