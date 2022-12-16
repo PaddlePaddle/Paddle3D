@@ -153,3 +153,12 @@ model:
       nms_thresh: 0.01
       nms_pre_maxsize: 4096
       nms_post_maxsize: 500
+
+export:
+  transforms:
+    - type: LoadImage
+      to_chw: False
+      to_rgb: True
+    - type: Normalize
+      mean: [0, 0, 0]
+      std: [1, 1, 1]

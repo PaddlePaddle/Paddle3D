@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import abc
 import numbers
 from collections.abc import Mapping, Sequence
 from typing import List
@@ -23,7 +24,7 @@ from paddle3d.geometries import BBoxes2D, BBoxes3D
 from paddle3d.sample import Sample
 
 
-class BaseDataset(paddle.io.Dataset):
+class BaseDataset(abc.ABC, paddle.io.Dataset):
     """
     """
 
@@ -101,3 +102,11 @@ class BaseDataset(paddle.io.Dataset):
             "batch data con only contains: tensor, numpy.ndarray, "
             "dict, list, number, paddle3d.Sample, but got {}".format(
                 type(sample)))
+
+    @abc.abstractproperty
+    def name(self) -> str:
+        """Name of dataset."""
+
+    @abc.abstractproperty
+    def labels(self) -> List[str]:
+        """The category labels for the dataset."""

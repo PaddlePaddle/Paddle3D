@@ -294,6 +294,7 @@ class Petr3D(nn.Layer):
         losses_pts = self.forward_pts_train(
             img_feats, gt_bboxes_3d, gt_labels_3d, img_metas, gt_bboxes_ignore)
         losses.update(losses_pts)
+
         return dict(loss=losses)
 
     def forward_test(self, samples, img=None, **kwargs):
@@ -386,27 +387,39 @@ class Petr3D(nn.Layer):
             result_dict['pts_bbox'] = pts_bbox
         return bbox_list
 
-    def export_forward(self, img, img_metas):
+    def export_forward(self, img, img_metas, time_stamp=None):
         img_metas['image_shape'] = img.shape[-2:]
         img_feats = self.extract_feat(img=img, img_metas=None)
 
         bbox_list = [dict() for i in range(len(img_metas))]
         self.pts_bbox_head.export_model = True
-        outs = self.pts_bbox_head.export_forward(img_feats, img_metas)
+        outs = self.pts_bbox_head.export_forward(img_feats, img_metas,
+                                                 time_stamp)
         bbox_list = self.pts_bbox_head.get_bboxes(outs, None, rescale=True)
         return bbox_list
 
     def export(self, save_dir: str, **kwargs):
         self.forward = self.export_forward
         self.export_model = True
+
+        num_cams = 12 if self.pts_bbox_head.with_time else 6
         image_spec = paddle.static.InputSpec(
-            shape=[1, 6, 3, 320, 800], dtype="float32")
+            shape=[1, num_cams, 3, 320, 800], dtype="float32")
         img2lidars_spec = {
             "img2lidars":
-            paddle.static.InputSpec(shape=[1, 6, 4, 4], name='img2lidars'),
+            paddle.static.InputSpec(
+                shape=[1, num_cams, 4, 4], name='img2lidars'),
         }
 
         input_spec = [image_spec, img2lidars_spec]
 
+        model_name = "petr_inference"
+        if self.pts_bbox_head.with_time:
+            time_spec = paddle.static.InputSpec(
+                shape=[1, num_cams], dtype="float32")
+            input_spec.append(time_spec)
+            model_name = "petrv2_inference"
+
         paddle.jit.to_static(self, input_spec=input_spec)
-        paddle.jit.save(self, os.path.join(save_dir, "petr_inference"))
+
+        paddle.jit.save(self, os.path.join(save_dir, model_name))

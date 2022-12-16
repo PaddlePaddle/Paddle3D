@@ -41,7 +41,8 @@ DEFINE_bool(collect_shape_info, false,
             "Whether to collect dynamic shape before using tensorrt");
 DEFINE_string(dynamic_shape_file, "petr_shape_info.txt",
               "Path of a dynamic shape file for tensorrt");
-
+DEFINE_bool(with_timestamp, false,
+            "Whether model with timestamp input(for petrv2)");
 using paddle_infer::Config;
 using paddle_infer::CreatePredictor;
 using paddle_infer::Predictor;
@@ -128,8 +129,11 @@ void mat_to_vec(const cv::Mat *im, float *data) {
 
 void run(Predictor *predictor, const std::vector<int> &images_shape,
          const std::vector<float> &images_data, const std::vector<int> &k_shape,
-         const std::vector<float> &k_data, std::vector<float> *boxes,
-         std::vector<float> *scores, std::vector<int64_t> *labels) {
+         const std::vector<float> &k_data,
+         const std::vector<int> &timestamp_shape,
+         const std::vector<float> &timestamp_data, std::vector<float> *boxes,
+         std::vector<float> *scores, std::vector<int64_t> *labels,
+         const bool with_timestamp) {
   auto input_names = predictor->GetInputNames();
 
   auto in_tensor0 = predictor->GetInputHandle(input_names[0]);
@@ -139,6 +143,12 @@ void run(Predictor *predictor, const std::vector<int> &images_shape,
   auto in_tensor1 = predictor->GetInputHandle(input_names[1]);
   in_tensor1->Reshape(k_shape);
   in_tensor1->CopyFromCpu(k_data.data());
+
+  if (with_timestamp) {
+    auto in_tensor2 = predictor->GetInputHandle(input_names[2]);
+    in_tensor2->Reshape(timestamp_shape);
+    in_tensor2->CopyFromCpu(timestamp_data.data());
+  }
 
   for (int i = 0; i < 1; i++) {
     auto start_time = std::chrono::steady_clock::now();
@@ -217,14 +227,22 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  std::vector<float> input_data(6 * 3 * 320 * 800, 0.0f);
+  int num_cams = 6;
+
+  if (FLAGS_with_timestamp) {
+    num_cams = 12;
+  }
+
+  std::vector<float> input_data(num_cams * 3 * 320 * 800, 0.0f);
 
   std::vector<cv::Mat> imgs;
+  auto filenames = split_by_comma(FLAGS_image_files);
+
   for (auto filename : filenames) {
     cv::Mat img = imread(filename, cv::IMREAD_COLOR);
     imgs.push_back(img);
   }
-
+  std::cout << "imgs size: " << imgs.size() << std::endl;
   std::vector<cv::Mat> cropped_imgs;
 
   std::vector<float> mean{103.530, 116.280, 123.675};
@@ -238,16 +256,17 @@ int main(int argc, char *argv[]) {
     cropped_imgs.push_back(crop_img);
   }
 
-  for (int i = 0; i < 6; i++) {
+  for (int i = 0; i < num_cams; i++) {
     mat_to_vec(&cropped_imgs[i], input_data.data() + i * (3 * 320 * 800));
   }
 
-  std::vector<int> images_shape = {1, 6, 3, 320, 800};
-  std::vector<int> k_shape = {1, 6, 4, 4};
-  std::vector<float> k_data{-1.40307297e-03,
-                            9.07780395e-06,
-                            4.84838307e-01,
-                            -5.43047376e-02,
+  std::vector<int> images_shape = {1, num_cams, 3, 320, 800};
+  std::vector<int> k_shape = {1, num_cams, 4, 4};
+  std::vector<int> timestamp_shape = {1, num_cams};
+
+  /* clang-format off */
+  std::vector<float> k_data{
+    -1.40307297e-03, 9.07780395e-06, 4.84838307e-01, -5.43047376e-02,
                             -1.40780103e-04,
                             1.25770375e-05,
                             1.04126692e+00,
@@ -342,12 +361,29 @@ int main(int argc, char *argv[]) {
                             1.0000000e+00
 
   };
+  /* clang-format on */
+  if (FLAGS_with_timestamp) {
+    for (int i = 0; i < num_cams / 2 * 4 * 4; ++i) {
+      k_data.push_back(k_data[i]);
+    }
+  }
+
+  std::vector<float> timestamp(num_cams, 0.0f);
+
+  // petrv2 inference, this is a fake input, you need to input real timestamp
+  // timestampe will only affect Velocity predict.
+  if (FLAGS_with_timestamp) {
+    for (int i = num_cams / 2; i < num_cams; ++i) {
+      timestamp[i] = 1.0f;
+    }
+  }
 
   std::vector<float> boxes;
   std::vector<int64_t> labels;
   std::vector<float> scores;
-  run(predictor.get(), images_shape, input_data, k_shape, k_data, &boxes,
-      &scores, &labels);
+  run(predictor.get(), images_shape, input_data, k_shape, k_data,
+      timestamp_shape, timestamp, &boxes, &scores, &labels,
+      FLAGS_with_timestamp);
   // boxes 9个数据
   std::cout << "boxes"
             << "\n";

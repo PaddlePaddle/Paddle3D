@@ -1,5 +1,7 @@
+# This is a training configuration for a simplified version of KITTI. It is just for a quick start,
+# all the hyperparameters are not strictly tuned, so the training result is not optimal
 batch_size: 4
-epochs: 160
+epochs: 20
 train_dataset:
   type: KittiPCDataset
   dataset_root: datasets/KITTI

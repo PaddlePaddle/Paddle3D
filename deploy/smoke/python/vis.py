@@ -119,7 +119,7 @@ if __name__ == "__main__":
     img, ori_img_size, output_size = get_img(args.image)
     ratio = get_ratio(ori_img_size, output_size)
 
-    results = run(pred, [img, K, ratio])
+    results = run(pred, img, K, ratio)
 
     total_pred = results[0]
 

@@ -789,7 +789,7 @@ class PETRHead(nn.Layer):
 
         return self.dn_weight * loss_cls, self.dn_weight * loss_bbox
 
-    def export_forward(self, mlvl_feats, img_metas):
+    def export_forward(self, mlvl_feats, img_metas, time_stamp=None):
         """Forward function.
         Args:
             mlvl_feats (tuple[Tensor]): Features from the upstream
@@ -867,12 +867,7 @@ class PETRHead(nn.Layer):
         outs_dec = nan_to_num(outs_dec)
 
         if self.with_time:
-            time_stamps = []
-            for img_meta in img_metas:
-                time_stamps.append(np.asarray(img_meta['timestamp']))
-            time_stamp = x.new_tensor(time_stamps)
             time_stamp = time_stamp.reshape([batch_size, -1, 6])
-
             mean_time_stamp = (
                 time_stamp[:, 1, :] - time_stamp[:, 0, :]).mean(-1)
 
