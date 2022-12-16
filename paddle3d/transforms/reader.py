@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from pathlib import Path
 from typing import List, Union
 
@@ -170,9 +171,14 @@ class RemoveCameraInvisiblePointsKITTI(TransformABC):
 
         im_path = (Path(sample.path).parents[1] / "image_2" / Path(
             sample.path).stem).with_suffix(".png")
-        im_shape = np.array(cv2.imread(str(im_path)).shape[:2], dtype=np.int32)
-        im_bbox = [0, 0, im_shape[1], im_shape[0]]
 
+        if os.path.exists(im_path):
+            im_shape = cv2.imread(str(im_path)).shape[:2]
+        else:
+            im_shape = (375, 1242)
+        im_shape = np.array(im_shape, dtype=np.int32)
+
+        im_bbox = [0, 0, im_shape[1], im_shape[0]]
         frustum = F.get_frustum(im_bbox, C)
         frustum = (Rinv @ (frustum - T).T).T
         frustum = kitti_utils.coord_camera_to_velodyne(frustum, calibs)
@@ -204,7 +210,12 @@ class RemoveCameraInvisiblePointsKITTIV2(TransformABC):
 
         im_path = (Path(sample.path).parents[1] / "image_2" / Path(
             sample.path).stem).with_suffix(".png")
-        img_shape = np.array(cv2.imread(str(im_path)).shape[:2], dtype=np.int32)
+
+        if os.path.exists(im_path):
+            im_shape = cv2.imread(str(im_path)).shape[:2]
+        else:
+            im_shape = (375, 1242)
+        im_shape = np.array(im_shape, dtype=np.int32)
 
         pts = sample.data[:, 0:3]
         # lidar to rect
@@ -214,9 +225,9 @@ class RemoveCameraInvisiblePointsKITTIV2(TransformABC):
         # rect to img
         pts_img, pts_rect_depth = self.rect_to_img(pts_rect)
         val_flag_1 = np.logical_and(pts_img[:, 0] >= 0,
-                                    pts_img[:, 0] < img_shape[1])
+                                    pts_img[:, 0] < im_shape[1])
         val_flag_2 = np.logical_and(pts_img[:, 1] >= 0,
-                                    pts_img[:, 1] < img_shape[0])
+                                    pts_img[:, 1] < im_shape[0])
         val_flag_merge = np.logical_and(val_flag_1, val_flag_2)
         pts_valid_flag = np.logical_and(val_flag_merge, pts_rect_depth >= 0)
 
