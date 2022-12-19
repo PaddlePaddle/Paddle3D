@@ -1,11 +1,19 @@
 batch_size: 1
 epochs: 24
 
+amp_cfg:
+  # only enable backbone and fpn
+  enable: False
+  level: O1
+  scaler:
+    init_loss_scaling: 512.0
+
 train_dataset:
   type: NuscenesMVDataset
   dataset_root: data/nuscenes/
   ann_file: data/nuscenes/mmdet3d_nuscenes_30f_infos_train.pkl
   mode: train
+  use_valid_flag: True
   class_names: [
             'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
             'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
@@ -55,7 +63,7 @@ train_dataset:
       meta_keys: ['filename', 'ori_shape', 'img_shape', 'lidar2img',
                   'intrinsics', 'extrinsics', 'pad_shape',
                   'scale_factor', 'flip', 'box_type_3d', 'img_norm_cfg', 'sample_idx',
-                  'timestamp']
+                  'timestamp', 'gt_bboxes_3d','gt_labels_3d']
 
 val_dataset:
   type: NuscenesMVDataset
@@ -106,11 +114,9 @@ optimizer:
 lr_scheduler:
   type: LinearWarmup
   learning_rate:
-    # type: CosineAnnealingDecay
-    type: CosineAnnealingDecayByEpoch
+    type: CosineAnnealingDecay
     learning_rate: 0.0002
-    # T_max: 84408 # 3517 * 24
-    T_max: 24
+    T_max: 84408 # 3517 * 24
     eta_min: 0.0000002
   warmup_steps: 500
   start_lr: 0.00006666666
@@ -143,12 +149,17 @@ model:
     with_fpe: true
     with_time: true
     with_multi: true
+    with_denoise: true
+    scalar: 10 ##noise groups
+    noise_scale: 1.0
+    dn_weight: 1.0 ##dn loss weight
+    split: 0.75 ###positive rate
     position_range: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
     code_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     normedlinear: False
     transformer:
-      type: PETRTransformer
-      decoder_embed_dims: 256
+      type: PETRDNTransformer
+      embed_dims: 256
       decoder:
         type: PETRTransformerDecoder
         return_intermediate: True

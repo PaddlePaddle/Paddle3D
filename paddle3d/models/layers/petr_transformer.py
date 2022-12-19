@@ -122,17 +122,13 @@ class PETRTransformer(nn.Layer):
         return out_dec, memory
 
 
+@manager.MODELS.add_component
 class PETRDNTransformer(nn.Layer):
     """Implements the DETR transformer.
     Following the official DETR implementation, this module copy-paste
     """
 
-    def __init__(self,
-                 embed_dims,
-                 encoder=None,
-                 decoder=None,
-                 init_cfg=None,
-                 cross=False):
+    def __init__(self, embed_dims, encoder=None, decoder=None, cross=False):
         super(PETRDNTransformer, self).__init__()
 
         self.encoder = encoder
@@ -140,12 +136,15 @@ class PETRDNTransformer(nn.Layer):
         self.embed_dims = embed_dims
         self.cross = cross
 
-    # def init_weights(self):
-    #     # follow the official DETR to init parameters
-    #     for m in self.modules():
-    #         if hasattr(m, 'weight') and m.weight.dim() > 1:
-    #             xavier_init(m, distribution='uniform')
-    #     self._is_init = True
+    def init_weights(self):
+        # follow the official DETR to init parameters
+        for m in self.sublayers():
+            if hasattr(m, 'weight') and m.weight.dim() > 1:
+                reverse = False
+                if isinstance(m, nn.Linear):
+                    reverse = True
+
+                xavier_uniform_init(m.weight, reverse=reverse)
 
     def forward(self,
                 x,
@@ -157,13 +156,13 @@ class PETRDNTransformer(nn.Layer):
         """Forward function for `Transformer`.
         """
         bs, n, c, h, w = x.shape
-        memory = x.permute(1, 3, 4, 0, 2).reshape(
-            -1, bs, c)  # [bs, n, c, h, w] -> [n*h*w, bs, c]
-        pos_embed = pos_embed.permute(1, 3, 4, 0, 2).reshape(
-            -1, bs, c)  # [bs, n, c, h, w] -> [n*h*w, bs, c]
+        memory = x.transpose([1, 3, 4, 0, 2]).reshape(
+            [-1, bs, c])  # [bs, n, c, h, w] -> [n*h*w, bs, c]
+        pos_embed = pos_embed.transpose([1, 3, 4, 0, 2]).reshape(
+            [-1, bs, c])  # [bs, n, c, h, w] -> [n*h*w, bs, c]
         query_embed = query_embed.transpose(
-            0, 1)  # [num_query, dim] -> [num_query, bs, dim]
-        mask = mask.view(bs, -1)  # [bs, n, h, w] -> [bs, n*h*w]
+            [1, 0, 2])  # [num_query, dim] -> [num_query, bs, dim]
+        mask = mask.reshape([bs, -1])  # [bs, n, h, w] -> [bs, n*h*w]
         target = paddle.zeros_like(query_embed)
 
         # out_dec: [num_layers, num_query, bs, dim]
@@ -177,7 +176,7 @@ class PETRDNTransformer(nn.Layer):
             attn_masks=[attn_masks, None],
             reg_branch=reg_branch,
         )
-        out_dec = out_dec.transpose(1, 2)
+        out_dec = out_dec.transpose([0, 2, 1, 3])
         memory = memory.reshape([n, h, w, bs, c]).transpose([3, 0, 4, 1, 2])
         return out_dec, memory
 
@@ -347,6 +346,8 @@ class PETRMultiheadAttention(nn.Layer):
             value = value.transpose([1, 0, 2])
 
         if key_padding_mask is None:
+            if attn_mask is not None:
+                attn_mask = ~attn_mask
             out = self.attn(
                 query=query,
                 key=key,
@@ -376,7 +377,7 @@ class PETRMultiheadAttention(nn.Layer):
 class PETRTransformerEncoder(TransformerLayerSequence):
     """TransformerEncoder of DETR.
     Args:
-        post_norm (nn.Layer): normalization layer. Default：
+        post_norm (nn.Layer): normalization layer. Default:
             `LN`. Only used when `self.pre_norm` is `True`
     """
 
