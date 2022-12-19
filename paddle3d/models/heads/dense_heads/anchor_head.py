@@ -187,7 +187,7 @@ class AnchorHeadSingle(nn.Layer):
             targets_dict = self.target_assigner.assign_targets(
                 self.anchors_list, data_dict['gt_boxes'])
             self.forward_ret_dict.update(targets_dict)
-        else:
+        if not self.training or self.predict_boxes_when_training:
             if getattr(self, 'in_export_mode', False):
                 batch_size = 1
             else:
