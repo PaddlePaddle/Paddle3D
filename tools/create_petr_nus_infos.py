@@ -43,37 +43,33 @@ SENSORS = [
     'CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_BACK_RIGHT', 'CAM_BACK',
     'CAM_BACK_LEFT', 'CAM_FRONT_LEFT'
 ]
-# info_prefix = 'train'
-# # info_prefix = 'val'
-# # info_prefix = 'test'
-# # data_root = "/data/Dataset/nuScenes/"
-# num_prev = 5  ###nummber of previous key frames
-# num_sweep = 5  ###nummber of sweep frames between two key frame
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Create infos for kitti dataset.')
-    parser.add_argument('--dataset_root',
-                        default='data/nuscenes',
-                        help='Path of the dataset.',
-                        type=str)
-    parser.add_argument('--save_dir',
-                        default='data/nuscenes',
-                        help='Path to save the generated database.',
-                        type=str)
-    parser.add_argument('--mode',
-                        default='train',
-                        help='mode to generate dataset.',
-                        type=str)
-    parser.add_argument('--num_prev',
-                        default=5,
-                        help='nummber of previous key frames.',
-                        type=int)
-    parser.add_argument('--num_sweep',
-                        default=5,
-                        help='nummber of sweep frames between two key frame.',
-                        type=int)
+    parser.add_argument(
+        '--dataset_root',
+        default='data/nuscenes',
+        help='Path of the dataset.',
+        type=str)
+    parser.add_argument(
+        '--save_dir',
+        default='data/nuscenes',
+        help='Path to save the generated database.',
+        type=str)
+    parser.add_argument(
+        '--mode', default='train', help='mode to generate dataset.', type=str)
+    parser.add_argument(
+        '--num_prev',
+        default=5,
+        help='nummber of previous key frames.',
+        type=int)
+    parser.add_argument(
+        '--num_sweep',
+        default=5,
+        help='nummber of sweep frames between two key frame.',
+        type=int)
     return parser.parse_args()
 
 
@@ -91,19 +87,21 @@ def create_petr_nuscenes_infos(dataset, save_path, workers=4):
     logger.info("---------------Start to generate data infos---------------")
 
     dataset.set_split(train_split)
-    kitti_infos_train = dataset.get_infos(num_workers=workers,
-                                          has_label=True,
-                                          count_inside_pts=True,
-                                          mode='train')
+    kitti_infos_train = dataset.get_infos(
+        num_workers=workers,
+        has_label=True,
+        count_inside_pts=True,
+        mode='train')
     with open(train_filename, 'wb') as f:
         pickle.dump(kitti_infos_train, f)
     logger.info("Kitti info train file is saved to %s" % train_filename)
 
     dataset.set_split(val_split)
-    kitti_infos_val = dataset.get_infos(num_workers=workers,
-                                        has_label=True,
-                                        count_inside_pts=True,
-                                        mode='train')
+    kitti_infos_val = dataset.get_infos(
+        num_workers=workers,
+        has_label=True,
+        count_inside_pts=True,
+        mode='train')
     with open(val_filename, 'wb') as f:
         pickle.dump(kitti_infos_val, f)
     logger.info("Kitti info val file is saved to %s" % val_filename)
@@ -113,10 +111,11 @@ def create_petr_nuscenes_infos(dataset, save_path, workers=4):
     logger.info("Kitti info trainval file is saved to %s" % trainval_filename)
 
     dataset.set_split('test')
-    kitti_infos_test = dataset.get_infos(num_workers=workers,
-                                         has_label=False,
-                                         count_inside_pts=False,
-                                         mode='test')
+    kitti_infos_test = dataset.get_infos(
+        num_workers=workers,
+        has_label=False,
+        count_inside_pts=False,
+        mode='test')
     with open(test_filename, 'wb') as f:
         pickle.dump(kitti_infos_test, f)
     logger.info("Kitti info test file is saved to %s" % test_filename)
@@ -152,8 +151,8 @@ def add_frame(sample_data, e2g_t, l2e_t, l2e_r_mat, e2g_r_mat, data_root,
     e2g_r_s_mat = Quaternion(e2g_r_s).rotation_matrix
     R = (l2e_r_s_mat.T @ e2g_r_s_mat.T) @ (
         np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
-    T = (l2e_t_s @ e2g_r_s_mat.T +
-         e2g_t_s) @ (np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
+    T = (l2e_t_s @ e2g_r_s_mat.T + e2g_t_s) @ (
+        np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
     T -= e2g_t @ (np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T
                   ) + l2e_t @ np.linalg.inv(l2e_r_mat).T
     sweep_cam['sensor2lidar_rotation'] = R.T  # points @ R.T + T
@@ -248,8 +247,8 @@ def obtain_sensor2top(nusc,
     e2g_r_s_mat = Quaternion(e2g_r_s).rotation_matrix
     R = (l2e_r_s_mat.T @ e2g_r_s_mat.T) @ (
         np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
-    T = (l2e_t_s @ e2g_r_s_mat.T +
-         e2g_t_s) @ (np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
+    T = (l2e_t_s @ e2g_r_s_mat.T + e2g_t_s) @ (
+        np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
     T -= e2g_t @ (np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T
                   ) + l2e_t @ np.linalg.inv(l2e_r_mat).T
     sweep['sensor2lidar_rotation'] = R.T  # points @ R.T + T
@@ -417,8 +416,8 @@ def build_petr_nuscenes_data(dataset_root,
     if is_test:
         print('test scene: {}'.format(len(train_scenes)))
     else:
-        print('train scene: {}, val scene: {}'.format(len(train_scenes),
-                                                      len(val_scenes)))
+        print('train scene: {}, val scene: {}'.format(
+            len(train_scenes), len(val_scenes)))
     train_nusc_infos, val_nusc_infos = fill_trainval_infos(
         nusc, train_scenes, val_scenes, is_test, max_sweeps=max_sweeps)
 
@@ -429,8 +428,8 @@ def build_petr_nuscenes_data(dataset_root,
         data = dict(infos=train_nusc_infos, metadata=metadata)
         return [data]
     else:
-        print('train sample: {}, val sample: {}'.format(len(train_nusc_infos),
-                                                        len(val_nusc_infos)))
+        print('train sample: {}, val sample: {}'.format(
+            len(train_nusc_infos), len(val_nusc_infos)))
         train_data = dict(infos=train_nusc_infos, metadata=metadata)
         val_data = dict(infos=val_nusc_infos, metadata=metadata)
 
