@@ -21,6 +21,7 @@ import paddle
 import paddle.nn as nn
 
 from paddle3d.slim.quant import QAT
+from paddle3d.utils.logger import logger
 
 
 def add_export_args(*args, **kwargs):
@@ -100,15 +101,6 @@ class Base3DModel(abc.ABC, nn.Layer):
     def save_name(self):
         return self.__class__.__name__.lower()
 
-    def export(self, save_dir: str, name: Optional[str] = None):
-        name = name or self.save_name
-        with self.export_guard():
-            paddle.jit.to_static(self, input_spec=self.input_spec)
-            paddle.jit.save(
-                self,
-                os.path.join(save_dir, name),
-                input_spec=[self.input_spec])
-
     @property
     def is_quant_model(self) -> bool:
         return self._quant
@@ -117,6 +109,20 @@ class Base3DModel(abc.ABC, nn.Layer):
         """ Slim the model and update the cfg params
         """
         self._quant = True
-        slim = QAT(quant_config=slim_config)
+
+        logger.info("Build QAT model.")
+        self.qat = QAT(quant_config=slim_config)
         # slim the model
-        slim(self)
+        self.qat(self)
+
+    def export(self, save_dir: str, name: Optional[str] = None, **kwargs):
+        name = name or self.save_name
+        with self.export_guard():
+            paddle.jit.to_static(self, input_spec=self.input_spec)
+            path = os.path.join(save_dir, name)
+
+            if self.is_quant_model:
+                self.qat.save_quantized_model(
+                    self, path, input_spec=[self.input_spec], **kwargs)
+            else:
+                paddle.jit.save(self, path, input_spec=[self.input_spec])
