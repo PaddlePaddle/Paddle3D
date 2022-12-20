@@ -53,6 +53,12 @@ def parse_args():
         "VisualDL graph save dir. Saves to a temporary directory by default",
         type=str,
         default=None)
+    parser.add_argument(
+        '--slim_config',
+        dest='slim_config',
+        help='Config for slim model.',
+        default=None,
+        type=str)
 
     return parser.parse_args()
 
@@ -71,6 +77,9 @@ def main(args):
 
     model = cfg.model
     model.eval()
+
+    if args.slim_config:
+        model.build_slim_model(args.slim_config)
 
     with generate_dir(args.save_dir) as _dir:
         with visualdl.LogWriter(logdir=_dir) as writer:

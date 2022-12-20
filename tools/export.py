@@ -59,6 +59,12 @@ def parse_normal_args():
         help='The name of inference params file.',
         type=str,
         default=None)
+    parser.add_argument(
+        '--slim_config',
+        dest='slim_config',
+        help='Config for slim model.',
+        default=None,
+        type=str)
 
     return parser.parse_known_args()
 
@@ -136,6 +142,9 @@ def main(args, rest_args):
 
     if args.model is not None:
         load_pretrained_model(model, args.model)
+
+    if args.slim_config:
+        model.build_slim_model(args.slim_config)
 
     arg_dict = {} if not hasattr(model.export,
                                  'arg_dict') else model.export.arg_dict

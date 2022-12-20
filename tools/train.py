@@ -111,6 +111,12 @@ def parse_args():
         help='Set the random seed of paddle during training.',
         default=None,
         type=int)
+    parser.add_argument(
+        '--slim_config',
+        dest='slim_config',
+        help='Config for slim model.',
+        default=None,
+        type=str)
 
     return parser.parse_args()
 
@@ -179,6 +185,9 @@ def main(args):
 
     if args.model is not None:
         load_pretrained_model(cfg.model, args.model)
+
+    if args.slim_config:
+        cfg.model.build_slim_model(args.slim_config)
 
     trainer = Trainer(**dic)
     trainer.train()

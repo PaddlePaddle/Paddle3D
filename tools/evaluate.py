@@ -50,6 +50,12 @@ def parse_args():
         help='Num workers for data loader',
         type=int,
         default=2)
+    parser.add_argument(
+        '--slim_config',
+        dest='slim_config',
+        help='Config for slim model.',
+        default=None,
+        type=str)
 
     return parser.parse_args()
 
@@ -94,6 +100,9 @@ def main(args):
         dic['resume'] = False
     else:
         dic['resume'] = True
+
+    if args.slim_config:
+        cfg.model.build_slim_model(args.slim_config)
 
     trainer = Trainer(**dic)
     trainer.evaluate()
