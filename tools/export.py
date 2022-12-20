@@ -65,8 +65,7 @@ def parse_normal_args():
         dest='quant',
         help=
         'Whether to quantize the model based on the default qat configuration.',
-        default=False,
-        type=bool)
+        action='store_true')
     parser.add_argument(
         '--quant_config',
         dest='quant_config',
