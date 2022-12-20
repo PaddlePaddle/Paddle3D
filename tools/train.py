@@ -200,6 +200,8 @@ def main(args):
             quant_config = get_default_qat_config()
 
         cfg.model.build_slim_model(quant_config)
+        dic['checkpoint']['save_dir'] = os.path.join(
+            dic['checkpoint']['save_dir'], 'qat')
 
     trainer = Trainer(**dic)
     trainer.train()

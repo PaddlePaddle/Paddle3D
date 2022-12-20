@@ -101,13 +101,6 @@ def main(args):
         }
     })
 
-    if args.model is not None:
-        load_pretrained_model(cfg.model, args.model)
-        dic['checkpoint'] = None
-        dic['resume'] = False
-    else:
-        dic['resume'] = True
-
     if args.quant or args.quant_config:
         if args.quant_config:
             quant_config = get_qat_config(args.quant_config)
@@ -115,6 +108,13 @@ def main(args):
             quant_config = get_default_qat_config()
 
         cfg.model.build_slim_model(quant_config)
+
+    if args.model is not None:
+        load_pretrained_model(cfg.model, args.model)
+        dic['checkpoint'] = None
+        dic['resume'] = False
+    else:
+        dic['resume'] = True
 
     trainer = Trainer(**dic)
     trainer.evaluate()
