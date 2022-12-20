@@ -21,6 +21,7 @@ import visualdl
 import visualdl.server.app as vdlapp
 
 from paddle3d.apis.config import Config
+from paddle3d.slim import get_default_qat_config, get_qat_config
 from paddle3d.utils.common import generate_tempdir
 
 
@@ -54,9 +55,16 @@ def parse_args():
         type=str,
         default=None)
     parser.add_argument(
-        '--slim_config',
-        dest='slim_config',
-        help='Config for slim model.',
+        '--quant',
+        dest='quant',
+        help=
+        'Whether to quantize the model based on the default qat configuration.',
+        default=False,
+        type=bool)
+    parser.add_argument(
+        '--quant_config',
+        dest='quant_config',
+        help='Config for quant model.',
         default=None,
         type=str)
 
@@ -78,8 +86,13 @@ def main(args):
     model = cfg.model
     model.eval()
 
-    if args.slim_config:
-        model.build_slim_model(args.slim_config)
+    if args.quant or args.quant_config:
+        if args.quant_config:
+            quant_config = get_qat_config(args.quant_config)
+        else:
+            quant_config = get_default_qat_config()
+
+        cfg.model.build_slim_model(quant_config)
 
     with generate_dir(args.save_dir) as _dir:
         with visualdl.LogWriter(logdir=_dir) as writer:

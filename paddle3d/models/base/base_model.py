@@ -13,12 +13,10 @@
 # limitations under the License.
 
 import abc
-import codecs
 import contextlib
 import os
 from typing import List, Optional
 
-import yaml
 import paddle
 import paddle.nn as nn
 
@@ -115,20 +113,10 @@ class Base3DModel(abc.ABC, nn.Layer):
     def is_quant_model(self) -> bool:
         return self._quant
 
-    def build_slim_model(self, slim_cfg_path: str):
+    def build_slim_model(self, slim_config: str):
         """ Slim the model and update the cfg params
         """
         self._quant = True
-
-        with codecs.open(slim_cfg_path, 'r', 'utf-8') as f:
-            slim_dic = yaml.load(f, Loader=yaml.FullLoader)
-            slim_type = slim_dic['slim_type']
-            if slim_type == "QAT":
-                # create QAT
-                quant_config = slim_dic["slim_config"]['quant_config']
-                slim = QAT(quant_config=quant_config)
-                # slim the model
-                slim(self)
-
-            else:
-                raise ValueError("slim method `{}` is not supported yet")
+        slim = QAT(quant_config=slim_config)
+        # slim the model
+        slim(self)
