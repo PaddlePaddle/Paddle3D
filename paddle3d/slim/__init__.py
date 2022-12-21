@@ -16,27 +16,24 @@ import codecs
 import yaml
 
 
-def get_default_qat_config() -> dict:
-    return {
-        'weight_quantize_type': 'channel_wise_abs_max',
-        'activation_quantize_type': 'moving_average_abs_max',
-        'weight_bits': 8,
-        'activation_bits': 8,
-        'dtype': 'int8',
-        'window_size': 10000,
-        'moving_rate': 0.9,
-        'quantizable_layer_type': ['Conv2D', 'Linear']
-    }
-
-
 def get_qat_config(qat_config_path: str) -> dict:
     with codecs.open(qat_config_path, 'r', 'utf-8') as f:
         slim_dic = yaml.load(f, Loader=yaml.FullLoader)
 
     slim_type = slim_dic['slim_type']
-    if slim_type == "QAT":
-        quant_config = slim_dic["slim_config"]['quant_config']
-    else:
+    if slim_type != "QAT":
         raise ValueError("slim method `{}` is not supported yet")
 
-    return quant_config
+    return slim_dic
+
+
+def update_dic(dic, another_dic):
+    """Recursive update dic by another_dic
+    """
+    for k, _ in another_dic.items():
+        if (k in dic and isinstance(dic[k], dict)) and isinstance(
+                another_dic[k], dict):
+            update_dic(dic[k], another_dic[k])
+        else:
+            dic[k] = another_dic[k]
+    return dic

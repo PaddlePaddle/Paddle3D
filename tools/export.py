@@ -20,7 +20,7 @@ import yaml
 
 from paddle3d.apis.config import Config
 from paddle3d.models.base import BaseDetectionModel
-from paddle3d.slim import get_default_qat_config, get_qat_config
+from paddle3d.slim import get_qat_config
 from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
 
@@ -60,12 +60,6 @@ def parse_normal_args():
         help='The name of inference params file.',
         type=str,
         default=None)
-    parser.add_argument(
-        '--quant',
-        dest='quant',
-        help=
-        'Whether to quantize the model based on the default qat configuration.',
-        action='store_true')
     parser.add_argument(
         '--quant_config',
         dest='quant_config',
@@ -150,13 +144,9 @@ def main(args, rest_args):
     if args.model is not None:
         load_pretrained_model(model, args.model)
 
-    if args.quant or args.quant_config:
-        if args.quant_config:
-            quant_config = get_qat_config(args.quant_config)
-        else:
-            quant_config = get_default_qat_config()
-
-        cfg.model.build_slim_model(quant_config)
+    if args.quant_config:
+        quant_config = get_qat_config(args.quant_config)
+        cfg.model.build_slim_model(quant_config['quant_config'])
 
     arg_dict = {} if not hasattr(model.export,
                                  'arg_dict') else model.export.arg_dict
