@@ -85,7 +85,7 @@ def main(args):
 
     with generate_dir(args.save_dir) as _dir:
         with visualdl.LogWriter(logdir=_dir) as writer:
-            with model.exporting():
+            with model.export_guard():
 
                 writer.add_graph(model, model.input_spec)
                 pid = vdlapp.run(
