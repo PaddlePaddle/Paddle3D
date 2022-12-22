@@ -1,6 +1,6 @@
 _base_: '../_base_/kitti_mono.yml'
 
-batch_size: 8
+batch_size: 8  #total bs 32
 iters: 50000
 
 train_dataset:
@@ -36,7 +36,7 @@ val_dataset:
       to_chw: False
       to_bgr: True
     - type: ResizeShortestEdge
-      short_edge_length: 384
+      short_edge_length: [384]
       max_size: 10000
       sample_style: choice
     - type: ToVisionBasedBox

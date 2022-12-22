@@ -24,7 +24,7 @@ from paddle3d.apis import manager
 from paddle3d.utils.logger import logger
 from paddle3d.utils.transform import matrix_to_quaternion, quaternion_to_matrix
 
-from scipy import io
+__all__ = ["FCOS3DHead", "FCOS3DLoss", "FCOS3DInference"]
 
 PI = 3.14159265358979323846
 EPS = 1e-7
@@ -217,7 +217,6 @@ class FCOS3DHead(nn.Layer):
         dense_depth = None
         for l, features in enumerate(x):
             box3d_tower_out = self.box3d_tower(features)
-            io.savemat('/workspace/dd3d/data_compare/box3d_tower_out'+str(l)+'.mat',{'data':box3d_tower_out.numpy()})
 
             _l = l if self.use_per_level_predictors else 0
 

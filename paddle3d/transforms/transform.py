@@ -17,6 +17,7 @@ from typing import Any, List, Tuple, Union
 import numpy as np
 from PIL import Image
 
+import paddle
 import paddle.nn as nn
 from paddle3d.apis import manager
 from paddle3d.geometries.bbox import BBoxes3D, CoordMode, points_in_convex_polygon_3d_jit

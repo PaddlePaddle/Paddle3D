@@ -21,7 +21,7 @@ import paddle.nn.functional as F
 from paddle3d.models.layers import FrozenBatchNorm2d, param_init
 from paddle3d.apis import manager
 
-__all__ = ["FPN", "LastLevelP6P7"]
+__all__ = ["FPN", "LastLevelP6P7", "LastLevelP6"]
 
 @manager.NECKS.add_component
 class FPN(nn.Layer):

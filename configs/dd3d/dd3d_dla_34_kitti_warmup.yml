@@ -1,6 +1,6 @@
 _base_: '../_base_/kitti_mono.yml'
 
-batch_size: 8
+batch_size: 8 #total bs 32
 iters: 4000
 
 train_dataset:
@@ -27,7 +27,6 @@ train_dataset:
       intensity_max: 1.2
   class_names: ["Car", "Pedestrian", "Cyclist", "Van", "Person_sitting"]
   class_map: {'Car': 0, 'Pedestrian': 1, 'Cyclist': 2, 'Van': 3, 'Person_sitting': 4}
-  # class_balanced_sampling: True
 
 val_dataset:
   transforms:
@@ -58,9 +57,7 @@ lr_scheduler:
 
 model:
   type: DD3D
-  pretrained: pretrained/DLA_34_model_final.pdparams
-  # pretrained: pretrained/depth_pretrained_dla34_final.pdparams
-  # pretrained: pretrained/torch_init.pdparams
+  pretrained: https://paddle3d.bj.bcebos.com/models/dd3d/dd3d_dla_34_kitti/depth.pdparams
   backbone:
     type: DLABase34
     norm_type: 'frozen_bn'

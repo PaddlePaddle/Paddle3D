@@ -23,6 +23,8 @@ from paddle3d.models.losses import IOULoss, sigmoid_focal_loss
 from paddle3d.models.layers import LayerListDial, Scale, FrozenBatchNorm2d, param_init
 from paddle3d.apis import manager
 
+__all__ = ["FCOS2DHead", "FCOS2DLoss", "FCOS2DInference"]
+
 @manager.HEADS.add_component
 class FCOS2DHead(nn.Layer):
     """
