@@ -54,7 +54,6 @@ class FrozenBatchNorm2d(nn.Layer):
 
     This code is based on https://github.com/facebookresearch/detectron2/blob/32b61e64c76118b2e9fc2237f283a8e9c938bd16/detectron2/layers/batch_norm.py#L13
     """
-
     def __init__(self, num_features, eps=1e-5):
         super().__init__()
         self.num_features = num_features
@@ -88,4 +87,5 @@ class FrozenBatchNorm2d(nn.Layer):
             )
 
     def __repr__(self):
-        return "FrozenBatchNorm2d(num_features={}, eps={})".format(self.num_features, self.eps)
+        return "FrozenBatchNorm2d(num_features={}, eps={})".format(
+            self.num_features, self.eps)

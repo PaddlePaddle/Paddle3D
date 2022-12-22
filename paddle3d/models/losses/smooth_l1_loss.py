@@ -44,7 +44,7 @@ def smooth_l1_loss(input, target, beta, reduction="none"):
         loss = paddle.abs(input - target)
     else:
         n = paddle.abs(input - target)
-        loss = paddle.where(n < beta, 0.5 * n ** 2, n - 0.5 * beta)
+        loss = paddle.where(n < beta, 0.5 * n**2, n - 0.5 * beta)
     if reduction == "mean":
         loss = loss.mean()
     elif reduction == "sum":

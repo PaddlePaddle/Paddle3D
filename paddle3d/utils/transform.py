@@ -15,6 +15,7 @@
 import paddle
 import paddle.nn.functional as F
 
+
 def convert_points_to_homogeneous(points):
     """Function that converts points from Euclidean to homogeneous space.
 
@@ -29,8 +30,10 @@ def convert_points_to_homogeneous(points):
         data_format = "NCL"
     elif len(list(paddle.shape(points))) == 5:
         data_format = "NCDHW"
-    return paddle.nn.functional.pad(
-        points, [0, 1], "constant", 1.0, data_format=data_format)
+    return paddle.nn.functional.pad(points, [0, 1],
+                                    "constant",
+                                    1.0,
+                                    data_format=data_format)
 
 
 def convert_points_from_homogeneous_3d(points, eps=1e-8):
@@ -243,4 +246,3 @@ def matrix_to_quaternion(matrix):
     o2 = _copysign(y, matrix[..., 0, 2] - matrix[..., 2, 0])
     o3 = _copysign(z, matrix[..., 1, 0] - matrix[..., 0, 1])
     return paddle.stack((o0, o1, o2, o3), -1)
-

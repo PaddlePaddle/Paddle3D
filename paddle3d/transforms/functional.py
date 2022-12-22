@@ -368,7 +368,8 @@ def random_depth_image_horizontal(data_dict=None):
     return data_dict
 
 
-def blend_transform(img: np.ndarray, src_image: np.ndarray, src_weight: float, dst_weight: float):
+def blend_transform(img: np.ndarray, src_image: np.ndarray, src_weight: float,
+                    dst_weight: float):
     """
     Transforms pixel colors with PIL enhance functions.
     """
@@ -414,4 +415,3 @@ def sample_point(sample, num_points):
     sample.data = sample.data[choice]
 
     return sample
-
