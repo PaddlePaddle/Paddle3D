@@ -15,16 +15,18 @@
 import paddle
 from paddle import nn
 
+
 class Scale(nn.Layer):
-    """ 
+    """
     This code is based on https://github.com/aim-uofa/AdelaiDet/blob/master/adet/modeling/fcos/fcos.py#L20
     """
     def __init__(self, init_value=1.0):
         super(Scale, self).__init__()
         init_value = paddle.to_tensor([init_value])
-        self.scale = paddle.create_parameter(shape=init_value.shape,
-                        dtype='float32',
-                        default_initializer=nn.initializer.Assign(init_value))
+        self.scale = paddle.create_parameter(
+            shape=init_value.shape,
+            dtype='float32',
+            default_initializer=nn.initializer.Assign(init_value))
 
     def forward(self, input):
         return input * self.scale
@@ -37,16 +39,17 @@ class Offset(nn.Layer):
     def __init__(self, init_value=0.):
         super(Offset, self).__init__()
         init_value = paddle.to_tensor([init_value])
-        self.bias = paddle.create_parameter(shape=init_value.shape,
-                        dtype='float32',
-                        default_initializer=nn.initializer.Assign(init_value))
+        self.bias = paddle.create_parameter(
+            shape=init_value.shape,
+            dtype='float32',
+            default_initializer=nn.initializer.Assign(init_value))
 
     def forward(self, input):
         return input + self.bias
 
 
 class LayerListDial(nn.LayerList):
-    """ 
+    """
     This code is based on https://github.com/aim-uofa/AdelaiDet/blob/master/adet/modeling/fcos/fcos.py#L29
     """
     def __init__(self, layers=None):

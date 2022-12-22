@@ -22,15 +22,11 @@ import paddle
 class Transform3d:
     """
     A Transform3d object encapsulates a batch of N 3D transformations, and knows
-    how to transform points and normal vectors. 
+    how to transform points and normal vectors.
 
     This code is based on https://github.com/facebookresearch/pytorch3d/blob/46cb5aaaae0cd40f729fd41a39c0c9a232b484c0/pytorch3d/transforms/transform3d.py#L20
     """
-
-    def __init__(
-        self,
-        dtype = 'float32',
-        matrix = None):
+    def __init__(self, dtype='float32', matrix=None):
         """
         Args:
             dtype: The data type of the transformation matrix.
@@ -45,11 +41,11 @@ class Transform3d:
             self._matrix = paddle.eye(4, dtype=dtype).reshape([1, 4, 4])
         else:
             if len(matrix.shape) not in (2, 3):
-                raise ValueError('"matrix" has to be a 2- or a 3-dimensional tensor.')
+                raise ValueError(
+                    '"matrix" has to be a 2- or a 3-dimensional tensor.')
             if matrix.shape[-2] != 4 or matrix.shape[-1] != 4:
                 raise ValueError(
-                    '"matrix" has to be a tensor of shape (minibatch, 4, 4)'
-                )
+                    '"matrix" has to be a tensor of shape (minibatch, 4, 4)')
             self._matrix = matrix.reshape([-1, 4, 4])
 
         self._transforms = []  # store transforms to compose
@@ -146,7 +142,9 @@ class Transform3d:
                 # the transformations with get_matrix(), this correctly
                 # right-multiplies by the inverse of self._matrix
                 # at the end of the composition.
-                tinv._transforms = [t.inverse() for t in reversed(self._transforms)]
+                tinv._transforms = [
+                    t.inverse() for t in reversed(self._transforms)
+                ]
                 last = Transform3d()
                 last._matrix = i_matrix
                 tinv._transforms.append(last)
@@ -222,12 +220,13 @@ class Transform3d:
         """
         if len(normals.shape) not in [2, 3]:
             msg = "Expected normals to have dim = 2 or dim = 3: got shape %r"
-            raise ValueError(msg % (normals.shape,))
+            raise ValueError(msg % (normals.shape, ))
         composed_matrix = self.get_matrix()
 
         # TODO: inverse is bad! Solve a linear system instead
         mat = composed_matrix[:, :3, :3]
-        normals_out = _broadcast_bmm(normals, mat.transpose([0, 2, 1]).inverse())
+        normals_out = _broadcast_bmm(normals,
+                                     mat.transpose([0, 2, 1]).inverse())
 
         # When transform is (1, 4, 4) and normals is (P, 3) return
         # normals_out of shape (P, 3)
@@ -289,7 +288,7 @@ class Translate(Transform3d):
                 - A python scalar
                 - A paddle scalar
                 - A 1D paddle tensor
-        
+
         This code is based on https://github.com/facebookresearch/pytorch3d/blob/46cb5aaaae0cd40f729fd41a39c0c9a232b484c0/pytorch3d/transforms/transform3d.py#L525
         """
         super().__init__()
@@ -315,9 +314,7 @@ class Rotate(Transform3d):
     """
     This code is based on https://github.com/facebookresearch/pytorch3d/blob/46cb5aaaae0cd40f729fd41a39c0c9a232b484c0/pytorch3d/transforms/transform3d.py#L615
     """
-    def __init__(
-        self, R, dtype='float32', orthogonal_tol: float = 1e-5
-    ):
+    def __init__(self, R, dtype='float32', orthogonal_tol: float = 1e-5):
         """
         Create a new Transform3d representing 3D rotation using a rotation
         matrix as the input.
@@ -392,7 +389,7 @@ def _handle_input(x, y, z, dtype, name: str, allow_singleton: bool = False):
 
     Returns:
         xyz: Tensor of shape (N, 3)
-    
+
     This code is based on https://github.com/facebookresearch/pytorch3d/blob/46cb5aaaae0cd40f729fd41a39c0c9a232b484c0/pytorch3d/transforms/transform3d.py#L716
     """
     # If x is actually a tensor of shape (N, 3) then just return it
