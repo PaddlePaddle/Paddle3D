@@ -78,11 +78,10 @@ class Config(object):
         else:
             raise RuntimeError('Config file should in yaml format!')
 
-        self.update(
-            learning_rate=learning_rate,
-            batch_size=batch_size,
-            iters=iters,
-            epochs=epochs)
+        self.update(learning_rate=learning_rate,
+                    batch_size=batch_size,
+                    iters=iters,
+                    epochs=epochs)
 
     def _update_dic(self, dic: Dict, base_dic: Dict):
         '''Update config from dic based base_dic
@@ -179,6 +178,10 @@ class Config(object):
         return self._model
 
     @property
+    def amp_config(self) -> int:
+        return self.dic.get('amp_cfg', None)
+
+    @property
     def train_dataset_config(self) -> Dict:
         return self.dic.get('train_dataset', {}).copy()
 
@@ -213,6 +216,10 @@ class Config(object):
         if not self._val_dataset:
             self._val_dataset = self._load_object(_val_dataset)
         return self._val_dataset
+
+    @property
+    def export_config(self) -> Dict:
+        return self.dic.get('export', {})
 
     def _load_component(self, com_name: str) -> Any:
         # lazy import
@@ -275,12 +282,14 @@ class Config(object):
             if recursive:
                 params = {}
                 for key, val in dic.items():
-                    params[key] = self._load_object(
-                        obj=val, recursive=recursive)
+                    params[key] = self._load_object(obj=val,
+                                                    recursive=recursive)
             else:
                 params = dic
-
-            return component(**params)
+            try:
+                return component(**params)
+            except Exception as e:
+                raise type(e)('{} {}'.format(component.__name__, e))
 
         elif isinstance(obj, Iterable) and not isinstance(obj, str):
             return [self._load_object(item) for item in obj]
@@ -307,7 +316,8 @@ class Config(object):
             'model': self.model,
             'train_dataset': self.train_dataset,
             'val_dataset': self.val_dataset,
-            'batch_size': self.batch_size
+            'batch_size': self.batch_size,
+            'amp_cfg': self.amp_config
         })
 
         return dic

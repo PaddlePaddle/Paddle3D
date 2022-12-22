@@ -1,0 +1,219 @@
+batch_size: 2
+epochs: 80
+train_dataset:
+  type: KittiPCDataset
+  dataset_root: datasets/KITTI
+  transforms:
+    - type: LoadPointCloud
+      dim: 4
+      use_dim: 4
+    - type: RemoveCameraInvisiblePointsKITTIV2
+    - type: SamplingDatabase
+      min_num_points_in_box_per_class:
+        Car: 5
+      max_num_samples_per_class:
+        Car: 15
+      ignored_difficulty: [-1]
+      database_anno_path: datasets/KITTI/kitti_train_gt_database/anno_info_train.pkl
+      database_root: datasets/KITTI/
+      class_names: ["Car"]
+    - type: RandomVerticalFlip
+    - type: GlobalRotate
+      min_rot: -0.78539816
+      max_rot: 0.78539816
+    - type: GlobalScale
+      min_scale: 0.95
+      max_scale: 1.05
+    - type: ShufflePoint
+    - type: FilterPointOutsideRange
+      point_cloud_range: [0, -40, -3, 70.4, 40, 1]
+    - type: FilterBBoxOutsideRange
+      point_cloud_range: [0, -40, -3, 70.4, 40, 1]
+    - type: Gt2PVRCNNTarget
+  mode: train
+  class_balanced_sampling: False
+  class_names: ["Car"]
+  use_road_plane: True
+
+val_dataset:
+  type: KittiPCDataset
+  dataset_root: datasets/KITTI
+  transforms:
+    - type: LoadPointCloud
+      dim: 4
+      use_dim: 4
+    - type: RemoveCameraInvisiblePointsKITTIV2
+    - type: FilterPointOutsideRange
+      point_cloud_range: [0, -40, -3, 70.4, 40, 1]
+  mode: val
+  class_names: ["Car"]
+
+model:
+  type: VoxelRCNN
+  num_class: 1
+  voxelizer:
+    type: HardVoxelizer
+    point_cloud_range: [0, -40, -3, 70.4, 40, 1]
+    voxel_size: [0.05, 0.05, 0.1]
+    max_num_points_in_voxel: 5
+    max_num_voxels: [16000, 40000]
+  voxel_encoder:
+    type: VoxelMean
+    in_channels: 4
+  middle_encoder:
+    type: SparseNet3D
+    in_channels: 4
+    voxel_size: [0.05, 0.05, 0.1]
+    point_cloud_range: [0, -40, -3, 70.4, 40, 1]
+  backbone:
+    type: SecondBackbone
+    in_channels: 256
+    out_channels: [64, 128]
+    layer_nums: [5, 5]
+    downsample_strides: [1, 2]
+  neck:
+    type: SecondFPN
+    in_channels: [64, 128]
+    out_channels: [128, 128]
+    upsample_strides: [1, 2]
+    use_conv_for_no_stride: False
+  dense_head:
+    type: AnchorHeadSingle
+    model_cfg:
+      use_direction_classifier: True
+      dir_offset: 0.78539
+      dir_limit_offset: 0.0
+    input_channels: 256
+    point_cloud_range: [0, -40, -3, 70.4, 40, 1]
+    class_names: ['Car']
+    predict_boxes_when_training: True
+    voxel_size: [0.05, 0.05, 0.1]
+    anchor_generator_cfg: [
+      {
+          'class_name': 'Car',
+          'anchor_sizes': [[3.9, 1.6, 1.56]],
+          'anchor_rotations': [0, 1.57],
+          'anchor_bottom_heights': [-1.78],
+          'align_center': False,
+          'feature_map_stride': 8,
+          'matched_threshold': 0.6,
+          'unmatched_threshold': 0.45
+      }
+    ]
+    anchor_target_cfg:
+      pos_fraction: -1.0
+      sample_size: 512
+      norm_by_num_examples: False
+      match_height: False
+    num_dir_bins: 2
+    loss_weights:
+      cls_weight: 1.0
+      loc_weight: 2.0
+      dir_weight: 0.2
+      code_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  roi_head:
+    type: VoxelRCNNHead
+    num_class: 1
+    input_channels:
+      x_conv1: 16
+      x_conv2: 32
+      x_conv3: 64
+      x_conv4: 64
+    point_cloud_range: [0, -40, -3, 70.4, 40, 1]
+    voxel_size: [0.05, 0.05, 0.1]
+    model_cfg:
+      class_agnostic: True
+      shared_fc: [256, 256]
+      cls_fc: [256, 256]
+      reg_fc: [256, 256]
+      dp_ratio: 0.3
+      nms_config:
+        train:
+          nms_type: nms_gpu
+          multi_class_nms: False
+          nms_pre_maxsize: 9000
+          nms_post_maxsize: 512
+          nms_thresh: 0.8
+        test:
+          nms_type: nms_gpu
+          multi_class_nms: False
+          use_fast_nms: False
+          score_thresh: 0.0
+          nms_pre_maxsize: 2048
+          nms_post_maxsize: 100
+          nms_thresh: 0.7
+      roi_grid_pool:
+        features_source: ['x_conv2', 'x_conv3', 'x_conv4']
+        pre_mlp: True
+        grid_size: 6
+        pool_layers:
+          x_conv2:
+            mlps: [[32, 32]]
+            query_ranges: [[4, 4, 4]]
+            pool_radius: [0.4]
+            nsample: [16]
+            pool_method: max_pool
+          x_conv3:
+            mlps: [[32, 32]]
+            query_ranges: [[4, 4, 4]]
+            pool_radius: [0.8]
+            nsample: [16]
+            pool_method: max_pool
+          x_conv4:
+            mlps: [[32, 32]]
+            query_ranges: [[4, 4, 4]]
+            pool_radius: [1.6]
+            nsample: [16]
+            pool_method: max_pool
+      target_config:
+        box_coder: ResidualCoder
+        roi_per_image: 128
+        fg_ratio: 0.5
+        sample_roi_by_each_class: True
+        cls_score_type: roi_iou
+        cls_fg_thresh: 0.75
+        cls_bg_thresh: 0.25
+        cls_bg_thresh_lo: 0.1
+        hard_bg_ratio: 0.8
+        reg_fg_thresh: 0.55
+      loss_config:
+        cls_loss: BinaryCrossEntropy
+        reg_loss: smooth-l1
+        corner_loss_regularization: True
+        grid_3d_iou_loss: False
+        loss_weights: {
+          'rcnn_cls_weight': 1.0,
+          'rcnn_reg_weight': 1.0,
+          'rcnn_corner_weight': 1.0,
+          'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+        }
+
+  post_process_cfg:
+    score_thresh:  0.3
+    output_raw_score: False
+    nms_config:
+      multi_classes_nms: False
+      nms_type: nms_gpu
+      nms_thresh: 0.1
+      nms_pre_maxsize: 4096
+      nms_post_maxsize: 500
+
+optimizer:
+  type: OneCycleAdam
+  beta2: 0.99
+  weight_decay: 0.01
+  grad_clip:
+    type: ClipGradByGlobalNorm
+    clip_norm: 10
+  beta1:
+    type: OneCycleDecayWarmupMomentum
+    momentum_peak: 0.95
+    momentum_trough: 0.85
+    step_ratio_peak: 0.4
+
+lr_scheduler:
+  type: OneCycleWarmupDecayLr
+  base_learning_rate: 0.001
+  lr_ratio_peak: 10
+  lr_ratio_trough: 0.0001
+  step_ratio_peak: 0.4

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from pathlib import Path
 from typing import List, Union
 
@@ -32,7 +33,7 @@ from paddle3d.utils.logger import logger
 
 __all__ = [
     "LoadImage", "LoadPointCloud", "RemoveCameraInvisiblePointsKITTI",
-    "LoadSemanticKITTIRange"
+    "RemoveCameraInvisiblePointsKITTIV2", "LoadSemanticKITTIRange"
 ]
 
 
@@ -179,9 +180,14 @@ class RemoveCameraInvisiblePointsKITTI(TransformABC):
 
         im_path = (Path(sample.path).parents[1] / "image_2" / Path(
             sample.path).stem).with_suffix(".png")
-        im_shape = np.array(cv2.imread(str(im_path)).shape[:2], dtype=np.int32)
-        im_bbox = [0, 0, im_shape[1], im_shape[0]]
 
+        if os.path.exists(im_path):
+            im_shape = cv2.imread(str(im_path)).shape[:2]
+        else:
+            im_shape = (375, 1242)
+        im_shape = np.array(im_shape, dtype=np.int32)
+
+        im_bbox = [0, 0, im_shape[1], im_shape[0]]
         frustum = F.get_frustum(im_bbox, C)
         frustum = (Rinv @ (frustum - T).T).T
         frustum = kitti_utils.coord_camera_to_velodyne(frustum, calibs)
@@ -192,6 +198,62 @@ class RemoveCameraInvisiblePointsKITTI(TransformABC):
         sample.data = sample.data[indices.reshape([-1])]
 
         return sample
+
+
+@manager.TRANSFORMS.add_component
+class RemoveCameraInvisiblePointsKITTIV2(TransformABC):
+    """
+    Remove camera invisible points for KITTI dataset, unlike `RemoveCameraInvisiblePointsKITTI` which projects image plane to a frustum,
+    this version projects poinst into image plane and remove the points outside the image boundary.
+    """
+
+    def __init__(self):
+        self.V2C = None
+        self.R0 = None
+
+    def __call__(self, sample: Sample):
+        calibs = sample.calibs
+        self.R0 = calibs[4]
+        self.V2C = calibs[5]
+        self.P2 = calibs[2]
+
+        im_path = (Path(sample.path).parents[1] / "image_2" / Path(
+            sample.path).stem).with_suffix(".png")
+
+        if os.path.exists(im_path):
+            im_shape = cv2.imread(str(im_path)).shape[:2]
+        else:
+            im_shape = (375, 1242)
+        im_shape = np.array(im_shape, dtype=np.int32)
+
+        pts = sample.data[:, 0:3]
+        # lidar to rect
+        pts_lidar_hom = self.cart_to_hom(pts)
+        pts_rect = np.dot(pts_lidar_hom, np.dot(self.V2C.T, self.R0.T))
+
+        # rect to img
+        pts_img, pts_rect_depth = self.rect_to_img(pts_rect)
+        val_flag_1 = np.logical_and(pts_img[:, 0] >= 0,
+                                    pts_img[:, 0] < im_shape[1])
+        val_flag_2 = np.logical_and(pts_img[:, 1] >= 0,
+                                    pts_img[:, 1] < im_shape[0])
+        val_flag_merge = np.logical_and(val_flag_1, val_flag_2)
+        pts_valid_flag = np.logical_and(val_flag_merge, pts_rect_depth >= 0)
+
+        sample.data = sample.data[pts_valid_flag]
+        return sample
+
+    def cart_to_hom(self, pts):
+        pts_hom = np.hstack((pts, np.ones((pts.shape[0], 1), dtype=np.float32)))
+        return pts_hom
+
+    def rect_to_img(self, pts_rect):
+        pts_rect_hom = self.cart_to_hom(pts_rect)
+        pts_2d_hom = np.dot(pts_rect_hom, self.P2.T)
+        pts_img = (pts_2d_hom[:, 0:2].T / pts_rect_hom[:, 2]).T  # (N, 2)
+        pts_rect_depth = pts_2d_hom[:, 2] - self.P2.T[
+            3, 2]  # depth in rect camera coord
+        return pts_img, pts_rect_depth
 
 
 @manager.TRANSFORMS.add_component
@@ -390,5 +452,232 @@ class LoadSemanticKITTIPointCloud(TransformABC):
             # assert ((sem_label + (inst_label << 16) == raw_label).all())
 
             sample.labels = sem_label
+
+        return sample
+
+
+@manager.TRANSFORMS.add_component
+class LoadMultiViewImageFromFiles(TransformABC):
+    """
+    load multi-view image from files
+
+    Args:
+        to_float32 (bool): Whether to convert the img to float32.
+            Default: False.
+        color_type (str): Color type of the file. Default: -1.
+            - -1: cv2.IMREAD_UNCHANGED
+            -  0: cv2.IMREAD_GRAYSCALE
+            -  1: cv2.IMREAD_COLOR
+    """
+
+    def __init__(self, to_float32=False, imread_flag=-1):
+        self.to_float32 = to_float32
+        self.imread_flag = imread_flag
+
+    def __call__(self, sample):
+        """
+        Call function to load multi-view image from files.
+        """
+        filename = sample['img_filename']
+
+        img = np.stack(
+            [cv2.imread(name, self.imread_flag) for name in filename], axis=-1)
+        if self.to_float32:
+            img = img.astype(np.float32)
+        sample['filename'] = filename
+
+        sample['img'] = [img[..., i] for i in range(img.shape[-1])]
+        sample['img_shape'] = img.shape
+        sample['ori_shape'] = img.shape
+
+        sample['pad_shape'] = img.shape
+        sample['scale_factor'] = 1.0
+        num_channels = 1 if len(img.shape) < 3 else img.shape[2]
+
+        sample['img_norm_cfg'] = dict(
+            mean=np.zeros(num_channels, dtype=np.float32),
+            std=np.ones(num_channels, dtype=np.float32),
+            to_rgb=False)
+        return sample
+
+
+@manager.TRANSFORMS.add_component
+class LoadAnnotations3D(TransformABC):
+    """
+    load annotation
+    """
+
+    def __init__(
+            self,
+            with_bbox_3d=True,
+            with_label_3d=True,
+            with_attr_label=False,
+            with_mask_3d=False,
+            with_seg_3d=False,
+    ):
+        self.with_bbox_3d = with_bbox_3d
+        self.with_label_3d = with_label_3d
+        self.with_attr_label = with_attr_label
+        self.with_mask_3d = with_mask_3d
+        self.with_seg_3d = with_seg_3d
+
+    def _load_bboxes_3d(self, sample) -> Sample:
+        """
+        """
+        sample['gt_bboxes_3d'] = sample['ann_info']['gt_bboxes_3d']
+        sample['bbox3d_fields'].append('gt_bboxes_3d')
+        return sample
+
+    def _load_labels_3d(self, sample) -> Sample:
+        """
+        """
+        sample['gt_labels_3d'] = sample['ann_info']['gt_labels_3d']
+        return sample
+
+    def _load_attr_labels(self, sample) -> Sample:
+        """
+        """
+        sample['attr_labels'] = sample['ann_info']['attr_labels']
+        return sample
+
+    def __call__(self, sample) -> Sample:
+        """Call function to load multiple types annotations.
+        """
+        if self.with_bbox_3d:
+            sample = self._load_bboxes_3d(sample)
+            if sample is None:
+                return None
+
+        if self.with_label_3d:
+            sample = self._load_labels_3d(sample)
+
+        if self.with_attr_label:
+            sample = self._load_attr_labels(sample)
+
+        return sample
+
+
+@manager.TRANSFORMS.add_component
+class LoadMultiViewImageFromMultiSweepsFiles(object):
+    """Load multi channel images from a list of separate channel files.
+    Expects results['img_filename'] to be a list of filenames.
+    Args:
+        to_float32 (bool): Whether to convert the img to float32.
+            Defaults to False.
+        color_type (str): Color type of the file. Defaults to 'unchanged'.
+    """
+
+    def __init__(
+            self,
+            sweeps_num=5,
+            to_float32=False,
+            pad_empty_sweeps=False,
+            sweep_range=[3, 27],
+            sweeps_id=None,
+            imread_flag=-1,  #'unchanged'
+            sensors=[
+                'CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_FRONT_LEFT', 'CAM_BACK',
+                'CAM_BACK_LEFT', 'CAM_BACK_RIGHT'
+            ],
+            test_mode=True,
+            prob=1.0,
+    ):
+
+        self.sweeps_num = sweeps_num
+        self.to_float32 = to_float32
+        self.imread_flag = imread_flag
+        self.pad_empty_sweeps = pad_empty_sweeps
+        self.sensors = sensors
+        self.test_mode = test_mode
+        self.sweeps_id = sweeps_id
+        self.sweep_range = sweep_range
+        self.prob = prob
+        if self.sweeps_id:
+            assert len(self.sweeps_id) == self.sweeps_num
+
+    def __call__(self, sample):
+        """Call function to load multi-view sweep image from filenames.
+        """
+        sweep_imgs_list = []
+        timestamp_imgs_list = []
+        imgs = sample['img']
+        img_timestamp = sample['img_timestamp']
+        lidar_timestamp = sample['timestamp']
+        img_timestamp = [
+            lidar_timestamp - timestamp for timestamp in img_timestamp
+        ]
+        sweep_imgs_list.extend(imgs)
+        timestamp_imgs_list.extend(img_timestamp)
+        nums = len(imgs)
+        if self.pad_empty_sweeps and len(sample['sweeps']) == 0:
+            for i in range(self.sweeps_num):
+                sweep_imgs_list.extend(imgs)
+                mean_time = (
+                    self.sweep_range[0] + self.sweep_range[1]) / 2.0 * 0.083
+                timestamp_imgs_list.extend(
+                    [time + mean_time for time in img_timestamp])
+                for j in range(nums):
+                    sample['filename'].append(sample['filename'][j])
+                    sample['lidar2img'].append(np.copy(sample['lidar2img'][j]))
+                    sample['intrinsics'].append(
+                        np.copy(sample['intrinsics'][j]))
+                    sample['extrinsics'].append(
+                        np.copy(sample['extrinsics'][j]))
+        else:
+            if self.sweeps_id:
+                choices = self.sweeps_id
+            elif len(sample['sweeps']) <= self.sweeps_num:
+                choices = np.arange(len(sample['sweeps']))
+            elif self.test_mode:
+                choices = [
+                    int((self.sweep_range[0] + self.sweep_range[1]) / 2) - 1
+                ]
+            else:
+                if np.random.random() < self.prob:
+                    if self.sweep_range[0] < len(sample['sweeps']):
+                        sweep_range = list(
+                            range(
+                                self.sweep_range[0],
+                                min(self.sweep_range[1],
+                                    len(sample['sweeps']))))
+                    else:
+                        sweep_range = list(
+                            range(self.sweep_range[0], self.sweep_range[1]))
+                    choices = np.random.choice(
+                        sweep_range, self.sweeps_num, replace=False)
+                else:
+                    choices = [
+                        int((self.sweep_range[0] + self.sweep_range[1]) / 2) - 1
+                    ]
+
+            for idx in choices:
+                sweep_idx = min(idx, len(sample['sweeps']) - 1)
+                sweep = sample['sweeps'][sweep_idx]
+                if len(sweep.keys()) < len(self.sensors):
+                    sweep = sample['sweeps'][sweep_idx - 1]
+                sample['filename'].extend(
+                    [sweep[sensor]['data_path'] for sensor in self.sensors])
+
+                img = np.stack([
+                    cv2.imread(sweep[sensor]['data_path'], self.imread_flag)
+                    for sensor in self.sensors
+                ],
+                               axis=-1)
+
+                if self.to_float32:
+                    img = img.astype(np.float32)
+                img = [img[..., i] for i in range(img.shape[-1])]
+                sweep_imgs_list.extend(img)
+                sweep_ts = [
+                    lidar_timestamp - sweep[sensor]['timestamp'] / 1e6
+                    for sensor in self.sensors
+                ]
+                timestamp_imgs_list.extend(sweep_ts)
+                for sensor in self.sensors:
+                    sample['lidar2img'].append(sweep[sensor]['lidar2img'])
+                    sample['intrinsics'].append(sweep[sensor]['intrinsics'])
+                    sample['extrinsics'].append(sweep[sensor]['extrinsics'])
+        sample['img'] = sweep_imgs_list
+        sample['timestamp'] = timestamp_imgs_list
 
         return sample

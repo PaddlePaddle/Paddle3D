@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 
 from paddle3d.geometries import BBoxes2D, BBoxes3D, CoordMode
+from paddle3d.sample import Sample
 
 
 # kitti record fields
@@ -239,6 +240,33 @@ def projection_matrix_decomposition(proj):
     T = Cinv @ CT
 
     return C, Rinv, T
+
+
+def filter_fake_result(detection: Sample):
+    box3d = detection.bboxes_3d
+    scores = detection.confidences
+    labels = detection.labels
+    box_list = []
+    score_list = []
+    label_list = []
+    for i in range(box3d.shape[0]):
+        if scores[i] < 0:
+            continue
+        box_list.append(box3d[i])
+        score_list.append(scores[i])
+        label_list.append(labels[i])
+    if len(box_list) == 0:
+        detection.bboxes_3d = None
+        detection.labels = None
+        detection.confidences = None
+    else:
+        detection.bboxes_3d = BBoxes3D(
+            np.asarray(box_list),
+            origin=box3d.origin,
+            rot_axis=box3d.rot_axis,
+            coordmode=box3d.coordmode)
+        detection.labels = np.asarray(label_list)
+        detection.confidences = np.asarray(score_list)
 
 
 def get_objects_from_label(label_file):

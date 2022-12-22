@@ -19,8 +19,8 @@
 CenterPoint是Anchor-Free的三维物体检测器，以点云作为输入，将三维物体在Bird-View下的中心点作为关键点，基于关键点检测的方式回归物体的尺寸、方向和速度。相比于Anchor-Based的三维物体检测器，CenterPoint不需要人为设定Anchor尺寸，面向物体尺寸多样不一的场景时其精度表现更高，且简易的模型设计使其在性能上也表现更加高效。
 
 Paddle3D实现的CenterPoint做了以下优化：
-- 对模型的前后处理做了性能优化。CenterPoint在[nuScenes](https://www.nuscenes.org/nuscenes) val set上精度有50.97mAP，速度在Tesla V100上达到了50.28FPS。
-- 提供[KITTI数据集](http://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d)上的训练配置和Baseline。CenterPoint在KITTI val set上精度达到64.75 mAP，速度在Tesla V100上达到了43.96FPS。
+- 对模型的前后处理做了性能优化。CenterPoint-Pillars在[nuScenes](https://www.nuscenes.org/nuscenes) val set上精度有50.97mAP，速度在Tesla V100上达到了50.28FPS。
+- 提供[KITTI数据集](http://www.cvlibs.net/datasets/kitti/eval_object.php?obj_benchmark=3d)上的训练配置和Baseline。CenterPoint-Pillars在KITTI val set上精度达到64.75 mAP，速度在Tesla V100上达到了43.96FPS。
 
 跟原论文相比，Paddle3D实现的CenterPoint有以下差异：
 - 未提供第二个阶段的实现。在原论文中，作者还设计了第二个阶段来进一步精炼物体的位置、尺寸和方向，并在[Waymo数据集](https://waymo.com/open/)上做了验证。Paddle3D目前还未适配Waymo数据集，所以第二个阶段暂未实现。
@@ -30,21 +30,22 @@ Paddle3D实现的CenterPoint做了以下优化：
 
 - CenterPoint在nuScenes Val set数据集上的表现
 
-| 模型 | 点云特征提取模块 | mAP | NDS | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 | 日志 |
+| 模型 | 体素格式 | mAP | NDS | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 | 日志 |
 | ---- | ---------------- | --- | --- | ----------------------- | ----------------------- | -------- | -------- | ---- |
-| CenterPoint | PointPillars | 50.97 | 61.30 | 50.28 | 63.43 | [model](https://bj.bcebos.com/paddle3d/models/centerpoint//centerpoint_pillars_02voxel_nuscenes_10_sweep/model.pdparams) | [config](../../../configs/centerpoint/centerpoint_pillars_02voxel_nuscenes_10sweep.yml) | [log](https://bj.bcebos.com/paddle3d/models/centerpoint//centerpoint_pillars_02voxel_nuscenes_10_sweep/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=f150eb3b4db30c7bd4ff2dfac5ca4166) |
+| CenterPoint | 2D-Pillars | 50.97 | 61.30 | 50.28 | 63.43 | [model](https://bj.bcebos.com/paddle3d/models/centerpoint//centerpoint_pillars_02voxel_nuscenes_10sweep/model.pdparams) | [config](../../../configs/centerpoint/centerpoint_pillars_02voxel_nuscenes_10sweep.yml) | [log](https://bj.bcebos.com/paddle3d/models/centerpoint//centerpoint_pillars_02voxel_nuscenes_10sweep/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=f150eb3b4db30c7bd4ff2dfac5ca4166) |
+| CenterPoint | 3D-Voxels | 59.25 | 66.74 | 21.90 | 26.93 | [model]( https://bj.bcebos.com/paddle3d/models/centerpoint/centerpoint_voxels_0075voxel_nuscenes_10sweep/model.pdparams) | [config](../../../configs/centerpoint/centerpoint_voxels_0075voxel_nuscenes_10sweep.yml) | [log]( https://bj.bcebos.com/paddle3d/models/centerpoint/centerpoint_voxels_0075voxel_nuscenes_10sweep/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=2cf9f2123ea8393cf873e8f8ae907fdc) |
 
-**注意：** nuScenes benchmark使用4张V100 GPU训练得出。
+**注意：nuScenes benchmark使用4张V100 GPU训练得出。3D Sparse Conv功能需要安装Paddle 2.4版。**
 
 - CenterPoint在KITTI Val set数据集上的表现
 
-| 模型 | 点云特征提取模块 | 3DmAP Mod. | Car<br>Easy Mod. Hard | Pedestrian<br>Easy Mod. Hard | Cyclist<br>Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 |  日志 |
+| 模型 | 体素格式 | 3DmAP Mod. | Car<br>Easy Mod. Hard | Pedestrian<br>Easy Mod. Hard | Cyclist<br>Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 |  日志 |
 | ---- | ---------------- | ---------- | ------------------ | ------------------------- | -----------------------| ----------------------- | ----------------------- | -------- | -------- | ---- |
-| CenterPoint | PointPillars | 64.75 | 85.99 76.69 73.62 | 57.66 54.03 49.75 | 84.30 63.52 59.47 | 43.96 | 74.21 | [model]( https://bj.bcebos.com/paddle3d/models/centerpoint//centerpoint_pillars_016voxel_kitti/model.pdparams) | [config](../../../configs/centerpoint/centerpoint_pillars_016voxel_kitti.yml)| [log]( https://bj.bcebos.com/paddle3d/models/centerpoint//centerpoint_pillars_016voxel_kitti/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=7f2b637cfce7995a55b915216b8b1171) |
+| CenterPoint | 2D-Pillars | 64.75 | 85.99 76.69 73.62 | 57.66 54.03 49.75 | 84.30 63.52 59.47 | 43.96 | 74.21 | [model]( https://bj.bcebos.com/paddle3d/models/centerpoint//centerpoint_pillars_016voxel_kitti/model.pdparams) | [config](../../../configs/centerpoint/centerpoint_pillars_016voxel_kitti.yml)| [log]( https://bj.bcebos.com/paddle3d/models/centerpoint//centerpoint_pillars_016voxel_kitti/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=7f2b637cfce7995a55b915216b8b1171) |
 
-| 模型 | 点云特征提取模块 | BEVmAP Mod. | Car<br>Easy Mod. Hard | Pedestrian<br>Easy Mod. Hard | Cyclist<br>Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 |  日志 |
+| 模型 | 体素格式 | BEVmAP Mod. | Car<br>Easy Mod. Hard | Pedestrian<br>Easy Mod. Hard | Cyclist<br>Easy Mod. Hard | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 |  日志 |
 | ---- | ---------------- | ----------- | ------------------ | ------------------------- | ---------------------- | ----------------------- | ----------------------- | -------- | -------- | ---- |
-| CenterPoint | PointPillars | 71.87 | 93.03 87.33 86.21 | 66.46 62.66 58.54 | 86.59 65.62 61.58 | 43.96 | 74.21 | [model]( https://bj.bcebos.com/paddle3d/models/centerpoint//centerpoint_pillars_016voxel_kitti/model.pdparams) | [config](../../../configs/centerpoint/centerpoint_pillars_016voxel_kitti.yml)| [log]( https://bj.bcebos.com/paddle3d/models/centerpoint//centerpoint_pillars_016voxel_kitti/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=7f2b637cfce7995a55b915216b8b1171) |
+| CenterPoint | 2D-Pillars | 71.87 | 93.03 87.33 86.21 | 66.46 62.66 58.54 | 86.59 65.62 61.58 | 43.96 | 74.21 | [model]( https://bj.bcebos.com/paddle3d/models/centerpoint//centerpoint_pillars_016voxel_kitti/model.pdparams) | [config](../../../configs/centerpoint/centerpoint_pillars_016voxel_kitti.yml)| [log]( https://bj.bcebos.com/paddle3d/models/centerpoint//centerpoint_pillars_016voxel_kitti/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=7f2b637cfce7995a55b915216b8b1171) |
 
 **注意：** KITTI benchmark使用8张V100 GPU训练得出。
 
@@ -169,6 +170,7 @@ kitti_train_gt_database
 ```
 #### 训练
 
+
 KITTI数据集上的训练使用8张GPU：
 
 ```
@@ -177,6 +179,7 @@ python -m paddle.distributed.launch --gpus 0,1,2,3,4,5,6,7 tools/train.py --conf
 
 训练启动参数介绍可参考文档[全流程速览](../../quickstart.md#模型训练)。
 #### 评估
+
 
 ```
 python tools/evaluate.py --config configs/centerpoint/centerpoint_pillars_016voxel_kitti.yml --model ./output_kitti/epoch_160/model.pdparams --batch_size 1 --num_workers 4
@@ -189,6 +192,7 @@ python tools/evaluate.py --config configs/centerpoint/centerpoint_pillars_016vox
 ## <h2 id="8">导出 & 部署</h2>
 
 ### <h3 id="81">模型导出</h3>
+
 
 运行以下命令，将训练时保存的动态图模型文件导出成推理引擎能够加载的静态图模型文件。
 

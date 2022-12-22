@@ -14,6 +14,7 @@
 
 import math
 
+import numpy as np
 import paddle
 import paddle.nn as nn
 
@@ -27,25 +28,28 @@ class FrustumGridGenerator(nn.Layer):
     This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/models/backbones_3d/f2v/frustum_grid_generator.py#L8
     """
 
-    def __init__(self, grid_size, pc_range, disc_cfg):
+    def __init__(self, voxel_size, pc_range, disc_cfg):
         """
         Initializes Grid Generator for frustum features
         Args:
-            grid_size [np.array(3)]: Voxel grid shape [X, Y, Z]
+            voxel_size [np.array(3)]: Voxel size [X, Y, Z]
             pc_range [list]: Voxelization point cloud range [X_min, Y_min, Z_min, X_max, Y_max, Z_max]
             disc_cfg [int]: Depth discretiziation configuration
         """
         super().__init__()
         self.dtype = 'float32'
+        point_cloud_range = np.asarray(pc_range)
+        grid_size = (point_cloud_range[3:] - point_cloud_range[:3]) / voxel_size
+        grid_size = np.round(grid_size).astype(np.int64)
+
         self.grid_size = paddle.to_tensor(grid_size)
         self.out_of_bounds_val = -2
         self.disc_cfg = disc_cfg
 
-        # Calculate voxel size
         pc_range = paddle.to_tensor(pc_range).reshape([2, 3])
         self.pc_min = pc_range[0]
         self.pc_max = pc_range[1]
-        self.voxel_size = (self.pc_max - self.pc_min) / self.grid_size
+        self.voxel_size = paddle.to_tensor(voxel_size)
 
         # Create voxel grid
         self.depth, self.width, self.height = self.grid_size.cast('int32')

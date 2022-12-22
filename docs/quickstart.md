@@ -71,7 +71,7 @@ visualdl --logdir output --host ${HOST_IP} --port {$PORT}
 
 ```shell
 wget https://paddle3d.bj.bcebos.com/models/smoke/smoke_dla34_no_dcn_kitti/model.pdparams
-python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --model model.pdparams --batch_size 1
+python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --model model.pdparams
 ```
 
 **评估脚本参数介绍**
@@ -96,11 +96,13 @@ python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --mod
 
 **导出脚本参数介绍**
 
-| 参数名              | 用途                                                         | 是否必选项  | 默认值            |
-| :------------------ | :----------------------------------------------------------- | :--------- | :--------------- |
-| config              | 配置文件路径                                                  | 是         | -                |
-| model               | 模型参数路径                                                  | 否         | -                |
-| save_dir            | 推理模型文件的保存路径                                         | 否         | exported_model   |
+| 参数名              | 用途                                                                 | 是否必选项  | 默认值                 |
+| :------------------ | :------------------------------------------------------------------ | :--------- | :--------------------- |
+| config              | 配置文件路径                                                         | 是         | -                      |
+| model               | 模型参数路径                                                         | 否         | -                      |
+| export_for_apollo   | 是否用于Apollo部署，当打开该开关时，会同步生成用于Apollo部署的meta文件   | 否         | False                  |
+| save_dir            | 推理模型文件的保存路径                                                | 否         | exported_model         |
+| save_name           | 推理模型文件的保存名字                                                | 否         | None(由各模型自定决定)   |
 
 <br>
 

@@ -1,0 +1,145 @@
+batch_size: 4  #on 4 gpus, total bs = 16
+epochs: 30
+
+train_dataset:
+  type: WaymoPCDataset
+  dataset_root: datasets/waymo
+  class_names: [ "Vehicle", "Pedestrian", "Cyclist" ]
+  sampled_interval: 5
+  transforms:
+    - type: SamplingDatabase
+      min_num_points_in_box_per_class:
+        Vehicle: 5
+        Pedestrian: 5
+        Cyclist: 5
+      max_num_samples_per_class:
+        Vehicle: 15
+        Pedestrian: 10
+        Cyclist: 10
+      ignored_difficulty: [ -1 ]
+      database_anno_path: datasets/waymo/waymo_train_gt_database/waymo_train_gt_database_infos.pkl
+      database_root: datasets/waymo
+      class_names: [ "Vehicle", "Pedestrian", "Cyclist" ]
+    - type: RandomVerticalFlip
+    - type: RandomHorizontalFlip
+    - type: GlobalRotate
+      min_rot: -0.78539816
+      max_rot: 0.78539816
+    - type: GlobalScale
+      min_scale: 0.95
+      max_scale: 1.05
+    - type: FilterBBoxOutsideRange
+      point_cloud_range: &point_cloud_range [-75.2, -75.2, -2, 75.2, 75.2, 4]
+    - type: FilterPointOutsideRange
+      point_cloud_range: *point_cloud_range
+    - type: ShufflePoint
+    - type: SamplePointByVoxels
+      voxel_size: [0.1, 0.1, 0.15]
+      max_points_per_voxel: 5
+      max_num_of_voxels: 80000
+      num_points: 65536
+      point_cloud_range: *point_cloud_range
+    - type: ConvertBoxFormat
+  mode: train
+
+val_dataset:
+  type: WaymoPCDataset
+  dataset_root: datasets/waymo
+  class_names: [ "Vehicle", "Pedestrian", "Cyclist" ]
+  sampled_interval: 1
+  transforms:
+    - type: FilterPointOutsideRange
+      point_cloud_range: *point_cloud_range
+    - type: SamplePointByVoxels
+      voxel_size: [0.1, 0.1, 0.15]
+      max_points_per_voxel: 5
+      max_num_of_voxels: 90000
+      num_points: 65536
+      point_cloud_range: *point_cloud_range
+  mode: val
+
+model:
+  type: IASSD
+
+  backbone:
+    type: IASSD_Backbone
+    npoint_list: [16384, 4096, 2048, 1024, null, 1024]
+    sample_method_list: &sample_method_list ["D-FPS", "D-FPS", "ctr_aware", "ctr_aware", null, null]
+    radius_list: [[0.2,0.8], [0.8,1.6], [1.6,4.8], [], [], [4.8, 6.4]]
+    nsample_list: [[16,32], [16,32], [16,32], [], [], [16, 32]]
+    mlps: [[[16,16,32],  [32,32,64]],
+           [[64,64,128],  [64,96,128]],
+           [[128,128,256],  [128,256,256]],
+           [],
+           [128],
+           [[256,256,512], [256,512,1024]]]
+    layer_types: ["SA_Layer", "SA_Layer", "SA_Layer", "SA_Layer", "Vote_Layer", "SA_Layer"]
+    dilated_group: [False, False, False, False, False, False]
+    aggregation_mlps: [[64], [128], [256], [256], [], [512]]
+    confidence_mlps: [[], [128], [256], [], [], []]
+    layer_input: [0, 1, 2, 3, 4, 3]
+    ctr_index: [-1, -1, -1, -1, -1, 5]
+    max_translate_range: [3., 3., 2.]
+    input_channel: 5
+    num_classes: 3
+
+  head:
+    type: IASSD_Head
+    input_channel: 512  #last aggregation mlp
+    cls_fc: [256, 256]
+    reg_fc: [256, 256]
+    num_classes: 3
+
+    target_config:
+      gt_extra_width: [0.2, 0.2, 0.2]
+      extra_width: [1.0, 1.0, 1.0]
+      box_coder_config: {
+        'angle_bin_num': 12,
+        'use_mean_size': True,
+        'mean_size': [
+          [4.7, 2.1, 1.7],
+          [0.91, 0.86, 1.73],
+          [1.78, 0.84, 1.78]
+        ]
+      }
+
+    loss_config:
+      loss_cls: WeightedClassificationLoss
+      loss_reg: WeightedSmoothL1Loss
+      loss_ins: WeightedClassificationLoss
+      sample_method_list: *sample_method_list
+      corner_loss_regularization: True
+      centerness_regularization: True
+      centerness_regularization_sa: True
+      loss_weight: {
+          'ins_aware_weight': [0, 1.0, 1.0],
+          'vote_weight': 1.0,
+          'point_cls_weight': 1.0,
+          'point_box_weight': 1.0,
+          'corner_weight': 1.0,
+          'code_weights': [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+          'dir_weight': 0.2
+      }
+
+  post_process_cfg:
+    score_thresh: 0.1
+    nms_config:
+      nms_thresh: 0.1
+      nms_pre_maxsize: 4096
+      nms_post_maxsize: 500
+
+optimizer:
+  type: AdamWOnecycle
+  clip_grad_by_norm: 10.0
+  learning_rate: 0.01
+  beta1: 0.9
+  beta2: 0.99
+  weight_decay: 0.01
+
+lr_scheduler:
+  type: OneCycle
+  total_step: 59280  #change to your correspondent total iters
+  lr_max: 0.01
+  moms: [0.95, 0.85]
+  div_factor: 10
+  pct_start: 0.4

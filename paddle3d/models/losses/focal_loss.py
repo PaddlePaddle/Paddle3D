@@ -16,6 +16,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import nn
 
+from paddle3d.apis import manager
 from paddle3d.models.layers.layer_libs import _transpose_and_gather_feat
 
 
@@ -223,41 +224,88 @@ class SigmoidFocalClassificationLoss(nn.Layer):
         return loss * weights
 
 
-def sigmoid_focal_loss(inputs, targets, alpha=-1, gamma=2, reduction="none"):
-    """
-    Loss used in RetinaNet for dense detection: https://arxiv.org/abs/1708.02002.
-    This code is based on https://github.com/facebookresearch/fvcore/blob/6a5360691be65c76188ed99b57ccbbf5fc19924a/fvcore/nn/focal_loss.py#L7
-    Args:
-        inputs: A float tensor of arbitrary shape.
-                The predictions for each example.
-        targets: A float tensor with the same shape as inputs. Stores the binary
-                 classification label for each element in inputs
-                (0 for the negative class and 1 for the positive class).
-        alpha: (optional) Weighting factor in range (0,1) to balance
-                positive vs negative examples. Default = -1 (no weighting).
-        gamma: Exponent of the modulating factor (1 - p_t) to
-               balance easy vs hard examples.
-        reduction: 'none' | 'mean' | 'sum'
-                 'none': No reduction will be applied to the output.
-                 'mean': The output will be averaged.
-                 'sum': The output will be summed.
-    Returns:
-        Loss tensor with the reduction option applied.
-    """
-    inputs = inputs.cast('float32')
-    targets = targets.cast('float32')
-    p = F.sigmoid(inputs)
-    ce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction="none")
-    p_t = p * targets + (1 - p) * (1 - targets)
-    loss = ce_loss * ((1 - p_t) ** gamma)
+@manager.LOSSES.add_component
+class WeightedFocalLoss(nn.Layer):
+    def __init__(self,
+                 use_sigmoid=True,
+                 gamma=2.0,
+                 alpha=0.25,
+                 reduction='mean',
+                 loss_weight=1.0,
+                 activated=False):
+        """`Focal Loss <https://arxiv.org/abs/1708.02002>`_
+        """
+        super(WeightedFocalLoss, self).__init__()
+        assert use_sigmoid is True, 'Only sigmoid focal loss supported now.'
+        self.use_sigmoid = use_sigmoid
+        self.gamma = gamma
+        self.alpha = alpha
+        self.reduction = reduction
+        self.loss_weight = loss_weight
+        self.activated = activated
 
-    if alpha >= 0:
-        alpha_t = alpha * targets + (1 - alpha) * (1 - targets)
-        loss = alpha_t * loss
+    def forward(self,
+                pred,
+                target,
+                weight=None,
+                avg_factor=None,
+                reduction_override=None):
+        """Forward function.
+        """
+        assert reduction_override in (None, 'none', 'mean', 'sum')
+        reduction = (reduction_override
+                     if reduction_override else self.reduction)
+        if self.use_sigmoid:
+            if self.activated:
+                raise NotImplementedError
+            else:
+                num_classes = pred.shape[1]
+                target = F.one_hot(target, num_classes=num_classes + 1)
+                target = target[:, :num_classes]
+                calculate_loss_func = py_sigmoid_focal_loss
 
-    if reduction == "mean":
+            loss_cls = self.loss_weight * calculate_loss_func(
+                pred,
+                target,
+                weight,
+                gamma=self.gamma,
+                alpha=self.alpha,
+                reduction=reduction,
+            )
+
+        else:
+            raise NotImplementedError
+        return loss_cls
+
+
+def py_sigmoid_focal_loss(
+        pred,
+        target,
+        weight=None,
+        gamma=2.0,
+        alpha=0.25,
+        reduction='mean',
+):
+    """paddle version of `Focal Loss <https://arxiv.org/abs/1708.02002>`_.
+    """
+    pred_sigmoid = F.sigmoid(pred)
+    target = target.astype(pred.dtype)
+    pt = (1 - pred_sigmoid) * target + pred_sigmoid * (1 - target)
+    focal_weight = (alpha * target + (1 - alpha) * (1 - target)) * pt.pow(gamma)
+    loss = F.binary_cross_entropy_with_logits(
+        pred, target, reduction='none') * focal_weight
+    if weight is not None:
+        if weight.shape != loss.shape:
+            if weight.shape[0] == loss.shape[0]:
+                weight = weight.reshape([-1, 1])
+            else:
+                assert weight.numel() == loss.numel()
+                weight = weight.reshape([loss.shape[0], -1])
+        assert len(weight.shape) == len(loss.shape)
+
+    if reduction == 'mean':
         loss = loss.mean()
-    elif reduction == "sum":
+    elif reduction == 'sum':
         loss = loss.sum()
 
     return loss

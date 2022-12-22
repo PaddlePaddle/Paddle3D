@@ -64,7 +64,7 @@ model:
     point_cloud_range: [2, -30.08, -3.0, 46.8, 30.08, 1.0]
     class_names: ['Car', 'Pedestrian', 'Cyclist']
     predict_boxes_when_training: False
-    grid_size: [280, 376,  25.]
+    voxel_size: [0.16, 0.16, 0.16]
     anchor_generator_cfg: [
       {
           'class_name': 'Car',
@@ -132,7 +132,7 @@ model:
       bg_weight: 1
   f2v_cfg:
     pc_range: [2, -30.08, -3.0, 46.8, 30.08, 1.0]
-    grid_size: [280, 376, 25.0]
+    voxel_size: [0.16, 0.16, 0.16]
     sample_cfg:
       mode: bilinear
       padding_mode: zeros
@@ -149,3 +149,12 @@ model:
       nms_thresh: 0.01
       nms_pre_maxsize: 4096
       nms_post_maxsize: 500
+
+export:
+  transforms:
+    - type: LoadImage
+      to_chw: False
+      to_rgb: True
+    - type: Normalize
+      mean: [0, 0, 0]
+      std: [1, 1, 1]

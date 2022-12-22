@@ -16,13 +16,12 @@ from typing import Dict, List
 
 import numpy as np
 
-from paddle3d.datasets.kitti.kitti_utils import (Calibration,
-                                                 box_lidar_to_camera)
+from paddle3d.datasets.kitti.kitti_utils import (
+    Calibration, box_lidar_to_camera, filter_fake_result)
 from paddle3d.datasets.metrics import MetricABC
-from paddle3d.geometries.bbox import (BBoxes2D, BBoxes3D, CoordMode,
-                                      boxes3d_kitti_camera_to_imageboxes,
-                                      boxes3d_lidar_to_kitti_camera,
-                                      project_to_image)
+from paddle3d.geometries.bbox import (
+    BBoxes2D, BBoxes3D, CoordMode, boxes3d_kitti_camera_to_imageboxes,
+    boxes3d_lidar_to_kitti_camera, project_to_image)
 from paddle3d.sample import Sample
 from paddle3d.thirdparty import kitti_eval
 from paddle3d.utils.logger import logger
@@ -82,8 +81,9 @@ class KittiMetric(MetricABC):
             self, predictions: List[Sample]) -> List[dict]:
         res = {}
         for pred in predictions:
+            filter_fake_result(pred)
             id = pred.meta.id
-            if pred.bboxes_2d is None and pred.bboxes_3d is None:
+            if pred.bboxes_3d is None:
                 det = {
                     'truncated': np.zeros([0]),
                     'occluded': np.zeros([0]),
@@ -156,24 +156,43 @@ class KittiMetric(MetricABC):
                 'The number of predictions({}) is not equal to the number of GroundTruths({})'
                 .format(len(dt_annos), len(gt_annos)))
 
-        metric_dict = kitti_eval(
+        metric_r40_dict = kitti_eval(
             gt_annos,
             dt_annos,
             current_classes=list(self.classmap.values()),
-            metric_types=["bbox", "bev", "3d"])
+            metric_types=["bbox", "bev", "3d"],
+            recall_type='R40')
+
+        metric_r11_dict = kitti_eval(
+            gt_annos,
+            dt_annos,
+            current_classes=list(self.classmap.values()),
+            metric_types=["bbox", "bev", "3d"],
+            recall_type='R11')
 
         if verbose:
-            for cls, cls_metrics in metric_dict.items():
+            for cls, cls_metrics in metric_r40_dict.items():
                 logger.info("{}:".format(cls))
                 for overlap_thresh, metrics in cls_metrics.items():
                     for metric_type, thresh in zip(["bbox", "bev", "3d"],
                                                    overlap_thresh):
                         if metric_type in metrics:
                             logger.info(
-                                "{} AP@{:.0%}: {:.2f} {:.2f} {:.2f}".format(
+                                "{} AP_R40@{:.0%}: {:.2f} {:.2f} {:.2f}".format(
                                     metric_type.upper().ljust(4), thresh,
                                     *metrics[metric_type]))
-        return metric_dict
+
+            for cls, cls_metrics in metric_r11_dict.items():
+                logger.info("{}:".format(cls))
+                for overlap_thresh, metrics in cls_metrics.items():
+                    for metric_type, thresh in zip(["bbox", "bev", "3d"],
+                                                   overlap_thresh):
+                        if metric_type in metrics:
+                            logger.info(
+                                "{} AP_R11@{:.0%}: {:.2f} {:.2f} {:.2f}".format(
+                                    metric_type.upper().ljust(4), thresh,
+                                    *metrics[metric_type]))
+        return metric_r40_dict, metric_r11_dict
 
 
 class KittiDepthMetric(MetricABC):
@@ -197,9 +216,7 @@ class KittiDepthMetric(MetricABC):
                 pred_scores: (N), Tensor
                 pred_labels: (N), Tensor
             output_path:
-
         Returns:
-
         """
 
         def get_template_prediction(num_samples):

@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <thrust/scan.h>
-
 #include "paddle/extension.h"
 
 #define CHECK_INPUT_CUDA(x) \
@@ -147,8 +145,9 @@ __global__ void assign_coords_kernel(const T_int *grid_idx_to_voxel_idx,
                                      const T_int *num_points_in_grid,
                                      const int num_grids, const int grid_size_x,
                                      const int grid_size_y,
-                                     const int grid_size_z, T *coords,
-                                     T *num_points_per_voxel) {
+                                     const int grid_size_z,
+                                     const int max_num_points_in_voxel,
+                                     T *coords, T *num_points_per_voxel) {
   int64_t grid_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (grid_idx > num_grids || grid_idx == num_grids) {
     return;
@@ -163,7 +162,8 @@ __global__ void assign_coords_kernel(const T_int *grid_idx_to_voxel_idx,
     coords[voxel_idx * 3 + 0] = coord_z;
     coords[voxel_idx * 3 + 1] = coord_y;
     coords[voxel_idx * 3 + 2] = coord_x;
-    num_points_per_voxel[voxel_idx] = num_points_in_grid[grid_idx];
+    num_points_per_voxel[voxel_idx] =
+        min(num_points_in_grid[grid_idx], max_num_points_in_voxel);
   }
 }
 
@@ -231,8 +231,6 @@ std::vector<paddle::Tensor> hard_voxelize_cuda(
   int *points_valid_data = points_valid.data<int>();
   auto points_flag = paddle::full({num_points}, 0, paddle::DataType::INT32,
                                   paddle::GPUPlace());
-  auto points_flag_prefix_sum = paddle::full(
-      {num_points}, 0, paddle::DataType::INT32, paddle::GPUPlace());
 
   // 1. Find the grid index for each point, compute the
   // number of points in each grid
@@ -253,16 +251,15 @@ std::vector<paddle::Tensor> hard_voxelize_cuda(
 
   // 2. Find the number of non-zero voxels
   int *points_flag_data = points_flag.data<int>();
-  int *points_flag_prefix_sum_data = points_flag_prefix_sum.data<int>();
 
   threads = 512;
   blocks = (num_points + threads - 1) / threads;
   update_points_flag<int><<<blocks, threads, 0, points.stream()>>>(
       points_valid_data, points_to_grid_idx_data, num_points, points_flag_data);
 
-  thrust::exclusive_scan(thrust::cuda::par.on(points.stream()),
-                         points_flag_data, points_flag_data + num_points,
-                         points_flag_prefix_sum_data);
+  auto points_flag_prefix_sum =
+      paddle::experimental::cumsum(points_flag, 0, false, true, false);
+  int *points_flag_prefix_sum_data = points_flag_prefix_sum.data<int>();
 
   get_voxel_idx_kernel<int><<<blocks, threads, 0, points.stream()>>>(
       points_flag_data, points_to_grid_idx_data, points_flag_prefix_sum_data,
@@ -293,8 +290,8 @@ std::vector<paddle::Tensor> hard_voxelize_cuda(
   blocks = (num_grids + threads - 1) / threads;
   assign_coords_kernel<int><<<blocks, threads, 0, points.stream()>>>(
       grid_idx_to_voxel_idx_data, num_points_in_grid_data, num_grids,
-      grid_size_x, grid_size_y, grid_size_z, coords_data,
-      num_points_per_voxel_data);
+      grid_size_x, grid_size_y, grid_size_z, max_num_points_in_voxel,
+      coords_data, num_points_per_voxel_data);
 
   return {voxels, coords, num_points_per_voxel, num_voxels};
 }

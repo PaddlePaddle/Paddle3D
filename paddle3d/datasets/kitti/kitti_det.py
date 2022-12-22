@@ -37,7 +37,8 @@ class KittiDetDataset(BaseDataset):
                  transforms: Union[TransformABC, List[TransformABC]] = None,
                  class_names: Union[list, tuple] = None,
                  class_map: Dict[str, int] = None,
-                 class_balanced_sampling: bool = False):
+                 class_balanced_sampling: bool = False,
+                 use_road_plane: bool = False):
         super().__init__()
         self.dataset_root = dataset_root
         self.mode = mode.lower()
@@ -47,6 +48,7 @@ class KittiDetDataset(BaseDataset):
 
         self.transforms = transforms
         self.class_names = class_names
+        self.use_road_plane = use_road_plane
         if self.class_names is None:
             self.class_names = list(self.CLASS_MAP.keys())
         self.class_map = class_map
@@ -93,6 +95,7 @@ class KittiDetDataset(BaseDataset):
                             samples,
                             int(len(samples) * (sampling_ratio - 1.))).tolist())
             self.data = resampling_data
+        self.use_road_plane = use_road_plane
 
     def __len__(self):
         return len(self.data)
@@ -199,3 +202,11 @@ class KittiDetDataset(BaseDataset):
             classmap={i: name
                       for i, name in enumerate(self.class_names)},
             indexes=self.data)
+
+    @property
+    def name(self) -> str:
+        return "KITTI"
+
+    @property
+    def labels(self) -> List[str]:
+        return self.class_names

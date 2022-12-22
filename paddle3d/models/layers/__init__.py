@@ -15,5 +15,9 @@
 from .layer_norm import *
 from .layer_libs import *
 from .param_init import *
+from .petr_transformer import (PETRDNTransformer, PETRTransformer,
+                               PETRTransformerDecoder,
+                               PETRTransformerDecoderLayer)
+from .positional_encoding import SinePositionalEncoding3D
 from .pyramid_pool import *
 from .normalization import *

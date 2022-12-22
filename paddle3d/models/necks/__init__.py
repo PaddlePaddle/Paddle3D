@@ -14,5 +14,6 @@
 
 from . import second_fpn
 from . import fpn
+from .cp_fpn import CPFPN
 from .second_fpn import *
 from .fpn import *
