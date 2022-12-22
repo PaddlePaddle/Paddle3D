@@ -31,6 +31,7 @@ class FCOS2DHead(nn.Layer):
     """
     This code is based on https://github.com/TRI-ML/dd3d/blob/main/tridet/modeling/dd3d/fcos2d.py#L30
     """
+
     def __init__(self,
                  in_strides,
                  in_channels,
@@ -65,18 +66,20 @@ class FCOS2DHead(nn.Layer):
                 for _ in range(num_convs):
                     conv_func = nn.Conv2D
                     tower.append(
-                        conv_func(in_channels,
-                                  in_channels,
-                                  kernel_size=3,
-                                  stride=1,
-                                  padding=1,
-                                  bias=True))
+                        conv_func(
+                            in_channels,
+                            in_channels,
+                            kernel_size=3,
+                            stride=1,
+                            padding=1,
+                            bias=True))
                     if norm == "BN":
                         tower.append(
                             LayerListDial([
-                                nn.BatchNorm2D(in_channels,
-                                               weight_attr=ParamAttr(
-                                                   regularizer=L2Decay(0.0)))
+                                nn.BatchNorm2D(
+                                    in_channels,
+                                    weight_attr=ParamAttr(
+                                        regularizer=L2Decay(0.0)))
                                 for _ in range(self.num_levels)
                             ]))
                     else:
@@ -101,33 +104,25 @@ class FCOS2DHead(nn.Layer):
                     else:
                         raise NotImplementedError()
                     tower.append(
-                        nn.Conv2D(in_channels,
-                                  in_channels,
-                                  kernel_size=3,
-                                  stride=1,
-                                  padding=1,
-                                  bias_attr=False))
+                        nn.Conv2D(
+                            in_channels,
+                            in_channels,
+                            kernel_size=3,
+                            stride=1,
+                            padding=1,
+                            bias_attr=False))
                     tower.append(norm_layer)
                     tower.append(nn.ReLU())
             else:
                 raise ValueError(f"Invalid FCOS2D version: {self.version}")
             self.add_sublayer(f'{head_name}_tower', nn.Sequential(*tower))
 
-        self.cls_logits = nn.Conv2D(in_channels,
-                                    self.num_classes,
-                                    kernel_size=3,
-                                    stride=1,
-                                    padding=1)
-        self.box2d_reg = nn.Conv2D(in_channels,
-                                   4,
-                                   kernel_size=3,
-                                   stride=1,
-                                   padding=1)
-        self.centerness = nn.Conv2D(in_channels,
-                                    1,
-                                    kernel_size=3,
-                                    stride=1,
-                                    padding=1)
+        self.cls_logits = nn.Conv2D(
+            in_channels, self.num_classes, kernel_size=3, stride=1, padding=1)
+        self.box2d_reg = nn.Conv2D(
+            in_channels, 4, kernel_size=3, stride=1, padding=1)
+        self.centerness = nn.Conv2D(
+            in_channels, 1, kernel_size=3, stride=1, padding=1)
 
         if self.use_scale:
             if self.version == "v1":
@@ -148,9 +143,8 @@ class FCOS2DHead(nn.Layer):
         for tower in [self.cls_tower, self.box2d_tower]:
             for l in tower.sublayers():
                 if isinstance(l, nn.Conv2D):
-                    param_init.kaiming_normal_init(l.weight,
-                                                   mode='fan_out',
-                                                   nonlinearity='relu')
+                    param_init.kaiming_normal_init(
+                        l.weight, mode='fan_out', nonlinearity='relu')
                     if l.bias is not None:
                         param_init.constant_init(l.bias, value=0.0)
 
@@ -215,6 +209,7 @@ class FCOS2DLoss(nn.Layer):
     """
     This code is based on https://github.com/TRI-ML/dd3d/blob/main/tridet/modeling/dd3d/fcos2d.py#L159
     """
+
     def __init__(self,
                  alpha=0.25,
                  gamma=2.0,
@@ -321,6 +316,7 @@ class FCOS2DInference():
     """
     This code is based on https://github.com/TRI-ML/dd3d/blob/main/tridet/modeling/dd3d/fcos2d.py#L242
     """
+
     def __init__(self,
                  thresh_with_ctr=True,
                  pre_nms_thresh=0.05,

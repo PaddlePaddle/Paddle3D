@@ -20,6 +20,7 @@ class Scale(nn.Layer):
     """
     This code is based on https://github.com/aim-uofa/AdelaiDet/blob/master/adet/modeling/fcos/fcos.py#L20
     """
+
     def __init__(self, init_value=1.0):
         super(Scale, self).__init__()
         init_value = paddle.to_tensor([init_value])
@@ -36,6 +37,7 @@ class Offset(nn.Layer):
     """
     This code is based on https://github.com/TRI-ML/dd3d/blob/main/tridet/layers/normalization.py#L21
     """
+
     def __init__(self, init_value=0.):
         super(Offset, self).__init__()
         init_value = paddle.to_tensor([init_value])
@@ -52,6 +54,7 @@ class LayerListDial(nn.LayerList):
     """
     This code is based on https://github.com/aim-uofa/AdelaiDet/blob/master/adet/modeling/fcos/fcos.py#L29
     """
+
     def __init__(self, layers=None):
         super(LayerListDial, self).__init__(layers)
         self.cur_position = 0

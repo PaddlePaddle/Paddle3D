@@ -86,9 +86,10 @@ def predictions_to_boxes3d(quat,
     quat = quat / paddle.linalg.norm(quat, axis=1, keepdim=True)
 
     if scale_depth_by_focal_lengths:
-        pixel_size = paddle.linalg.norm(paddle.stack(
-            [inv_intrinsics[:, 0, 0], inv_intrinsics[:, 1, 1]], axis=-1),
-                                        axis=-1)
+        pixel_size = paddle.linalg.norm(
+            paddle.stack([inv_intrinsics[:, 0, 0], inv_intrinsics[:, 1, 1]],
+                         axis=-1),
+            axis=-1)
         depth = depth / (pixel_size * scale_depth_by_focal_lengths_factor)
 
     if depth_is_distance:
@@ -112,6 +113,7 @@ class FCOS3DHead(nn.Layer):
     """
     This code is based on https://github.com/TRI-ML/dd3d/blob/main/tridet/modeling/dd3d/fcos3d.py#L55
     """
+
     def __init__(self,
                  in_strides,
                  in_channels,
@@ -165,12 +167,13 @@ class FCOS3DHead(nn.Layer):
             else:
                 raise NotImplementedError()
             box3d_tower.append(
-                nn.Conv2D(in_channels,
-                          in_channels,
-                          kernel_size=3,
-                          stride=1,
-                          padding=1,
-                          bias_attr=False))
+                nn.Conv2D(
+                    in_channels,
+                    in_channels,
+                    kernel_size=3,
+                    stride=1,
+                    padding=1,
+                    bias_attr=False))
             box3d_tower.append(norm_layer)
             box3d_tower.append(nn.ReLU())
         self.add_sublayer('box3d_tower', nn.Sequential(*box3d_tower))
@@ -180,40 +183,45 @@ class FCOS3DHead(nn.Layer):
 
         # 3D box branches.
         self.box3d_quat = nn.LayerList([
-            nn.Conv2D(in_channels,
-                      4 * num_classes,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1) for _ in range(num_levels)
+            nn.Conv2D(
+                in_channels,
+                4 * num_classes,
+                kernel_size=3,
+                stride=1,
+                padding=1) for _ in range(num_levels)
         ])
         self.box3d_ctr = nn.LayerList([
-            nn.Conv2D(in_channels,
-                      2 * num_classes,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1) for _ in range(num_levels)
+            nn.Conv2D(
+                in_channels,
+                2 * num_classes,
+                kernel_size=3,
+                stride=1,
+                padding=1) for _ in range(num_levels)
         ])
         self.box3d_depth = nn.LayerList([
-            nn.Conv2D(in_channels,
-                      1 * num_classes,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1,
-                      bias_attr=(not self.use_scale)) for _ in range(num_levels)
+            nn.Conv2D(
+                in_channels,
+                1 * num_classes,
+                kernel_size=3,
+                stride=1,
+                padding=1,
+                bias_attr=(not self.use_scale)) for _ in range(num_levels)
         ])
         self.box3d_size = nn.LayerList([
-            nn.Conv2D(in_channels,
-                      3 * num_classes,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1) for _ in range(num_levels)
+            nn.Conv2D(
+                in_channels,
+                3 * num_classes,
+                kernel_size=3,
+                stride=1,
+                padding=1) for _ in range(num_levels)
         ])
         self.box3d_conf = nn.LayerList([
-            nn.Conv2D(in_channels,
-                      1 * num_classes,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1) for _ in range(num_levels)
+            nn.Conv2D(
+                in_channels,
+                1 * num_classes,
+                kernel_size=3,
+                stride=1,
+                padding=1) for _ in range(num_levels)
         ])
 
         if self.use_scale:
@@ -240,9 +248,8 @@ class FCOS3DHead(nn.Layer):
 
         for l in self.box3d_tower.sublayers():
             if isinstance(l, nn.Conv2D):
-                param_init.kaiming_normal_init(l.weight,
-                                               mode='fan_out',
-                                               nonlinearity='relu')
+                param_init.kaiming_normal_init(
+                    l.weight, mode='fan_out', nonlinearity='relu')
                 if l.bias is not None:
                     param_init.constant_init(l.bias, value=0.0)
 
@@ -294,6 +301,7 @@ class FCOS3DLoss(nn.Layer):
     """
     This code is based on https://github.com/TRI-ML/dd3d/blob/main/tridet/modeling/dd3d/fcos3d.py#L191
     """
+
     def __init__(
             self,
             canon_box_sizes=[
@@ -411,21 +419,16 @@ class FCOS3DLoss(nn.Layer):
             box3d_conf_pred = box3d_conf_pred.squeeze(-1)
         else:
             I = labels[pos_inds][..., None, None]
-            box3d_quat_pred = paddle.take_along_axis(box3d_quat_pred,
-                                                     indices=I.tile([1, 4, 1]),
-                                                     axis=2).squeeze(-1)
-            box3d_ctr_pred = paddle.take_along_axis(box3d_ctr_pred,
-                                                    indices=I.tile([1, 2, 1]),
-                                                    axis=2).squeeze(-1)
-            box3d_depth_pred = paddle.take_along_axis(box3d_depth_pred,
-                                                      indices=I.squeeze(-1),
-                                                      axis=1).squeeze(-1)
-            box3d_size_pred = paddle.take_along_axis(box3d_size_pred,
-                                                     indices=I.tile([1, 3, 1]),
-                                                     axis=2).squeeze(-1)
-            box3d_conf_pred = paddle.take_along_axis(box3d_conf_pred,
-                                                     indices=I.squeeze(-1),
-                                                     axis=1).squeeze(-1)
+            box3d_quat_pred = paddle.take_along_axis(
+                box3d_quat_pred, indices=I.tile([1, 4, 1]), axis=2).squeeze(-1)
+            box3d_ctr_pred = paddle.take_along_axis(
+                box3d_ctr_pred, indices=I.tile([1, 2, 1]), axis=2).squeeze(-1)
+            box3d_depth_pred = paddle.take_along_axis(
+                box3d_depth_pred, indices=I.squeeze(-1), axis=1).squeeze(-1)
+            box3d_size_pred = paddle.take_along_axis(
+                box3d_size_pred, indices=I.tile([1, 3, 1]), axis=2).squeeze(-1)
+            box3d_conf_pred = paddle.take_along_axis(
+                box3d_conf_pred, indices=I.squeeze(-1), axis=1).squeeze(-1)
 
         canon_box_sizes = paddle.to_tensor(
             self.canon_box_sizes)[labels[pos_inds]]
@@ -464,11 +467,10 @@ class FCOS3DLoss(nn.Layer):
             for k, v in losses_box3d.items()
         }
 
-        conf_3d_targets = paddle.exp(-1. / self.conf_3d_temperature *
-                                     box3d_l1_error)
-        loss_conf3d = F.binary_cross_entropy_with_logits(box3d_conf_pred,
-                                                         conf_3d_targets,
-                                                         reduction='none')
+        conf_3d_targets = paddle.exp(
+            -1. / self.conf_3d_temperature * box3d_l1_error)
+        loss_conf3d = F.binary_cross_entropy_with_logits(
+            box3d_conf_pred, conf_3d_targets, reduction='none')
         loss_conf3d = self.conf3d_loss_weight * (
             loss_conf3d * centerness_targets).sum() / loss_denom
 
@@ -482,6 +484,7 @@ class FCOS3DInference(nn.Layer):
     """
     This code is based on https://github.com/TRI-ML/dd3d/blob/main/tridet/modeling/dd3d/fcos3d.py#L302
     """
+
     def __init__(
             self,
             canon_box_sizes=[

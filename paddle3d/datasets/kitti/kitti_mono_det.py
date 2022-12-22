@@ -26,6 +26,7 @@ from paddle3d.sample import Sample
 class KittiMonoDataset(KittiDetDataset):
     """
     """
+
     def __getitem__(self, index: int) -> Sample:
         filename = '{}.png'.format(self.data[index])
         path = os.path.join(self.image_dir, filename)

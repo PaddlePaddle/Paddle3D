@@ -46,6 +46,7 @@ class RandomHorizontalFlip(TransformABC):
         If the inputs are pixel indices, they are flipped by `(W - 1 - x, H - 1 - y)`.
         If the inputs are floating point coordinates, they are flipped by `(W - x, H - y)`.
     """
+
     def __init__(self, prob: float = 0.5, input_type='pixel_indices'):
         self.prob = prob
         self.input_type = input_type
@@ -88,12 +89,14 @@ class RandomHorizontalFlip(TransformABC):
 class ToVisionBasedBox(TransformABC):
     """
     """
+
     def __call__(self, sample: Sample):
         bboxes_3d_new = sample.bboxes_3d.to_vision_based_3d_box()
-        sample.bboxes_3d = BBoxes3D(bboxes_3d_new,
-                                    origin=[.5, 1, .5],
-                                    coordmode=CoordMode.KittiCamera,
-                                    rot_axis=1)
+        sample.bboxes_3d = BBoxes3D(
+            bboxes_3d_new,
+            origin=[.5, 1, .5],
+            coordmode=CoordMode.KittiCamera,
+            rot_axis=1)
         return sample
 
 
@@ -101,6 +104,7 @@ class ToVisionBasedBox(TransformABC):
 class RandomVerticalFlip(TransformABC):
     """
     """
+
     def __init__(self, prob: float = 0.5):
         self.prob = prob
 
@@ -130,6 +134,7 @@ class RandomVerticalFlip(TransformABC):
 class GlobalRotate(TransformABC):
     """
     """
+
     def __init__(self, min_rot: float = -np.pi / 4, max_rot: float = np.pi / 4):
         self.min_rot = min_rot
         self.max_rot = max_rot
@@ -150,6 +155,7 @@ class GlobalRotate(TransformABC):
 class GlobalScale(TransformABC):
     """
     """
+
     def __init__(self,
                  min_scale: float = 0.95,
                  max_scale: float = 1.05,
@@ -161,9 +167,8 @@ class GlobalScale(TransformABC):
     def __call__(self, sample: Sample):
         if sample.modality != "lidar":
             raise ValueError("GlobalScale only supports lidar data!")
-        factor = np.random.uniform(self.min_scale,
-                                   self.max_scale,
-                                   size=self.size)
+        factor = np.random.uniform(
+            self.min_scale, self.max_scale, size=self.size)
         # Scale points
         sample.data.scale(factor)
         # Scale bboxes_3d
@@ -183,10 +188,12 @@ class GlobalTranslate(TransformABC):
         distribution (str):
             The random distribution. Defaults to normal.
     """
-    def __init__(self,
-                 translation_std: Union[float, List[float],
-                                        Tuple[float]] = (.2, .2, .2),
-                 distribution="normal"):
+
+    def __init__(
+            self,
+            translation_std: Union[float, List[float], Tuple[float]] = (.2, .2,
+                                                                        .2),
+            distribution="normal"):
         if not isinstance(translation_std, (list, tuple)):
             translation_std = [
                 translation_std, translation_std, translation_std
@@ -205,9 +212,10 @@ class GlobalTranslate(TransformABC):
         if self.distribution == "normal":
             translation = np.random.normal(scale=self.translation_std, size=3)
         elif self.distribution == "uniform":
-            translation = np.random.uniform(low=-self.translation_std[0],
-                                            high=self.translation_std[0],
-                                            size=3)
+            translation = np.random.uniform(
+                low=-self.translation_std[0],
+                high=self.translation_std[0],
+                size=3)
         else:
             raise ValueError(
                 "GlobalScale only supports normal and uniform random distribution!"
@@ -236,9 +244,8 @@ class ConvertBoxFormat(TransformABC):
         bboxes_3d = box_utils.boxes3d_kitti_lidar_to_lidar(sample.bboxes_3d)
 
         # limit heading
-        bboxes_3d[:, -1] = box_utils.limit_period(bboxes_3d[:, -1],
-                                                  offset=0.5,
-                                                  period=2 * np.pi)
+        bboxes_3d[:, -1] = box_utils.limit_period(
+            bboxes_3d[:, -1], offset=0.5, period=2 * np.pi)
 
         # stack labels into gt_boxes, label starts from 1, instead of 0.
         labels = sample.labels + 1
@@ -365,12 +372,10 @@ class HardVoxelize(TransformABC):
                                         -1,
                                         dtype=np.int32)
 
-        num_voxels = points_to_voxel(sample.data, self.voxel_size,
-                                     self.point_cloud_range, self.grid_size,
-                                     voxels, coords, num_points_per_voxel,
-                                     grid_idx_to_voxel_idx,
-                                     self.max_points_in_voxel,
-                                     self.max_voxel_num)
+        num_voxels = points_to_voxel(
+            sample.data, self.voxel_size, self.point_cloud_range,
+            self.grid_size, voxels, coords, num_points_per_voxel,
+            grid_idx_to_voxel_idx, self.max_points_in_voxel, self.max_voxel_num)
 
         voxels = voxels[:num_voxels]
         coords = coords[:num_voxels]
@@ -396,11 +401,12 @@ class RandomObjectPerturb(TransformABC):
             Standard deviation of random translation. Defaults to 1.0.
         max_num_attempts (int): Maximum number of perturbation attempts. Defaults to 100.
     """
-    def __init__(self,
-                 rotation_range: Union[float, List[float],
-                                       Tuple[float]] = np.pi / 4,
-                 translation_std: Union[float, List[float], Tuple[float]] = 1.0,
-                 max_num_attempts: int = 100):
+
+    def __init__(
+            self,
+            rotation_range: Union[float, List[float], Tuple[float]] = np.pi / 4,
+            translation_std: Union[float, List[float], Tuple[float]] = 1.0,
+            max_num_attempts: int = 100):
 
         if not isinstance(rotation_range, (list, tuple)):
             rotation_range = [-rotation_range, rotation_range]
@@ -445,6 +451,7 @@ class RandomObjectPerturb(TransformABC):
 class ResizeShortestEdge(TransformABC):
     """
     """
+
     def __init__(self,
                  short_edge_length,
                  max_size,
@@ -507,9 +514,8 @@ class ResizeShortestEdge(TransformABC):
             }
             mode = _PIL_RESIZE_TO_INTERPOLATE_MODE[self.interp]
             align_corners = None if mode == "nearest" else False
-            img = nn.functional.interpolate(img, (newh, neww),
-                                            mode=mode,
-                                            align_corners=align_corners)
+            img = nn.functional.interpolate(
+                img, (newh, neww), mode=mode, align_corners=align_corners)
             shape[:2] = (newh, neww)
             ret = img.transpose([2, 3, 0,
                                  1]).reshape(shape).numpy()  # nchw -> hw(c)
@@ -559,6 +565,7 @@ class RandomContrast(TransformABC):
     - intensity = 1 will preserve the input image
     - intensity > 1 will increase contrast
     """
+
     def __init__(self, intensity_min: float, intensity_max: float):
         super().__init__()
         self.intensity_min = intensity_min
@@ -566,10 +573,11 @@ class RandomContrast(TransformABC):
 
     def __call__(self, sample: Sample):
         w = np.random.uniform(self.intensity_min, self.intensity_max)
-        sample.data = F.blend_transform(sample.data,
-                                        src_image=sample.data.mean(),
-                                        src_weight=1 - w,
-                                        dst_weight=w)
+        sample.data = F.blend_transform(
+            sample.data,
+            src_image=sample.data.mean(),
+            src_weight=1 - w,
+            dst_weight=w)
         return sample
 
 
@@ -582,6 +590,7 @@ class RandomBrightness(TransformABC):
     - intensity = 1 will preserve the input image
     - intensity > 1 will increase contrast
     """
+
     def __init__(self, intensity_min: float, intensity_max: float):
         super().__init__()
         self.intensity_min = intensity_min
@@ -589,10 +598,8 @@ class RandomBrightness(TransformABC):
 
     def __call__(self, sample: Sample):
         w = np.random.uniform(self.intensity_min, self.intensity_max)
-        sample.data = F.blend_transform(sample.data,
-                                        src_image=0,
-                                        src_weight=1 - w,
-                                        dst_weight=w)
+        sample.data = F.blend_transform(
+            sample.data, src_image=0, src_weight=1 - w, dst_weight=w)
         return sample
 
 
@@ -605,6 +612,7 @@ class RandomSaturation(TransformABC):
     - intensity = 1 will preserve the input image
     - intensity > 1 will increase contrast
     """
+
     def __init__(self, intensity_min: float, intensity_max: float):
         super().__init__()
         self.intensity_min = intensity_min
@@ -615,10 +623,8 @@ class RandomSaturation(TransformABC):
             -1] == 3, "RandomSaturation only works on RGB images"
         w = np.random.uniform(self.intensity_min, self.intensity_max)
         grayscale = sample.data.dot([0.299, 0.587, 0.114])[:, :, np.newaxis]
-        sample.data = F.blend_transform(sample.data,
-                                        src_image=grayscale,
-                                        src_weight=1 - w,
-                                        dst_weight=w)
+        sample.data = F.blend_transform(
+            sample.data, src_image=grayscale, src_weight=1 - w, dst_weight=w)
         return sample
 
 
@@ -646,6 +652,7 @@ class SampleRangeFilter(object):
     Args:
         point_cloud_range (list[float]): Point cloud range.
     """
+
     def __init__(self, point_cloud_range):
         self.pcd_range = np.array(point_cloud_range, dtype=np.float32)
 
@@ -693,9 +700,8 @@ class SampleRangeFilter(object):
         gt_labels_3d = gt_labels_3d[mask.astype(np.bool_)]
 
         # limit rad to [-pi, pi]
-        gt_bboxes_3d = self.limit_yaw(gt_bboxes_3d,
-                                      offset=0.5,
-                                      period=2 * np.pi)
+        gt_bboxes_3d = self.limit_yaw(
+            gt_bboxes_3d, offset=0.5, period=2 * np.pi)
         sample['gt_bboxes_3d'] = gt_bboxes_3d
         sample['gt_labels_3d'] = gt_labels_3d
 
@@ -709,6 +715,7 @@ class SampleNameFilter(object):
     Args:
         classes (list[str]): List of class names to be kept for training.
     """
+
     def __init__(self, classes):
         self.classes = classes
         self.labels = list(range(len(self.classes)))
@@ -738,6 +745,7 @@ class ResizeCropFlipImage(object):
     Args:
         size (tuple, optional): Fixed padding size.
     """
+
     def __init__(self, sample_aug_cfg=None, training=True):
         self.sample_aug_cfg = sample_aug_cfg
 
@@ -850,6 +858,7 @@ class MSResizeCropFlipImage(object):
     Args:
         size (tuple, optional): Fixed padding size.
     """
+
     def __init__(self,
                  sample_aug_cfg=None,
                  training=True,
@@ -1006,13 +1015,14 @@ class GlobalRotScaleTransImage(object):
     Args:
         size (tuple, optional): Fixed padding size.
     """
+
     def __init__(
-        self,
-        rot_range=[-0.3925, 0.3925],
-        scale_ratio_range=[0.95, 1.05],
-        translation_std=[0, 0, 0],
-        reverse_angle=False,
-        training=True,
+            self,
+            rot_range=[-0.3925, 0.3925],
+            scale_ratio_range=[0.95, 1.05],
+            translation_std=[0, 0, 0],
+            reverse_angle=False,
+            training=True,
     ):
 
         self.rot_range = rot_range
@@ -1077,9 +1087,8 @@ class GlobalRotScaleTransImage(object):
         ], [0, 0, 1]])
         results.gt_bboxes_3d[:, :3] = results.gt_bboxes_3d[:, :3] @ rot_mat
         results.gt_bboxes_3d[:, 6] += rot_angle
-        results.gt_bboxes_3d[:,
-                             7:9] = results.gt_bboxes_3d[:,
-                                                         7:9] @ rot_mat[:2, :2]
+        results.gt_bboxes_3d[:, 7:
+                             9] = results.gt_bboxes_3d[:, 7:9] @ rot_mat[:2, :2]
 
     def scale_xyz(self, results, scale_ratio):
         rot_mat = np.array([
@@ -1113,6 +1122,7 @@ class NormalizeMultiviewImage(object):
         to_rgb (bool): Whether to convert the image from BGR to RGB,
             default is true.
     """
+
     def __init__(self, mean, std, to_rgb=False):
         self.mean = np.array(mean, dtype=np.float32)
         self.std = np.array(std, dtype=np.float32)
@@ -1130,9 +1140,8 @@ class NormalizeMultiviewImage(object):
             F.normalize_use_cv2(img, self.mean, self.std, self.to_rgb)
             for img in sample['img']
         ]
-        sample['img_norm_cfg'] = dict(mean=self.mean,
-                                      std=self.std,
-                                      to_rgb=self.to_rgb)
+        sample['img_norm_cfg'] = dict(
+            mean=self.mean, std=self.std, to_rgb=self.to_rgb)
 
         return sample
 
@@ -1172,13 +1181,14 @@ def impad(img, *, shape=None, padding=None, pad_val=0, padding_mode='constant'):
         'reflect': cv2.BORDER_REFLECT_101,
         'symmetric': cv2.BORDER_REFLECT
     }
-    img = cv2.copyMakeBorder(img,
-                             padding[1],
-                             padding[3],
-                             padding[0],
-                             padding[2],
-                             border_type[padding_mode],
-                             value=pad_val)
+    img = cv2.copyMakeBorder(
+        img,
+        padding[1],
+        padding[3],
+        padding[0],
+        padding[2],
+        border_type[padding_mode],
+        value=pad_val)
 
     return img
 
@@ -1202,6 +1212,7 @@ class PadMultiViewImage(object):
         size_divisor (int, optional): The divisor of padded size.
         pad_val (float, optional): Padding value, 0 by default.
     """
+
     def __init__(self, size=None, size_divisor=None, pad_val=0):
         self.size = size
         self.size_divisor = size_divisor
@@ -1239,6 +1250,7 @@ class PadMultiViewImage(object):
 class SampleFilerByKey(object):
     """Collect data from the loader relevant to the specific task.
     """
+
     def __init__(self,
                  keys,
                  meta_keys=('filename', 'ori_shape', 'img_shape', 'lidar2img',

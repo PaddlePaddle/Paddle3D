@@ -96,6 +96,7 @@ class LoadPointCloud(TransformABC):
         use_time_lag: Whether to use time lag.
         sweep_remove_radius: The radius within which points are removed in sweeps.
     """
+
     def __init__(self,
                  dim,
                  use_dim: Union[int, List[int]] = None,
@@ -130,12 +131,11 @@ class LoadPointCloud(TransformABC):
             data_sweep_list = [
                 data,
             ]
-            for i in np.random.choice(len(sample.sweeps),
-                                      len(sample.sweeps),
-                                      replace=False):
+            for i in np.random.choice(
+                    len(sample.sweeps), len(sample.sweeps), replace=False):
                 sweep = sample.sweeps[i]
-                sweep_data = np.fromfile(sweep.path,
-                                         np.float32).reshape(-1, self.dim)
+                sweep_data = np.fromfile(sweep.path, np.float32).reshape(
+                    -1, self.dim)
                 if self.use_dim:
                     sweep_data = sweep_data[:, self.use_dim]
                 sweep_data = sweep_data.T
@@ -171,12 +171,13 @@ class RemoveCameraInvisiblePointsKITTI(TransformABC):
     """
     Remove camera invisible points for KITTI dataset.
     """
+
     def __call__(self, sample: Sample):
         calibs = sample.calibs
         C, Rinv, T = kitti_utils.projection_matrix_decomposition(calibs[2])
 
-        im_path = (Path(sample.path).parents[1] / "image_2" /
-                   Path(sample.path).stem).with_suffix(".png")
+        im_path = (Path(sample.path).parents[1] / "image_2" / Path(
+            sample.path).stem).with_suffix(".png")
 
         if os.path.exists(im_path):
             im_shape = cv2.imread(str(im_path)).shape[:2]
@@ -203,6 +204,7 @@ class RemoveCameraInvisiblePointsKITTIV2(TransformABC):
     Remove camera invisible points for KITTI dataset, unlike `RemoveCameraInvisiblePointsKITTI` which projects image plane to a frustum,
     this version projects poinst into image plane and remove the points outside the image boundary.
     """
+
     def __init__(self):
         self.V2C = None
         self.R0 = None
@@ -213,8 +215,8 @@ class RemoveCameraInvisiblePointsKITTIV2(TransformABC):
         self.V2C = calibs[5]
         self.P2 = calibs[2]
 
-        im_path = (Path(sample.path).parents[1] / "image_2" /
-                   Path(sample.path).stem).with_suffix(".png")
+        im_path = (Path(sample.path).parents[1] / "image_2" / Path(
+            sample.path).stem).with_suffix(".png")
 
         if os.path.exists(im_path):
             im_shape = cv2.imread(str(im_path)).shape[:2]
@@ -261,6 +263,7 @@ class LoadSemanticKITTIRange(TransformABC):
     Args:
         project_label (bool, optional): Whether project label to range view or not.
     """
+
     def __init__(self, project_label=True):
         self.project_label = project_label
         self.proj_H = 64
@@ -296,8 +299,8 @@ class LoadSemanticKITTIRange(TransformABC):
 
         # get projections in image coords
         proj_x = 0.5 * (yaw / np.pi + 1.0)  # in [0.0, 1.0]
-        proj_y = 1.0 - (pitch +
-                        abs(self.lower_inclination)) / self.fov  # in [0.0, 1.0]
+        proj_y = 1.0 - (
+            pitch + abs(self.lower_inclination)) / self.fov  # in [0.0, 1.0]
 
         # scale to image size using angular resolution
         proj_x *= self.proj_W  # in [0.0, W]
@@ -362,8 +365,8 @@ class LoadSemanticKITTIRange(TransformABC):
 
         if sample.labels is not None:
             # load labels
-            raw_label = np.fromfile(sample.labels, dtype=np.uint32).reshape(
-                (-1))
+            raw_label = np.fromfile(
+                sample.labels, dtype=np.uint32).reshape((-1))
             # only fill in attribute if the right size
             if raw_label.shape[0] == points.shape[0]:
                 sem_label = raw_label & 0xFFFF  # semantic label in lower half
@@ -403,6 +406,7 @@ class LoadSemanticKITTIPointCloud(TransformABC):
     Load SemanticKITTI range image.
     Please refer to <https://github.com/PRBonn/semantic-kitti-api/blob/master/auxiliary/laserscan.py>.
     """
+
     def __init__(self, use_dim: List[int] = None):
         self.proj_H = 64
         self.proj_W = 1024
@@ -463,6 +467,7 @@ class LoadMultiViewImageFromFiles(TransformABC):
             -  0: cv2.IMREAD_GRAYSCALE
             -  1: cv2.IMREAD_COLOR
     """
+
     def __init__(self, to_float32=False, imread_flag=-1):
         self.to_float32 = to_float32
         self.imread_flag = imread_flag
@@ -487,11 +492,10 @@ class LoadMultiViewImageFromFiles(TransformABC):
         sample['scale_factor'] = 1.0
         num_channels = 1 if len(img.shape) < 3 else img.shape[2]
 
-        sample['img_norm_cfg'] = dict(mean=np.zeros(num_channels,
-                                                    dtype=np.float32),
-                                      std=np.ones(num_channels,
-                                                  dtype=np.float32),
-                                      to_rgb=False)
+        sample['img_norm_cfg'] = dict(
+            mean=np.zeros(num_channels, dtype=np.float32),
+            std=np.ones(num_channels, dtype=np.float32),
+            to_rgb=False)
         return sample
 
 
@@ -500,13 +504,14 @@ class LoadAnnotations3D(TransformABC):
     """
     load annotation
     """
+
     def __init__(
-        self,
-        with_bbox_3d=True,
-        with_label_3d=True,
-        with_attr_label=False,
-        with_mask_3d=False,
-        with_seg_3d=False,
+            self,
+            with_bbox_3d=True,
+            with_label_3d=True,
+            with_attr_label=False,
+            with_mask_3d=False,
+            with_seg_3d=False,
     ):
         self.with_bbox_3d = with_bbox_3d
         self.with_label_3d = with_label_3d
@@ -559,20 +564,21 @@ class LoadMultiViewImageFromMultiSweepsFiles(object):
             Defaults to False.
         color_type (str): Color type of the file. Defaults to 'unchanged'.
     """
+
     def __init__(
-        self,
-        sweeps_num=5,
-        to_float32=False,
-        pad_empty_sweeps=False,
-        sweep_range=[3, 27],
-        sweeps_id=None,
-        imread_flag=-1,  #'unchanged'
-        sensors=[
-            'CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_FRONT_LEFT', 'CAM_BACK',
-            'CAM_BACK_LEFT', 'CAM_BACK_RIGHT'
-        ],
-        test_mode=True,
-        prob=1.0,
+            self,
+            sweeps_num=5,
+            to_float32=False,
+            pad_empty_sweeps=False,
+            sweep_range=[3, 27],
+            sweeps_id=None,
+            imread_flag=-1,  #'unchanged'
+            sensors=[
+                'CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_FRONT_LEFT', 'CAM_BACK',
+                'CAM_BACK_LEFT', 'CAM_BACK_RIGHT'
+            ],
+            test_mode=True,
+            prob=1.0,
     ):
 
         self.sweeps_num = sweeps_num
@@ -604,17 +610,17 @@ class LoadMultiViewImageFromMultiSweepsFiles(object):
         if self.pad_empty_sweeps and len(sample['sweeps']) == 0:
             for i in range(self.sweeps_num):
                 sweep_imgs_list.extend(imgs)
-                mean_time = (self.sweep_range[0] +
-                             self.sweep_range[1]) / 2.0 * 0.083
+                mean_time = (
+                    self.sweep_range[0] + self.sweep_range[1]) / 2.0 * 0.083
                 timestamp_imgs_list.extend(
                     [time + mean_time for time in img_timestamp])
                 for j in range(nums):
                     sample['filename'].append(sample['filename'][j])
                     sample['lidar2img'].append(np.copy(sample['lidar2img'][j]))
-                    sample['intrinsics'].append(np.copy(
-                        sample['intrinsics'][j]))
-                    sample['extrinsics'].append(np.copy(
-                        sample['extrinsics'][j]))
+                    sample['intrinsics'].append(
+                        np.copy(sample['intrinsics'][j]))
+                    sample['extrinsics'].append(
+                        np.copy(sample['extrinsics'][j]))
         else:
             if self.sweeps_id:
                 choices = self.sweeps_id
@@ -635,9 +641,8 @@ class LoadMultiViewImageFromMultiSweepsFiles(object):
                     else:
                         sweep_range = list(
                             range(self.sweep_range[0], self.sweep_range[1]))
-                    choices = np.random.choice(sweep_range,
-                                               self.sweeps_num,
-                                               replace=False)
+                    choices = np.random.choice(
+                        sweep_range, self.sweeps_num, replace=False)
                 else:
                     choices = [
                         int((self.sweep_range[0] + self.sweep_range[1]) / 2) - 1

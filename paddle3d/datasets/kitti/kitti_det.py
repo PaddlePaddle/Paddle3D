@@ -28,6 +28,7 @@ from paddle3d.transforms import TransformABC
 class KittiDetDataset(BaseDataset):
     """
     """
+
     def __init__(self,
                  dataset_root: str,
                  mode: str = "train",
@@ -88,8 +89,8 @@ class KittiDetDataset(BaseDataset):
             sampling_ratios = [balanced_frac / frac for frac in fracs]
 
             resampling_data = []
-            for samples, sampling_ratio in zip(list(cls_dist.values()),
-                                               sampling_ratios):
+            for samples, sampling_ratio in zip(
+                    list(cls_dist.values()), sampling_ratios):
                 resampling_data.extend(samples)
                 if sampling_ratio > 1.:
                     resampling_data.extend(

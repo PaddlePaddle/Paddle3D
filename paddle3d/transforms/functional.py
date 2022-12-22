@@ -74,8 +74,8 @@ def get_frustum(im_bbox, C, near_clip=0.001, far_clip=100):
     fku = C[0, 0]
     fkv = -C[1, 1]
     u0v0 = C[0:2, 2]
-    z_points = np.array([near_clip] * 4 + [far_clip] * 4,
-                        dtype=C.dtype)[:, np.newaxis]
+    z_points = np.array(
+        [near_clip] * 4 + [far_clip] * 4, dtype=C.dtype)[:, np.newaxis]
     b = im_bbox
     box_corners = np.array(
         [[b[0], b[1]], [b[0], b[3]], [b[2], b[3]], [b[2], b[1]]], dtype=C.dtype)
@@ -177,11 +177,8 @@ def create_anchors_3d_stride(feature_size,
     x_centers = x_centers * x_stride + x_offset
     sizes = np.reshape(np.array(sizes, dtype=np.float32), [-1, 3])
     rotations = np.array(rotations, dtype=np.float32)
-    rets = np.meshgrid(x_centers,
-                       y_centers,
-                       z_centers,
-                       rotations,
-                       indexing='ij')
+    rets = np.meshgrid(
+        x_centers, y_centers, z_centers, rotations, indexing='ij')
     tile_shape = [1] * 5
     tile_shape[-2] = sizes.shape[0]
     for i in range(len(rets)):
@@ -253,8 +250,8 @@ def noise_per_box(bev_boxes, corners_2d, ignored_corners_2d, rotation_noises,
             # translation
             current_corners += bev_boxes[i, :2] + translation_noises[i, j, :2]
 
-            coll_mat = box_collision_test(current_corners.reshape(1, 4, 2),
-                                          all_corners)
+            coll_mat = box_collision_test(
+                current_corners.reshape(1, 4, 2), all_corners)
             coll_mat[0, i] = False
             if not coll_mat.any():
                 # valid perturbation found
@@ -350,9 +347,8 @@ def random_depth_image_horizontal(data_dict=None):
         img_pts, img_depth = calib.lidar_to_img(locations)
         W = image.shape[1]
         img_pts[:, 0] = W - img_pts[:, 0]
-        pts_rect = calib.img_to_rect(u=img_pts[:, 0],
-                                     v=img_pts[:, 1],
-                                     depth_rect=img_depth)
+        pts_rect = calib.img_to_rect(
+            u=img_pts[:, 0], v=img_pts[:, 1], depth_rect=img_depth)
         pts_lidar = calib.rect_to_lidar(pts_rect)
         aug_gt_boxes[:, :3] = pts_lidar
         aug_gt_boxes[:, 6] = -1 * aug_gt_boxes[:, 6]
@@ -396,10 +392,8 @@ def sample_point(sample, num_points):
         near_idxs = np.where(pts_near_flag == 1)[0]
         choice = []
         if num_points > len(far_idxs_choice):
-            near_idxs_choice = np.random.choice(near_idxs,
-                                                num_points -
-                                                len(far_idxs_choice),
-                                                replace=False)
+            near_idxs_choice = np.random.choice(
+                near_idxs, num_points - len(far_idxs_choice), replace=False)
             choice = np.concatenate((near_idxs_choice, far_idxs_choice), axis=0) \
                 if len(far_idxs_choice) > 0 else near_idxs_choice
         else:

@@ -27,6 +27,7 @@ from paddle3d.sample import Sample
 class BaseDataset(abc.ABC, paddle.io.Dataset):
     """
     """
+
     @property
     def is_train_mode(self) -> bool:
         return 'train' in self.mode
@@ -65,11 +66,11 @@ class BaseDataset(abc.ABC, paddle.io.Dataset):
                        for sample in samples]
         max_size = np.stack(image_sizes).max(0)
         for image_size, sample in zip(image_sizes, samples):
-            sample.data = np.pad(sample.data,
-                                 ((0, 0), (0, max_size[0] - image_size[0]),
-                                  (0, max_size[1] - image_size[1])),
-                                 'constant',
-                                 constant_values=0.0)
+            sample.data = np.pad(
+                sample.data, ((0, 0), (0, max_size[0] - image_size[0]),
+                              (0, max_size[1] - image_size[1])),
+                'constant',
+                constant_values=0.0)
 
     def collate_fn(self, batch: List):
         """

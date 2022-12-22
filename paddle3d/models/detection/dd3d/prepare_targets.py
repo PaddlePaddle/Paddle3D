@@ -24,6 +24,7 @@ class DD3DTargetPreparer(nn.Layer):
     """
     This code is based on https://github.com/TRI-ML/dd3d/blob/main/tridet/modeling/dd3d/prepare_targets.py#L11
     """
+
     def __init__(self,
                  input_strides,
                  num_classes=5,
@@ -279,9 +280,8 @@ class DD3DTargetPreparer(nn.Layer):
             return targets_level_first
 
         for im_i in range(len(training_targets)):
-            training_targets[im_i] = paddle.split(training_targets[im_i],
-                                                  num_loc_list,
-                                                  axis=0)
+            training_targets[im_i] = paddle.split(
+                training_targets[im_i], num_loc_list, axis=0)
 
         targets_level_first = []
         for targets_per_level in zip(*training_targets):

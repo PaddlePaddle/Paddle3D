@@ -30,10 +30,8 @@ def convert_points_to_homogeneous(points):
         data_format = "NCL"
     elif len(list(paddle.shape(points))) == 5:
         data_format = "NCDHW"
-    return paddle.nn.functional.pad(points, [0, 1],
-                                    "constant",
-                                    1.0,
-                                    data_format=data_format)
+    return paddle.nn.functional.pad(
+        points, [0, 1], "constant", 1.0, data_format=data_format)
 
 
 def convert_points_from_homogeneous_3d(points, eps=1e-8):

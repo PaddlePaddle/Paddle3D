@@ -65,6 +65,7 @@ class DisentangledBox3DLoss(nn.Layer):
     """
     This code is based on https://github.com/TRI-ML/dd3d/blob/da25b614a29344830c96c2848c02a15b35380c4b/tridet/modeling/dd3d/disentangled_box3d_loss.py#L13
     """
+
     def __init__(self, smooth_l1_loss_beta=0.05, max_loss_per_group=20.0):
         super(DisentangledBox3DLoss, self).__init__()
         self.smooth_l1_loss_beta = smooth_l1_loss_beta
@@ -80,28 +81,24 @@ class DisentangledBox3DLoss(nn.Layer):
         box3d_pred = box3d_pred.cast('float32')
         box3d_targets = box3d_targets.cast('float32')
 
-        target_corners = self.corners(box3d_targets[..., :4],
-                                      box3d_targets[...,
-                                                    4:6], box3d_targets[...,
-                                                                        6:7],
-                                      box3d_targets[..., 7:], inv_intrinsics)
+        target_corners = self.corners(
+            box3d_targets[..., :4], box3d_targets[..., 4:6],
+            box3d_targets[..., 6:7], box3d_targets[..., 7:], inv_intrinsics)
 
         disentangled_losses = {}
         index = [0, 4, 6, 7, 10]
         for i, component_key in enumerate(["quat", "proj_ctr", "depth",
                                            "size"]):
             disentangled_boxes = box3d_targets.clone()
-            disentangled_boxes[..., index[i]:index[i + 1]] = box3d_pred[
-                ..., index[i]:index[i + 1]]
-            pred_corners = self.corners(disentangled_boxes[..., :4],
-                                        disentangled_boxes[..., 4:6],
-                                        disentangled_boxes[..., 6:7],
-                                        disentangled_boxes[...,
-                                                           7:], inv_intrinsics)
+            disentangled_boxes[..., index[i]:index[
+                i + 1]] = box3d_pred[..., index[i]:index[i + 1]]
+            pred_corners = self.corners(
+                disentangled_boxes[..., :4], disentangled_boxes[..., 4:6],
+                disentangled_boxes[..., 6:7], disentangled_boxes[..., 7:],
+                inv_intrinsics)
 
-            loss = smooth_l1_loss(pred_corners,
-                                  target_corners,
-                                  beta=self.smooth_l1_loss_beta)
+            loss = smooth_l1_loss(
+                pred_corners, target_corners, beta=self.smooth_l1_loss_beta)
             n = paddle.abs(pred_corners - target_corners)
 
             # Bound the loss
@@ -117,9 +114,9 @@ class DisentangledBox3DLoss(nn.Layer):
         pred_corners = self.corners(box3d_pred[..., :4], box3d_pred[..., 4:6],
                                     box3d_pred[..., 6:7], box3d_pred[..., 7:],
                                     inv_intrinsics)
-        entangled_l1_dist = (target_corners -
-                             pred_corners).detach().abs().reshape(
-                                 [-1, 24]).mean(axis=1)
+        entangled_l1_dist = (
+            target_corners - pred_corners).detach().abs().reshape(
+                [-1, 24]).mean(axis=1)
 
         return disentangled_losses, entangled_l1_dist
 

@@ -58,10 +58,11 @@ class DLA(nn.Layer):
         self.base = DLABase(levels, channels, block, norm_type=norm_type)
 
         scales = [2**i for i in range(len(channels[self.first_level:]))]
-        self.dla_up = DLAUp(startp=self.first_level,
-                            channels=channels[self.first_level:],
-                            scales=scales,
-                            norm_func=norm_func)
+        self.dla_up = DLAUp(
+            startp=self.first_level,
+            channels=channels[self.first_level:],
+            scales=scales,
+            norm_func=norm_func)
 
         if out_channel == 0:
             out_channel = channels[self.first_level]
@@ -96,6 +97,7 @@ class DLA(nn.Layer):
 class DLABase(nn.Layer):
     """DLA base module
     """
+
     def __init__(self,
                  levels,
                  channels,
@@ -127,59 +129,66 @@ class DLABase(nn.Layer):
             block = eval(block)
 
         self.base_layer = nn.Sequential(
-            nn.Conv2D(3,
-                      channels[0],
-                      kernel_size=7,
-                      stride=1,
-                      padding=3,
-                      bias_attr=False), norm_func(channels[0]), nn.ReLU())
+            nn.Conv2D(
+                3,
+                channels[0],
+                kernel_size=7,
+                stride=1,
+                padding=3,
+                bias_attr=False), norm_func(channels[0]), nn.ReLU())
 
-        self.level0 = _make_conv_level(in_channels=channels[0],
-                                       out_channels=channels[0],
-                                       num_convs=levels[0],
-                                       norm_func=norm_func)
+        self.level0 = _make_conv_level(
+            in_channels=channels[0],
+            out_channels=channels[0],
+            num_convs=levels[0],
+            norm_func=norm_func)
 
-        self.level1 = _make_conv_level(in_channels=channels[0],
-                                       out_channels=channels[1],
-                                       num_convs=levels[0],
-                                       norm_func=norm_func,
-                                       stride=2)
+        self.level1 = _make_conv_level(
+            in_channels=channels[0],
+            out_channels=channels[1],
+            num_convs=levels[0],
+            norm_func=norm_func,
+            stride=2)
 
-        self.level2 = Tree(level=levels[2],
-                           block=block,
-                           in_channels=channels[1],
-                           out_channels=channels[2],
-                           norm_func=norm_func,
-                           stride=2,
-                           level_root=False,
-                           root_residual=residual_root)
+        self.level2 = Tree(
+            level=levels[2],
+            block=block,
+            in_channels=channels[1],
+            out_channels=channels[2],
+            norm_func=norm_func,
+            stride=2,
+            level_root=False,
+            root_residual=residual_root)
 
-        self.level3 = Tree(level=levels[3],
-                           block=block,
-                           in_channels=channels[2],
-                           out_channels=channels[3],
-                           norm_func=norm_func,
-                           stride=2,
-                           level_root=True,
-                           root_residual=residual_root)
+        self.level3 = Tree(
+            level=levels[3],
+            block=block,
+            in_channels=channels[2],
+            out_channels=channels[3],
+            norm_func=norm_func,
+            stride=2,
+            level_root=True,
+            root_residual=residual_root)
 
-        self.level4 = Tree(level=levels[4],
-                           block=block,
-                           in_channels=channels[3],
-                           out_channels=channels[4],
-                           norm_func=norm_func,
-                           stride=2,
-                           level_root=True,
-                           root_residual=residual_root)
+        self.level4 = Tree(
+            level=levels[4],
+            block=block,
+            in_channels=channels[3],
+            out_channels=channels[4],
+            norm_func=norm_func,
+            stride=2,
+            level_root=True,
+            root_residual=residual_root)
 
-        self.level5 = Tree(level=levels[5],
-                           block=block,
-                           in_channels=channels[4],
-                           out_channels=channels[5],
-                           norm_func=norm_func,
-                           stride=2,
-                           level_root=True,
-                           root_residual=residual_root)
+        self.level5 = Tree(
+            level=levels[5],
+            block=block,
+            in_channels=channels[4],
+            out_channels=channels[5],
+            norm_func=norm_func,
+            stride=2,
+            level_root=True,
+            root_residual=residual_root)
 
     def forward(self, x):
         """forward
@@ -198,6 +207,7 @@ class DLABase(nn.Layer):
 class DLAUp(nn.Layer):
     """DLA Up module
     """
+
     def __init__(self,
                  startp,
                  channels,
@@ -242,6 +252,7 @@ class DLAUp(nn.Layer):
 class BasicBlock(nn.Layer):
     """Basic Block
     """
+
     def __init__(self,
                  in_channels,
                  out_channels,
@@ -250,24 +261,26 @@ class BasicBlock(nn.Layer):
                  dilation=1):
         super().__init__()
 
-        self.conv1 = nn.Conv2D(in_channels,
-                               out_channels,
-                               kernel_size=3,
-                               stride=stride,
-                               padding=dilation,
-                               bias_attr=False,
-                               dilation=dilation)
+        self.conv1 = nn.Conv2D(
+            in_channels,
+            out_channels,
+            kernel_size=3,
+            stride=stride,
+            padding=dilation,
+            bias_attr=False,
+            dilation=dilation)
         self.norm1 = norm_func(out_channels)
 
         self.relu = nn.ReLU()
 
-        self.conv2 = nn.Conv2D(out_channels,
-                               out_channels,
-                               kernel_size=3,
-                               stride=1,
-                               padding=dilation,
-                               bias_attr=False,
-                               dilation=dilation)
+        self.conv2 = nn.Conv2D(
+            out_channels,
+            out_channels,
+            kernel_size=3,
+            stride=1,
+            padding=dilation,
+            bias_attr=False,
+            dilation=dilation)
         self.norm2 = norm_func(out_channels)
 
     def forward(self, x, residual=None):
@@ -311,39 +324,39 @@ class Tree(nn.Layer):
             root_dim += in_channels
 
         if level == 1:
-            self.tree1 = block(in_channels,
-                               out_channels,
-                               norm_func,
-                               stride,
-                               dilation=dilation)
+            self.tree1 = block(
+                in_channels, out_channels, norm_func, stride, dilation=dilation)
 
-            self.tree2 = block(out_channels,
-                               out_channels,
-                               norm_func,
-                               stride=1,
-                               dilation=dilation)
+            self.tree2 = block(
+                out_channels,
+                out_channels,
+                norm_func,
+                stride=1,
+                dilation=dilation)
         else:
             new_level = level - 1
-            self.tree1 = Tree(new_level,
-                              block,
-                              in_channels,
-                              out_channels,
-                              norm_func,
-                              stride,
-                              root_dim=0,
-                              root_kernel_size=root_kernel_size,
-                              dilation=dilation,
-                              root_residual=root_residual)
+            self.tree1 = Tree(
+                new_level,
+                block,
+                in_channels,
+                out_channels,
+                norm_func,
+                stride,
+                root_dim=0,
+                root_kernel_size=root_kernel_size,
+                dilation=dilation,
+                root_residual=root_residual)
 
-            self.tree2 = Tree(new_level,
-                              block,
-                              out_channels,
-                              out_channels,
-                              norm_func,
-                              root_dim=root_dim + out_channels,
-                              root_kernel_size=root_kernel_size,
-                              dilation=dilation,
-                              root_residual=root_residual)
+            self.tree2 = Tree(
+                new_level,
+                block,
+                out_channels,
+                out_channels,
+                norm_func,
+                root_dim=root_dim + out_channels,
+                root_kernel_size=root_kernel_size,
+                dilation=dilation,
+                root_residual=root_residual)
         if level == 1:
             self.root = Root(root_dim, out_channels, norm_func,
                              root_kernel_size, root_residual)
@@ -360,11 +373,12 @@ class Tree(nn.Layer):
         # If 'self.tree1' is a Tree (not BasicBlock), then the output of project is not used.
         if in_channels != out_channels and not isinstance(self.tree1, Tree):
             self.project = nn.Sequential(
-                nn.Conv2D(in_channels,
-                          out_channels,
-                          kernel_size=1,
-                          stride=1,
-                          bias_attr=False), norm_func(out_channels))
+                nn.Conv2D(
+                    in_channels,
+                    out_channels,
+                    kernel_size=1,
+                    stride=1,
+                    bias_attr=False), norm_func(out_channels))
 
     def forward(self, x, residual=None, children=None):
         """forward
@@ -398,16 +412,18 @@ class Tree(nn.Layer):
 class Root(nn.Layer):
     """Root module
     """
+
     def __init__(self, in_channels, out_channels, norm_func, kernel_size,
                  residual):
         super(Root, self).__init__()
 
-        self.conv = nn.Conv2D(in_channels,
-                              out_channels,
-                              kernel_size=1,
-                              stride=1,
-                              bias_attr=False,
-                              padding=(kernel_size - 1) // 2)
+        self.conv = nn.Conv2D(
+            in_channels,
+            out_channels,
+            kernel_size=1,
+            stride=1,
+            bias_attr=False,
+            padding=(kernel_size - 1) // 2)
 
         self.norm = norm_func(out_channels)
         self.relu = nn.ReLU()
@@ -429,6 +445,7 @@ class Root(nn.Layer):
 class IDAUp(nn.Layer):
     """IDAUp module
     """
+
     def __init__(
             self,
             in_channels,
@@ -447,14 +464,15 @@ class IDAUp(nn.Layer):
             proj = NormalConv(in_channel, out_channel, norm_func)
             node = NormalConv(out_channel, out_channel, norm_func)
 
-            up = nn.Conv2DTranspose(out_channel,
-                                    out_channel,
-                                    kernel_size=f * 2,
-                                    stride=f,
-                                    padding=f // 2,
-                                    output_padding=0,
-                                    groups=out_channel,
-                                    bias_attr=False)
+            up = nn.Conv2DTranspose(
+                out_channel,
+                out_channel,
+                kernel_size=f * 2,
+                stride=f,
+                padding=f // 2,
+                output_padding=0,
+                groups=out_channel,
+                bias_attr=False)
             # todo: uncommoment later
             # _fill_up_weights(up)
 
@@ -477,15 +495,14 @@ class IDAUp(nn.Layer):
 class NormalConv(nn.Layer):
     """Normal Conv without deformable
     """
+
     def __init__(self, in_channels, out_channels, norm_func):
         super(NormalConv, self).__init__()
 
         self.norm = norm_func(out_channels)
         self.relu = nn.ReLU()
-        self.conv = nn.Conv2D(in_channels,
-                              out_channels,
-                              kernel_size=(3, 3),
-                              padding=1)
+        self.conv = nn.Conv2D(
+            in_channels, out_channels, kernel_size=(3, 3), padding=1)
 
     def forward(self, x):
         """forward
@@ -510,13 +527,14 @@ def _make_conv_level(in_channels,
     layers = []
     for i in range(num_convs):
         layers.extend([
-            nn.Conv2D(in_channels,
-                      out_channels,
-                      kernel_size=3,
-                      stride=stride if i == 0 else 1,
-                      padding=dilation,
-                      bias_attr=False,
-                      dilation=dilation),
+            nn.Conv2D(
+                in_channels,
+                out_channels,
+                kernel_size=3,
+                stride=stride if i == 0 else 1,
+                padding=dilation,
+                bias_attr=False,
+                dilation=dilation),
             norm_func(out_channels),
             nn.ReLU()
         ])
@@ -529,10 +547,11 @@ def _make_conv_level(in_channels,
 @manager.BACKBONES.add_component
 def DLA34(**kwargs):
 
-    model = DLA(levels=[1, 1, 1, 2, 2, 1],
-                channels=[16, 32, 64, 128, 256, 512],
-                block="BasicBlock",
-                **kwargs)
+    model = DLA(
+        levels=[1, 1, 1, 2, 2, 1],
+        channels=[16, 32, 64, 128, 256, 512],
+        block="BasicBlock",
+        **kwargs)
 
     return model
 
@@ -540,9 +559,10 @@ def DLA34(**kwargs):
 @manager.BACKBONES.add_component
 def DLABase34(**kwargs):
 
-    model = DLABase(levels=[1, 1, 1, 2, 2, 1],
-                    channels=[16, 32, 64, 128, 256, 512],
-                    block="BasicBlock",
-                    **kwargs)
+    model = DLABase(
+        levels=[1, 1, 1, 2, 2, 1],
+        channels=[16, 32, 64, 128, 256, 512],
+        block="BasicBlock",
+        **kwargs)
 
     return model

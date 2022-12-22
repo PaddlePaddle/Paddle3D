@@ -26,6 +26,7 @@ class Transform3d:
 
     This code is based on https://github.com/facebookresearch/pytorch3d/blob/46cb5aaaae0cd40f729fd41a39c0c9a232b484c0/pytorch3d/transforms/transform3d.py#L20
     """
+
     def __init__(self, dtype='float32', matrix=None):
         """
         Args:
@@ -314,6 +315,7 @@ class Rotate(Transform3d):
     """
     This code is based on https://github.com/facebookresearch/pytorch3d/blob/46cb5aaaae0cd40f729fd41a39c0c9a232b484c0/pytorch3d/transforms/transform3d.py#L615
     """
+
     def __init__(self, R, dtype='float32', orthogonal_tol: float = 1e-5):
         """
         Create a new Transform3d representing 3D rotation using a rotation

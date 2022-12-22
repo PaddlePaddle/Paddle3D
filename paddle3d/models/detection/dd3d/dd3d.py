@@ -33,6 +33,7 @@ from paddle3d.sample import Sample, SampleMeta
 class DD3D(nn.Layer):
     """
     """
+
     def __init__(self,
                  backbone,
                  feature_locations_offset,
@@ -89,9 +90,8 @@ class DD3D(nn.Layer):
         w_new = (
             (w_old +
              (size_divisibility - 1)) // size_divisibility) * size_divisibility
-        x = F.pad(x, [0, w_new - w_old, 0, h_new - h_old],
-                  value=0.0,
-                  mode='constant')
+        x = F.pad(
+            x, [0, w_new - w_old, 0, h_new - h_old], value=0.0, mode='constant')
         return x
 
     def preprocess_box3d(self, box3d, intrinsic):
@@ -121,24 +121,19 @@ class DD3D(nn.Layer):
 
         if self.training:
             feature_shapes = [x.shape[-2:] for x in features]
-            training_targets = self.prepare_targets(locations,
-                                                    samples["bboxes_2d"],
-                                                    samples["bboxes_3d"],
-                                                    samples["labels"],
-                                                    feature_shapes)
+            training_targets = self.prepare_targets(
+                locations, samples["bboxes_2d"], samples["bboxes_3d"],
+                samples["labels"], feature_shapes)
 
             losses = {}
-            fcos2d_loss, fcos2d_info = self.fcos2d_loss(logits, box2d_reg,
-                                                        centerness,
-                                                        training_targets)
+            fcos2d_loss, fcos2d_info = self.fcos2d_loss(
+                logits, box2d_reg, centerness, training_targets)
             losses.update(fcos2d_loss)
 
             if not self.only_box2d:
-                fcos3d_loss = self.fcos3d_loss(box3d_quat, box3d_ctr,
-                                               box3d_depth, box3d_size,
-                                               box3d_conf, dense_depth,
-                                               inv_intrinsics, fcos2d_info,
-                                               training_targets)
+                fcos3d_loss = self.fcos3d_loss(
+                    box3d_quat, box3d_ctr, box3d_depth, box3d_size, box3d_conf,
+                    dense_depth, inv_intrinsics, fcos2d_info, training_targets)
                 losses.update(fcos3d_loss)
             loss_total = 0
             for key in losses.keys():
@@ -222,10 +217,10 @@ class DD3D(nn.Layer):
                             height.cast('float32') / image_size[0])
         pred_boxes[:, 0::2] *= scale_x
         pred_boxes[:, 1::2] *= scale_y
-        pred_boxes[:, 0::2] = pred_boxes[:, 0::2].clip(min=0.0,
-                                                       max=image_size[1])
-        pred_boxes[:, 1::2] = pred_boxes[:, 1::2].clip(min=0.0,
-                                                       max=image_size[0])
+        pred_boxes[:, 0::2] = pred_boxes[:, 0::2].clip(
+            min=0.0, max=image_size[1])
+        pred_boxes[:, 1::2] = pred_boxes[:, 1::2].clip(
+            min=0.0, max=image_size[0])
         return pred_boxes
 
     def post_process(self, pred_instances, samples):
@@ -276,14 +271,16 @@ class DD3D(nn.Layer):
         quat = inversion * quat
         v_ = np.float64([[0, 0, 1], [0, 0, 0]])
         if quat.axis[2] > 0:
-            v = self.pose(wxyz=Quaternion(axis=[0, 1, 0], radians=-quat.angle),
-                          tvec=tvec,
-                          v_=v_)
+            v = self.pose(
+                wxyz=Quaternion(axis=[0, 1, 0], radians=-quat.angle),
+                tvec=tvec,
+                v_=v_)
             rot_y = -quat.angle
         else:
-            v = self.pose(wxyz=Quaternion(axis=[0, 1, 0], radians=quat.angle),
-                          tvec=tvec,
-                          v_=v_)
+            v = self.pose(
+                wxyz=Quaternion(axis=[0, 1, 0], radians=quat.angle),
+                tvec=tvec,
+                v_=v_)
             rot_y = quat.angle
         v_ = v[:, ::2]
         theta = np.arctan2(abs(v_[1, 0]), abs(v_[1, 1]))

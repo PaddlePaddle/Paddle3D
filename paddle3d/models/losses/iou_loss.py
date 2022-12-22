@@ -21,6 +21,7 @@ class IOULoss(nn.Layer):
     Intersetion Over Union (IoU) loss
     This code is based on https://github.com/aim-uofa/AdelaiDet/blob/master/adet/layers/iou_loss.py
     """
+
     def __init__(self, loc_loss_type='iou'):
         """
         Args:

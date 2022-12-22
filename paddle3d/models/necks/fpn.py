@@ -32,6 +32,7 @@ class FPN(nn.Layer):
 
     This code is based on https://github.com/facebookresearch/detectron2/blob/333efcb6d0b60d7cceb7afc91bd96315cf211b0a/detectron2/modeling/backbone/fpn.py#L17
     """
+
     def __init__(self,
                  in_strides,
                  in_channels,
@@ -72,18 +73,18 @@ class FPN(nn.Layer):
                 raise NotImplementedError()
 
             lateral_conv = [
-                nn.Conv2D(in_channel,
-                          out_channel,
-                          kernel_size=1,
-                          bias_attr=use_bias), lateral_norm
+                nn.Conv2D(
+                    in_channel, out_channel, kernel_size=1, bias_attr=use_bias),
+                lateral_norm
             ]
             output_conv = [
-                nn.Conv2D(out_channel,
-                          out_channel,
-                          kernel_size=3,
-                          stride=1,
-                          padding=1,
-                          bias_attr=use_bias), output_norm
+                nn.Conv2D(
+                    out_channel,
+                    out_channel,
+                    kernel_size=3,
+                    stride=1,
+                    padding=1,
+                    bias_attr=use_bias), output_norm
             ]
 
             stage = int(math.log2(in_strides[idx]))
@@ -147,9 +148,8 @@ class FPN(nn.Layer):
                 zip(self.lateral_convs, self.output_convs)):
             if idx > 0:
                 features = x[-idx - 1]
-                top_down_features = F.interpolate(prev_features,
-                                                  scale_factor=2.0,
-                                                  mode="nearest")
+                top_down_features = F.interpolate(
+                    prev_features, scale_factor=2.0, mode="nearest")
                 lateral_features = lateral_conv(features)
                 prev_features = lateral_features + top_down_features
                 if self._fuse_type == "avg":
@@ -180,6 +180,7 @@ class LastLevelP6P7(nn.Layer):
     This module is used in RetinaNet to generate extra layers, P6 and P7 from
     C5 feature.
     """
+
     def __init__(self, in_channels, out_channels, in_feature="res5"):
         super().__init__()
         self.num_levels = 2
@@ -206,6 +207,7 @@ class LastLevelP6(nn.Layer):
     """
     This module is used in FCOS to generate extra layers
     """
+
     def __init__(self, in_channels, out_channels, in_feature="res5"):
         super().__init__()
         self.num_levels = 1

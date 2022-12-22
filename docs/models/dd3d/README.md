@@ -28,6 +28,7 @@ DD3D是一个端到端single-stage单目相机目标检测模型，融合了PL�
 |DD3D |  dla_34 |  23.49 17.57 15.21 | [model](https://paddle3d.bj.bcebos.com/models/dd3d/dd3d_dla_34_kitti/model.pdparams) | [config](../../../configs/dd3d/dd3d_dla_34_kitti.yml) | [log](https://paddle3d.bj.bcebos.com/models/dd3d/dd3d_dla_34_kitti/train.log) \| [vdl](https://www.paddlepaddle.org.cn/paddle/visualdl/service/app/scalar?id=9862e660790ca627384dded9e1cd0a50) |
 |DD3D |  v2_99 |  29.17 23.42 20.73 | [model](https://paddle3d.bj.bcebos.com/models/dd3d/dd3d_v2_99_kitti/model.pdparams) | [config](../../../configs/dd3d/dd3d_v2_99_kitti.yml) | [log](https://paddle3d.bj.bcebos.com/models/dd3d/dd3d_v2_99_kitti/train.log) \| [vdl](https://www.paddlepaddle.org.cn/paddle/visualdl/service/app/scalar?id=52a9cd89f47b4c91f95bae558323f07c) |
 
+
 ## <h2 id="5">使用教程</h2>
 
 ## <h2 id="6">数据准备</h2>
