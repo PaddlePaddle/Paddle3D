@@ -26,59 +26,79 @@ __all__ = ["VoVNet", "VoVNet99_eSE"]
 
 norm_func = None
 
-def dw_conv3x3(in_channels, out_channels, module_name, postfix, stride=1, kernel_size=3, padding=1):
+
+def dw_conv3x3(in_channels,
+               out_channels,
+               module_name,
+               postfix,
+               stride=1,
+               kernel_size=3,
+               padding=1):
     """3x3 convolution with padding"""
     return nn.Sequential(
-        (
-            '{}_{}/dw_conv3x3'.format(module_name, postfix),
-            nn.Conv2D(
-                in_channels,
-                out_channels,
-                kernel_size=kernel_size,
-                stride=stride,
-                padding=padding,
-                groups=out_channels,
-                bias_attr=False
-            )), 
+        ('{}_{}/dw_conv3x3'.format(module_name, postfix),
+         nn.Conv2D(in_channels,
+                   out_channels,
+                   kernel_size=kernel_size,
+                   stride=stride,
+                   padding=padding,
+                   groups=out_channels,
+                   bias_attr=False)),
         ('{}_{}/pw_conv1x1'.format(module_name, postfix),
-            nn.Conv2D(in_channels, out_channels, kernel_size=1, stride=1, padding=0, groups=1, bias_attr=False)), 
-        ('{}_{}/pw_norm'.format(module_name, postfix), norm_func(out_channels)), 
+         nn.Conv2D(in_channels,
+                   out_channels,
+                   kernel_size=1,
+                   stride=1,
+                   padding=0,
+                   groups=1,
+                   bias_attr=False)),
+        ('{}_{}/pw_norm'.format(module_name, postfix), norm_func(out_channels)),
         ('{}_{}/pw_relu'.format(module_name, postfix), nn.ReLU()))
 
 
-def conv3x3(in_channels, out_channels, module_name, postfix, stride=1, groups=1, kernel_size=3, padding=1):
+def conv3x3(in_channels,
+            out_channels,
+            module_name,
+            postfix,
+            stride=1,
+            groups=1,
+            kernel_size=3,
+            padding=1):
     """3x3 convolution with padding"""
     return nn.Sequential(
-        (
-            f"{module_name}_{postfix}/conv",
-            nn.Conv2D(
-                in_channels,
-                out_channels,
-                kernel_size=kernel_size,
-                stride=stride,
-                padding=padding,
-                groups=groups,
-                bias_attr=False,
-            )), 
-        (f"{module_name}_{postfix}/norm", norm_func(out_channels)), 
+        (f"{module_name}_{postfix}/conv",
+         nn.Conv2D(
+             in_channels,
+             out_channels,
+             kernel_size=kernel_size,
+             stride=stride,
+             padding=padding,
+             groups=groups,
+             bias_attr=False,
+         )), (f"{module_name}_{postfix}/norm", norm_func(out_channels)),
         (f"{module_name}_{postfix}/relu", nn.ReLU()))
 
 
-def conv1x1(in_channels, out_channels, module_name, postfix, stride=1, groups=1, kernel_size=1, padding=0):
+def conv1x1(in_channels,
+            out_channels,
+            module_name,
+            postfix,
+            stride=1,
+            groups=1,
+            kernel_size=1,
+            padding=0):
     """1x1 convolution with padding"""
     return nn.Sequential(
-        (
-            f"{module_name}_{postfix}/conv",
-            nn.Conv2D(
-                in_channels,
-                out_channels,
-                kernel_size=kernel_size,
-                stride=stride,
-                padding=padding,
-                groups=groups,
-                bias_attr=False,
-            )), 
-        (f"{module_name}_{postfix}/norm", norm_func(out_channels)), 
+        (f"{module_name}_{postfix}/conv",
+         nn.Conv2D(
+             in_channels,
+             out_channels,
+             kernel_size=kernel_size,
+             stride=stride,
+             padding=padding,
+             groups=groups,
+             bias_attr=False,
+         )), (f"{module_name}_{postfix}/norm", norm_func(out_channels)),
         (f"{module_name}_{postfix}/relu", nn.ReLU()))
 
 
@@ -106,9 +126,15 @@ class eSEModule(nn.Layer):
 
 
 class _OSA_module(nn.Layer):
-    def __init__(
-        self, in_ch, stage_ch, concat_ch, layer_per_block, module_name, SE=False, identity=False, depthwise=False
-    ):
+    def __init__(self,
+                 in_ch,
+                 stage_ch,
+                 concat_ch,
+                 layer_per_block,
+                 module_name,
+                 SE=False,
+                 identity=False,
+                 depthwise=False):
 
         super(_OSA_module, self).__init__()
 
@@ -119,12 +145,16 @@ class _OSA_module(nn.Layer):
         in_channel = in_ch
         if self.depthwise and in_channel != stage_ch:
             self.isReduced = True
-            self.conv_reduction = conv1x1(in_channel, stage_ch, "{}_reduction".format(module_name), "0")
+            self.conv_reduction = conv1x1(in_channel, stage_ch,
+                                          "{}_reduction".format(module_name),
+                                          "0")
         for i in range(layer_per_block):
             if self.depthwise:
-                self.layers.append(dw_conv3x3(stage_ch, stage_ch, module_name, i))
+                self.layers.append(
+                    dw_conv3x3(stage_ch, stage_ch, module_name, i))
             else:
-                self.layers.append(conv3x3(in_channel, stage_ch, module_name, i))
+                self.layers.append(conv3x3(in_channel, stage_ch, module_name,
+                                           i))
             in_channel = stage_ch
 
         # feature aggregation
@@ -157,45 +187,65 @@ class _OSA_module(nn.Layer):
 
 
 class _OSA_stage(nn.Sequential):
-    def __init__(
-        self, in_ch, stage_ch, concat_ch, block_per_stage, layer_per_block, stage_num, SE=False, depthwise=False
-    ):
+    def __init__(self,
+                 in_ch,
+                 stage_ch,
+                 concat_ch,
+                 block_per_stage,
+                 layer_per_block,
+                 stage_num,
+                 SE=False,
+                 depthwise=False):
 
         super(_OSA_stage, self).__init__()
 
         if not stage_num == 2:
-            self.add_sublayer("Pooling", nn.MaxPool2D(kernel_size=3, stride=2, ceil_mode=True))
+            self.add_sublayer(
+                "Pooling", nn.MaxPool2D(kernel_size=3, stride=2,
+                                        ceil_mode=True))
 
         if block_per_stage != 1:
             SE = False
         module_name = f"OSA{stage_num}_1"
         self.add_sublayer(
-            module_name, _OSA_module(in_ch, stage_ch, concat_ch, layer_per_block, module_name, SE, depthwise=depthwise)
-        )
+            module_name,
+            _OSA_module(in_ch,
+                        stage_ch,
+                        concat_ch,
+                        layer_per_block,
+                        module_name,
+                        SE,
+                        depthwise=depthwise))
         for i in range(block_per_stage - 1):
             if i != block_per_stage - 2:  # last block
                 SE = False
             module_name = f"OSA{stage_num}_{i + 2}"
             self.add_sublayer(
                 module_name,
-                _OSA_module(
-                    concat_ch,
-                    stage_ch,
-                    concat_ch,
-                    layer_per_block,
-                    module_name,
-                    SE,
-                    identity=True,
-                    depthwise=depthwise
-                ),
+                _OSA_module(concat_ch,
+                            stage_ch,
+                            concat_ch,
+                            layer_per_block,
+                            module_name,
+                            SE,
+                            identity=True,
+                            depthwise=depthwise),
             )
 
 
 @manager.BACKBONES.add_component
 class VoVNet(nn.Layer):
-    def __init__(self, stem_ch, config_stage_ch, config_concat_ch, 
-                       block_per_stage, layer_per_block, depthwise, 
-                       SE, norm_type, input_ch, out_features=None):
+    def __init__(self,
+                 stem_ch,
+                 config_stage_ch,
+                 config_concat_ch,
+                 block_per_stage,
+                 layer_per_block,
+                 depthwise,
+                 SE,
+                 norm_type,
+                 input_ch,
+                 out_features=None):
         """
         Args:
             input_ch(int) : the number of input channel
@@ -218,11 +268,17 @@ class VoVNet(nn.Layer):
 
         # Stem module
         conv_type = dw_conv3x3 if depthwise else conv3x3
-        self.stem = nn.Sequential(('stem1', conv3x3(input_ch, stem_ch[0], "stem", "1", 2)))
-        self.stem.add_sublayer('stem2', conv_type(stem_ch[0], stem_ch[1], "stem", "2", 1))
-        self.stem.add_sublayer('stem3', conv_type(stem_ch[1], stem_ch[2], "stem", "3", 2))
+        self.stem = nn.Sequential(
+            ('stem1', conv3x3(input_ch, stem_ch[0], "stem", "1", 2)))
+        self.stem.add_sublayer(
+            'stem2', conv_type(stem_ch[0], stem_ch[1], "stem", "2", 1))
+        self.stem.add_sublayer(
+            'stem3', conv_type(stem_ch[1], stem_ch[2], "stem", "3", 2))
         current_stirde = 4
-        self._out_feature_strides = {"stem": current_stirde, "stage2": current_stirde}
+        self._out_feature_strides = {
+            "stem": current_stirde,
+            "stage2": current_stirde
+        }
         self._out_feature_channels = {"stem": stem_ch[2]}
 
         stem_out_ch = [stem_ch[2]]
@@ -248,7 +304,8 @@ class VoVNet(nn.Layer):
 
             self._out_feature_channels[name] = config_concat_ch[i]
             if not i == 0:
-                self._out_feature_strides[name] = current_stirde = int(current_stirde * 2)
+                self._out_feature_strides[name] = current_stirde = int(
+                    current_stirde * 2)
 
         # initialize weights
         self._initialize_weights()
@@ -274,14 +331,13 @@ class VoVNet(nn.Layer):
 @manager.BACKBONES.add_component
 def VoVNet99_eSE(**kwargs):
 
-    model = VoVNet(
-        stem_ch=[64, 64, 128],
-        config_stage_ch=[128, 160, 192, 224],
-        config_concat_ch=[256, 512, 768, 1024],
-        layer_per_block=5,
-        block_per_stage=[1, 3, 9, 3],
-        SE=True,
-        depthwise=False,
-        **kwargs)
+    model = VoVNet(stem_ch=[64, 64, 128],
+                   config_stage_ch=[128, 160, 192, 224],
+                   config_concat_ch=[256, 512, 768, 1024],
+                   layer_per_block=5,
+                   block_per_stage=[1, 3, 9, 3],
+                   SE=True,
+                   depthwise=False,
+                   **kwargs)
 
     return model

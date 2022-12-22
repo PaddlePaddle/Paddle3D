@@ -8,7 +8,7 @@ train_dataset:
     - type: LoadImage
       reader: pillow
       to_chw: False
-      to_bgr: True
+      to_rgb: False
     - type: ResizeShortestEdge
       short_edge_length: [288, 304, 320, 336, 352, 368, 384, 400, 416, 448, 480, 512, 544, 576]
       max_size: 10000
@@ -34,7 +34,7 @@ val_dataset:
     - type: LoadImage
       reader: pillow
       to_chw: False
-      to_bgr: True
+      to_rgb: False
     - type: ResizeShortestEdge
       short_edge_length: [384]
       max_size: 10000
@@ -62,18 +62,18 @@ model:
     norm_type: 'frozen_bn'
     out_features: [3, 4, 5]
   feature_locations_offset: "none"
-  fpn: 
+  fpn:
     type: FPN
     in_strides: [8, 16, 32]
     in_channels: [128, 256, 512]
     out_channel: 256
     norm: 'FrozenBN'
-    top_block: 
+    top_block:
       type: LastLevelP6P7
       in_channels: 256
       out_channels: 256
       in_feature: 'p5'
-    fuse_type: "sum" 
+    fuse_type: "sum"
   fcos2d_head:
     type: FCOS2DHead
     in_strides: [8, 16, 32, 64, 128]
@@ -94,19 +94,19 @@ model:
     num_classes: 5
   fcos2d_inference:
     type: FCOS2DInference
-    thresh_with_ctr: True 
+    thresh_with_ctr: True
     pre_nms_thresh: 0.05
-    pre_nms_topk: 1000 
-    post_nms_topk: 100 
-    nms_thresh: 0.75 
+    pre_nms_topk: 1000
+    post_nms_topk: 100
+    nms_thresh: 0.75
     num_classes: 5
   fcos3d_head:
     type: FCOS3DHead
     in_strides: [8, 16, 32, 64, 128]
     in_channels: [256, 256, 256, 256, 256]
     num_classes: 5
-    use_scale: True 
-    depth_scale_init_factor: 0.3 
+    use_scale: True
+    depth_scale_init_factor: 0.3
     proj_ctr_scale_init_factor: 1.0
     use_per_level_predictors: False
     mean_depth_per_level: [32.594, 15.178, 8.424, 5.004, 4.662]
@@ -162,9 +162,9 @@ model:
   prepare_targets:
     type: DD3DTargetPreparer
     input_strides: [8, 16, 32, 64, 128]
-    num_classes: 5 
-    center_sample: True 
-    radius: 1.5 
+    num_classes: 5
+    center_sample: True
+    radius: 1.5
     dd3d_on: True
     sizes_of_interest: [64, 128, 256, 512]
   do_nms: True

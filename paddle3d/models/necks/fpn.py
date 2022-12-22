@@ -23,6 +23,7 @@ from paddle3d.apis import manager
 
 __all__ = ["FPN", "LastLevelP6P7", "LastLevelP6"]
 
+
 @manager.NECKS.add_component
 class FPN(nn.Layer):
     """
@@ -31,10 +32,13 @@ class FPN(nn.Layer):
 
     This code is based on https://github.com/facebookresearch/detectron2/blob/333efcb6d0b60d7cceb7afc91bd96315cf211b0a/detectron2/modeling/backbone/fpn.py#L17
     """
-
-    def __init__(
-        self, in_strides, in_channels, out_channel, norm="", top_block=None, fuse_type="sum"
-    ):
+    def __init__(self,
+                 in_strides,
+                 in_channels,
+                 out_channel,
+                 norm="",
+                 top_block=None,
+                 fuse_type="sum"):
         """
         Args:
             in_strides(list): strides list
@@ -67,12 +71,26 @@ class FPN(nn.Layer):
             else:
                 raise NotImplementedError()
 
-            lateral_conv = [nn.Conv2D(in_channel, out_channel, kernel_size=1, bias_attr=use_bias), lateral_norm]
-            output_conv = [nn.Conv2D(out_channel, out_channel, kernel_size=3, stride=1, padding=1, bias_attr=use_bias), output_norm]
+            lateral_conv = [
+                nn.Conv2D(in_channel,
+                          out_channel,
+                          kernel_size=1,
+                          bias_attr=use_bias), lateral_norm
+            ]
+            output_conv = [
+                nn.Conv2D(out_channel,
+                          out_channel,
+                          kernel_size=3,
+                          stride=1,
+                          padding=1,
+                          bias_attr=use_bias), output_norm
+            ]
 
             stage = int(math.log2(in_strides[idx]))
-            self.add_sublayer("fpn_lateral{}".format(stage), nn.Sequential(*lateral_conv))
-            self.add_sublayer("fpn_output{}".format(stage), nn.Sequential(*output_conv))
+            self.add_sublayer("fpn_lateral{}".format(stage),
+                              nn.Sequential(*lateral_conv))
+            self.add_sublayer("fpn_output{}".format(stage),
+                              nn.Sequential(*output_conv))
 
             lateral_convs.append(nn.Sequential(*lateral_conv))
             output_convs.append(nn.Sequential(*output_conv))
@@ -82,14 +100,20 @@ class FPN(nn.Layer):
         self.output_convs = output_convs[::-1]
         self.top_block = top_block
         # Return feature names are "p<stage>", like ["p2", "p3", ..., "p6"]
-        self._out_feature_strides = {"p{}".format(int(math.log2(s))): s for s in in_strides}
+        self._out_feature_strides = {
+            "p{}".format(int(math.log2(s))): s
+            for s in in_strides
+        }
         # top block output feature maps.
         if self.top_block is not None:
             for s in range(stage, stage + self.top_block.num_levels):
-                self._out_feature_strides["p{}".format(s + 1)] = 2 ** (s + 1)
+                self._out_feature_strides["p{}".format(s + 1)] = 2**(s + 1)
 
         self._out_features = list(self._out_feature_strides.keys())
-        self._out_feature_channels = {k: out_channel for k in self._out_features}
+        self._out_feature_channels = {
+            k: out_channel
+            for k in self._out_features
+        }
         assert fuse_type in {"avg", "sum"}
         self._fuse_type = fuse_type
 
@@ -120,10 +144,12 @@ class FPN(nn.Layer):
 
         # Reverse feature maps into top-down order (from low to high resolution)
         for idx, (lateral_conv, output_conv) in enumerate(
-            zip(self.lateral_convs, self.output_convs)):
+                zip(self.lateral_convs, self.output_convs)):
             if idx > 0:
                 features = x[-idx - 1]
-                top_down_features = F.interpolate(prev_features, scale_factor=2.0, mode="nearest")
+                top_down_features = F.interpolate(prev_features,
+                                                  scale_factor=2.0,
+                                                  mode="nearest")
                 lateral_features = lateral_conv(features)
                 prev_features = lateral_features + top_down_features
                 if self._fuse_type == "avg":
@@ -131,7 +157,8 @@ class FPN(nn.Layer):
                 results.insert(0, output_conv(prev_features))
 
         if self.top_block is not None:
-            top_block_in_feature = results[self._out_features.index(self.top_block.in_feature)]
+            top_block_in_feature = results[self._out_features.index(
+                self.top_block.in_feature)]
             results.extend(self.top_block(top_block_in_feature))
         assert len(self._out_features) == len(results)
         return {f: res for f, res in zip(self._out_features, results)}
@@ -142,9 +169,9 @@ def _assert_strides_are_log2_contiguous(strides):
     Assert that each stride is 2x times its preceding stride, i.e. "contiguous in log2".
     """
     for i, stride in enumerate(strides[1:], 1):
-        assert stride == 2 * strides[i - 1], "Strides {} {} are not log2 contiguous".format(
-            stride, strides[i - 1]
-        )
+        assert stride == 2 * strides[
+            i - 1], "Strides {} {} are not log2 contiguous".format(
+                stride, strides[i - 1])
 
 
 @manager.NECKS.add_component
@@ -153,7 +180,6 @@ class LastLevelP6P7(nn.Layer):
     This module is used in RetinaNet to generate extra layers, P6 and P7 from
     C5 feature.
     """
-
     def __init__(self, in_channels, out_channels, in_feature="res5"):
         super().__init__()
         self.num_levels = 2
@@ -161,7 +187,7 @@ class LastLevelP6P7(nn.Layer):
         self.p6 = nn.Conv2D(in_channels, out_channels, 3, 2, 1)
         self.p7 = nn.Conv2D(out_channels, out_channels, 3, 2, 1)
         self._init_weights()
-    
+
     def _init_weights(self):
         predictors = [self.p6, self.p7]
         for layers in predictors:
@@ -173,6 +199,7 @@ class LastLevelP6P7(nn.Layer):
         p6 = self.p6(c5)
         p7 = self.p7(F.relu(p6))
         return [p6, p7]
+
 
 @manager.NECKS.add_component
 class LastLevelP6(nn.Layer):

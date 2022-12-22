@@ -65,7 +65,6 @@ class CoordMode(Enum):
 class BBoxes2D(_Structure):
     """
     """
-
     def __init__(self, data: np.ndarray):
         if not isinstance(data, np.ndarray):
             data = np.array(data)
@@ -88,10 +87,17 @@ class BBoxes2D(_Structure):
         ...
 
     def horizontal_flip(self, image_width: float):
+        """
+        The inputs are pixel indices, they are flipped by `(W - 1 - x, H - 1 - y)`.
+        """
         self[:, 0] = image_width - self[:, 0] - 1
 
     def horizontal_flip_coords(self, image_width: float):
-        self[:, 0], self[:, 2] = image_width - self[:, 2], image_width - self[:, 0]
+        """
+        The inputs are floating point coordinates, they are flipped by `(W - x, H - y)`.
+        """
+        self[:, 0], self[:,
+                         2] = image_width - self[:, 2], image_width - self[:, 0]
 
     def vertical_flip(self, image_height: float):
         self[:, 1] = image_height - self[:, 1] - 1
@@ -102,10 +108,10 @@ class BBoxes2D(_Structure):
         self[:, 0::2] *= factor_x
         self[:, 1::2] *= factor_y
 
+
 class BBoxes3D(_Structure):
     """
     """
-
     def __init__(self,
                  data: np.ndarray,
                  coordmode: CoordMode = 0,
@@ -127,21 +133,18 @@ class BBoxes3D(_Structure):
         b = dz.shape[0]
 
         x_corners = np.array([[0., 0., 0., 0., 1., 1., 1., 1.]],
-                             self.dtype).repeat(
-                                 b, axis=0)
+                             self.dtype).repeat(b, axis=0)
         y_corners = np.array([[0., 0., 1., 1., 0., 0., 1., 1.]],
-                             self.dtype).repeat(
-                                 b, axis=0)
+                             self.dtype).repeat(b, axis=0)
         z_corners = np.array([[0., 1., 1., 0., 0., 1., 1., 0.]],
-                             self.dtype).repeat(
-                                 b, axis=0)
+                             self.dtype).repeat(b, axis=0)
 
-        x_corners = (
-            dx[:, np.newaxis] * (x_corners - self.origin[0]))[:, :, np.newaxis]
-        y_corners = (
-            dy[:, np.newaxis] * (y_corners - self.origin[1]))[:, :, np.newaxis]
-        z_corners = (
-            dz[:, np.newaxis] * (z_corners - self.origin[2]))[:, :, np.newaxis]
+        x_corners = (dx[:, np.newaxis] *
+                     (x_corners - self.origin[0]))[:, :, np.newaxis]
+        y_corners = (dy[:, np.newaxis] *
+                     (y_corners - self.origin[1]))[:, :, np.newaxis]
+        z_corners = (dz[:, np.newaxis] *
+                     (z_corners - self.origin[2]))[:, :, np.newaxis]
         corners = np.concatenate([x_corners, y_corners, z_corners], axis=-1)
 
         angle = self[:, -1]
@@ -160,10 +163,10 @@ class BBoxes3D(_Structure):
         x_corners = np.array([[0., 0., 1., 1.]], self.dtype).repeat(b, axis=0)
         y_corners = np.array([[0., 1., 1., 0.]], self.dtype).repeat(b, axis=0)
 
-        x_corners = (
-            dx[:, np.newaxis] * (x_corners - self.origin[0]))[:, :, np.newaxis]
-        y_corners = (
-            dy[:, np.newaxis] * (y_corners - self.origin[1]))[:, :, np.newaxis]
+        x_corners = (dx[:, np.newaxis] *
+                     (x_corners - self.origin[0]))[:, :, np.newaxis]
+        y_corners = (dy[:, np.newaxis] *
+                     (y_corners - self.origin[1]))[:, :, np.newaxis]
         corners = np.concatenate([x_corners, y_corners], axis=-1)
 
         angle = self[:, -1]
@@ -216,18 +219,25 @@ class BBoxes3D(_Structure):
         self[..., -1] += angle
 
     def horizontal_flip(self):
+        """
+        The inputs are pixel indices
+        """
         self[:, 0] = -self[:, 0]
         if self.velocities is not None:
             self.velocities[:, 0] = -self.velocities[:, 0]
         self[:,
              -1] = -self[:,
                          -1] + 2 * np.pi  # TODO(luoqianhui): CHECK THIS 2 * np.pi is needed
-    
+
     def horizontal_flip_coords(self):
-        new_box3d_quat = np.stack([self[:, 3], -self[:, 2], -self[:, 1], self[:, 0]], 1)
+        """
+        The inputs are floating point coordinates
+        """
+        new_box3d_quat = np.stack(
+            [self[:, 3], -self[:, 2], -self[:, 1], self[:, 0]], 1)
         self[:, :4] = new_box3d_quat
         self[:, 4] = -self[:, 4]
-    
+
     def to_vision_based_3d_box(self):
         height, width, length = self[:, 3:4], self[:, 4:5], self[:, 5:6]
         x, y, z = self[:, 0:1], self[:, 1:2], self[:, 2:3]
@@ -235,10 +245,13 @@ class BBoxes3D(_Structure):
         tvec = np.concatenate([x, y - height / 2, z], axis=1)
         box_pose = []
         for i in range(rotation.shape[0]):
-            wxyz=Quaternion(Quaternion(axis=[1, 0, 0], radians=np.pi / 2) * Quaternion(axis=[0, 0, 1], radians=-rotation[i]))
+            wxyz = Quaternion(
+                Quaternion(axis=[1, 0, 0], radians=np.pi / 2) *
+                Quaternion(axis=[0, 0, 1], radians=-rotation[i]))
             box_pose.append(wxyz.elements.astype(np.float32))
         box_pose = np.stack(box_pose, axis=0)
-        box3d_new = np.concatenate([box_pose, tvec, width, length, height], axis=1)
+        box3d_new = np.concatenate([box_pose, tvec, width, length, height],
+                                   axis=1)
         return box3d_new
 
     def vertical_flip(self):
@@ -255,8 +268,8 @@ class BBoxes3D(_Structure):
         bboxes_bev = self.corners_2d
         # Represent the bev range as a bounding box
         limit_polygons = minmax_range_3d_to_corner_2d(point_cloud_range)
-        mask = points_in_convex_polygon_2d(
-            bboxes_bev.reshape(-1, 2), limit_polygons)
+        mask = points_in_convex_polygon_2d(bboxes_bev.reshape(-1, 2),
+                                           limit_polygons)
         return np.any(mask.reshape(-1, 4), axis=1)
 
     def masked_select(self, mask):
@@ -282,12 +295,12 @@ def get_mask_points_in_polygon_2d(num_points, num_polygons,
             for idx in range(num_points_per_polygon):  # 2
                 #vector_slop = vector[polygon_idx, idx, 1] / [polygon_idx, idx, 0]
                 #point_slop = (polygons[polygon_idx, idx, 1] - points[point_idx, 1]) / (polygons[polygon_idx, idx, 0] - points[point_idx, 0])
-                slope_diff = (
-                    polygons[polygon_idx, idx, 0] -
-                    points[point_idx, 0]) * vector[polygon_idx, idx, 1]
-                slope_diff -= (
-                    polygons[polygon_idx, idx, 1] -
-                    points[point_idx, 1]) * vector[polygon_idx, idx, 0]
+                slope_diff = (polygons[polygon_idx, idx, 0] -
+                              points[point_idx, 0]) * vector[polygon_idx, idx,
+                                                             1]
+                slope_diff -= (polygons[polygon_idx, idx, 1] -
+                               points[point_idx, 1]) * vector[polygon_idx, idx,
+                                                              0]
                 if slope_diff >= 0:
                     inside = False
                     break
@@ -304,15 +317,14 @@ def points_in_convex_polygon_2d(points: np.ndarray,
     num_points_per_polygon = polygons.shape[1]  # [M, 4, 2]
 
     if clockwise:
-        vector = (
-            polygons - polygons[:, [num_points_per_polygon - 1] +
-                                list(range(num_points_per_polygon - 1)), :]
-        )  # [M, 4, 2]
+        vector = (polygons -
+                  polygons[:, [num_points_per_polygon - 1] +
+                           list(range(num_points_per_polygon - 1)), :]
+                  )  # [M, 4, 2]
     else:
-        vector = (
-            polygons[:, [num_points_per_polygon - 1] +
-                     list(range(num_points_per_polygon - 1)), :] - polygons
-        )  # [M, 4, 2]
+        vector = (polygons[:, [num_points_per_polygon - 1] +
+                           list(range(num_points_per_polygon - 1)), :] -
+                  polygons)  # [M, 4, 2]
 
     mask = np.zeros((num_points, num_polygons), dtype='bool')
     mask = get_mask_points_in_polygon_2d(num_points, num_polygons,
@@ -384,10 +396,10 @@ def box_collision_test(boxes, qboxes, clockwise=True):
                                 vec = boxes[i, k] - boxes[i, (k + 1) % 4]
                                 if clockwise:
                                     vec = -vec
-                                cross = vec[1] * (
-                                    boxes[i, k, 0] - qboxes[j, l, 0])
-                                cross -= vec[0] * (
-                                    boxes[i, k, 1] - qboxes[j, l, 1])
+                                cross = vec[1] * (boxes[i, k, 0] -
+                                                  qboxes[j, l, 0])
+                                cross -= vec[0] * (boxes[i, k, 1] -
+                                                   qboxes[j, l, 1])
                                 if cross >= 0:
                                     box_overlap_qbox = False
                                     break
@@ -401,10 +413,10 @@ def box_collision_test(boxes, qboxes, clockwise=True):
                                     vec = qboxes[j, k] - qboxes[j, (k + 1) % 4]
                                     if clockwise:
                                         vec = -vec
-                                    cross = vec[1] * (
-                                        qboxes[j, k, 0] - boxes[i, l, 0])
-                                    cross -= vec[0] * (
-                                        qboxes[j, k, 1] - boxes[i, l, 1])
+                                    cross = vec[1] * (qboxes[j, k, 0] -
+                                                      boxes[i, l, 0])
+                                    cross -= vec[0] * (qboxes[j, k, 1] -
+                                                       boxes[i, l, 1])
                                     if cross >= 0:  #
                                         qbox_overlap_box = False
                                         break
@@ -505,7 +517,8 @@ def surface_equ_3d_jit(surfaces):
     return normal_vec, d
 
 
-def points_in_convex_polygon_3d_jit(points, polygon_surfaces,
+def points_in_convex_polygon_3d_jit(points,
+                                    polygon_surfaces,
                                     num_surfaces=None):
     """
     Check points is in 3d convex polygons.
@@ -662,15 +675,15 @@ def iou_2d_jit(boxes, query_boxes, eps=0.0):
         box_area = ((query_boxes[k, 2] - query_boxes[k, 0] + eps) *
                     (query_boxes[k, 3] - query_boxes[k, 1] + eps))
         for n in range(N):
-            iw = (min(boxes[n, 2], query_boxes[k, 2]) - max(
-                boxes[n, 0], query_boxes[k, 0]) + eps)
+            iw = (min(boxes[n, 2], query_boxes[k, 2]) -
+                  max(boxes[n, 0], query_boxes[k, 0]) + eps)
             if iw > 0:
-                ih = (min(boxes[n, 3], query_boxes[k, 3]) - max(
-                    boxes[n, 1], query_boxes[k, 1]) + eps)
+                ih = (min(boxes[n, 3], query_boxes[k, 3]) -
+                      max(boxes[n, 1], query_boxes[k, 1]) + eps)
                 if ih > 0:
-                    ua = (
-                        (boxes[n, 2] - boxes[n, 0] + eps) *
-                        (boxes[n, 3] - boxes[n, 1] + eps) + box_area - iw * ih)
+                    ua = ((boxes[n, 2] - boxes[n, 0] + eps) *
+                          (boxes[n, 3] - boxes[n, 1] + eps) + box_area -
+                          iw * ih)
                     overlaps[n, k] = iw * ih / ua
     return overlaps
 
@@ -852,17 +865,15 @@ def boxes3d_to_corners3d_kitti_camera(boxes3d, bottom_center=True):
                              dtype=np.float32).T
 
     ry = boxes3d[:, 6]
-    zeros, ones = np.zeros(
-        ry.size, dtype=np.float32), np.ones(
-            ry.size, dtype=np.float32)
+    zeros, ones = np.zeros(ry.size, dtype=np.float32), np.ones(ry.size,
+                                                               dtype=np.float32)
     rot_list = np.array([[np.cos(ry), zeros, -np.sin(ry)], [zeros, ones, zeros],
                          [np.sin(ry), zeros, np.cos(ry)]])  # (3, 3, N)
     R_list = np.transpose(rot_list, (2, 0, 1))  # (N, 3, 3)
 
-    temp_corners = np.concatenate(
-        (x_corners.reshape(-1, 8, 1), y_corners.reshape(-1, 8, 1),
-         z_corners.reshape(-1, 8, 1)),
-        axis=2)  # (N, 8, 3)
+    temp_corners = np.concatenate((x_corners.reshape(
+        -1, 8, 1), y_corners.reshape(-1, 8, 1), z_corners.reshape(-1, 8, 1)),
+                                  axis=2)  # (N, 8, 3)
     rotated_corners = np.matmul(temp_corners, R_list)  # (N, 8, 3)
     x_corners, y_corners, z_corners = rotated_corners[:, :,
                                                       0], rotated_corners[:, :,
@@ -898,13 +909,17 @@ def boxes3d_kitti_camera_to_imageboxes(boxes3d, calib, image_shape=None):
     max_uv = np.max(corners_in_image, axis=1)  # (N, 2)
     boxes2d_image = np.concatenate([min_uv, max_uv], axis=1)
     if image_shape is not None:
-        boxes2d_image[:, 0] = np.clip(
-            boxes2d_image[:, 0], a_min=0, a_max=image_shape[1] - 1)
-        boxes2d_image[:, 1] = np.clip(
-            boxes2d_image[:, 1], a_min=0, a_max=image_shape[0] - 1)
-        boxes2d_image[:, 2] = np.clip(
-            boxes2d_image[:, 2], a_min=0, a_max=image_shape[1] - 1)
-        boxes2d_image[:, 3] = np.clip(
-            boxes2d_image[:, 3], a_min=0, a_max=image_shape[0] - 1)
+        boxes2d_image[:, 0] = np.clip(boxes2d_image[:, 0],
+                                      a_min=0,
+                                      a_max=image_shape[1] - 1)
+        boxes2d_image[:, 1] = np.clip(boxes2d_image[:, 1],
+                                      a_min=0,
+                                      a_max=image_shape[0] - 1)
+        boxes2d_image[:, 2] = np.clip(boxes2d_image[:, 2],
+                                      a_min=0,
+                                      a_max=image_shape[1] - 1)
+        boxes2d_image[:, 3] = np.clip(boxes2d_image[:, 3],
+                                      a_min=0,
+                                      a_max=image_shape[0] - 1)
 
     return boxes2d_image

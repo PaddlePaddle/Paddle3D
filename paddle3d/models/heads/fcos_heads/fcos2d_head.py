@@ -25,21 +25,23 @@ from paddle3d.apis import manager
 
 __all__ = ["FCOS2DHead", "FCOS2DLoss", "FCOS2DInference"]
 
+
 @manager.HEADS.add_component
 class FCOS2DHead(nn.Layer):
     """
     This code is based on https://github.com/TRI-ML/dd3d/blob/main/tridet/modeling/dd3d/fcos2d.py#L30
     """
-    def __init__(self, in_strides,
-                       in_channels,
-                       num_classes=5, 
-                       use_scale=True, 
-                       box2d_scale_init_factor=1.0,
-                       version="v2", 
-                       num_cls_convs=4, 
-                       num_box_convs=4, 
-                       use_deformable=False, 
-                       norm="BN"):
+    def __init__(self,
+                 in_strides,
+                 in_channels,
+                 num_classes=5,
+                 use_scale=True,
+                 box2d_scale_init_factor=1.0,
+                 version="v2",
+                 num_cls_convs=4,
+                 num_box_convs=4,
+                 use_deformable=False,
+                 norm="BN"):
         super().__init__()
         self.in_strides = in_strides
         self.num_levels = len(in_strides)
@@ -48,7 +50,8 @@ class FCOS2DHead(nn.Layer):
         self.box2d_scale_init_factor = box2d_scale_init_factor
         self.version = version
 
-        assert len(set(in_channels)) == 1, "Each level must have the same channel!"
+        assert len(
+            set(in_channels)) == 1, "Each level must have the same channel!"
         in_channels = in_channels[0]
 
         if use_deformable:
@@ -61,9 +64,21 @@ class FCOS2DHead(nn.Layer):
             if self.version == "v1":
                 for _ in range(num_convs):
                     conv_func = nn.Conv2D
-                    tower.append(conv_func(in_channels, in_channels, kernel_size=3, stride=1, padding=1, bias=True))
+                    tower.append(
+                        conv_func(in_channels,
+                                  in_channels,
+                                  kernel_size=3,
+                                  stride=1,
+                                  padding=1,
+                                  bias=True))
                     if norm == "BN":
-                        tower.append(LayerListDial([nn.BatchNorm2D(in_channels, weight_attr=ParamAttr(regularizer=L2Decay(0.0))) for _ in range(self.num_levels)]))
+                        tower.append(
+                            LayerListDial([
+                                nn.BatchNorm2D(in_channels,
+                                               weight_attr=ParamAttr(
+                                                   regularizer=L2Decay(0.0)))
+                                for _ in range(self.num_levels)
+                            ]))
                     else:
                         raise NotImplementedError()
                     tower.append(nn.ReLU())
@@ -72,31 +87,58 @@ class FCOS2DHead(nn.Layer):
                     # Each FPN level has its own batchnorm layer.
                     # "BN" is converted to "SyncBN" in distributed training
                     if norm == "BN":
-                        norm_layer = LayerListDial([nn.BatchNorm2D(in_channels, weight_attr=ParamAttr(regularizer=L2Decay(0.0))) for _ in range(self.num_levels)])
+                        norm_layer = LayerListDial([
+                            nn.BatchNorm2D(
+                                in_channels,
+                                weight_attr=ParamAttr(regularizer=L2Decay(0.0)))
+                            for _ in range(self.num_levels)
+                        ])
                     elif norm == "FrozenBN":
-                        norm_layer = LayerListDial([FrozenBatchNorm2d(in_channels) for _ in range(self.num_levels)])
+                        norm_layer = LayerListDial([
+                            FrozenBatchNorm2d(in_channels)
+                            for _ in range(self.num_levels)
+                        ])
                     else:
                         raise NotImplementedError()
                     tower.append(
-                        nn.Conv2D(in_channels, in_channels, kernel_size=3, stride=1, padding=1, bias_attr=False))
+                        nn.Conv2D(in_channels,
+                                  in_channels,
+                                  kernel_size=3,
+                                  stride=1,
+                                  padding=1,
+                                  bias_attr=False))
                     tower.append(norm_layer)
                     tower.append(nn.ReLU())
             else:
                 raise ValueError(f"Invalid FCOS2D version: {self.version}")
             self.add_sublayer(f'{head_name}_tower', nn.Sequential(*tower))
 
-        self.cls_logits = nn.Conv2D(in_channels, self.num_classes, kernel_size=3, stride=1, padding=1)
-        self.box2d_reg = nn.Conv2D(in_channels, 4, kernel_size=3, stride=1, padding=1)
-        self.centerness = nn.Conv2D(in_channels, 1, kernel_size=3, stride=1, padding=1)
+        self.cls_logits = nn.Conv2D(in_channels,
+                                    self.num_classes,
+                                    kernel_size=3,
+                                    stride=1,
+                                    padding=1)
+        self.box2d_reg = nn.Conv2D(in_channels,
+                                   4,
+                                   kernel_size=3,
+                                   stride=1,
+                                   padding=1)
+        self.centerness = nn.Conv2D(in_channels,
+                                    1,
+                                    kernel_size=3,
+                                    stride=1,
+                                    padding=1)
 
         if self.use_scale:
             if self.version == "v1":
                 self.scales_reg = nn.LayerList([
-                    Scale(init_value=stride * self.box2d_scale_init_factor) for stride in self.in_strides
+                    Scale(init_value=stride * self.box2d_scale_init_factor)
+                    for stride in self.in_strides
                 ])
             else:
                 self.scales_box2d_reg = nn.LayerList([
-                    Scale(init_value=stride * self.box2d_scale_init_factor) for stride in self.in_strides
+                    Scale(init_value=stride * self.box2d_scale_init_factor)
+                    for stride in self.in_strides
                 ])
 
         self.init_weights()
@@ -106,7 +148,9 @@ class FCOS2DHead(nn.Layer):
         for tower in [self.cls_tower, self.box2d_tower]:
             for l in tower.sublayers():
                 if isinstance(l, nn.Conv2D):
-                    param_init.kaiming_normal_init(l.weight, mode='fan_out', nonlinearity='relu')
+                    param_init.kaiming_normal_init(l.weight,
+                                                   mode='fan_out',
+                                                   nonlinearity='relu')
                     if l.bias is not None:
                         param_init.constant_init(l.bias, value=0.0)
 
@@ -149,11 +193,12 @@ class FCOS2DHead(nn.Layer):
 
 
 def reduce_sum(tensor):
-    if not dist.get_world_size()>1:
+    if not dist.get_world_size() > 1:
         return tensor
     tensor = tensor.clone()
     dist.all_reduce(tensor)
     return tensor
+
 
 def compute_ctrness_targets(reg_targets):
     if len(reg_targets) == 0:
@@ -164,12 +209,17 @@ def compute_ctrness_targets(reg_targets):
                  (top_bottom.min(axis=-1) / top_bottom.max(axis=-1))
     return paddle.sqrt(ctrness)
 
+
 @manager.LOSSES.add_component
 class FCOS2DLoss(nn.Layer):
     """
     This code is based on https://github.com/TRI-ML/dd3d/blob/main/tridet/modeling/dd3d/fcos2d.py#L159
     """
-    def __init__(self, alpha=0.25, gamma=2.0, loc_loss_type='giou', num_classes=5):
+    def __init__(self,
+                 alpha=0.25,
+                 gamma=2.0,
+                 loc_loss_type='giou',
+                 num_classes=5):
         super().__init__()
         self.focal_loss_alpha = alpha
         self.focal_loss_gamma = gamma
@@ -189,9 +239,17 @@ class FCOS2DLoss(nn.Layer):
             )
 
         # Flatten predictions
-        logits = paddle.concat([x.transpose([0, 2, 3, 1]).reshape([-1, self.num_classes]) for x in logits], axis=0)
-        box2d_reg_pred = paddle.concat([x.transpose([0, 2, 3, 1]).reshape([-1, 4]) for x in box2d_reg], axis=0)
-        centerness_pred = paddle.concat([x.transpose([0, 2, 3, 1]).reshape([-1]) for x in centerness], axis=0)
+        logits = paddle.concat([
+            x.transpose([0, 2, 3, 1]).reshape([-1, self.num_classes])
+            for x in logits
+        ],
+                               axis=0)
+        box2d_reg_pred = paddle.concat(
+            [x.transpose([0, 2, 3, 1]).reshape([-1, 4]) for x in box2d_reg],
+            axis=0)
+        centerness_pred = paddle.concat(
+            [x.transpose([0, 2, 3, 1]).reshape([-1]) for x in centerness],
+            axis=0)
 
         # Classification loss
         num_pos_local = pos_inds.numel()
@@ -201,7 +259,7 @@ class FCOS2DLoss(nn.Layer):
 
         # prepare one_hot
         cls_target = paddle.zeros_like(logits)
-        if num_pos_local>0:
+        if num_pos_local > 0:
             cls_target[pos_inds, labels[pos_inds]] = 1
 
         loss_cls = sigmoid_focal_loss(
@@ -221,7 +279,7 @@ class FCOS2DLoss(nn.Layer):
             return losses, {}
 
         # NOTE: The rest of losses only consider foreground pixels.
-        if num_pos_local==1:
+        if num_pos_local == 1:
             box2d_reg_pred = box2d_reg_pred[pos_inds].unsqueeze(0)
             box2d_reg_targets = box2d_reg_targets[pos_inds].unsqueeze(0)
         else:
@@ -234,18 +292,26 @@ class FCOS2DLoss(nn.Layer):
 
         # Denominator for all foreground losses.
         ctrness_targets_sum = centerness_targets.sum()
-        loss_denom = max(reduce_sum(ctrness_targets_sum).item() / num_gpus, 1e-6)
+        loss_denom = max(
+            reduce_sum(ctrness_targets_sum).item() / num_gpus, 1e-6)
 
         # 2D box regression loss
-        loss_box2d_reg = self.box2d_reg_loss_fn(box2d_reg_pred, box2d_reg_targets, centerness_targets) / loss_denom
+        loss_box2d_reg = self.box2d_reg_loss_fn(
+            box2d_reg_pred, box2d_reg_targets, centerness_targets) / loss_denom
 
         # Centerness loss
         loss_centerness = F.binary_cross_entropy_with_logits(
-            centerness_pred, centerness_targets, reduction="sum"
-        ) / num_pos_avg
+            centerness_pred, centerness_targets, reduction="sum") / num_pos_avg
 
-        loss_dict = {"loss_cls": loss_cls, "loss_box2d_reg": loss_box2d_reg, "loss_centerness": loss_centerness}
-        extra_info = {"loss_denom": loss_denom, "centerness_targets": centerness_targets}
+        loss_dict = {
+            "loss_cls": loss_cls,
+            "loss_box2d_reg": loss_box2d_reg,
+            "loss_centerness": loss_centerness
+        }
+        extra_info = {
+            "loss_denom": loss_denom,
+            "centerness_targets": centerness_targets
+        }
 
         return loss_dict, extra_info
 
@@ -255,12 +321,13 @@ class FCOS2DInference():
     """
     This code is based on https://github.com/TRI-ML/dd3d/blob/main/tridet/modeling/dd3d/fcos2d.py#L242
     """
-    def __init__(self, thresh_with_ctr=True, 
-                       pre_nms_thresh=0.05, 
-                       pre_nms_topk=1000, 
-                       post_nms_topk=100, 
-                       nms_thresh=0.75, 
-                       num_classes=5):
+    def __init__(self,
+                 thresh_with_ctr=True,
+                 pre_nms_thresh=0.05,
+                 pre_nms_topk=1000,
+                 post_nms_topk=100,
+                 nms_thresh=0.75,
+                 num_classes=5):
         self.thresh_with_ctr = thresh_with_ctr
         self.pre_nms_thresh = pre_nms_thresh
         self.pre_nms_topk = pre_nms_topk
@@ -276,12 +343,13 @@ class FCOS2DInference():
             enumerate(zip(logits, box2d_reg, centerness, locations)):
 
             instances_per_lvl, extra_info_per_lvl = self.forward_for_single_feature_map(
-                logits_lvl, box2d_reg_lvl, centerness_lvl, locations_lvl
-            )  # List of dict; one for each image.
+                logits_lvl, box2d_reg_lvl, centerness_lvl,
+                locations_lvl)  # List of dict; one for each image.
 
             for instances_per_im in instances_per_lvl:
-                instances_per_im['fpn_levels'] = paddle.ones([instances_per_im['pred_boxes'].shape[0]], dtype='float64')
-                if instances_per_im['pred_boxes'].shape[0]!=0:
+                instances_per_im['fpn_levels'] = paddle.ones(
+                    [instances_per_im['pred_boxes'].shape[0]], dtype='float64')
+                if instances_per_im['pred_boxes'].shape[0] != 0:
                     instances_per_im['fpn_levels'] *= lvl
 
             pred_instances.append(instances_per_lvl)
@@ -289,13 +357,15 @@ class FCOS2DInference():
 
         return pred_instances, extra_info
 
-    def forward_for_single_feature_map(self, logits, box2d_reg, centerness, locations):
+    def forward_for_single_feature_map(self, logits, box2d_reg, centerness,
+                                       locations):
         N, C, _, __ = logits.shape
 
         # put in the same format as locations
         scores = F.sigmoid(logits.transpose([0, 2, 3, 1]).reshape([N, -1, C]))
         box2d_reg = box2d_reg.transpose([0, 2, 3, 1]).reshape([N, -1, 4])
-        centerness = F.sigmoid(centerness.transpose([0, 2, 3, 1]).reshape([N, -1]))
+        centerness = F.sigmoid(
+            centerness.transpose([0, 2, 3, 1]).reshape([N, -1]))
 
         # if self.thresh_with_ctr is True, we multiply the classification
         # scores with centerness scores before applying the threshold.
@@ -317,7 +387,8 @@ class FCOS2DInference():
             candidate_mask_per_im = candidate_mask[i]
             scores_per_im = scores_per_im[candidate_mask_per_im]
 
-            candidate_inds_per_im = candidate_mask_per_im.nonzero(as_tuple=False)
+            candidate_inds_per_im = candidate_mask_per_im.nonzero(
+                as_tuple=False)
             fg_inds_per_im = candidate_inds_per_im[:, 0]
             class_inds_per_im = candidate_inds_per_im[:, 1]
 
@@ -325,7 +396,7 @@ class FCOS2DInference():
             all_fg_inds_per_im.append(fg_inds_per_im)
             all_class_inds_per_im.append(class_inds_per_im)
 
-            if fg_inds_per_im.shape[0]==0:
+            if fg_inds_per_im.shape[0] == 0:
                 box2d_reg_per_im = paddle.zeros([0, 4])
                 locations_per_im = paddle.zeros([0, 2])
             else:
@@ -346,9 +417,9 @@ class FCOS2DInference():
 
             all_topk_indices.append(topk_indices)
 
-            if locations_per_im.shape[0]==0:
+            if locations_per_im.shape[0] == 0:
                 detections = paddle.zeros([0, 4])
-            elif len(locations_per_im.shape)==1:
+            elif len(locations_per_im.shape) == 1:
                 locations_per_im = locations_per_im.unsqueeze(0)
                 box2d_reg_per_im = box2d_reg_per_im.unsqueeze(0)
                 detections = paddle.stack([
@@ -356,18 +427,20 @@ class FCOS2DInference():
                     locations_per_im[:, 1] - box2d_reg_per_im[:, 1],
                     locations_per_im[:, 0] + box2d_reg_per_im[:, 2],
                     locations_per_im[:, 1] + box2d_reg_per_im[:, 3],
-                ], axis=1)
+                ],
+                                          axis=1)
             else:
                 detections = paddle.stack([
                     locations_per_im[:, 0] - box2d_reg_per_im[:, 0],
                     locations_per_im[:, 1] - box2d_reg_per_im[:, 1],
                     locations_per_im[:, 0] + box2d_reg_per_im[:, 2],
                     locations_per_im[:, 1] + box2d_reg_per_im[:, 3],
-                ], axis=1)
+                ],
+                                          axis=1)
 
             instances = {}
             instances['pred_boxes'] = detections
-            if scores_per_im.shape[0]==0:
+            if scores_per_im.shape[0] == 0:
                 instances['scores'] = scores_per_im
             else:
                 instances['scores'] = paddle.sqrt(scores_per_im)
@@ -388,15 +461,16 @@ class FCOS2DInference():
         for instances in instances_per_im:
             if self.nms_thresh > 0:
                 # Multiclass NMS.
-                if instances['pred_boxes'].shape[0]==0:
+                if instances['pred_boxes'].shape[0] == 0:
                     results.append(instances)
                     continue
-                keep = paddle.vision.ops.nms(boxes=instances['pred_boxes'], 
-                                             iou_threshold=self.nms_thresh, 
-                                             scores=instances[score_key_for_nms], 
-                                             category_idxs=instances['pred_classes'], 
-                                             categories=[0, 1, 2, 3, 4])
-                if keep.shape[0]==0:
+                keep = paddle.vision.ops.nms(
+                    boxes=instances['pred_boxes'],
+                    iou_threshold=self.nms_thresh,
+                    scores=instances[score_key_for_nms],
+                    category_idxs=instances['pred_classes'],
+                    categories=[0, 1, 2, 3, 4])
+                if keep.shape[0] == 0:
                     instances['pred_boxes'] = paddle.zeros([0, 4])
                     instances['pred_classes'] = paddle.zeros([0])
                     instances['scores'] = paddle.zeros([0])
@@ -407,15 +481,18 @@ class FCOS2DInference():
                 instances['scores'] = instances['scores'][keep]
                 instances['scores_3d'] = instances['scores_3d'][keep]
                 instances['pred_boxes3d'] = instances['pred_boxes3d'][keep]
-                if len(instances['pred_boxes'].shape)==1:
-                    instances['pred_boxes'] = instances['pred_boxes'].unsqueeze(0)
-                    instances['pred_boxes3d'] = instances['pred_boxes3d'].unsqueeze(0)
+                if len(instances['pred_boxes'].shape) == 1:
+                    instances['pred_boxes'] = instances['pred_boxes'].unsqueeze(
+                        0)
+                    instances['pred_boxes3d'] = instances[
+                        'pred_boxes3d'].unsqueeze(0)
             num_detections = instances['pred_boxes3d'].shape[0]
 
             # Limit to max_per_image detections **over all classes**
             if num_detections > self.post_nms_topk > 0:
                 scores = instances['scores']
-                image_thresh, _ = kthvalue.kthvalue(scores, num_detections - self.post_nms_topk + 1)
+                image_thresh, _ = paddle.kthvalue(
+                    scores, num_detections - self.post_nms_topk + 1)
                 keep = scores >= image_thresh.item()
                 keep = paddle.nonzero(keep).squeeze(1)
                 instances['pred_boxes'] = instances['pred_boxes'][keep]
@@ -423,7 +500,7 @@ class FCOS2DInference():
                 instances['scores'] = instances['scores'][keep]
                 instances['scores_3d'] = instances['scores_3d'][keep]
                 instances['pred_boxes3d'] = instances['pred_boxes3d'][keep]
-                if len(instances['pred_boxes'].shape)==1:
+                if len(instances['pred_boxes'].shape) == 1:
                     instances['pred_boxes'].unsqueeze(0)
                     instances['pred_boxes3d'].unsqueeze(0)
             results.append(instances)
