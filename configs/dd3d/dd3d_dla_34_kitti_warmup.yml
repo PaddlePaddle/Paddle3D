@@ -26,7 +26,7 @@ train_dataset:
       intensity_min: 0.8
       intensity_max: 1.2
   class_names: ["Car", "Pedestrian", "Cyclist", "Van", "Person_sitting"]
-  class_map: {'Car': 0, 'Pedestrian': 1, 'Cyclist': 2, 'Van': 3, 'Person_sitting': 4}
+  CLASS_MAP: {'Car': 0, 'Pedestrian': 1, 'Cyclist': 2, 'Van': 3, 'Person_sitting': 4}
 
 val_dataset:
   transforms:
@@ -40,7 +40,7 @@ val_dataset:
       sample_style: choice
     - type: ToVisionBasedBox
   class_names: ["Car", "Pedestrian", "Cyclist", "Van", "Person_sitting"]
-  class_map: {'Car': 0, 'Pedestrian': 1, 'Cyclist': 2, 'Van': 3, 'Person_sitting': 4}
+  CLASS_MAP: {'Car': 0, 'Pedestrian': 1, 'Cyclist': 2, 'Van': 3, 'Person_sitting': 4}
 
 optimizer:
   type: Momentum

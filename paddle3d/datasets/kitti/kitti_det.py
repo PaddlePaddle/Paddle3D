@@ -28,15 +28,12 @@ from paddle3d.transforms import TransformABC
 class KittiDetDataset(BaseDataset):
     """
     """
-    CLASS_MAP = {'Car': 0, 'Cyclist': 1, 'Pedestrian': 2}
-    CLASS_MAP_REVERSE = {value: key for key, value in CLASS_MAP.items()}
-
     def __init__(self,
                  dataset_root: str,
                  mode: str = "train",
                  transforms: Union[TransformABC, List[TransformABC]] = None,
                  class_names: Union[list, tuple] = None,
-                 class_map: Dict[str, int] = None,
+                 CLASS_MAP: Dict[str, int] = None,
                  class_balanced_sampling: bool = False,
                  use_road_plane: bool = False):
         super().__init__()
@@ -49,11 +46,16 @@ class KittiDetDataset(BaseDataset):
         self.transforms = transforms
         self.class_names = class_names
         self.use_road_plane = use_road_plane
+        if CLASS_MAP is None:
+            self.CLASS_MAP = {'Car': 0, 'Cyclist': 1, 'Pedestrian': 2}
+        else:
+            self.CLASS_MAP = CLASS_MAP
+        self.CLASS_MAP_REVERSE = {
+            value: key
+            for key, value in CLASS_MAP.items()
+        }
         if self.class_names is None:
             self.class_names = list(self.CLASS_MAP.keys())
-        self.class_map = class_map
-        if self.class_map is None:
-            self.class_map = self.CLASS_MAP
 
         if self.mode not in ['train', 'val', 'trainval', 'test']:
             raise ValueError(
@@ -86,8 +88,8 @@ class KittiDetDataset(BaseDataset):
             sampling_ratios = [balanced_frac / frac for frac in fracs]
 
             resampling_data = []
-            for samples, sampling_ratio in zip(
-                    list(cls_dist.values()), sampling_ratios):
+            for samples, sampling_ratio in zip(list(cls_dist.values()),
+                                               sampling_ratios):
                 resampling_data.extend(samples)
                 if sampling_ratio > 1.:
                     resampling_data.extend(

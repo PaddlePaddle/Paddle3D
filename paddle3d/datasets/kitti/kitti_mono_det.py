@@ -26,7 +26,6 @@ from paddle3d.sample import Sample
 class KittiMonoDataset(KittiDetDataset):
     """
     """
-
     def __getitem__(self, index: int) -> Sample:
         filename = '{}.png'.format(self.data[index])
         path = os.path.join(self.image_dir, filename)
@@ -46,7 +45,7 @@ class KittiMonoDataset(KittiDetDataset):
             sample.bboxes_2d = bboxes_2d
             sample.bboxes_3d = bboxes_3d
             sample.labels = np.array(
-                [self.class_map[label] for label in labels], dtype=np.int32)
+                [self.CLASS_MAP[label] for label in labels], dtype=np.int32)
 
         if self.transforms:
             sample = self.transforms(sample)
