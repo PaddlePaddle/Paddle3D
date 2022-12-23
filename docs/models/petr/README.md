@@ -17,7 +17,9 @@
 
 ## <h2 id="2">简介</h2>
 
-PETR...
+PETRv1是一个位置嵌入信息感知的多视角3D视觉检测算法。PETRv1将3D坐标信息与图像特征相融合，借助transfomer的结构实现端到端的3D目标检测，PETRv1在比较简洁的架构上达到了精度SOTA（50.4 NDS, 44.1mAP），并且在一段时间内在NuScenes数据集上排名第一。
+
+PETRv2在v1的基础上加入了时序信息，致力于构建一个统一的多视角感知框架。 PETRv2扩展了3D位置信息嵌入模块（3D PE），实现不同时刻帧之间的对齐。并在这个基础上加入了特征指导编码器来提高3D位置信息嵌入模块的数据自适应能力。PETRv2以一个简洁而有效的框架在3D目标检测，BEV分割和3D车道线检测等任务上都取得了SOTA的效果。
 
 ## <h2 id="3">训练配置</h2>
 
@@ -29,7 +31,9 @@ PETR...
 | :--: | :-------: | :--------: | :-------------------: | :------: | :-----: | :--: |
 |PETR v1 |  v99    | 38.35 | 43.52 | [model](https://paddle3d.bj.bcebos.com/models/petr/petr_vovnet_gridmask_p4_800x320_amp/model.pdparams) | [config](../../../configs/petr/petr_vovnet_gridmask_p4_800x320_amp.yml) | [log](https://paddle3d.bj.bcebos.com/models/petr/petr_vovnet_gridmask_p4_800x320_amp/train.log) \| [vdl](https://www.paddlepaddle.org.cn/paddle/visualdl/service/app/scalar?id=334e6a6ba257c953fe67bac17a1434a6) |
 |PETR v2 |  v99    | 41.05 | 49.86 | [model](https://paddle3d.bj.bcebos.com/models/petr/petrv2_vovnet_gridmask_p4_800x320/model.pdparams) | [config](../../../configs/petr/petrv2_vovnet_gridmask_p4_800x320.yml) | [log](https://paddle3d.bj.bcebos.com/models/petr/petrv2_vovnet_gridmask_p4_800x320/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=8888769be49447d6bbabebe78a5fa3ed) |
-
+|PETR v2 + denoise |  v99    | 41.35 | 50.64 | [model](https://paddle3d.bj.bcebos.com/models/petr/petrv2_vovnet_gridmask_p4_800x320_dn_amp/model.pdparams) | [config](../../../configs/petr/petrv2_vovnet_gridmask_p4_800x320_dn_amp.yml) | [log](https://paddle3d.bj.bcebos.com/models/petr/petrv2_vovnet_gridmask_p4_800x320_dn_amp/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=3b3951b08caf6367f469edf7f3863e2b) |
+|PETR v2 + denoise + centerview |  v99    | 43.45 | 52.24 | [model](https://paddle3d.bj.bcebos.com/models/petr/petrv2_vovnet_gridmask_p4_800x320_dn_centerview_amp/model.pdparams) | [config](../../../configs/petr/petrv2_vovnet_gridmask_p4_800x320_dn_centerview_amp.yml) | [log](https://paddle3d.bj.bcebos.com/models/petr/petrv2_vovnet_gridmask_p4_800x320_dn_centerview_amp/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=41e8354ab1faef44ab05850e1b4d5383) |
+|PETR v2 + denoise + multiview |  v99    | 44.91 | 53.34 | [model](https://paddle3d.bj.bcebos.com/models/petr/petrv2_vovnet_gridmask_p4_1600x640_dn_multiscale_amp/model.pdparams) | [config](../../../configs/petr/petrv2_vovnet_gridmask_p4_1600x640_dn_multiscale_amp.yml) | [log](https://paddle3d.bj.bcebos.com/models/petr/petrv2_vovnet_gridmask_p4_1600x640_dn_multiscale_amp/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=ed5c16888449914ddde4f9554c6edeac) |
 
 ## <h2 id="5">使用教程</h2>
 

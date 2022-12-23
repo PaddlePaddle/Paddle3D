@@ -32,7 +32,7 @@ from paddle3d.utils import box_utils
 __all__ = [
     "RandomHorizontalFlip", "RandomVerticalFlip", "GlobalRotate", "GlobalScale",
     "GlobalTranslate", "ShufflePoint", "SamplePoint", "SamplePointByVoxels",
-    "FilterPointsOutsideRange", "FilterBBoxOutsideRange", "HardVoxelize",
+    "FilterPointOutsideRange", "FilterBBoxOutsideRange", "HardVoxelize",
     "RandomObjectPerturb", "ConvertBoxFormat",
     "PhotoMetricDistortionMultiViewImage", "RandomScaleImageMultiViewImage"
 ]
@@ -299,14 +299,13 @@ class FilterBBoxOutsideRange(TransformABC):
 
 
 @manager.TRANSFORMS.add_component
-class FilterPointsOutsideRange(TransformABC):
+class FilterPointOutsideRange(TransformABC):
     def __init__(self, point_cloud_range: Tuple[float]):
-        self.limit_range = np.asarray(point_cloud_range, dtype='float32')
+        self.point_cloud_range = np.asarray(point_cloud_range, dtype='float32')
 
     def __call__(self, sample: Sample):
-        points = sample.data
-        mask = (points[:, 0] >= self.limit_range[0]) & (points[:, 0] <= self.limit_range[3]) \
-           & (points[:, 1] >= self.limit_range[1]) & (points[:, 1] <= self.limit_range[4])
+        mask = sample.data.get_mask_of_points_outside_range(
+            self.point_cloud_range)
         sample.data = sample.data[mask]
         return sample
 
@@ -640,6 +639,163 @@ class ResizeCropFlipImage(object):
 
 
 @manager.TRANSFORMS.add_component
+class MSResizeCropFlipImage(object):
+    """Random resize, Crop and flip the image
+    Args:
+        size (tuple, optional): Fixed padding size.
+    """
+
+    def __init__(self,
+                 sample_aug_cfg=None,
+                 training=True,
+                 view_num=1,
+                 center_size=2.0):
+        self.sample_aug_cfg = sample_aug_cfg
+        self.training = training
+        self.view_num = view_num
+        self.center_size = center_size
+
+    def __call__(self, sample):
+        """Call function to pad images, masks, semantic segmentation maps.
+        Args:
+            sample (dict): Result dict from loading pipeline.
+        Returns:
+            dict: Updated result dict.
+        """
+
+        imgs = sample["img"]
+        N = len(imgs)
+        new_imgs = []
+        resize, resize_dims, crop, flip, rotate = self._sample_augmentation()
+
+        copy_intrinsics = []
+        copy_extrinsics = []
+        for i in range(self.view_num):
+            copy_intrinsics.append(np.copy(sample['intrinsics'][i]))
+            copy_extrinsics.append(np.copy(sample['extrinsics'][i]))
+
+        for i in range(N):
+            img = Image.fromarray(np.uint8(imgs[i]))
+            # augmentation (resize, crop, horizontal flip, rotate)
+            img, ida_mat = self._img_transform(
+                img,
+                resize=resize,
+                resize_dims=resize_dims,
+                crop=crop,
+                flip=flip,
+                rotate=rotate,
+            )
+            new_imgs.append(np.array(img).astype(np.float32))
+            sample['intrinsics'][
+                i][:3, :3] = ida_mat @ sample['intrinsics'][i][:3, :3]
+
+        resize, resize_dims, crop, flip, rotate = self._crop_augmentation(
+            resize)
+        for i in range(self.view_num):
+            img = Image.fromarray(np.copy(np.uint8(imgs[i])))
+            img, ida_mat = self._img_transform(
+                img,
+                resize=resize,
+                resize_dims=resize_dims,
+                crop=crop,
+                flip=flip,
+                rotate=rotate,
+            )
+            new_imgs.append(np.array(img).astype(np.float32))
+            copy_intrinsics[i][:3, :3] = ida_mat @ copy_intrinsics[i][:3, :3]
+            sample['intrinsics'].append(copy_intrinsics[i])
+            sample['extrinsics'].append(copy_extrinsics[i])
+            sample['filename'].append(sample['filename'][i].replace(
+                ".jpg", "_crop.jpg"))
+            sample['timestamp'].append(sample['timestamp'][i])
+
+        sample["img"] = new_imgs
+        sample['lidar2img'] = [
+            sample['intrinsics'][i] @ sample['extrinsics'][i].T
+            for i in range(len(sample['extrinsics']))
+        ]
+        return sample
+
+    def _get_rot(self, h):
+
+        return np.array([
+            [np.cos(h), np.sin(h)],
+            [-np.sin(h), np.cos(h)],
+        ])
+
+    def _img_transform(self, img, resize, resize_dims, crop, flip, rotate):
+        ida_rot = np.eye(2)
+        ida_tran = np.zeros(2)
+        # adjust image
+        img = img.resize(resize_dims)
+        img = img.crop(crop)
+        if flip:
+            img = img.transpose(method=Image.FLIP_LEFT_RIGHT)
+        img = img.rotate(rotate)
+
+        # post-homography transformation
+        ida_rot *= resize
+        ida_tran -= np.array(crop[:2])
+        if flip:
+            A = np.array([[-1, 0], [0, 1]])
+            b = np.array([crop[2] - crop[0], 0])
+
+            ida_rot = np.matmul(A, ida_rot)
+            ida_tran = np.matmul(A, ida_tran) + b
+
+        A = self._get_rot(rotate / 180 * np.pi)
+        b = np.array([crop[2] - crop[0], crop[3] - crop[1]]) / 2
+        b = np.matmul(A, -b) + b
+        ida_rot = np.matmul(A, ida_rot)
+        ida_tran = np.matmul(A, ida_tran) + b
+        ida_mat = np.eye(3)
+        ida_mat[:2, :2] = ida_rot
+        ida_mat[:2, 2] = ida_tran
+        return img, ida_mat
+
+    def _sample_augmentation(self):
+        H, W = self.sample_aug_cfg["H"], self.sample_aug_cfg["W"]
+        fH, fW = self.sample_aug_cfg["final_dim"]
+        if self.training:
+            resize = np.random.uniform(*self.sample_aug_cfg["resize_lim"])
+            resize_dims = (int(W * resize), int(H * resize))
+            newW, newH = resize_dims
+            crop_h = int(
+                (1 - np.random.uniform(*self.sample_aug_cfg["bot_pct_lim"])) *
+                newH) - fH
+            crop_w = int(np.random.uniform(0, max(0, newW - fW)))
+            crop = (crop_w, crop_h, crop_w + fW, crop_h + fH)
+            flip = False
+            if self.sample_aug_cfg["rand_flip"] and np.random.choice([0, 1]):
+                flip = True
+            rotate = np.random.uniform(*self.sample_aug_cfg["rot_lim"])
+        else:
+            resize = max(fH / H, fW / W)
+            resize_dims = (int(W * resize), int(H * resize))
+            newW, newH = resize_dims
+            crop_h = int(
+                (1 - np.mean(self.sample_aug_cfg["bot_pct_lim"])) * newH) - fH
+            crop_w = int(max(0, newW - fW) / 2)
+            crop = (crop_w, crop_h, crop_w + fW, crop_h + fH)
+            flip = False
+            rotate = 0
+        return resize, resize_dims, crop, flip, rotate
+
+    def _crop_augmentation(self, resize):
+        H, W = self.sample_aug_cfg["H"], self.sample_aug_cfg["W"]
+        fH, fW = self.sample_aug_cfg["final_dim"]
+        resize = self.center_size * resize
+        resize_dims = (int(W * resize), int(H * resize))
+        newW, newH = resize_dims
+        crop_h = int(max(0, newH - fH) / 2)
+        crop_w = int(max(0, newW - fW) / 2)
+        crop = (crop_w, crop_h, crop_w + fW, crop_h + fH)
+        flip = False
+        rotate = 0
+        return resize, resize_dims, crop, flip, rotate
+
+
+@manager.TRANSFORMS.add_component
 class GlobalRotScaleTransImage(object):
     """Random resize, Crop and flip the image
     Args:
@@ -915,18 +1071,6 @@ class SampleFilerByKey(object):
         for key in self.keys:
             filtered_sample[key] = sample[key]
         return filtered_sample
-
-
-@manager.TRANSFORMS.add_component
-class FilterPointOutsideRange(TransformABC):
-    def __init__(self, point_cloud_range: Tuple[float]):
-        self.point_cloud_range = np.asarray(point_cloud_range, dtype='float32')
-
-    def __call__(self, sample: Sample):
-        mask = sample.data.get_mask_of_points_outside_range(
-            self.point_cloud_range)
-        sample.data = sample.data[mask]
-        return sample
 
 
 @manager.TRANSFORMS.add_component

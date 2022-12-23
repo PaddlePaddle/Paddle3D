@@ -106,7 +106,6 @@ class NuscenesMVDataset(NuscenesDetDataset):
         self.queue_length = queue_length
         self.overlap_test = overlap_test
         self.bev_size = bev_size
-        # self.data_infos = self.data_infos[0:2]
 
     def __len__(self):
         return len(self.data_infos)

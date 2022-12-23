@@ -22,11 +22,12 @@ official PointNet++ codes. Written by Shaoshuai Shi All Rights Reserved 2018.
 #define THREADS_PER_BLOCK 512
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
 
-__global__ void group_points_cuda_kernel(const int b, const int c, const int n,
-                                         const int npoints, const int nsample,
-                                         const float *__restrict__ points,
-                                         const int *__restrict__ idx,
-                                         float *__restrict__ out) {
+__global__ void group_points_cuda_kernel_batch(const int b, const int c,
+                                               const int n, const int npoints,
+                                               const int nsample,
+                                               const float *__restrict__ points,
+                                               const int *__restrict__ idx,
+                                               float *__restrict__ out) {
   // points: (B, C, N)
   // idx: (B, npoints, nsample)
   // output:
@@ -47,10 +48,10 @@ __global__ void group_points_cuda_kernel(const int b, const int c, const int n,
   out[out_idx] = points[in_idx];
 }
 
-void group_points_cuda_launcher(const int b, const int c, const int n,
-                                const int npoints, const int nsample,
-                                const float *points, const int *idx,
-                                float *out) {
+void group_points_cuda_launcher_batch(const int b, const int c, const int n,
+                                      const int npoints, const int nsample,
+                                      const float *points, const int *idx,
+                                      float *out) {
   // points: (B, C, N)
   // idx: (B, npoints, nsample)
   // output:
@@ -60,8 +61,8 @@ void group_points_cuda_launcher(const int b, const int c, const int n,
               b);  // blockIdx.x(col), blockIdx.y(row)
   dim3 threads(THREADS_PER_BLOCK);
 
-  group_points_cuda_kernel<<<blocks, threads>>>(b, c, n, npoints, nsample,
-                                                points, idx, out);
+  group_points_cuda_kernel_batch<<<blocks, threads>>>(b, c, n, npoints, nsample,
+                                                      points, idx, out);
   // cudaDeviceSynchronize();  // for using printf in kernel function
   err = cudaGetLastError();
   if (cudaSuccess != err) {
@@ -70,7 +71,7 @@ void group_points_cuda_launcher(const int b, const int c, const int n,
   }
 }
 
-__global__ void group_points_grad_cuda_kernel(
+__global__ void group_points_grad_cuda_kernel_batch(
     const int b, const int c, const int n, const int npoints, const int nsample,
     const float *__restrict__ grad_out, const int *__restrict__ idx,
     float *__restrict__ grad_points) {
@@ -92,10 +93,11 @@ __global__ void group_points_grad_cuda_kernel(
   atomicAdd(grad_points + bs_idx * c * n + c_idx * n + idx[0], grad_out[0]);
 }
 
-void group_points_grad_cuda_launcher(const int b, const int c, const int n,
-                                     const int npoints, const int nsample,
-                                     const float *grad_out, const int *idx,
-                                     float *grad_points) {
+void group_points_grad_cuda_launcher_batch(const int b, const int c,
+                                           const int n, const int npoints,
+                                           const int nsample,
+                                           const float *grad_out,
+                                           const int *idx, float *grad_points) {
   // grad_out: (B, C, npoints, nsample)
   // idx: (B, npoints, nsample)
   // output:
@@ -105,7 +107,7 @@ void group_points_grad_cuda_launcher(const int b, const int c, const int n,
               b);  // blockIdx.x(col), blockIdx.y(row)
   dim3 threads(THREADS_PER_BLOCK);
 
-  group_points_grad_cuda_kernel<<<blocks, threads>>>(
+  group_points_grad_cuda_kernel_batch<<<blocks, threads>>>(
       b, c, n, npoints, nsample, grad_out, idx, grad_points);
 
   err = cudaGetLastError();

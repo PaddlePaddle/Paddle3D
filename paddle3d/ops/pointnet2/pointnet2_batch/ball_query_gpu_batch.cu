@@ -17,11 +17,12 @@
 #define THREADS_PER_BLOCK 512
 #define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
 
-__global__ void ball_query_cuda_kernel(const int b, const int n, const int m,
-                                       const float radius, const int nsample,
-                                       const float *__restrict__ new_xyz,
-                                       const float *__restrict__ xyz,
-                                       int *__restrict__ idx) {
+__global__ void ball_query_cuda_kernel_batch(const int b, const int n,
+                                             const int m, const float radius,
+                                             const int nsample,
+                                             const float *__restrict__ new_xyz,
+                                             const float *__restrict__ xyz,
+                                             int *__restrict__ idx) {
   // new_xyz: (B, M, 3)
   // xyz: (B, N, 3)
   // output:
@@ -59,10 +60,10 @@ __global__ void ball_query_cuda_kernel(const int b, const int n, const int m,
   }
 }
 
-void ball_query_cuda_launcher(const int b, const int n, const int m,
-                              const float radius, const int nsample,
-                              const float *new_xyz, const float *xyz,
-                              int *idx) {
+void ball_query_cuda_launcher_batch(const int b, const int n, const int m,
+                                    const float radius, const int nsample,
+                                    const float *new_xyz, const float *xyz,
+                                    int *idx) {
   // new_xyz: (B, M, 3)
   // xyz: (B, N, 3)
   // output:
@@ -72,8 +73,8 @@ void ball_query_cuda_launcher(const int b, const int n, const int m,
   dim3 blocks(DIVUP(m, THREADS_PER_BLOCK), b);
   dim3 threads(THREADS_PER_BLOCK);
 
-  ball_query_cuda_kernel<<<blocks, threads>>>(b, n, m, radius, nsample, new_xyz,
-                                              xyz, idx);
+  ball_query_cuda_kernel_batch<<<blocks, threads>>>(b, n, m, radius, nsample,
+                                                    new_xyz, xyz, idx);
   err = cudaGetLastError();
   if (cudaSuccess != err) {
     fprintf(stderr, "CUDA kernel failed : %s\n", cudaGetErrorString(err));

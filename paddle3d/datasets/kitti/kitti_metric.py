@@ -16,13 +16,12 @@ from typing import Dict, List
 
 import numpy as np
 
-from paddle3d.datasets.kitti.kitti_utils import (Calibration,
-                                                 box_lidar_to_camera)
+from paddle3d.datasets.kitti.kitti_utils import (
+    Calibration, box_lidar_to_camera, filter_fake_result)
 from paddle3d.datasets.metrics import MetricABC
-from paddle3d.geometries.bbox import (BBoxes2D, BBoxes3D, CoordMode,
-                                      boxes3d_kitti_camera_to_imageboxes,
-                                      boxes3d_lidar_to_kitti_camera,
-                                      project_to_image)
+from paddle3d.geometries.bbox import (
+    BBoxes2D, BBoxes3D, CoordMode, boxes3d_kitti_camera_to_imageboxes,
+    boxes3d_lidar_to_kitti_camera, project_to_image)
 from paddle3d.sample import Sample
 from paddle3d.thirdparty import kitti_eval
 from paddle3d.utils.logger import logger
@@ -82,8 +81,9 @@ class KittiMetric(MetricABC):
             self, predictions: List[Sample]) -> List[dict]:
         res = {}
         for pred in predictions:
+            filter_fake_result(pred)
             id = pred.meta.id
-            if pred.bboxes_2d is None and pred.bboxes_3d is None:
+            if pred.bboxes_3d is None:
                 det = {
                     'truncated': np.zeros([0]),
                     'occluded': np.zeros([0]),
@@ -216,9 +216,7 @@ class KittiDepthMetric(MetricABC):
                 pred_scores: (N), Tensor
                 pred_labels: (N), Tensor
             output_path:
-
         Returns:
-
         """
 
         def get_template_prediction(num_samples):

@@ -13,6 +13,7 @@
 # limitations under the License.
 from .backbones import *
 from .classification import *
+from .common import *
 from .detection import *
 from .heads import *
 from .layers import *
@@ -20,6 +21,7 @@ from .losses import *
 from .middle_encoders import *
 from .necks import *
 from .optimizers import *
+from .point_encoders import *
 from .segmentation import *
 from .transformers import *
 from .voxel_encoders import *

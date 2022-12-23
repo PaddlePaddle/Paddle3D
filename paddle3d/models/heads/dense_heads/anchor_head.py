@@ -35,7 +35,7 @@ __all__ = ['AnchorHeadSingle']
 
 @manager.HEADS.add_component
 class AnchorHeadSingle(nn.Layer):
-    def __init__(self, model_cfg, input_channels, class_names, grid_size,
+    def __init__(self, model_cfg, input_channels, class_names, voxel_size,
                  point_cloud_range, anchor_target_cfg,
                  predict_boxes_when_training, anchor_generator_cfg,
                  num_dir_bins, loss_weights):
@@ -48,7 +48,9 @@ class AnchorHeadSingle(nn.Layer):
         self.num_dir_bins = num_dir_bins
         self.loss_weights = loss_weights
         self.box_coder = ResidualCoder(num_dir_bins=num_dir_bins)
-        grid_size = np.array(grid_size)
+        point_cloud_range = np.asarray(point_cloud_range)
+        grid_size = (point_cloud_range[3:] - point_cloud_range[:3]) / voxel_size
+        grid_size = np.round(grid_size).astype(np.int64)
         self.anchors_list, self.num_anchors_per_location = self.generate_anchors(
             grid_size=grid_size,
             point_cloud_range=point_cloud_range,
@@ -60,14 +62,12 @@ class AnchorHeadSingle(nn.Layer):
         self.conv_cls = nn.Conv2D(
             input_channels,
             self.num_anchors_per_location * self.num_class,
-            kernel_size=1,
-            bias_attr=ParamAttr(
-                initializer=Constant(-np.log((1 - 0.01) / 0.01))))
+            kernel_size=1)
+
         self.conv_box = nn.Conv2D(
             input_channels,
             self.num_anchors_per_location * self.box_coder.code_size,
-            kernel_size=1,
-            weight_attr=ParamAttr(initializer=Normal(mean=0, std=0.001)))
+            kernel_size=1)
         self.target_assigner = AxisAlignedTargetAssigner(
             anchor_generator_cfg,
             anchor_target_cfg,
@@ -79,7 +79,7 @@ class AnchorHeadSingle(nn.Layer):
             kernel_size=1)
         self.forward_ret_dict = {}
         self.reg_loss_func = WeightedSmoothL1Loss(
-            code_weights=paddle.to_tensor(loss_weights["code_weights"]))
+            code_weights=loss_weights["code_weights"])
         self.cls_loss_func = SigmoidFocalClassificationLoss(
             alpha=0.25, gamma=2.0)
         self.dir_loss_func = WeightedCrossEntropyLoss()
@@ -108,6 +108,13 @@ class AnchorHeadSingle(nn.Layer):
         ]
         anchors_list, num_anchors_per_location_list = anchor_generator.generate_anchors(
             feature_map_size)
+
+        if anchor_ndim != 7:
+            for idx, anchors in enumerate(anchors_list):
+                pad_zeros = anchors.zeros(
+                    [*anchors.shape[0:-1], anchor_ndim - 7])
+                new_anchors = paddle.concat((anchors, pad_zeros), axis=-1)
+                anchors_list[idx] = new_anchors
 
         return anchors_list, num_anchors_per_location_list
 
@@ -180,8 +187,7 @@ class AnchorHeadSingle(nn.Layer):
             targets_dict = self.target_assigner.assign_targets(
                 self.anchors_list, data_dict['gt_boxes'])
             self.forward_ret_dict.update(targets_dict)
-
-        else:
+        if not self.training or self.predict_boxes_when_training:
             if getattr(self, 'in_export_mode', False):
                 batch_size = 1
             else:
@@ -232,6 +238,7 @@ class AnchorHeadSingle(nn.Layer):
         one_hot_targets = paddle.stack(one_hot_targets)
         cls_preds = cls_preds.reshape([batch_size, -1, self.num_class])
         one_hot_targets = one_hot_targets[..., 1:]
+        one_hot_targets.stop_gradient = True
         cls_loss_src = self.cls_loss_func(
             cls_preds, one_hot_targets, weights=cls_weights)  # [N, M]
         cls_loss = cls_loss_src.sum() / batch_size
@@ -281,6 +288,7 @@ class AnchorHeadSingle(nn.Layer):
                 [batch_size, -1, self.num_dir_bins])
             weights = positives.cast("float32")
             weights /= paddle.clip(weights.sum(-1, keepdim=True), min=1.0)
+            dir_targets.stop_gradient = True
             dir_loss = self.dir_loss_func(
                 dir_logits, dir_targets, weights=weights)
             dir_loss = dir_loss.sum() / batch_size

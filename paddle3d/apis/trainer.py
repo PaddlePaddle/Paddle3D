@@ -167,8 +167,9 @@ class Trainer:
                 lr_scheduler.iters_per_epoch = iters_per_epoch
                 lr_scheduler.warmup_iters = warmup_iters
 
-        set_lr_scheduler_iters_per_epoch(optimizer._learning_rate,
-                                         self.iters_per_epoch)
+        if hasattr(optimizer, '_learning_rate'):
+            set_lr_scheduler_iters_per_epoch(optimizer._learning_rate,
+                                             self.iters_per_epoch)
 
         self.cur_iter = 0
         self.cur_epoch = 0

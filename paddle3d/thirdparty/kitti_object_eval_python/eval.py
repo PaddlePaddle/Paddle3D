@@ -500,7 +500,6 @@ def eval_class(gt_annos,
             [[0.7, 0.5, 0.5], [0.7, 0.5, 0.5], [0.7, 0.5, 0.5]]
             format: [metric, class]. choose one from matrix above.
         num_parts: int. a parameter for fast calculate algorithm
-
     Returns:
         dict of recall, precision and aos
     """

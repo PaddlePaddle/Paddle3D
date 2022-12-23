@@ -17,3 +17,5 @@ from .focal_loss import (FastFocalLoss, FocalLoss, MultiFocalLoss,
 from .iou_loss import GIoULoss
 from .reg_loss import L1Loss, RegLoss
 from .weight_loss import WeightedCrossEntropyLoss, WeightedSmoothL1Loss
+from .weight_loss import (WeightedCrossEntropyLoss, WeightedSmoothL1Loss,
+                          get_corner_loss_lidar)

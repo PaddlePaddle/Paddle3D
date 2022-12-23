@@ -30,7 +30,7 @@ train_dataset:
       max_scale: 1.05
     - type: FilterBBoxOutsideRange
       point_cloud_range: &point_cloud_range [-75.2, -75.2, -2, 75.2, 75.2, 4]
-    - type: FilterPointsOutsideRange
+    - type: FilterPointOutsideRange
       point_cloud_range: *point_cloud_range
     - type: ShufflePoint
     - type: SamplePointByVoxels
@@ -48,7 +48,7 @@ val_dataset:
   class_names: [ "Vehicle", "Pedestrian", "Cyclist" ]
   sampled_interval: 1
   transforms:
-    - type: FilterPointsOutsideRange
+    - type: FilterPointOutsideRange
       point_cloud_range: *point_cloud_range
     - type: SamplePointByVoxels
       voxel_size: [0.1, 0.1, 0.15]
