@@ -139,7 +139,7 @@ class VoxelRCNNHead(RoIHeadBase):
         constant_init(self.cls_pred_layer.bias, value=0)
         self.reg_pred_layer.weight.set_value(
             paddle.normal(
-                mean=0, std=0.01, shape=self.reg_pred_layer.weight.shape))
+                mean=0, std=0.001, shape=self.reg_pred_layer.weight.shape))
         constant_init(self.reg_pred_layer.bias, value=0)
 
     def roi_grid_pool(self, batch_dict):
