@@ -27,6 +27,7 @@ from paddle3d.geometries import BBoxes3D
 from paddle3d.models.common.model_nms_utils import class_agnostic_nms
 from paddle3d.sample import Sample, SampleMeta
 from paddle3d.utils.logger import logger
+from paddle3d.models.layers.param_init import uniform_init
 
 
 @manager.MODELS.add_component
@@ -43,6 +44,18 @@ class VoxelRCNN(nn.Layer):
         self.dense_head = dense_head
         self.roi_head = roi_head
         self.post_process_cfg = post_process_cfg
+        self.init_weights()
+
+    def init_weights(self):
+        need_uniform_init_bn_weight_modules = [
+            self.middle_encoder, self.backbone, self.neck,
+            self.roi_head.shared_fc_layer, self.roi_head.cls_layers,
+            self.roi_head.reg_layers
+        ]
+        for module in need_uniform_init_bn_weight_modules:
+            for layer in module.sublayers():
+                if 'BatchNorm' in layer.__class__.__name__:
+                    uniform_init(layer.weight, 0, 1)
 
     def voxelize(self, points):
         voxels, coordinates, num_points_in_voxel = self.voxelizer(points)
