@@ -49,8 +49,8 @@ class VoxelRCNN(nn.Layer):
     def init_weights(self):
         need_uniform_init_bn_weight_modules = [
             self.middle_encoder, self.backbone, self.neck,
-            self.roi_head.shared_fc_layer, self.roi_head.cls_layers,
-            self.roi_head.reg_layers
+            self.roi_head.shared_fc_layer, self.roi_head.cls_fc_layers,
+            self.roi_head.reg_fc_layers
         ]
         for module in need_uniform_init_bn_weight_modules:
             for layer in module.sublayers():
