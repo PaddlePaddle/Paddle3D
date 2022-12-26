@@ -53,7 +53,7 @@ class KittiDetDataset(BaseDataset):
             self.CLASS_MAP = CLASS_MAP
         self.CLASS_MAP_REVERSE = {
             value: key
-            for key, value in CLASS_MAP.items()
+            for key, value in self.CLASS_MAP.items()
         }
         if self.class_names is None:
             self.class_names = list(self.CLASS_MAP.keys())
