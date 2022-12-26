@@ -141,12 +141,12 @@ def main(args, rest_args):
     model = cfg.model
     model.eval()
 
-    if args.model is not None:
-        load_pretrained_model(model, args.model)
-
     if args.quant_config:
         quant_config = get_qat_config(args.quant_config)
         cfg.model.build_slim_model(quant_config['quant_config'])
+
+    if args.model is not None:
+        load_pretrained_model(model, args.model)
 
     arg_dict = {} if not hasattr(model.export,
                                  'arg_dict') else model.export.arg_dict
