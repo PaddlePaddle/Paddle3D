@@ -1,1 +1,1 @@
-docs/models/voxel_rcnn/README.md
+../../docs/models/voxel_rcnn/README.md

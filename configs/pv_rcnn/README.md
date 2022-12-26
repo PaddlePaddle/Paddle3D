@@ -1,1 +1,1 @@
-docs/models/pv_rcnn/README.md
+../../docs/models/pv_rcnn/README.md
