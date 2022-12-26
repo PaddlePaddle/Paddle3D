@@ -21,7 +21,7 @@ import paddle
 
 from paddle3d.apis.config import Config
 from paddle3d.apis.trainer import Trainer
-from paddle3d.slim import update_dic, get_qat_config
+from paddle3d.slim import get_qat_config
 from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
 
@@ -98,7 +98,6 @@ def main(args):
     if args.quant_config:
         quant_config = get_qat_config(args.quant_config)
         cfg.model.build_slim_model(quant_config['quant_config'])
-        update_dic(cfg.dic, quant_config['finetune_config'])
 
     if args.model is not None:
         load_pretrained_model(cfg.model, args.model)
