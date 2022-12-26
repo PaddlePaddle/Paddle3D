@@ -192,10 +192,6 @@ def main(args):
         }
     })
 
-    if args.quant_config:
-        dic['checkpoint']['save_dir'] = os.path.join(
-            dic['checkpoint']['save_dir'], 'qat')
-
     trainer = Trainer(**dic)
     trainer.train()
 
