@@ -23,7 +23,7 @@ PV-RCNN是Voxel-Based和Point-based相结合的Anchor-Based二阶段点云三维
 
 | 模型 | Car Mod@0.7 AP_R11 / AP_R40 | Pedestrian Mod@0.5 AP_R11 / AP_R40| Cyclist Mod@0.5 AP_R11 / AP_R40 | V100 TensorRT FP32(FPS) | V100 TensorRT FP16(FPS) | 模型下载 | 配置文件 |  日志 |
 | ---- | ---------- |----------- |------------------ | -------------- | ----------------| ------ | ------- | ----- |
-| PV-RCNN | 84.01 / 84.68 | 59.81 / 60.14 |  71.83 / 71.50 | 10.14 | 10.74 | [model]() | [config](../../../configs/pv_rcnn/pv_rcnn.yml)| [log]() \| [vdl]() |
+| PV-RCNN | 83.78 / 84.72 | 58.91 / 58.30 |  73.29 / 73.27 | 10.14 | 10.74 | [model](https://paddle3d.bj.bcebos.com/models/pv_rcnn/pv_rcnn_005voxel_kitti/model.pdparams) | [config](../../../configs/pv_rcnn/pv_rcnn_005voxel_kitti.yml)| [log](https://paddle3d.bj.bcebos.com/models/pv_rcnn/pv_rcnn_005voxel_kitti/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=2166361cceed2624cee057ea583ee257) |
 
 **注意：** KITTI benchmark使用8张V100 GPU训练得出。
 
