@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddleslim
-
 from paddle3d.utils.logger import logger
 
 
@@ -27,6 +25,8 @@ class QAT:
             logger.info("model before quant")
             logger.info(model)
 
+        # lazy import
+        import paddleslim
         self.quanter = paddleslim.QAT(config=self.quant_config)
         self.quanter.quantize(model)
 

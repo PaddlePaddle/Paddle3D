@@ -8,7 +8,6 @@ opencv-python
 pandas
 paddledet
 paddleseg
-paddleslim
 pyquaternion
 pyyaml
 pillow<=8.3.2
