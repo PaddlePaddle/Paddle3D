@@ -359,7 +359,6 @@ def fill_trainval_infos(nusc,
             # we need to convert box size to
             # the format of our lidar coordinate system
             # which is x_size, y_size, z_size (corresponding to l, w, h)
-            # gt_boxes = np.concatenate([locs, dims[:, [1, 0, 2]], rots], axis=1)
             gt_boxes = np.concatenate([locs, dims, -rots - np.pi / 2], axis=1)
             assert len(gt_boxes) == len(
                 annotations), f'{len(gt_boxes)}, {len(annotations)}'
@@ -478,7 +477,7 @@ def main(args):
 
     msg = "Adding sweep frame annotations"
     for ann_cache_file, key_infos in infos_dict.items():
-        for current_id in logger.range(range(len(key_infos['infos'])), msg=msg):
+        for current_id in logger.range(len(key_infos['infos']), msg=msg):
             ###parameters of current key frame
             e2g_t = key_infos['infos'][current_id]['ego2global_translation']
             e2g_r = key_infos['infos'][current_id]['ego2global_rotation']
