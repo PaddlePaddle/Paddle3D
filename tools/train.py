@@ -22,6 +22,7 @@ import paddle
 import paddle3d.env as paddle3d_env
 from paddle3d.apis.config import Config
 from paddle3d.apis.trainer import Trainer
+from paddle3d.slim import update_dic, get_qat_config
 from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
 
@@ -111,6 +112,12 @@ def parse_args():
         help='Set the random seed of paddle during training.',
         default=None,
         type=int)
+    parser.add_argument(
+        '--quant_config',
+        dest='quant_config',
+        help='Config for quant model.',
+        default=None,
+        type=str)
 
     return parser.parse_args()
 
@@ -139,6 +146,14 @@ def main(args):
         iters=args.iters,
         epochs=args.epochs,
         batch_size=args.batch_size)
+
+    if args.model is not None:
+        load_pretrained_model(cfg.model, args.model)
+
+    if args.quant_config:
+        quant_config = get_qat_config(args.quant_config)
+        cfg.model.build_slim_model(quant_config['quant_config'])
+        update_dic(cfg.dic, quant_config['finetune_config'])
 
     if cfg.train_dataset is None:
         raise RuntimeError(
@@ -176,9 +191,6 @@ def main(args):
             'num_workers': args.num_workers,
         }
     })
-
-    if args.model is not None:
-        load_pretrained_model(cfg.model, args.model)
 
     trainer = Trainer(**dic)
     trainer.train()

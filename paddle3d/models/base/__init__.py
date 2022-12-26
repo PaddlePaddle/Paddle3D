@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .base_model import add_export_args, Base3DModel
 from .base_detection import BaseDetectionModel
 from .base_lidar_detection import BaseLidarModel
-from .base_model import add_export_args
 from .base_mono_detection import BaseMonoModel
