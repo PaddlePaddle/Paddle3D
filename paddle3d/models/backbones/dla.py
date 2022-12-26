@@ -13,15 +13,16 @@
 # limitations under the License.
 
 import numpy as np
+
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 
 from paddle3d.apis import manager
-from paddle3d.models.layers import group_norm
+from paddle3d.models.layers import group_norm, FrozenBatchNorm2d
 from paddle3d.utils import checkpoint
 
-__all__ = ["DLA", "DLA34"]
+__all__ = ["DLA", "DLA34", "DLABase34"]
 
 
 @manager.BACKBONES.add_component
@@ -45,10 +46,16 @@ class DLA(nn.Layer):
         self.first_level = int(np.log2(down_ratio))
         self.last_level = last_level
 
-        norm_func = nn.BatchNorm2D if norm_type == "bn" else group_norm
+        if norm_type == "bn":
+            norm_func = nn.BatchNorm2D
+        elif norm_type == "gn":
+            norm_func = group_norm
+        elif norm_type == "frozen_bn":
+            norm_func = FrozenBatchNorm2d
+        else:
+            raise NotImplementedError()
 
-        self.base = DLABase(
-            levels, channels, block=eval(block), norm_func=norm_func)
+        self.base = DLABase(levels, channels, block, norm_type=norm_type)
 
         scales = [2**i for i in range(len(channels[self.first_level:]))]
         self.dla_up = DLAUp(
@@ -91,23 +98,36 @@ class DLABase(nn.Layer):
     """DLA base module
     """
 
-    def __init__(
-            self,
-            levels,
-            channels,
-            block=None,
-            residual_root=False,
-            norm_func=None,
-    ):
+    def __init__(self,
+                 levels,
+                 channels,
+                 block=None,
+                 residual_root=False,
+                 norm_type=None,
+                 out_features=None):
         super().__init__()
 
         self.channels = channels
         self.level_length = len(levels)
+        if norm_type == "bn" or norm_type is None:
+            norm_func = nn.BatchNorm2D
+        elif norm_type == "gn":
+            norm_func = group_norm
+        elif norm_type == "frozen_bn":
+            norm_func = FrozenBatchNorm2d
+        else:
+            raise NotImplementedError()
+
+        if out_features is None:
+            self.out_features = [i for i in range(self.level_length)]
+        else:
+            self.out_features = out_features
 
         if block is None:
             block = BasicBlock
-        if norm_func is None:
-            norm_func = nn.BatchNorm2d
+        else:
+            block = eval(block)
+
         self.base_layer = nn.Sequential(
             nn.Conv2D(
                 3,
@@ -178,7 +198,8 @@ class DLABase(nn.Layer):
 
         for i in range(self.level_length):
             x = getattr(self, 'level{}'.format(i))(x)
-            y.append(x)
+            if i in self.out_features:
+                y.append(x)
 
         return y
 
@@ -349,7 +370,8 @@ class Tree(nn.Layer):
             self.downsample = nn.MaxPool2D(stride, stride=stride)
 
         self.project = None
-        if in_channels != out_channels:
+        # If 'self.tree1' is a Tree (not BasicBlock), then the output of project is not used.
+        if in_channels != out_channels and not isinstance(self.tree1, Tree):
             self.project = nn.Sequential(
                 nn.Conv2D(
                     in_channels,
@@ -526,6 +548,18 @@ def _make_conv_level(in_channels,
 def DLA34(**kwargs):
 
     model = DLA(
+        levels=[1, 1, 1, 2, 2, 1],
+        channels=[16, 32, 64, 128, 256, 512],
+        block="BasicBlock",
+        **kwargs)
+
+    return model
+
+
+@manager.BACKBONES.add_component
+def DLABase34(**kwargs):
+
+    model = DLABase(
         levels=[1, 1, 1, 2, 2, 1],
         channels=[16, 32, 64, 128, 256, 512],
         block="BasicBlock",

@@ -13,7 +13,11 @@
 # limitations under the License.
 
 from .focal_loss import (FastFocalLoss, FocalLoss, MultiFocalLoss,
-                         SigmoidFocalClassificationLoss, WeightedFocalLoss)
+                         SigmoidFocalClassificationLoss, sigmoid_focal_loss,
+                         WeightedFocalLoss)
 from .reg_loss import RegLoss
+from .iou_loss import IOULoss
+from .smooth_l1_loss import smooth_l1_loss
+from .disentangled_box3d_loss import DisentangledBox3DLoss, unproject_points2d
 from .weight_loss import (WeightedCrossEntropyLoss, WeightedSmoothL1Loss,
                           get_corner_loss_lidar)

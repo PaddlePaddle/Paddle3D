@@ -14,7 +14,7 @@
 
 import csv
 import os
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Dict
 
 import numpy as np
 import pandas
@@ -28,14 +28,13 @@ from paddle3d.transforms import TransformABC
 class KittiDetDataset(BaseDataset):
     """
     """
-    CLASS_MAP = {'Car': 0, 'Cyclist': 1, 'Pedestrian': 2}
-    CLASS_MAP_REVERSE = {value: key for key, value in CLASS_MAP.items()}
 
     def __init__(self,
                  dataset_root: str,
                  mode: str = "train",
                  transforms: Union[TransformABC, List[TransformABC]] = None,
                  class_names: Union[list, tuple] = None,
+                 CLASS_MAP: Dict[str, int] = None,
                  class_balanced_sampling: bool = False,
                  use_road_plane: bool = False):
         super().__init__()
@@ -48,6 +47,14 @@ class KittiDetDataset(BaseDataset):
         self.transforms = transforms
         self.class_names = class_names
         self.use_road_plane = use_road_plane
+        if CLASS_MAP is None:
+            self.CLASS_MAP = {'Car': 0, 'Cyclist': 1, 'Pedestrian': 2}
+        else:
+            self.CLASS_MAP = CLASS_MAP
+        self.CLASS_MAP_REVERSE = {
+            value: key
+            for key, value in self.CLASS_MAP.items()
+        }
         if self.class_names is None:
             self.class_names = list(self.CLASS_MAP.keys())
 

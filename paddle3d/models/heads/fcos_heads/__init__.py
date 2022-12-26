@@ -12,7 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .class_heads import *
-from .dense_heads import *
-from .fcos_heads import *
-from .roi_heads import *
+from .fcos2d_head import *
+from .fcos3d_head import *

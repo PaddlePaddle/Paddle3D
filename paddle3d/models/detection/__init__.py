@@ -20,4 +20,5 @@ from .petr import *
 from .pointpillars import *
 from .pv_rcnn import *
 from .smoke import *
+from .dd3d import *
 from .voxel_rcnn import *
