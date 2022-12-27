@@ -12,22 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import paddle.nn as nn
-import paddle.nn.functional as F
-
-
-def group_norm(out_channels):
-    """group normal function
-
-    Args:
-        out_channels (int): out channel nums
-
-    Returns:
-        nn.Module: GroupNorm op
-    """
-    num_groups = 32
-    if out_channels % 32 == 0:
-        return nn.GroupNorm(num_groups, out_channels)
-    else:
-        return nn.GroupNorm(num_groups // 2, out_channels)
+from .dd3d import *
+from .prepare_targets import *

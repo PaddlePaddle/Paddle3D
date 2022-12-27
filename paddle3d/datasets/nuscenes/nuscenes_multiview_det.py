@@ -400,6 +400,7 @@ class NuscenesMVDataset(NuscenesDetDataset):
             print('test sample: {}'.format(len(train_nusc_infos)))
             data = dict(infos=train_nusc_infos, metadata=metadata)
             pickle.dump(data, open(test_ann_cache_file, 'wb'))
+            self.data_infos = data
         else:
             print('train sample: {}, val sample: {}'.format(
                 len(train_nusc_infos), len(val_nusc_infos)))
@@ -407,9 +408,15 @@ class NuscenesMVDataset(NuscenesDetDataset):
 
             pickle.dump(data, open(train_ann_cache_file, 'wb'))
 
+            if self.mode == 'train':
+                self.data_infos = data
+
             data['infos'] = val_nusc_infos
 
             pickle.dump(data, open(val_ann_cache_file, 'wb'))
+
+            if self.mode == 'val':
+                self.data_infos = data
 
     def _filter(self, anno: dict, box: NuScenesBox = None) -> bool:
         # filter out objects that are not being scanned
@@ -593,6 +600,7 @@ def _fill_trainval_infos(nusc,
         assert os.path.exists(lidar_path)
 
         info = {
+            'lidar_token': lidar_token,
             'lidar_path': lidar_path,
             'token': sample['token'],
             'sweeps': [],
@@ -671,7 +679,7 @@ def _fill_trainval_infos(nusc,
             # we need to convert box size to
             # the format of our lidar coordinate system
             # which is x_size, y_size, z_size (corresponding to l, w, h)
-            gt_boxes = np.concatenate([locs, dims[:, [1, 0, 2]], rots], axis=1)
+            gt_boxes = np.concatenate([locs, dims, -rots - np.pi / 2], axis=1)
             assert len(gt_boxes) == len(
                 annotations), f'{len(gt_boxes)}, {len(annotations)}'
             info['gt_boxes'] = gt_boxes

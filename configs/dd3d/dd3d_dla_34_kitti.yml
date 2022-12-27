@@ -1,0 +1,176 @@
+_base_: '../_base_/kitti_mono.yml'
+
+batch_size: 8  #total bs 32
+iters: 50000
+
+train_dataset:
+  transforms:
+    - type: LoadImage
+      reader: pillow
+      to_chw: False
+      to_rgb: False
+    - type: ResizeShortestEdge
+      short_edge_length: [288, 304, 320, 336, 352, 368, 384, 400, 416, 448, 480, 512, 544, 576]
+      max_size: 10000
+      sample_style: choice
+    - type: ToVisionBasedBox
+    - type: RandomHorizontalFlip
+      input_type: floating_point_coordinates
+    - type: RandomBrightness
+      intensity_min: 0.8
+      intensity_max: 1.2
+    - type: RandomSaturation
+      intensity_min: 0.8
+      intensity_max: 1.2
+    - type: RandomContrast
+      intensity_min: 0.8
+      intensity_max: 1.2
+  class_names: ["Car", "Pedestrian", "Cyclist", "Van", "Person_sitting"]
+  CLASS_MAP: {'Car': 0, 'Pedestrian': 1, 'Cyclist': 2, 'Van': 3, 'Person_sitting': 4}
+  class_balanced_sampling: True
+
+val_dataset:
+  transforms:
+    - type: LoadImage
+      reader: pillow
+      to_chw: False
+      to_rgb: False
+    - type: ResizeShortestEdge
+      short_edge_length: [384]
+      max_size: 10000
+      sample_style: choice
+    - type: ToVisionBasedBox
+  class_names: ["Car", "Pedestrian", "Cyclist", "Van", "Person_sitting"]
+  CLASS_MAP: {'Car': 0, 'Pedestrian': 1, 'Cyclist': 2, 'Van': 3, 'Person_sitting': 4}
+
+optimizer:
+  type: Momentum
+  momentum: 0.9
+  use_nesterov: False
+  weight_decay: 0.0001
+
+lr_scheduler:
+  type: MultiStepDecay
+  milestones: [43000, 48000]
+  learning_rate: 0.001
+  gamma: 0.1
+
+model:
+  type: DD3D
+  backbone:
+    type: DLABase34
+    norm_type: 'frozen_bn'
+    out_features: [3, 4, 5]
+  feature_locations_offset: "none"
+  fpn:
+    type: FPN
+    in_strides: [8, 16, 32]
+    in_channels: [128, 256, 512]
+    out_channel: 256
+    norm: 'FrozenBN'
+    top_block:
+      type: LastLevelP6P7
+      in_channels: 256
+      out_channels: 256
+      in_feature: 'p5'
+    fuse_type: "sum"
+  fcos2d_head:
+    type: FCOS2DHead
+    in_strides: [8, 16, 32, 64, 128]
+    in_channels: [256, 256, 256, 256, 256]
+    num_classes: 5
+    use_scale: True
+    box2d_scale_init_factor: 1.0
+    version: "v2"
+    num_cls_convs: 4
+    num_box_convs: 4
+    use_deformable: False
+    norm: "BN"
+  fcos2d_loss:
+    type: FCOS2DLoss
+    alpha: 0.25
+    gamma: 2.0
+    loc_loss_type: 'giou'
+    num_classes: 5
+  fcos2d_inference:
+    type: FCOS2DInference
+    thresh_with_ctr: True
+    pre_nms_thresh: 0.05
+    pre_nms_topk: 1000
+    post_nms_topk: 100
+    nms_thresh: 0.75
+    num_classes: 5
+  fcos3d_head:
+    type: FCOS3DHead
+    in_strides: [8, 16, 32, 64, 128]
+    in_channels: [256, 256, 256, 256, 256]
+    num_classes: 5
+    use_scale: True
+    depth_scale_init_factor: 0.3
+    proj_ctr_scale_init_factor: 1.0
+    use_per_level_predictors: False
+    mean_depth_per_level: [32.594, 15.178, 8.424, 5.004, 4.662]
+    std_depth_per_level: [14.682, 7.139, 4.345, 2.399, 2.587]
+    num_convs: 4
+    use_deformable: False
+    norm: 'FrozenBN'
+    class_agnostic_box3d: False
+    per_level_predictors: False
+  fcos3d_loss:
+    type: FCOS3DLoss
+    canon_box_sizes: [[1.61876949, 3.89154523, 1.52969237],   # Car
+                      [0.62806586, 0.82038497, 1.76784787],   # Pedestrian
+                      [0.56898187, 1.77149234, 1.7237099],    # Cyclist
+                      [1.9134491 , 5.15499603, 2.18998422],   # Van
+                      [2.61168401, 9.22692319, 3.36492722],   # Truck
+                      [0.5390196 , 1.08098042, 1.28392158],   # Person_sitting
+                      [2.36044838, 15.56991038,  3.5289238],  # Tram
+                      [1.24489164, 2.51495357, 1.61402478],   # Misc
+                      ] # (width, length, height)
+    min_depth: 0.1
+    max_depth: 80.0
+    predict_allocentric_rot: True
+    scale_depth_by_focal_lengths: True
+    scale_depth_by_focal_lengths_factor: 500.0
+    predict_distance: False
+    smooth_l1_loss_beta: 0.05
+    max_loss_per_group: 20.0
+    box3d_loss_weight: 2.0
+    conf3d_loss_weight: 1.0
+    conf_3d_temperature: 1.0
+    num_classes: 5
+    class_agnostic: False
+  fcos3d_inference:
+    type: FCOS3DInference
+    canon_box_sizes: [[1.61876949, 3.89154523, 1.52969237],   # Car
+                      [0.62806586, 0.82038497, 1.76784787],   # Pedestrian
+                      [0.56898187, 1.77149234, 1.7237099],    # Cyclist
+                      [1.9134491 , 5.15499603, 2.18998422],   # Van
+                      [2.61168401, 9.22692319, 3.36492722],   # Truck
+                      [0.5390196 , 1.08098042, 1.28392158],   # Person_sitting
+                      [2.36044838, 15.56991038,  3.5289238],  # Tram
+                      [1.24489164, 2.51495357, 1.61402478],   # Misc
+                      ] # (width, length, height)
+    min_depth: 0.1
+    max_depth: 80.0
+    predict_allocentric_rot: True
+    scale_depth_by_focal_lengths: True
+    scale_depth_by_focal_lengths_factor: 500.0
+    predict_distance: False
+    num_classes: 5
+    class_agnostic: False
+  prepare_targets:
+    type: DD3DTargetPreparer
+    input_strides: [8, 16, 32, 64, 128]
+    num_classes: 5
+    center_sample: True
+    radius: 1.5
+    dd3d_on: True
+    sizes_of_interest: [64, 128, 256, 512]
+  do_nms: True
+  nusc_sample_aggregate: False
+  num_classes: 5
+  pixel_mean: [103.53, 116.28, 123.675]
+  pixel_std: [57.375, 57.12, 58.395]
+  input_strides: [8, 16, 32, 64, 128]
+  size_divisibility: 128

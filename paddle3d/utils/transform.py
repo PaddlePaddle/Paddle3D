@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle
+import paddle.nn.functional as F
 
 
 def convert_points_to_homogeneous(points):
@@ -163,14 +164,93 @@ def transform_points_3d(trans_01, points_1):
     return points_0
 
 
-def bbox_cxcywh_to_xyxy(bbox):
-    """Convert bbox coordinates from (cx, cy, w, h) to (x1, y1, x2, y2).
+def quaternion_to_matrix(quaternions):
+    """
+    Convert rotations given as quaternions to rotation matrices.
+    Args:
+        quaternions: quaternions with real part first,
+            as tensor of shape (..., 4).
+    Returns:
+        Rotation matrices as tensor of shape (..., 3, 3).
+    """
+    r, i, j, k = paddle.unbind(quaternions, -1)
+    two_s = 2.0 / (quaternions * quaternions).sum(-1)
 
-    This function is modified from https://github.com/open-mmlab/mmdetection/blob/master/mmdet/core/bbox/transforms.py#L245
+    o = paddle.stack(
+        (
+            1 - two_s * (j * j + k * k),
+            two_s * (i * j - k * r),
+            two_s * (i * k + j * r),
+            two_s * (i * j + k * r),
+            1 - two_s * (i * i + k * k),
+            two_s * (j * k - i * r),
+            two_s * (i * k - j * r),
+            two_s * (j * k + i * r),
+            1 - two_s * (i * i + j * j),
+        ),
+        -1,
+    )
+    return o.reshape(quaternions.shape[:-1] + [3, 3])
+
+
+def _copysign(a, b):
+    """
+    Return a tensor where each element has the absolute value taken from the,
+    corresponding element of a, with sign taken from the corresponding
+    element of b. This is like the standard copysign floating-point operation,
+    but is not careful about negative 0 and NaN.
 
     Args:
-        bbox (Tensor): Shape (n, 4) for bboxes.
+        a: source tensor.
+        b: tensor whose signs will be used, of the same shape as a.
 
+    Returns:
+        Tensor of the same shape as a with the signs of b.
+    """
+    signs_differ = (a < 0) != (b < 0)
+    return paddle.where(signs_differ, -a, a)
+
+
+def _sqrt_positive_part(x):
+    """
+    Returns torch.sqrt(torch.max(0, x))
+    but with a zero subgradient where x is 0.
+    """
+    ret = paddle.where(x > 0, x, paddle.zeros_like(x))
+    ret = paddle.sqrt(ret)
+    return ret
+
+
+def matrix_to_quaternion(matrix):
+    """
+    Convert rotations given as rotation matrices to quaternions.
+
+    Args:
+        matrix: Rotation matrices as tensor of shape (..., 3, 3).
+
+    Returns:
+        quaternions with real part first, as tensor of shape (..., 4).
+    """
+    if matrix.shape[-1] != 3 or matrix.shape[-2] != 3:
+        raise ValueError(f"Invalid rotation matrix  shape f{matrix.shape}.")
+    m00 = matrix[..., 0, 0]
+    m11 = matrix[..., 1, 1]
+    m22 = matrix[..., 2, 2]
+    o0 = 0.5 * _sqrt_positive_part(1 + m00 + m11 + m22)
+    x = 0.5 * _sqrt_positive_part(1 + m00 - m11 - m22)
+    y = 0.5 * _sqrt_positive_part(1 - m00 + m11 - m22)
+    z = 0.5 * _sqrt_positive_part(1 - m00 - m11 + m22)
+    o1 = _copysign(x, matrix[..., 2, 1] - matrix[..., 1, 2])
+    o2 = _copysign(y, matrix[..., 0, 2] - matrix[..., 2, 0])
+    o3 = _copysign(z, matrix[..., 1, 0] - matrix[..., 0, 1])
+    return paddle.stack((o0, o1, o2, o3), -1)
+
+
+def bbox_cxcywh_to_xyxy(bbox):
+    """Convert bbox coordinates from (cx, cy, w, h) to (x1, y1, x2, y2).
+    This function is modified from https://github.com/open-mmlab/mmdetection/blob/master/mmdet/core/bbox/transforms.py#L245
+    Args:
+        bbox (Tensor): Shape (n, 4) for bboxes.
     Returns:
         Tensor: Converted bboxes.
     """
@@ -181,12 +261,9 @@ def bbox_cxcywh_to_xyxy(bbox):
 
 def bbox_xyxy_to_cxcywh(bbox):
     """Convert bbox coordinates from (x1, y1, x2, y2) to (cx, cy, w, h).
-
     This function is modified from https://github.com/open-mmlab/mmdetection/blob/master/mmdet/core/bbox/transforms.py#L259
-
     Args:
         bbox (Tensor): Shape (n, 4) for bboxes.
-
     Returns:
         Tensor: Converted bboxes.
     """

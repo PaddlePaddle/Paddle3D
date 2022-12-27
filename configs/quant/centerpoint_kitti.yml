@@ -1,0 +1,21 @@
+slim_type: QAT
+
+quant_config:
+  weight_quantize_type: channel_wise_abs_max
+  activation_quantize_type: moving_average_abs_max
+  weight_bits: 8
+  activation_bits: 8
+  dtype: int8
+  window_size: 10000
+  moving_rate: 0.9
+  quantizable_layer_type: ['Conv2D', 'Linear']
+
+finetune_config:
+  epochs: 80
+
+  lr_scheduler:
+    type: OneCycleWarmupDecayLr
+    base_learning_rate: 0.001
+    lr_ratio_peak: 10
+    lr_ratio_trough: 0.0001
+    step_ratio_peak: 0.4

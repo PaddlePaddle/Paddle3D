@@ -70,6 +70,13 @@ class LoadImage(TransformABC):
             else:
                 raise RuntimeError('Unsupported image format {}'.format(
                     sample.meta.image_format))
+        elif sample.meta.image_format != "bgr" and (self.to_rgb is False):
+            if sample.meta.image_format == "rgb":
+                sample.data = sample.data[:, :, ::-1]
+                sample.meta.image_format = "bgr"
+            else:
+                raise RuntimeError('Unsupported image format {}'.format(
+                    sample.meta.image_format))
 
         if self.to_chw:
             sample.data = sample.data.transpose((2, 0, 1))
