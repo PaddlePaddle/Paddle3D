@@ -183,12 +183,12 @@ class BEVFormerHead(nn.Layer):
         cls_branch.append(nn.Linear(self.embed_dims, self.cls_out_channels))
         fc_cls = nn.Sequential(*cls_branch)
 
-        # reg_branch = []
-        # for _ in range(self.num_reg_fcs):
-        #     reg_branch.append(nn.Linear(self.embed_dims, self.embed_dims))
-        #     reg_branch.append(nn.ReLU())
-        # reg_branch.append(nn.Linear(self.embed_dims, self.code_size))
-        # reg_branch = nn.Sequential(*reg_branch)
+        reg_branch = []
+        for _ in range(self.num_reg_fcs):
+            reg_branch.append(nn.Linear(self.embed_dims, self.embed_dims))
+            reg_branch.append(nn.ReLU())
+        reg_branch.append(nn.Linear(self.embed_dims, self.code_size))
+        reg_branch = nn.Sequential(*reg_branch)
 
         def _get_clones(module, N):
             return nn.LayerList([copy.deepcopy(module) for i in range(N)])
@@ -200,18 +200,7 @@ class BEVFormerHead(nn.Layer):
 
         if self.with_box_refine:
             self.cls_branches = _get_clones(fc_cls, num_pred)
-            #self.reg_branches = _get_clones(reg_branch, num_pred)
-            reg_branches = []
-            for _ in range(num_pred):
-                reg_branch = []
-                for _ in range(self.num_reg_fcs):
-                    reg_branch.append(
-                        nn.Linear(self.embed_dims, self.embed_dims))
-                    reg_branch.append(nn.ReLU())
-                reg_branch.append(nn.Linear(self.embed_dims, self.code_size))
-                reg_branch = nn.Sequential(*reg_branch)
-                reg_branches.append(reg_branch)
-            self.reg_branches = nn.LayerList(reg_branches)
+            self.reg_branches = _get_clones(reg_branch, num_pred)
         else:
             self.cls_branches = nn.LayerList([fc_cls for _ in range(num_pred)])
             self.reg_branches = nn.LayerList(
@@ -610,8 +599,6 @@ class BEVFormerHead(nn.Layer):
             loss_dict[f'd{num_dec_layer}.loss_cls'] = loss_cls_i
             loss_dict[f'd{num_dec_layer}.loss_bbox'] = loss_bbox_i
             num_dec_layer += 1
-        # for key, value in loss_dict.items():
-        #     print(key, value.numpy())
         total_loss = sum(loss_dict.values())
         loss_dict['loss'] = total_loss
         return loss_dict

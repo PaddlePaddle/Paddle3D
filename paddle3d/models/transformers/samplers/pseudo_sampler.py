@@ -49,7 +49,6 @@ def random_boxes(num=1, scale=1, rng=None):
     """
     rng = ensure_rng(rng)
 
-    #rng.seed(0)
     tlbr = rng.rand(num, 4).astype(np.float32)
 
     tl_x = np.minimum(tlbr[:, 0], tlbr[:, 2])
@@ -208,7 +207,6 @@ class SamplingResult:
         bboxes = random_boxes(assign_result.num_preds, rng=rng)
         gt_bboxes = random_boxes(assign_result.num_gts, rng=rng)
 
-        #rng.seed(0)
         if rng.rand() > 0.2:
             # sometimes algorithms squeeze their data, be robust to that
             gt_bboxes = gt_bboxes.squeeze()

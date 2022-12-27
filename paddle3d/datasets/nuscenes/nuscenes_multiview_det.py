@@ -39,6 +39,7 @@ from paddle3d.datasets.nuscenes.nuscenes_manager import NuScenesManager
 from paddle3d.geometries import BBoxes3D, CoordMode
 from paddle3d.sample import Sample, SampleMeta
 from paddle3d.transforms import TransformABC
+from paddle3d.utils.logger import logger
 
 
 def is_filepath(x):
@@ -60,9 +61,7 @@ class NuscenesMVDataset(NuscenesDetDataset):
                  max_sweeps: int = 10,
                  class_balanced_sampling: bool = False,
                  class_names: Union[list, tuple] = None,
-                 queue_length=4,
-                 bev_size=(200, 200),
-                 overlap_test=False,
+                 queue_length=None,
                  use_valid_flag=False,
                  with_velocity=True):
 
@@ -104,8 +103,6 @@ class NuscenesMVDataset(NuscenesDetDataset):
         else:
             self.class_names = list(self.CLASS_MAP.keys())
         self.queue_length = queue_length
-        self.overlap_test = overlap_test
-        self.bev_size = bev_size
 
     def __len__(self):
         return len(self.data_infos)
@@ -266,16 +263,12 @@ class NuscenesMVDataset(NuscenesDetDataset):
             return sample
 
         while True:
-            queue = []
-            index_list = list(range(index - self.queue_length, index))
-            random.shuffle(index_list)
-            index_list = sorted(index_list[1:])
-            index_list.append(index)
-            for i in index_list:
-                i = max(0, i)
-                sample = self.get_data_info(i)
+            if self.queue_length is None:
+                sample = self.get_data_info(index)
+
                 if sample is None:
-                    break
+                    index = self._rand_another(index)
+                    continue
 
                 sample['img_fields'] = []
                 sample['bbox3d_fields'] = []
@@ -288,15 +281,45 @@ class NuscenesMVDataset(NuscenesDetDataset):
                 sample['box_mode_3d'] = self.box_mode_3d
 
                 sample = self.transforms(sample)
-                if self.filter_empty_gt and \
-                        (sample is None or len(sample['gt_labels_3d']) == 0):
-                    sample = None
-                    break
-                queue.append(sample)
-            if sample is None:
-                index = self._rand_another(index)
-                continue
-            return self.union2one(queue)
+
+                if self.is_train_mode and self.filter_empty_gt and \
+                        (sample is None or len(sample['gt_labels_3d']) == 0 ):
+                    index = self._rand_another(index)
+                    continue
+
+                return sample
+            else:
+                queue = []
+                index_list = list(range(index - self.queue_length, index))
+                random.shuffle(index_list)
+                index_list = sorted(index_list[1:])
+                index_list.append(index)
+                for i in index_list:
+                    i = max(0, i)
+                    sample = self.get_data_info(i)
+                    if sample is None:
+                        break
+
+                    sample['img_fields'] = []
+                    sample['bbox3d_fields'] = []
+                    sample['pts_mask_fields'] = []
+                    sample['pts_seg_fields'] = []
+                    sample['bbox_fields'] = []
+                    sample['mask_fields'] = []
+                    sample['seg_fields'] = []
+                    sample['box_type_3d'] = self.box_type_3d
+                    sample['box_mode_3d'] = self.box_mode_3d
+
+                    sample = self.transforms(sample)
+                    if self.filter_empty_gt and \
+                            (sample is None or len(sample['gt_labels_3d']) == 0):
+                        sample = None
+                        break
+                    queue.append(sample)
+                if sample is None:
+                    index = self._rand_another(index)
+                    continue
+                return self.union2one(queue)
 
     def union2one(self, queue):
         imgs_list = [each['img'] for each in queue]
@@ -513,7 +536,6 @@ class NuscenesMVDataset(NuscenesDetDataset):
         if not hasattr(self, 'nusc'):
             self.nusc = NuScenesManager.get(
                 version=self.version, dataroot=self.dataset_root)
-            # self.nusc = None
         return super().metric
 
     def collate_fn(self, batch: List):
@@ -589,7 +611,9 @@ def _fill_trainval_infos(nusc,
     train_nusc_infos = []
     val_nusc_infos = []
 
-    for sample in tqdm(nusc.sample):
+    msg = "Begin to generate a info of nuScenes dataset."
+    for sample_idx in logger.range(len(nusc.sample), msg=msg):
+        sample = nusc.sample[sample_idx]
         lidar_token = sample['data']['LIDAR_TOP']
         sd_rec = nusc.get('sample_data', sample['data']['LIDAR_TOP'])
         cs_record = nusc.get('calibrated_sensor',

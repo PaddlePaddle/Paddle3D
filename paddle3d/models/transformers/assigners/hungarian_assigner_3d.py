@@ -179,16 +179,13 @@ class AssignResult:
         num_classes = kwargs.get('p_use_label', 3)
 
         if num_gts is None:
-            #rng.seed(0)
             num_gts = rng.randint(0, 8)
         if num_preds is None:
-            #rng.seed(0)
             num_preds = rng.randint(0, 16)
 
         if num_gts == 0:
             max_overlaps = paddle.zeros([num_preds], dtype=paddle.float32)
             gt_inds = paddle.zeros([num_preds], dtype=paddle.int64)
-            #rng.seed(0)
             if p_use_label is True or p_use_label < rng.rand():
                 labels = paddle.zeros([num_preds], dtype=paddle.int64)
             else:
@@ -197,11 +194,9 @@ class AssignResult:
             import numpy as np
 
             # Create an overlap for each predicted box
-            #rng.seed(0)
             max_overlaps = paddle.to_tensor(rng.rand(num_preds))
 
             # Construct gt_inds for each predicted box
-            #rng.seed(0)
             is_assigned = rng.rand(num_preds) < p_assigned
             # maximum number of assignments constraints
             n_assigned = min(num_preds, min(num_gts, is_assigned.sum()))
@@ -215,7 +210,6 @@ class AssignResult:
             is_assigned[:] = 0
             is_assigned[assigned_idxs] = True
 
-            #rng.seed(0)
             is_ignore = paddle.to_tensor(
                 rng.rand(num_preds) < p_ignore) & is_assigned
 
@@ -226,19 +220,16 @@ class AssignResult:
             true_idxs = paddle.to_tensor(true_idxs)
             gt_inds[is_assigned] = true_idxs[:n_assigned]
 
-            #rng.seed(0)
             gt_inds = paddle.to_tensor(
                 rng.randint(1, num_gts + 1, size=num_preds))
             gt_inds[is_ignore] = -1
             gt_inds[~is_assigned] = 0
             max_overlaps[~is_assigned] = 0
 
-            #rng.seed(0)
             if p_use_label is True or p_use_label < rng.rand():
                 if num_classes == 0:
                     labels = paddle.zeros([num_preds], dtype=paddle.int64)
                 else:
-                    #rng.seed(0)
                     labels = paddle.to_tensor(
                         # remind that we set FG labels to [0, num_class-1]
                         # since mmdet v2.0
