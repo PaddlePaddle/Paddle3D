@@ -23,7 +23,7 @@ Voxel RCNN在仅使用Voxel-Based的情况下，通过调整模型参数达到�
 
 | 模型 | Car Mod@0.7 AP_R11 / AP_R40 | V100 Paddle Inference FP32(FPS) | 模型下载 | 配置文件 |  日志 |
 | --- | --------------------------- | -------------------------------- | ------ | --------|--------|
-| Voxel-RCNN | 84.34 / 84.90 |  22.39 | [model]() | [config](../../../configs/voxel_rcnn/voxel_rcnn_car.yml)| [log]() \| [vdl]() |
+| Voxel-RCNN | 84.64 / 85.49 |  22.39 | [model](https://paddle3d.bj.bcebos.com/models/voxel_rcnn/voxel_rcnn_005voxel_kitti_car/model.pdparams) | [config](../../../configs/voxel_rcnn/voxel_rcnn_005voxel_kitti_car.yml) | [log](https://paddle3d.bj.bcebos.com/models/voxel_rcnn/voxel_rcnn_005voxel_kitti_car/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=15cbecb8132e91dfa4fbd6d8f904c0a7) |
 
 **注意：** KITTI benchmark使用8张V100 GPU训练得出。
 
