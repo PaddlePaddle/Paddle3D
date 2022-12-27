@@ -258,15 +258,6 @@ class Petr3D(BaseMultiViewModel):
 
         return losses
 
-    # def forward(self, samples, **kwargs):
-    #     """
-    #     """
-    #     if self.training:
-    #         self.backbone.train()
-    #         return self.forward_train(samples, **kwargs)
-    #     else:
-    #         return self.forward_test(samples, **kwargs)
-
     def train_forward(self,
                       samples=None,
                       points=None,
