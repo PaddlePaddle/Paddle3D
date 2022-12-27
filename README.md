@@ -144,6 +144,6 @@ Paddle3D v1.0正式版本发布!
 
 
 
-## 许可证
+## 📝许可证
 
 本项目的发布受[Apache 2.0 license](./LICENSE)许可认证。
