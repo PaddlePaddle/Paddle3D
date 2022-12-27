@@ -91,9 +91,10 @@ class BaseDataset(abc.ABC, paddle.io.Dataset):
                 key for key, value in sample.items() if value is not None
             ]
             self.padding_sample(batch)
-            shapes = {batch_.data.shape for batch_ in batch}
-            if len(shapes) != 1:
-                self.padding_data(batch)
+            if sample.data is not None:
+                shapes = {batch_.data.shape for batch_ in batch}
+                if len(shapes) != 1:
+                    self.padding_data(batch)
 
             return {
                 key: self.collate_fn([d[key] for d in batch])
