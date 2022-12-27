@@ -2,8 +2,8 @@ batch_size: 1
 epochs: 24
 train_dataset:
   type: NuscenesMVDataset
-  dataset_root: /datasets/nuscene/
-  ann_file: /datasets/nuscene/bevformer_torch/nuscenes_infos_temporal_train.pkl
+  dataset_root: ./datasets/nuscenes
+  ann_file: ./datasets/nuscenes/petr_nuscenes_annotation_train.pkl
   bev_size: [50, 50]
   queue_length: 3
   use_valid_flag: True
@@ -39,8 +39,8 @@ train_dataset:
 
 val_dataset:
   type: NuscenesMVDataset
-  dataset_root: /datasets/nuscene
-  ann_file: /datasets/nuscene/bevformer_torch/nuscenes_infos_temporal_val.pkl
+  dataset_root: ./datasets/nuscenes
+  ann_file: ./datasets/nuscenes/petr_nuscenes_annotation_val.pkl
   mode: val
   class_names: ['car', 'truck', 'construction_vehicle', 'bus', 'trailer',
                     'barrier', 'motorcycle', 'bicycle', 'pedestrian',
@@ -81,12 +81,12 @@ model:
   type: BEVFormer
   use_grid_mask: True
   video_test_mode: True
-  img_backbone:
+  backbone:
     type: $paddledet.ResNet
     depth: 50
     lr_mult_list: [0.1, 0.1, 0.1, 0.1]
     return_idx: [3]
-  img_neck:
+  neck:
     type: $paddledet.FPN
     in_channels: [2048]
     out_channel: 256

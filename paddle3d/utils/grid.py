@@ -68,6 +68,10 @@ def normalize_coords(coords, shape):
 
 
 class GridMask(nn.Layer):
+    """
+    This class is modified from https://github.com/fundamentalvision/BEVFormer/blob/master/projects/mmdet3d_plugin/models/utils/grid_mask.py#L70
+    """
+
     def __init__(self,
                  use_h,
                  use_w,

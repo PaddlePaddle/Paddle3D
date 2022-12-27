@@ -166,6 +166,8 @@ def transform_points_3d(trans_01, points_1):
 def bbox_cxcywh_to_xyxy(bbox):
     """Convert bbox coordinates from (cx, cy, w, h) to (x1, y1, x2, y2).
 
+    This function is modified from https://github.com/open-mmlab/mmdetection/blob/master/mmdet/core/bbox/transforms.py#L245
+
     Args:
         bbox (Tensor): Shape (n, 4) for bboxes.
 
@@ -179,6 +181,8 @@ def bbox_cxcywh_to_xyxy(bbox):
 
 def bbox_xyxy_to_cxcywh(bbox):
     """Convert bbox coordinates from (x1, y1, x2, y2) to (cx, cy, w, h).
+
+    This function is modified from https://github.com/open-mmlab/mmdetection/blob/master/mmdet/core/bbox/transforms.py#L259
 
     Args:
         bbox (Tensor): Shape (n, 4) for bboxes.

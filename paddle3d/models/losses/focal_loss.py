@@ -235,6 +235,8 @@ class WeightedFocalLoss(nn.Layer):
                  loss_weight=1.0):
         """`Focal Loss <https://arxiv.org/abs/1708.02002>`_
 
+        This code is modified from https://github.com/open-mmlab/mmdetection/blob/master/mmdet/models/losses/focal_loss.py#L160
+
         Args:
             use_sigmoid (bool, optional): Whether to the prediction is
                 used for sigmoid or softmax. Defaults to True.
@@ -305,6 +307,7 @@ def py_sigmoid_focal_loss(pred,
                           reduction='mean',
                           avg_factor=None):
     """paddle version of `Focal Loss <https://arxiv.org/abs/1708.02002>`_.
+    This function is modified from https://github.com/open-mmlab/mmdetection/blob/master/mmdet/models/losses/focal_loss.py#L12
     """
     pred_sigmoid = F.sigmoid(pred)
     target = target.astype(pred.dtype)

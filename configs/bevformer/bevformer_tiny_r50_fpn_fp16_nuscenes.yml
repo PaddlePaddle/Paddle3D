@@ -1,9 +1,15 @@
-batch_size: 1
+batch_size: 2
 epochs: 24
+amp_cfg:
+  enable: False
+  level: O1
+  scaler:
+     init_loss_scaling: 512.0
+
 train_dataset:
   type: NuscenesMVDataset
-  dataset_root: /datasets/nuscene/
-  ann_file: /datasets/nuscene/bevformer_torch/nuscenes_infos_temporal_train.pkl
+  dataset_root: ./datasets/nuscenes
+  ann_file: ./datasets/nuscenes/petr_nuscenes_annotation_train.pkl
   bev_size: [50, 50]
   queue_length: 3
   use_valid_flag: True
@@ -39,8 +45,8 @@ train_dataset:
 
 val_dataset:
   type: NuscenesMVDataset
-  dataset_root: /datasets/nuscene
-  ann_file: /datasets/nuscene/bevformer_torch/nuscenes_infos_temporal_val.pkl
+  dataset_root: ./datasets/nuscenes
+  ann_file: ./datasets/nuscenes/petr_nuscenes_annotation_val.pkl
   mode: val
   class_names: ['car', 'truck', 'construction_vehicle', 'bus', 'trailer',
                     'barrier', 'motorcycle', 'bicycle', 'pedestrian',
@@ -70,37 +76,30 @@ lr_scheduler:
   type: LinearWarmup
   learning_rate:
     type: CosineAnnealingDecayByEpoch
-    learning_rate: 0.0002
+    learning_rate: 2.8e-4
     T_max: 24
-    eta_min: 0.0000002
+    eta_min: 2.8e-7
   warmup_steps: 500
-  start_lr: 0.00006666666
-  end_lr: 0.0002
+  start_lr: 0.00009333333
+  end_lr: 2.8e-4
 
 model:
   type: BEVFormer
   use_grid_mask: True
   video_test_mode: True
-  img_backbone:
-    type: 'BevResNet'
+  backbone:
+    type: $paddledet.ResNet
     depth: 50
-    num_stages: 4
-    out_indices: [3]
-    frozen_stages: 1
-    norm_cfg:
-      type_name: 'BatchNorm2D'
-      requires_grad: False
-    norm_eval: True
-    style: 'pytorch'
-    lr_factor: 0.1
-  img_neck:
-    type: 'BevFPN'
+    lr_mult_list: [0.1, 0.1, 0.1, 0.1]
+    return_idx: [3]
+  neck:
+    type: $paddledet.FPN
     in_channels: [2048]
-    out_channels: 256
-    start_level: 0
-    add_extra_convs: 'on_output'
-    num_outs: 1
-    relu_before_extra_convs: True
+    out_channel: 256
+    spatial_scales: [0.03125]
+    has_extra_convs: True
+    extra_stage: 0
+    use_c5: False
   pts_bbox_head:
     type: 'BEVFormerHead'
     bev_h: 50

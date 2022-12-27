@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ------------------------------------------------------------------------
+# Modified from BEVFormer (https://github.com/fundamentalvision/BEVFormer)
+# Copyright (c) OpenMMLab. All rights reserved.
+# ------------------------------------------------------------------------
+
 import collections
 import copy
 import os
@@ -32,8 +37,8 @@ from paddle3d.utils.logger import logger
 @manager.MODELS.add_component
 class BEVFormer(nn.Layer):
     def __init__(self,
-                 img_backbone,
-                 img_neck,
+                 backbone,
+                 neck,
                  pts_bbox_head,
                  use_grid_mask=False,
                  pretrained=None,
@@ -49,8 +54,8 @@ class BEVFormer(nn.Layer):
             'prev_pos': 0,
             'prev_angle': 0,
         }
-        self.img_backbone = img_backbone
-        self.img_neck = img_neck
+        self.backbone = backbone
+        self.neck = neck
         self.pts_bbox_head = pts_bbox_head
         self.pretrained = pretrained
         self.video_test_mode = video_test_mode
@@ -68,7 +73,7 @@ class BEVFormer(nn.Layer):
                 if self.use_grid_mask:
                     img = self.grid_mask(img)
 
-                img_feats = self.img_backbone(img)
+                img_feats = self.backbone(img)
                 if isinstance(img_feats, dict):
                     img_feats = list(img_feats.values())
             else:
@@ -77,10 +82,10 @@ class BEVFormer(nn.Layer):
             B = 1
             if self.use_grid_mask:
                 img = self.grid_mask(img)
-            img_feats = self.img_backbone(img)
+            img_feats = self.backbone(img)
             if isinstance(img_feats, dict):
                 img_feats = list(img_feats.values())
-        img_feats = self.img_neck(img_feats)
+        img_feats = self.neck(img_feats)
 
         img_feats_reshaped = []
         for img_feat in img_feats:

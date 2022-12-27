@@ -42,6 +42,8 @@ class RegLoss(nn.Layer):
 def l1_loss(pred, target, weight=None, reduction='mean', avg_factor=None):
     """L1 loss.
 
+    This function is modified from https://github.com/open-mmlab/mmdetection/blob/master/mmdet/models/losses/smooth_l1_loss.py#L37
+
     Args:
         pred (torch.Tensor): The prediction.
         target (torch.Tensor): The learning target of the prediction.
@@ -58,6 +60,8 @@ def l1_loss(pred, target, weight=None, reduction='mean', avg_factor=None):
 @manager.LOSSES.add_component
 class L1Loss(nn.Layer):
     """L1 loss.
+
+    This class is modified from https://github.com/open-mmlab/mmdetection/blob/master/mmdet/models/losses/smooth_l1_loss.py#L108
 
     Args:
         reduction (str, optional): The method to reduce the loss.

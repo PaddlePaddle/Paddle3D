@@ -6,6 +6,8 @@ import paddle
 def reduce_loss(loss, reduction):
     """Reduce loss as specified.
 
+    This function is modified from https://github.com/open-mmlab/mmdetection/blob/master/mmdet/models/losses/utils.py#L9
+
     Args:
         loss (Tensor): Elementwise loss tensor.
         reduction (str): Options are "none", "mean" and "sum".
@@ -24,6 +26,8 @@ def reduce_loss(loss, reduction):
 
 def weight_reduce_loss(loss, weight=None, reduction='mean', avg_factor=None):
     """Apply element-wise weight and reduce loss.
+
+    This function is modified from https://github.com/open-mmlab/mmdetection/blob/master/mmdet/models/losses/utils.py#L30
 
     Args:
         loss (Tensor): Element-wise loss.

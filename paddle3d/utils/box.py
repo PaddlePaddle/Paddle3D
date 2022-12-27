@@ -82,7 +82,9 @@ def boxes3d_nearest_bev_iou(boxes_a, boxes_b):
 
 
 def normalize_bbox(bboxes, pc_range):
-
+    """
+    This function is modified from https://github.com/fundamentalvision/BEVFormer/blob/master/projects/mmdet3d_plugin/core/bbox/util.py
+    """
     cx = bboxes[..., 0:1]
     cy = bboxes[..., 1:2]
     cz = bboxes[..., 2:3]
@@ -103,6 +105,9 @@ def normalize_bbox(bboxes, pc_range):
 
 
 def denormalize_bbox(normalized_bboxes, pc_range):
+    """
+    This function is modified from https://github.com/fundamentalvision/BEVFormer/blob/master/projects/mmdet3d_plugin/core/bbox/util.py
+    """
     # rotation
     rot_sine = normalized_bboxes[..., 6:7]
 

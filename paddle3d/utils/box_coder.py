@@ -12,16 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# ------------------------------------------------------------------------
-# Copyright (c) 2021 megvii-model. All Rights Reserved.
-# ------------------------------------------------------------------------
-# Modified from DETR3D (https://github.com/WangYueFt/detr3d)
-# Copyright (c) 2021 Wang, Yue
-# ------------------------------------------------------------------------
-# Modified from mmdetection3d (https://github.com/open-mmlab/mmdetection3d)
-# Copyright (c) OpenMMLab. All rights reserved.
-# ------------------------------------------------------------------------
-
 import paddle
 import paddle.nn.functional as F
 
@@ -113,6 +103,9 @@ class ResidualCoder(object):
 @manager.BBOX_CODERS.add_component
 class NMSFreeCoder(object):
     """Bbox coder for NMS-free detector.
+
+    This class is modified from https://github.com/fundamentalvision/BEVFormer/blob/master/projects/mmdet3d_plugin/core/bbox/coders/nms_free_coder.py
+
     Args:
         point_cloud_range (list[float]): Range of point cloud.
         post_center_range (list[float]): Limit of the center.

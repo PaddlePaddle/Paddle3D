@@ -1086,6 +1086,9 @@ class PhotoMetricDistortionMultiViewImage(object):
     6. convert color from HSV to BGR
     7. np.random.contrast (mode 1)
     8. np.random.y swap channels
+
+    This class is modified from https://github.com/fundamentalvision/BEVFormer/blob/master/projects/mmdet3d_plugin/datasets/pipelines/transform_3d.py#L99
+
     Args:
         brightness_delta (int): delta of brightness.
         contrast_range (tuple): range of contrast.
@@ -1187,6 +1190,7 @@ class PhotoMetricDistortionMultiViewImage(object):
 @manager.TRANSFORMS.add_component
 class RandomScaleImageMultiViewImage(object):
     """Random scale the image
+    This class is modified from https://github.com/fundamentalvision/BEVFormer/blob/master/projects/mmdet3d_plugin/datasets/pipelines/transform_3d.py#L289
     Args:
         scales
     """

@@ -251,9 +251,6 @@ class NuscenesMVDataset(NuscenesDetDataset):
         return sample
 
     def __getitem__(self, index):
-        # index = 500
-        # index = 635
-        # index = 0
         if 'train' not in self.mode:
             sample = self.get_data_info(index)
             sample['img_fields'] = []
@@ -271,7 +268,6 @@ class NuscenesMVDataset(NuscenesDetDataset):
         while True:
             queue = []
             index_list = list(range(index - self.queue_length, index))
-            # random.seed(0)
             random.shuffle(index_list)
             index_list = sorted(index_list[1:])
             index_list.append(index)
