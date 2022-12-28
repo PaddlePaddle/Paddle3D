@@ -8,7 +8,7 @@
 
 * The new version 1.0 of Paddle3D is released, which provides the following features
 
-    * We added monocular 3D model DD3D, pointcloud detection model IA-SSD/PV-RCNN/Voxel R-CNN, BEV visual detection model PETR v1/PETR v2/BEVFormer in Paddle3D
+    * We supports multiple type of 3D perception models, including monocular 3D models SMOKE/CaDDN/DD3D, pointcloud detection models PointPillars/CenterPoint/IA-SSD/PV-RCNN/Voxel R-CNN, BEV visual detection models PETR/PETRv2/BEVFormer, and pointcloud segmentation model SqueezeSegv3
 
     * We added support for Waymo datasets and now Paddle3D has completed full support for the three open source datasets for autonomous driving
 
@@ -22,7 +22,7 @@
 
 * 全部发布Paddle3D 1.0版本，提供了以下特性：
 
-    * 发布单目3D模型DD3D，点云检测模型 IA-SSD/PV-RCNN/Voxel R-CNN，BEV视觉检测模型 PETR v1/PETR v2/BEVFormer
+    * 支持多种3D感知模型，包括单目3D模型SMOKE/CaDDN/DD3D，点云检测模型 PointPillars/CenterPoint/IA-SSD/PV-RCNN/Voxel R-CNN，BEV视觉检测模型 PETR/PETRv2/BEVFormer，点云分割模型SqueezeSegv3
 
     * 新增Waymo数据集支持，完成了对自动驾驶三大开源数据集的全面支持
 
