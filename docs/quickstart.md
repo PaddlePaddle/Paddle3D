@@ -66,16 +66,14 @@ visualdl --logdir output --host ${HOST_IP} --port {$PORT}
 
 ## 模型量化（可选）
 
-为了导出量化的模型，我们可以对模型进行量化训练，量化后的模型可以使用TensorRT + int8进行推理，从而提升推理速度，使用如下命令启动量化训练
-
-*注意，不同的模型需要探索不同的量化训练配置（如重新训练的次数，学习率衰减等），我们提供了 **SMOKE** 和 **CenterPoint** 的配置文件供参考*
-
-以多卡训练为例子，使用如下命令启动多卡量化训练
+为了导出量化的模型，我们可以对模型进行量化训练，量化后的模型可以使用TensorRT + int8进行推理，从而提升推理速度，使用如下命令启动量化训练。以多卡训练为例子，使用如下命令启动多卡量化训练
 
 ```shell
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --log_interval 10 --save_interval 20 --quant_config configs/quant/smoke_kitti.yml
 ```
+
+*注意，不同的模型需要探索不同的量化训练配置（如重新训练的次数，学习率衰减等），我们提供了 **SMOKE** 和 **CenterPoint** 的配置文件供参考*
 
 <br>
 
@@ -120,7 +118,7 @@ python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --mod
 | export_for_apollo   | 是否用于Apollo部署，当打开该开关时，会同步生成用于Apollo部署的meta文件   | 否         | False                  |
 | save_dir            | 推理模型文件的保存路径                                                | 否         | exported_model         |
 | save_name           | 推理模型文件的保存名字                                                | 否         | None(由各模型自定决定)   |
-| quant_config         量化配置文件，一般放在[configs/quant](../configs/quant)目录下，如果模型使用量化训练，则在评估时同样需要指定量化配置文件  | 否         |
+| quant_config         量化配置文件，一般放在[configs/quant](../configs/quant)目录下，如果模型使用量化训练，则在模型导出时同样需要指定量化配置文件  | 否         |
 
 <br>
 
