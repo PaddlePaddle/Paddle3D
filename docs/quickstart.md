@@ -29,7 +29,7 @@ fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --it
 
 **混合精度训练**
 
-如果想要启动混合精度训练，请参考[配置文件](../configs/smoke/smoke_dla34_no_dcn_kitti_amp.yml)中添加amp的参数项，可用的参数可以参考 [paddle.amp.auto_cast](https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/amp/auto_cast_cn.html#paddle.amp.auto_cast)
+如果想要启动混合精度训练，请参考[配置文件](../configs/smoke/smoke_dla34_no_dcn_kitti_amp.yml#L6-#L11)中添加amp的参数项，可用的参数可以参考 API **[paddle.amp.auto_cast](https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/amp/auto_cast_cn.html#paddle.amp.auto_cast)**
 
 **训练脚本参数介绍**
 
