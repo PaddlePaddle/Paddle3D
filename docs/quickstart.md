@@ -43,7 +43,7 @@ fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --it
 | log_interval        | 打印日志的间隔步数                                            | 否          | 10               |
 | resume              | 是否从检查点中恢复训练状态                | 否          | None             |
 | keep_checkpoint_max | 最多保存模型的数量                                              | 否          | 5                |
-| quant_config                | 量化配置文件，一般放在[configs/quant](../configs/quant)目录下                                                    | 否         | None              |
+| quant_config        | 量化配置文件，一般放在[configs/quant](../configs/quant)目录下       | 否         | None              |
 | seed                | Paddle/numpy/random的全局随机种子值                                                    | 否         | None              |
 
 *注意：使用一个 batch 数据对模型进行一次参数更新的过程称之为一步，iters 即为训练过程中的训练步数。完整遍历一次数据对模型进行训练的过程称之为一次迭代，epochs 即为训练过程中的训练迭代次数。一个epoch包含多个iter。*
@@ -96,7 +96,7 @@ python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --m
 | config              | 配置文件路径                                                  | 是         | -                |
 | model               | 模型参数路径                                                  | 否         | -                |
 | num_workers         | 用于异步读取数据的进程数量， 大于等于1时开启子进程读取数据        | 否         | 2                |
-| quant_config         量化配置文件，一般放在[configs/quant](../configs/quant)目录下，如果模型使用量化训练，则在评估时同样需要指定量化配置文件  | 否         |
+| quant_config        | 量化配置文件，一般放在[configs/quant](../configs/quant)目录下，如果模型使用量化训练，则在评估时同样需要指定量化配置文件  | 否         |
 
 <br>
 
@@ -118,7 +118,7 @@ python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --mod
 | export_for_apollo   | 是否用于Apollo部署，当打开该开关时，会同步生成用于Apollo部署的meta文件   | 否         | False                  |
 | save_dir            | 推理模型文件的保存路径                                                | 否         | exported_model         |
 | save_name           | 推理模型文件的保存名字                                                | 否         | None(由各模型自定决定)   |
-| quant_config         量化配置文件，一般放在[configs/quant](../configs/quant)目录下，如果模型使用量化训练，则在模型导出时同样需要指定量化配置文件  | 否         |
+| quant_config        | 量化配置文件，一般放在[configs/quant](../configs/quant)目录下，如果模型使用量化训练，则在模型导出时同样需要指定量化配置文件  | 否         |
 
 <br>
 
