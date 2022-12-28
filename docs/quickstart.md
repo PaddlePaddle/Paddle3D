@@ -27,6 +27,10 @@ export CUDA_VISIBLE_DEVICES=0,1,2,3
 fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --iters 100 --log_interval 10 --save_interval 20
 ```
 
+**混合精度训练**
+
+如果想要启动混合精度训练，请参考[配置文件](../configs/smoke/smoke_dla34_no_dcn_kitti_amp.yml)中添加amp的参数项，可用的参数可以参考 [paddle.amp.auto_cast](https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/amp/auto_cast_cn.html#paddle.amp.auto_cast)
+
 **训练脚本参数介绍**
 
 | 参数名              | 用途                                                         | 是否必选项  | 默认值            |
