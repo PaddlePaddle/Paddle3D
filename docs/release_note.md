@@ -1,5 +1,37 @@
 # Release Notes
 
+## v1.0
+
+2022.12.27
+
+### New Features
+
+* The new version 1.0 of Paddle3D is released, which provides the following features
+
+    * We added monocular 3D model DD3D, pointcloud detection model IA-SSD/PV-RCNN/Voxel R-CNN, BEV visual detection model PETR v1/PETR v2/BEVFormer in Paddle3D
+
+    * We added support for Waymo datasets and now Paddle3D has completed full support for the three open source datasets for autonomous driving
+
+    * Supports automatic mixed-precision training and quantitative deployment capabilities, providing better model acceleration capabilities
+
+    * Supports for sparse convolution, and integrated related SOTA models that are easy to deploy
+
+    * We continue to cooperate with Apollo team to provide one-click deployment of multiple models and integrate them into the perception algorithm part of Apollo to make it easier for developers to debug models
+
+### 新特性
+
+* 全部发布Paddle3D 1.0版本，提供了以下特性：
+
+    * 发布单目3D模型DD3D，点云检测模型 IA-SSD/PV-RCNN/Voxel R-CNN，BEV视觉检测模型 PETR v1/PETR v2/BEVFormer
+
+    * 新增Waymo数据集支持，完成了对自动驾驶三大开源数据集的全面支持
+
+    * 支持自动混合精度训练以及量化部署能力，提供更好的模型加速能力
+
+    * 新增了对稀疏卷积能力的支持，并集成了稀疏卷积方向的SOTA模型，模型训推一体，便于部署
+
+    * 持续与Apollo进行合作开发，提供多个模型一键部署集成到Apollo的感知算法部分，便于开发者更好地进行模型调试
+
 ## v0.5
 
 2022.08.09
