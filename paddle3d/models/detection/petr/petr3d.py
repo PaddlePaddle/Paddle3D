@@ -397,3 +397,9 @@ class Petr3D(BaseMultiViewModel):
                                                  time_stamp)
         bbox_list = self.pts_bbox_head.get_bboxes(outs, None, rescale=True)
         return bbox_list
+
+    @property
+    def save_name(self):
+        if self.pts_bbox_head.with_time:
+            return "petrv2_inference"
+        return "petr_inference"
