@@ -218,9 +218,18 @@ class Petr3D(nn.Layer):
                 else:
                     img_feats = self.neck(img_feats[-1])
             else:
-                img_feats = self.backbone(img)
-                if isinstance(img_feats, dict):
-                    img_feats = list(img_feats.values())
+                if os.environ.get('FLAGS_opt_layout').lower() == 'true':
+                    img_nhwc = paddle.transpose(img, [0, 2, 3, 1])
+                    img_feats = []
+                    img_feats_nhwc = self.backbone(img_nhwc)
+                    if isinstance(img_feats_nhwc, dict):
+                        img_feats_nhwc = list(img_feats_nhwc.values())
+                    for img_feat_nhwc in img_feats_nhwc:
+                        img_feats.append(paddle.transpose(img_feat_nhwc, [0, 3, 1, 2]))
+                else:
+                    img_feats = self.backbone(img)
+                    if isinstance(img_feats, dict):
+                        img_feats = list(img_feats.values())
                 img_feats = self.neck(img_feats)
         else:
             return None
