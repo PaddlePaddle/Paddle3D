@@ -68,7 +68,7 @@ visualdl --logdir output --host ${HOST_IP} --port {$PORT}
 
 为了导出量化的模型，我们可以对模型进行量化训练，量化后的模型可以使用TensorRT + int8进行推理，从而提升推理速度，使用如下命令启动量化训练
 
-*注意，不同的模型需要探索不同的量化训练配置（如重新训练的次数，学习率衰减等），我们提供了 **SMOKE** 和 **CenterPoint** 的配置文件供参考
+*注意，不同的模型需要探索不同的量化训练配置（如重新训练的次数，学习率衰减等），我们提供了 **SMOKE** 和 **CenterPoint** 的配置文件供参考*
 
 以多卡训练为例子，使用如下命令启动多卡量化训练
 
@@ -76,6 +76,8 @@ visualdl --logdir output --host ${HOST_IP} --port {$PORT}
 export CUDA_VISIBLE_DEVICES=0,1,2,3
 fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --log_interval 10 --save_interval 20 --quant_config configs/quant/smoke_kitti.yml
 ```
+
+<br>
 
 ## 模型评估
 
