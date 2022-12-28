@@ -31,7 +31,8 @@ from paddle.distributed.fleet.utils import recompute
 
 from paddle3d.apis import manager
 
-GLOBAL_DATA_FORMAT = "NHWC" if os.environ.get('FLAGS_opt_layout').lower() == 'true' else "NCHW"
+GLOBAL_DATA_FORMAT = "NHWC" if os.environ.get(
+    'FLAGS_opt_layout').lower() == 'true' else "NCHW"
 
 VoVNet19_slim_dw_eSE = {
     'stem': [64, 64, 64],
@@ -169,10 +170,10 @@ def conv3x3(in_channels,
                 padding=padding,
                 groups=groups,
                 bias_attr=False,
-                data_format=GLOBAL_DATA_FORMAT
-            ),
+                data_format=GLOBAL_DATA_FORMAT),
         ),
-        (f"{module_name}_{postfix}/norm", nn.BatchNorm2D(out_channels, data_format=GLOBAL_DATA_FORMAT)),
+        (f"{module_name}_{postfix}/norm",
+         nn.BatchNorm2D(out_channels, data_format=GLOBAL_DATA_FORMAT)),
         (f"{module_name}_{postfix}/relu", nn.ReLU()),
     ]
 
@@ -197,10 +198,10 @@ def conv1x1(in_channels,
                 padding=padding,
                 groups=groups,
                 bias_attr=False,
-                data_format=GLOBAL_DATA_FORMAT
-            ),
+                data_format=GLOBAL_DATA_FORMAT),
         ),
-        (f"{module_name}_{postfix}/norm", nn.BatchNorm2D(out_channels, data_format=GLOBAL_DATA_FORMAT)),
+        (f"{module_name}_{postfix}/norm",
+         nn.BatchNorm2D(out_channels, data_format=GLOBAL_DATA_FORMAT)),
         (f"{module_name}_{postfix}/relu", nn.ReLU()),
     ]
 
@@ -217,7 +218,12 @@ class eSEModule(nn.Layer):
     def __init__(self, channel, reduction=4):
         super(eSEModule, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2D(1, data_format=GLOBAL_DATA_FORMAT)
-        self.fc = nn.Conv2D(channel, channel, kernel_size=1, padding=0, data_format=GLOBAL_DATA_FORMAT)
+        self.fc = nn.Conv2D(
+            channel,
+            channel,
+            kernel_size=1,
+            padding=0,
+            data_format=GLOBAL_DATA_FORMAT)
         self.hsigmoid = Hsigmoid()
 
     def forward(self, x):
@@ -282,7 +288,8 @@ class _OSA_layer(nn.Layer):
             x = layer(x)
             output.append(x)
 
-        x = paddle.concat(output, axis=-1 if GLOBAL_DATA_FORMAT == 'NHWC' else 1)
+        x = paddle.concat(
+            output, axis=-1 if GLOBAL_DATA_FORMAT == 'NHWC' else 1)
         xt = self.concat(x)
 
         xt = self.ese(xt)
@@ -317,8 +324,12 @@ class _OSA_stage(nn.Sequential):
 
         if not stage_num == 2:
             self.add_sublayer(
-                "Pooling", nn.MaxPool2D(
-                    kernel_size=3, stride=2, ceil_mode=True, data_format=GLOBAL_DATA_FORMAT))
+                "Pooling",
+                nn.MaxPool2D(
+                    kernel_size=3,
+                    stride=2,
+                    ceil_mode=True,
+                    data_format=GLOBAL_DATA_FORMAT))
 
         if block_per_stage != 1:
             SE = False

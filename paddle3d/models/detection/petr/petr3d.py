@@ -225,7 +225,8 @@ class Petr3D(nn.Layer):
                     if isinstance(img_feats_nhwc, dict):
                         img_feats_nhwc = list(img_feats_nhwc.values())
                     for img_feat_nhwc in img_feats_nhwc:
-                        img_feats.append(paddle.transpose(img_feat_nhwc, [0, 3, 1, 2]))
+                        img_feats.append(
+                            paddle.transpose(img_feat_nhwc, [0, 3, 1, 2]))
                 else:
                     img_feats = self.backbone(img)
                     if isinstance(img_feats, dict):
