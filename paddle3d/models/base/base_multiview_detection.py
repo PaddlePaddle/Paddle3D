@@ -52,7 +52,7 @@ class BaseMultiViewModel(BaseDetectionModel):
 
         if self.need_timestamp:
             timestamps = {
-                'name': 'timestamp',
+                'name': 'timestamps',
                 'dtype': 'float32',
                 'shape': [1, self.num_cameras]
             }
