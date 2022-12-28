@@ -66,11 +66,22 @@ visualdl --logdir output --host ${HOST_IP} --port {$PORT}
 
 ## 模型量化（可选）
 
-为了导出量化的模型，我们可以对模型进行量化训练，量化后的模型可以使用TensorRT + int8进行推理，从而提升推理速度，使用如下命令启动量化训练。以多卡训练为例子，使用如下命令启动多卡量化训练
+为了导出量化的模型，我们可以对模型进行量化训练，量化后的模型可以使用TensorRT + int8进行推理，从而提升推理速度，使用如下命令启动量化训练。
+
+以多卡训练为例子，使用如下命令启动多卡量化训练，同样只训练100个iter进行快速体验
 
 ```shell
 export CUDA_VISIBLE_DEVICES=0,1,2,3
-fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --log_interval 10 --save_interval 20 --quant_config configs/quant/smoke_kitti.yml
+# 注意这是一次新的训练，需要指定加载已经训练好的模型参数进行微调
+# 并且指定新的模型保存路径
+fleetrun tools/train.py \
+    --config configs/smoke/smoke_dla34_no_dcn_kitti.yml \
+    --iters 100 \
+    --log_interval 10 \
+    --save_interval 20 \
+    --quant_config configs/quant/smoke_kitti.yml \
+    --model output/iter_100/model.pdparams \
+    --save_dir output_smoke_quant
 ```
 
 *注意，不同的模型需要探索不同的量化训练配置（如重新训练的次数，学习率衰减等），我们提供了 **SMOKE** 和 **CenterPoint** 的配置文件供参考*
