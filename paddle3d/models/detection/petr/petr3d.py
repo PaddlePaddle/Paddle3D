@@ -273,6 +273,7 @@ class Petr3D(BaseMultiViewModel):
                       img_mask=None):
         """
         """
+        self.backbone.train()
 
         if samples is not None:
             img_metas = samples['meta']
