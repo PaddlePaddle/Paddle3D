@@ -67,8 +67,9 @@ class FFN(nn.Layer):
         in_channels = embed_dims
         for _ in range(num_fcs - 1):
             layers.append(
-                nn.Sequential(nn.Linear(in_channels, feedforward_channels),
-                              self.act_layer, nn.Dropout(ffn_drop)))
+                nn.Sequential(
+                    nn.Linear(in_channels, feedforward_channels),
+                    self.act_layer, nn.Dropout(ffn_drop)))
             in_channels = feedforward_channels
         layers.append(nn.Linear(feedforward_channels, embed_dims))
         layers.append(nn.Dropout(ffn_drop))
@@ -286,15 +287,16 @@ class TransformerLayerSequence(nn.Layer):
         """Forward function for `TransformerCoder`.
         """
         for layer in self.layers:
-            query = layer(query,
-                          key,
-                          value,
-                          query_pos=query_pos,
-                          key_pos=key_pos,
-                          attn_masks=attn_masks,
-                          query_key_padding_mask=query_key_padding_mask,
-                          key_padding_mask=key_padding_mask,
-                          **kwargs)
+            query = layer(
+                query,
+                key,
+                value,
+                query_pos=query_pos,
+                key_pos=key_pos,
+                attn_masks=attn_masks,
+                query_key_padding_mask=query_key_padding_mask,
+                key_padding_mask=key_padding_mask,
+                **kwargs)
         return query
 
 
