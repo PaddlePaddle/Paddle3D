@@ -27,6 +27,7 @@ import paddle.nn.functional as F
 from PIL import Image
 
 from paddle3d.apis import manager
+from paddle3d.models.base import BaseMultiViewModel
 from paddle3d.geometries import BBoxes3D
 from paddle3d.sample import Sample, SampleMeta
 from paddle3d.utils import dtype2float32
@@ -111,7 +112,7 @@ def bbox3d2result(bboxes, scores, labels, attrs=None):
 
 
 @manager.MODELS.add_component
-class Petr3D(nn.Layer):
+class Petr3D(BaseMultiViewModel):
     """Petr3D."""
 
     def __init__(self,
@@ -126,8 +127,13 @@ class Petr3D(nn.Layer):
                  pretrained=None,
                  use_recompute=False,
                  us_ms=False,
-                 multi_scale=None):
-        super(Petr3D, self).__init__()
+                 multi_scale=None,
+                 box_with_velocity: bool = False):
+        num_cameras = 12 if pts_bbox_head.with_time else 6
+        super(Petr3D, self).__init__(
+            box_with_velocity=box_with_velocity,
+            num_cameras=num_cameras,
+            need_timestamp=pts_bbox_head.with_time)
         self.pts_bbox_head = pts_bbox_head
         self.backbone = backbone
         self.neck = neck
@@ -158,12 +164,12 @@ class Petr3D(nn.Layer):
         if img is not None:
             input_shape = img.shape[-2:]
             # update real input shape of each single img
-            if not (hasattr(self, 'export_model') and self.export_model):
+            if not getattr(self, 'in_export_mode', False):
                 for img_meta in img_metas:
                     img_meta.update(input_shape=input_shape)
             if img.dim() == 5:
                 if img.shape[0] == 1 and img.shape[1] != 1:
-                    if hasattr(self, 'export_model') and self.export_model:
+                    if getattr(self, 'in_export_mode', False):
                         img = img.squeeze()
                     else:
                         img.squeeze_()
@@ -252,16 +258,7 @@ class Petr3D(nn.Layer):
 
         return losses
 
-    def forward(self, samples, **kwargs):
-        """
-        """
-        if self.training:
-            self.backbone.train()
-            return self.forward_train(samples, **kwargs)
-        else:
-            return self.forward_test(samples, **kwargs)
-
-    def forward_train(self,
+    def train_forward(self,
                       samples=None,
                       points=None,
                       img_metas=None,
@@ -276,6 +273,7 @@ class Petr3D(nn.Layer):
                       img_mask=None):
         """
         """
+        self.backbone.train()
 
         if samples is not None:
             img_metas = samples['meta']
@@ -297,7 +295,7 @@ class Petr3D(nn.Layer):
 
         return dict(loss=losses)
 
-    def forward_test(self, samples, img=None, **kwargs):
+    def test_forward(self, samples, img=None, **kwargs):
         img_metas = samples['meta']
         img = samples['img']
 
@@ -387,39 +385,22 @@ class Petr3D(nn.Layer):
             result_dict['pts_bbox'] = pts_bbox
         return bbox_list
 
-    def export_forward(self, img, img_metas, time_stamp=None):
+    def export_forward(self, samples):
+        img = samples['images']
+        img_metas = {'img2lidars': samples['img2lidars']}
+        time_stamp = samples.get('timestamps', None)
+
         img_metas['image_shape'] = img.shape[-2:]
         img_feats = self.extract_feat(img=img, img_metas=None)
 
         bbox_list = [dict() for i in range(len(img_metas))]
-        self.pts_bbox_head.export_model = True
         outs = self.pts_bbox_head.export_forward(img_feats, img_metas,
                                                  time_stamp)
         bbox_list = self.pts_bbox_head.get_bboxes(outs, None, rescale=True)
         return bbox_list
 
-    def export(self, save_dir: str, **kwargs):
-        self.forward = self.export_forward
-        self.export_model = True
-
-        num_cams = 12 if self.pts_bbox_head.with_time else 6
-        image_spec = paddle.static.InputSpec(
-            shape=[1, num_cams, 3, 320, 800], dtype="float32")
-        img2lidars_spec = {
-            "img2lidars":
-            paddle.static.InputSpec(
-                shape=[1, num_cams, 4, 4], name='img2lidars'),
-        }
-
-        input_spec = [image_spec, img2lidars_spec]
-
-        model_name = "petr_inference"
+    @property
+    def save_name(self):
         if self.pts_bbox_head.with_time:
-            time_spec = paddle.static.InputSpec(
-                shape=[1, num_cams], dtype="float32")
-            input_spec.append(time_spec)
-            model_name = "petrv2_inference"
-
-        paddle.jit.to_static(self, input_spec=input_spec)
-
-        paddle.jit.save(self, os.path.join(save_dir, model_name))
+            return "petrv2_inference"
+        return "petr_inference"
