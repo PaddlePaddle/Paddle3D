@@ -36,7 +36,6 @@ from paddle3d.apis import manager
 from paddle3d.models.layers.param_init import (constant_init,
                                                xavier_uniform_init)
 from paddle3d.models.voxel_encoders.pillar_encoder import build_norm_layer
-
 from .transformer_layers import (FFN, BaseTransformerLayer, MultiHeadAttention,
                                  TransformerLayerSequence)
 
