@@ -185,8 +185,13 @@ class NuscenesMVDataset(NuscenesDetDataset):
         sample = Sample(path=None, modality="multiview")
         sample.sample_idx = info['token']
         sample.meta.id = info['token']
-        sample.pts_filename = info['lidar_path']
+        sample.pts_filename = osp.join(self.dataset_root, info['lidar_path'])
         sample.sweeps = info['sweeps']
+        for i in range(len(sample.sweeps)):
+            for cam_type in sample.sweeps[i].keys():
+                data_path = sample.sweeps[i][cam_type]['data_path']
+                sample.sweeps[i][cam_type]['data_path'] = osp.join(
+                    self.dataset_root, data_path)
         sample.timestamp = info['timestamp'] / 1e6
         if self.queue_length is not None:
             sample.ego2global_translation = info['ego2global_translation']
@@ -205,7 +210,8 @@ class NuscenesMVDataset(NuscenesDetDataset):
             img_timestamp = []
             for cam_type, cam_info in info['cams'].items():
                 img_timestamp.append(cam_info['timestamp'] / 1e6)
-                image_paths.append(cam_info['data_path'])
+                image_paths.append(
+                    osp.join(self.dataset_root, cam_info['data_path']))
                 # obtain lidar to image transformation matrix
                 lidar2cam_r = np.linalg.inv(cam_info['sensor2lidar_rotation'])
                 lidar2cam_t = cam_info[

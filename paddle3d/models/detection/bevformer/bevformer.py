@@ -73,7 +73,8 @@ class BEVFormer(nn.Layer):
                 if self.use_grid_mask:
                     img = self.grid_mask(img)
 
-                img_feats = self.backbone(img)
+                data = {'image': img}
+                img_feats = self.backbone(data)
                 if isinstance(img_feats, dict):
                     img_feats = list(img_feats.values())
             else:
@@ -82,7 +83,8 @@ class BEVFormer(nn.Layer):
             B = 1
             if self.use_grid_mask:
                 img = self.grid_mask(img)
-            img_feats = self.backbone(img)
+            data = {'image': img}
+            img_feats = self.backbone(data)
             if isinstance(img_feats, dict):
                 img_feats = list(img_feats.values())
         img_feats = self.neck(img_feats)

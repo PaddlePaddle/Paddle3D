@@ -3,8 +3,7 @@ epochs: 24
 train_dataset:
   type: NuscenesMVDataset
   dataset_root: ./datasets/nuscenes
-  ann_file: ./datasets/nuscenes/petr_nuscenes_annotation_train.pkl
-  bev_size: [50, 50]
+  ann_file: ./datasets/nuscenes/bevformer_nuscenes_annotation_train.pkl
   queue_length: 3
   use_valid_flag: True
   mode: train
@@ -40,7 +39,7 @@ train_dataset:
 val_dataset:
   type: NuscenesMVDataset
   dataset_root: ./datasets/nuscenes
-  ann_file: ./datasets/nuscenes/petr_nuscenes_annotation_val.pkl
+  ann_file: ./datasets/nuscenes/bevformer_nuscenes_annotation_val.pkl
   mode: val
   class_names: ['car', 'truck', 'construction_vehicle', 'bus', 'trailer',
                     'barrier', 'motorcycle', 'bicycle', 'pedestrian',

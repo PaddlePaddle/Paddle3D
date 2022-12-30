@@ -77,57 +77,11 @@ def is_filepath(x):
     return isinstance(x, str) or isinstance(x, Path)
 
 
-def create_petr_nuscenes_infos(dataset, save_path, workers=4):
-    train_split, val_split = 'train', 'val'
-    train_filename = os.path.join(save_path, 'kitti_infos_train.pkl')
-    val_filename = os.path.join(save_path, 'kitti_infos_val.pkl')
-    trainval_filename = os.path.join(save_path, 'kitti_infos_trainval.pkl')
-    test_filename = os.path.join(save_path, 'kitti_infos_test.pkl')
-
-    logger.info("---------------Start to generate data infos---------------")
-
-    dataset.set_split(train_split)
-    kitti_infos_train = dataset.get_infos(
-        num_workers=workers,
-        has_label=True,
-        count_inside_pts=True,
-        mode='train')
-    with open(train_filename, 'wb') as f:
-        pickle.dump(kitti_infos_train, f)
-    logger.info("Kitti info train file is saved to %s" % train_filename)
-
-    dataset.set_split(val_split)
-    kitti_infos_val = dataset.get_infos(
-        num_workers=workers,
-        has_label=True,
-        count_inside_pts=True,
-        mode='train')
-    with open(val_filename, 'wb') as f:
-        pickle.dump(kitti_infos_val, f)
-    logger.info("Kitti info val file is saved to %s" % val_filename)
-
-    with open(trainval_filename, 'wb') as f:
-        pickle.dump(kitti_infos_train + kitti_infos_val, f)
-    logger.info("Kitti info trainval file is saved to %s" % trainval_filename)
-
-    dataset.set_split('test')
-    kitti_infos_test = dataset.get_infos(
-        num_workers=workers,
-        has_label=False,
-        count_inside_pts=False,
-        mode='test')
-    with open(test_filename, 'wb') as f:
-        pickle.dump(kitti_infos_test, f)
-    logger.info("Kitti info test file is saved to %s" % test_filename)
-
-    logger.info("---------------Data preparation Done---------------")
-
-
 def add_frame(sample_data, e2g_t, l2e_t, l2e_r_mat, e2g_r_mat, data_root,
               nuscenes):
     sweep_cam = dict()
     sweep_cam['is_key_frame'] = sample_data['is_key_frame']
-    sweep_cam['data_path'] = os.path.join(data_root, sample_data['filename'])
+    sweep_cam['data_path'] = sample_data['filename']
     sweep_cam['type'] = 'camera'
     sweep_cam['timestamp'] = sample_data['timestamp']
     sweep_cam['sample_data_token'] = sample_data['sample_token']
@@ -184,7 +138,7 @@ def get_available_scenes(nusc):
     """Get available scenes from the input nuscenes class.
     """
     available_scenes = []
-    print('total scene num: {}'.format(len(nusc.scene)))
+    logger.info('total scene num: {}'.format(len(nusc.scene)))
     for scene in nusc.scene:
         scene_token = scene['token']
         scene_rec = nusc.get('scene', scene_token)
@@ -207,7 +161,7 @@ def get_available_scenes(nusc):
         if scene_not_exist:
             continue
         available_scenes.append(scene)
-    print('exist scene num: {}'.format(len(available_scenes)))
+    logger.info('exist scene num: {}'.format(len(available_scenes)))
     return available_scenes
 
 
@@ -223,11 +177,12 @@ def obtain_sensor2top(nusc,
     sd_rec = nusc.get('sample_data', sensor_token)
     cs_record = nusc.get('calibrated_sensor', sd_rec['calibrated_sensor_token'])
     pose_record = nusc.get('ego_pose', sd_rec['ego_pose_token'])
-    data_path = str(nusc.get_sample_data_path(sd_rec['token']))
+    data_path = str(nusc.get_sample_data_path(sd_rec['token']))  # absolute path
     if os.getcwd() in data_path:  # path from lyftdataset is absolute path
         data_path = data_path.split(f'{os.getcwd()}/')[-1]  # relative path
     sweep = {
-        'data_path': data_path,
+        'data_path': nusc.get('sample_data',
+                              sd_rec['token'])['filename'],  # relative path
         'type': sensor_type,
         'sample_data_token': sd_rec['token'],
         'sensor2ego_translation': cs_record['translation'],
@@ -281,7 +236,8 @@ def fill_trainval_infos(nusc,
 
         info = {
             'lidar_token': lidar_token,
-            'lidar_path': lidar_path,
+            'lidar_path': nusc.get('sample_data',
+                                   lidar_token)['filename'],  # relative path
             'token': sample['token'],
             'sweeps': [],
             'cams': dict(),
@@ -465,7 +421,8 @@ def main(args):
             raise OSError(
                 "{} annotation file is exist!".format(val_ann_cache_file))
 
-    infos = build_petr_nuscenes_data(dataset_root, is_test, nuscenes, version)
+    infos = build_petr_nuscenes_data(dataset_root, is_test, nuscenes, version,
+                                     num_sweep)
 
     if is_test:
         infos_dict = {test_ann_cache_file: infos[0]}
