@@ -40,10 +40,11 @@ BEVFormer以多目图像作为输入，输出三维空间里目标物体的位�
 ### <h3 id="41">nuScenes数据集</h3>
 #### 数据准备
 
-- 目前Paddle3D中提供的BEVFormer模型支持在nuScenes数据集上训练，因此需要先准备nuScenes数据集，请在[官网](https://www.nuscenes.org/nuscenes)进行下载，并将数据集目录准备如下：
+- 目前Paddle3D中提供的BEVFormer模型支持在nuScenes数据集上训练，因此需要先准备nuScenes数据集，请在[官网](https://www.nuscenes.org/nuscenes)进行下载，并且需要下载CAN bus expansion数据，将数据集目录准备如下：
 
 ```
 nuscenes_dataset_root
+|-- can_bus
 |—— samples  
 |—— sweeps  
 |—— maps  
@@ -58,22 +59,22 @@ ln -s /path/to/nuscenes_dataset_root ./datasets
 mv ./datasets/nuscenes_dataset_root ./datasets/nuscenes
 ```
 
-为加速训练过程中Nuscenes数据集的加载和解析，需要事先将Nuscenes数据集里的标注信息存储在`pkl`后缀文件中，该文件也能用于PERT模型的训练。执行以下命令会生成`petr_nuscenes_annotation_train.pkl`和`petr_nuscenes_annotation_val.pkl`：
+为加速训练过程中Nuscenes数据集的加载和解析，需要事先将Nuscenes数据集里的标注信息存储在`pkl`后缀文件中。执行以下命令会生成`bevformer_nuscenes_annotation_train.pkl`和`bevformer_nuscenes_annotation_val.pkl`：
 
 ```
-python tools/create_petr_nus_infos.py
+python tools/create_bevformer_nus_infos.py --dataset_root ./datasets/nuscenes --can_bus_root ./datasets/nuscenes --save_dir ./datasets/nuscenes
 ```
 生成完后的数据集目录：
 
 ```
 nuscenes_dataset_root
-├── maps
-├── samples
-├── sweeps
-├── v1.0-trainval
-├── petr_nuscenes_annotation_train.pkl
-├── petr_nuscenes_annotation_val.pkl
-
+|-- can_bus
+|—— samples
+|—— sweeps
+|—— maps
+|—— v1.0-trainval
+|—— bevformer_nuscenes_annotation_train.pkl
+|—— bevformer_nuscenes_annotation_val.pkl
 ```
 
 
@@ -87,7 +88,7 @@ wget https://paddledet.bj.bcebos.com/models/pretrained/ResNet50_cos_pretrained.p
 ```
 
 ```
-python -m paddle.distributed.launch --gpus 0,1,2,3,4,5,6,7 tools/train.py --config configs/bevformer/bevformer_tiny.yml --save_dir ./output_bevformer_tiny --num_workers 4 --save_interval 1 --model ./ResNet50_cos_pretrained.pdparams
+python -m paddle.distributed.launch --gpus 0,1,2,3,4,5,6,7 tools/train.py --config configs/bevformer/bevformer_tiny_r50_fpn_nuscenes.yml --save_dir ./output_bevformer_tiny --num_workers 4 --save_interval 1 --model ./ResNet50_cos_pretrained.pdparams
 ```
 
 训练启动参数介绍可参考文档[全流程速览](../../quickstart.md#模型训练)。
@@ -95,7 +96,7 @@ python -m paddle.distributed.launch --gpus 0,1,2,3,4,5,6,7 tools/train.py --conf
 #### 评估
 
 ```
-python tools/evaluate.py --config configs/bevformer/bevformer_tiny.yml --model ./output_bevformer_tiny/epoch_24/model.pdparams --num_workers 4
+python tools/evaluate.py --config configs/bevformer/bevformer_tiny_r50_fpn_nuscenes.yml --model ./output_bevformer_tiny/epoch_24/model.pdparams --num_workers 4
 ```
 
 评估启动参数介绍可参考文档[全流程速览](../../quickstart.md#模型评估)。
