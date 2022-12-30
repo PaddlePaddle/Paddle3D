@@ -188,20 +188,23 @@ class NuscenesMVDataset(NuscenesDetDataset):
         sample.pts_filename = info['lidar_path']
         sample.sweeps = info['sweeps']
         sample.timestamp = info['timestamp'] / 1e6
-        sample.ego2global_translation = info['ego2global_translation']
-        sample.ego2global_rotation = info['ego2global_rotation']
-        sample.prev_idx = info['prev']
-        sample.next_idx = info['next']
-        sample.scene_token = info['scene_token']
-        sample.can_bus = info['can_bus']
-        sample.frame_idx = info['frame_idx']
+        if self.queue_length is not None:
+            sample.ego2global_translation = info['ego2global_translation']
+            sample.ego2global_rotation = info['ego2global_rotation']
+            sample.prev_idx = info['prev']
+            sample.next_idx = info['next']
+            sample.scene_token = info['scene_token']
+            sample.can_bus = info['can_bus']
+            sample.frame_idx = info['frame_idx']
 
         if self.modality['use_camera']:
             image_paths = []
             lidar2img_rts = []
             intrinsics = []
             extrinsics = []
+            img_timestamp = []
             for cam_type, cam_info in info['cams'].items():
+                img_timestamp.append(cam_info['timestamp'] / 1e6)
                 image_paths.append(cam_info['data_path'])
                 # obtain lidar to image transformation matrix
                 lidar2cam_r = np.linalg.inv(cam_info['sensor2lidar_rotation'])
@@ -224,26 +227,27 @@ class NuscenesMVDataset(NuscenesDetDataset):
 
             sample.update(
                 dict(
+                    img_timestamp=img_timestamp,
                     img_filename=image_paths,
                     lidar2img=lidar2img_rts,
                     intrinsics=intrinsics,
                     extrinsics=extrinsics))
 
-        # if not self.is_test_mode:
         if 'train' in self.mode:
             annos = self.get_ann_info(index)
             sample.ann_info = annos
 
-        rotation = Quaternion(sample['ego2global_rotation'])
-        translation = sample['ego2global_translation']
-        can_bus = sample['can_bus']
-        can_bus[:3] = translation
-        can_bus[3:7] = rotation
-        patch_angle = quaternion_yaw(rotation) / np.pi * 180
-        if patch_angle < 0:
-            patch_angle += 360
-        can_bus[-2] = patch_angle / 180 * np.pi
-        can_bus[-1] = patch_angle
+        if self.queue_length is not None:
+            rotation = Quaternion(sample['ego2global_rotation'])
+            translation = sample['ego2global_translation']
+            can_bus = sample['can_bus']
+            can_bus[:3] = translation
+            can_bus[3:7] = rotation
+            patch_angle = quaternion_yaw(rotation) / np.pi * 180
+            if patch_angle < 0:
+                patch_angle += 360
+            can_bus[-2] = patch_angle / 180 * np.pi
+            can_bus[-1] = patch_angle
 
         return sample
 

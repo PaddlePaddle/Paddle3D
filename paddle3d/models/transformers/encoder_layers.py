@@ -23,10 +23,41 @@ import paddle
 import paddle.nn as nn
 
 from paddle3d.apis import manager
-from paddle3d.models.backbones.bev_resnet import build_norm_layer
 from paddle3d.models.layers.param_init import (constant_init, reset_parameters,
                                                xavier_uniform_init)
+from paddle import ParamAttr
+from paddle.nn.initializer import Constant
 from paddle3d.utils.logger import logger
+
+
+def build_norm_layer(cfg, num_features, postfix='', init_val=1):
+    if not isinstance(cfg, dict):
+        raise TypeError('cfg must be a dict')
+    if 'type_name' not in cfg:
+        raise KeyError('the cfg dict must contain the key "type_name"')
+    cfg_ = copy.deepcopy(cfg)
+
+    layer_type = cfg_.pop('type_name')
+
+    norm_layer = getattr(nn, layer_type)
+    abbr = 'bn'
+    assert isinstance(postfix, (int, str))
+    name = abbr + str(postfix)
+
+    requires_grad = cfg_.pop('requires_grad', True)
+    cfg_['epsilon'] = 1e-5
+    weight_attr = ParamAttr(initializer=Constant(value=init_val))
+    bias_attr = ParamAttr(initializer=Constant(value=0))
+    cfg_['weight_attr'] = weight_attr
+    cfg_['bias_attr'] = bias_attr
+
+    layer = norm_layer(num_features, **cfg_)
+
+    if not requires_grad:
+        for param in layer.parameters():
+            param.trainable = requires_grad
+
+    return name, layer
 
 
 class FFN(nn.Layer):

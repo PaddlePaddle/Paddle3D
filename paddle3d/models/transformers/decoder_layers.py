@@ -24,9 +24,8 @@ import paddle
 import paddle.nn as nn
 
 from paddle3d.apis import manager
-from paddle3d.models.backbones.bev_resnet import build_norm_layer
 from paddle3d.models.layers.param_init import constant_init
-from paddle3d.models.transformers.encoder_layers import FFN
+from paddle3d.models.transformers.encoder_layers import FFN, build_norm_layer
 from paddle3d.utils import logger
 
 
