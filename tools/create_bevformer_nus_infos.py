@@ -357,7 +357,12 @@ def build_bevformer_nuscenes_data(dataset_root,
         print('train scene: {}, val scene: {}'.format(
             len(train_scenes), len(val_scenes)))
     train_nusc_infos, val_nusc_infos = fill_trainval_infos(
-        nusc, train_scenes, val_scenes, is_test, max_sweeps=max_sweeps)
+        nusc,
+        nusc_can_bus,
+        train_scenes,
+        val_scenes,
+        is_test,
+        max_sweeps=max_sweeps)
 
     metadata = dict(version=version)
 
