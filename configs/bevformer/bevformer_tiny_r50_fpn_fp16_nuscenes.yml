@@ -46,6 +46,7 @@ val_dataset:
   type: NuscenesMVDataset
   dataset_root: ./datasets/nuscenes
   ann_file: ./datasets/nuscenes/bevformer_nuscenes_annotation_val.pkl
+  queue_length: 3
   mode: val
   class_names: ['car', 'truck', 'construction_vehicle', 'bus', 'trailer',
                     'barrier', 'motorcycle', 'bicycle', 'pedestrian',
