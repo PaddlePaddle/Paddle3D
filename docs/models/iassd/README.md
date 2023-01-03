@@ -31,10 +31,9 @@ IA-SSD是一个single-stage & point-based的3D点云目标检测器。由于点�
 
 | 模型 | Vec_L1<br>AP / APH | Vec_L2<br>AP / APH | Ped_L1<br>AP / APH | Ped_L2<br>AP / APH | Cyc_L1<br>AP / APH | Cyc_L2<br>AP / APH | 模型下载 | 配置文件 | 日志 | VDL |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| IA-SSD | 73.90 / 73.27| 64.84 / 64.28 | 70.36 / 60.75 | 62.93 / 54.13  | 68.21 / 66.25 | 66.06 / 64.16 | - | [config](../../../configs/iassd/iassd_waymo.yaml) | [log]() | [visualdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=12256b19993b8876cf36124e2e0f2bd5) |
-| IA-SSD(torch) | 71.03 / 70.12 | 62.05 / 61.25 | 69.41 / 59.34 | 60.40 / 51.54  | 68.55 / 66.02 | 66.36 / 63.90 | - | - | - |
+| IA-SSD | 73.90 / 73.27| 64.84 / 64.28 | 70.36 / 60.75 | 62.93 / 54.13  | 68.21 / 66.25 | 66.06 / 64.16 | - | [config](../../../configs/iassd/iassd_waymo.yaml) | - | [visualdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=12256b19993b8876cf36124e2e0f2bd5) |
 
-**注意：** Waymo benchmark使用4张V100 GPU训练得出。另外，由于Waymo数据集License许可问题，我们无法提供在Waymo数据上训练出的模型权重。
+**注意：** Waymo benchmark使用4张V100 GPU训练得出。另外，由于Waymo数据集[License](https://waymo.com/open/faq/)许可问题，我们无法提供在Waymo数据上训练出的模型权重，用户可以采用提供的模型配置训练出该精度。
 
 ## <h2 id="4">四：训练 & 评估</h2>
 
