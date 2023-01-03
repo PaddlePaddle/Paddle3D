@@ -20,19 +20,19 @@ IA-SSD是一个single-stage & point-based的3D点云目标检测器。由于点�
 
 - IA-SSD在KITTI Val set数据集上的表现
 
-| 模型 | Car Mod <br> (IoU=0.7) | Ped. Mod<br>(IoU=0.5) | Cyc. Mod<br>(IoU=0.5) | 模型下载 | 配置文件 | 日志 |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| IA-SSD | 79.13 | 58.51 | 71.32 | [model]() | [config]() | [log]() |
+| 模型 | Car Mod <br> (IoU=0.7) | Ped. Mod<br>(IoU=0.5) | Cyc. Mod<br>(IoU=0.5) | 模型下载 | 配置文件 | 日志 | VDL |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| IA-SSD | 79.13 | 58.51 | 71.32 | [model](https://paddle3d.bj.bcebos.com/models/iassd/iassd_kitti/model.pdparams) | [config](../../../configs/iassd/iassd_kitti.yaml) | [log](https://paddle3d.bj.bcebos.com/models/iassd/iassd_kitti/train.log) | [visualdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=7010b963202fe43cdf67cf714678e411) |
 
 **注意：** KITTI benchmark使用4张V100 GPU训练得出。
 
 
 - IA-SSD在Waymo Val set数据集上的表现
 
-| 模型 | Vec_L1<br>AP / APH | Vec_L2<br>AP / APH | Ped_L1<br>AP / APH | Ped_L2<br>AP / APH | Cyc_L1<br>AP / APH | Cyc_L2<br>AP / APH | 模型下载 | 配置文件 | 日志 |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| IA-SSD | 73.90 / 73.27| 64.84 / 64.28 | 70.36 / 60.75 | 62.93 / 54.13  | 68.21 / 66.25 | 66.06 / 64.16 | - | [config]() | [log]() |
-| IA-SSD(torch) | 71.03 / 70.12 | 62.05 / 61.25 | 69.41 / 59.34 | 60.40 / 51.54  | 68.55 / 66.02 | 66.36 / 63.90 | - | [config]() | [log]() |
+| 模型 | Vec_L1<br>AP / APH | Vec_L2<br>AP / APH | Ped_L1<br>AP / APH | Ped_L2<br>AP / APH | Cyc_L1<br>AP / APH | Cyc_L2<br>AP / APH | 模型下载 | 配置文件 | 日志 | VDL |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| IA-SSD | 73.90 / 73.27| 64.84 / 64.28 | 70.36 / 60.75 | 62.93 / 54.13  | 68.21 / 66.25 | 66.06 / 64.16 | - | [config](../../../configs/iassd/iassd_waymo.yaml) | [log]() | [visualdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=12256b19993b8876cf36124e2e0f2bd5) |
+| IA-SSD(torch) | 71.03 / 70.12 | 62.05 / 61.25 | 69.41 / 59.34 | 60.40 / 51.54  | 68.55 / 66.02 | 66.36 / 63.90 | - | - | - |
 
 **注意：** Waymo benchmark使用4张V100 GPU训练得出。另外，由于Waymo数据集License许可问题，我们无法提供在Waymo数据上训练出的模型权重。
 
@@ -151,7 +151,7 @@ python tools/evaluate.py --config configs/iassd/iassd_kitti.yaml --batch_size 16
 - 下载数据集的划分文件列表：
 
 ```shell
-wget https://bj.bcebos.com/paddle3d/datasets/waymo/ImageSets.tar.gz
+wget https://bj.bcebos.com/paddle3d/datasets/Waymo/1.3.2/ImageSets.tar.gz
 ```
 
 - 将数据解压后按照下方的目录结构进行组织：
