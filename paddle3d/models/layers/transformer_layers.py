@@ -360,12 +360,6 @@ class MultiHeadAttention(nn.Layer):
         if key_pos is not None:
             key = key + key_pos
 
-        # paddle only support batch first
-        if self.batch_first:
-            query = query.transpose([1, 0, 2])
-            key = key.transpose([1, 0, 2])
-            value = value.transpose([1, 0, 2])
-
         if key_padding_mask is None:
             if attn_mask is not None:
                 attn_mask = ~attn_mask
@@ -378,8 +372,5 @@ class MultiHeadAttention(nn.Layer):
         else:
             raise NotImplementedError(
                 'key_padding_mask is not None not support now')
-
-        if self.batch_first:
-            out = out.transpose([1, 0, 2])
 
         return identity + self.dropout_layer(self.proj_drop(out))
