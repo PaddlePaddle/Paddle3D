@@ -32,7 +32,6 @@ CUDA_LIB=/usr/local/cuda/lib64
 TENSORRT_ROOT=/usr/local/TensorRT-8.2.5.1
 CUSTOM_OPERATOR_FILES="custom_ops/iou3d_nms.cpp;custom_ops/iou3d_nms_api.cpp;custom_ops/iou3d_nms_kernel.cu"
 
-
 cmake .. -DPADDLE_LIB=${LIB_DIR} \
   -DOPENCV_DIR=${OPENCV_DIR} \
   -DWITH_MKL=${WITH_MKL} \

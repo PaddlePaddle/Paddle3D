@@ -17,8 +17,8 @@ import inspect
 import os
 import sys
 from types import ModuleType
-
 import filelock
+
 from paddle.utils.cpp_extension import load as paddle_jit_load
 
 from paddle3d.env import TMP_HOME
