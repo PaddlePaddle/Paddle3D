@@ -46,14 +46,6 @@ custom_ops = {
         'version':
         '0.1.0',
     },
-    'grid_sample_3d': {
-        'sources': [
-            'grid_sample_3d/grid_sample_3d.cc',
-            'grid_sample_3d/grid_sample_3d.cu'
-        ],
-        'version':
-        '0.1.0',
-    },
     'assign_score_withk': {
         'sources': [
             "assign_score_withk/assign_score_withk_cuda.cc",

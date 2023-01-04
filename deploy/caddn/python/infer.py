@@ -24,7 +24,6 @@ from paddle.static import InputSpec
 from skimage import io
 
 from paddle3d.apis.config import Config
-from paddle3d.ops.grid_sample_3d import grid_sample_3d
 from paddle3d.ops.iou3d_nms_cuda import nms_gpu
 
 
