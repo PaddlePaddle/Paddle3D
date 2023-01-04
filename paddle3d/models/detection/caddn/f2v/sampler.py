@@ -16,9 +16,6 @@ import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 
-from paddle3d.ops import grid_sample_3d
-
-
 class Sampler(nn.Layer):
     """
     This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/models/backbones_3d/f2v/sampler.py#L6
@@ -34,7 +31,6 @@ class Sampler(nn.Layer):
         super().__init__()
         self.mode = mode
         self.padding_mode = padding_mode
-        self.func = grid_sample_3d.grid_sample_3d
 
     def forward(self, input_features, grid):
         """
@@ -46,7 +42,7 @@ class Sampler(nn.Layer):
             output_features [Tensor(N, C, H_out, W_out)]: Output feature maps
         """
         # Sample from grid
-        output = self.func(
+        output = F.grid_sample(
             x=input_features,
             grid=grid,
             mode='bilinear',
