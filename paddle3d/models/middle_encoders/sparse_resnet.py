@@ -28,7 +28,11 @@ from paddle3d.models.layers import param_init
 __all__ = ['SparseResNet3D']
 
 
-def conv3x3(in_out_channels, out_out_channels, stride=1, bias_attr=True):
+def conv3x3(in_out_channels,
+            out_out_channels,
+            stride=1,
+            indice_key=None,
+            bias_attr=True):
     """3x3 convolution with padding"""
     return nn.SubmConv3D(
         in_out_channels,
@@ -36,10 +40,15 @@ def conv3x3(in_out_channels, out_out_channels, stride=1, bias_attr=True):
         kernel_size=3,
         stride=stride,
         padding=1,
-        bias_attr=bias_attr)
+        bias_attr=bias_attr,
+        key=indice_key)
 
 
-def conv1x1(in_out_channels, out_out_channels, stride=1, bias_attr=True):
+def conv1x1(in_out_channels,
+            out_out_channels,
+            stride=1,
+            indice_key=None,
+            bias_attr=True):
     """1x1 convolution"""
     return nn.SubmConv3D(
         in_out_channels,
@@ -47,7 +56,8 @@ def conv1x1(in_out_channels, out_out_channels, stride=1, bias_attr=True):
         kernel_size=1,
         stride=stride,
         padding=1,
-        bias_attr=bias_attr)
+        bias_attr=bias_attr,
+        key=indice_key)
 
 
 class SparseBasicBlock(paddle.nn.Layer):
@@ -59,15 +69,25 @@ class SparseBasicBlock(paddle.nn.Layer):
             out_channels,
             stride=1,
             downsample=None,
+            indice_key=None,
     ):
         super(SparseBasicBlock, self).__init__()
 
         bias_attr = True
+
         self.conv1 = conv3x3(
-            in_channels, out_channels, stride, bias_attr=bias_attr)
+            in_channels,
+            out_channels,
+            stride,
+            indice_key=indice_key,
+            bias_attr=bias_attr)
         self.bn1 = nn.BatchNorm(out_channels, epsilon=1e-3, momentum=0.01)
         self.relu = nn.ReLU()
-        self.conv2 = conv3x3(out_channels, out_channels, bias_attr=bias_attr)
+        self.conv2 = conv3x3(
+            out_channels,
+            out_channels,
+            indice_key=indice_key,
+            bias_attr=bias_attr)
         self.bn2 = nn.BatchNorm(out_channels, epsilon=1e-3, momentum=0.01)
         self.downsample = downsample
         self.stride = stride
@@ -103,12 +123,12 @@ class SparseResNet3D(paddle.nn.Layer):
 
         # input: # [1600, 1200, 41]
         self.conv_input = paddle.nn.Sequential(
-            nn.SubmConv3D(in_channels, 16, 3, bias_attr=False),
+            nn.SubmConv3D(in_channels, 16, 3, bias_attr=False, key='res0'),
             nn.BatchNorm(16, epsilon=1e-3, momentum=0.01), nn.ReLU())
 
         self.conv1 = paddle.nn.Sequential(
-            SparseBasicBlock(16, 16),
-            SparseBasicBlock(16, 16),
+            SparseBasicBlock(16, 16, indice_key='res0'),
+            SparseBasicBlock(16, 16, indice_key='res0'),
         )
 
         self.conv2 = paddle.nn.Sequential(
@@ -116,8 +136,8 @@ class SparseResNet3D(paddle.nn.Layer):
                       bias_attr=False),  # [1600, 1200, 41] -> [800, 600, 21]
             nn.BatchNorm(32, epsilon=1e-3, momentum=0.01),
             nn.ReLU(),
-            SparseBasicBlock(32, 32),
-            SparseBasicBlock(32, 32),
+            SparseBasicBlock(32, 32, indice_key='res1'),
+            SparseBasicBlock(32, 32, indice_key='res1'),
         )
 
         self.conv3 = paddle.nn.Sequential(
@@ -125,8 +145,8 @@ class SparseResNet3D(paddle.nn.Layer):
                       bias_attr=False),  # [800, 600, 21] -> [400, 300, 11]
             nn.BatchNorm(64, epsilon=1e-3, momentum=0.01),
             nn.ReLU(),
-            SparseBasicBlock(64, 64),
-            SparseBasicBlock(64, 64),
+            SparseBasicBlock(64, 64, indice_key='res2'),
+            SparseBasicBlock(64, 64, indice_key='res2'),
         )
 
         self.conv4 = paddle.nn.Sequential(
@@ -134,8 +154,8 @@ class SparseResNet3D(paddle.nn.Layer):
                       bias_attr=False),  # [400, 300, 11] -> [200, 150, 5]
             nn.BatchNorm(128, epsilon=1e-3, momentum=0.01),
             nn.ReLU(),
-            SparseBasicBlock(128, 128),
-            SparseBasicBlock(128, 128),
+            SparseBasicBlock(128, 128, indice_key='res3'),
+            SparseBasicBlock(128, 128, indice_key='res3'),
         )
 
         self.extra_conv = paddle.nn.Sequential(
@@ -183,5 +203,4 @@ class SparseResNet3D(paddle.nn.Layer):
         out = paddle.transpose(out, perm=[0, 4, 1, 2, 3])
         N, C, D, H, W = out.shape
         out = paddle.reshape(out, shape=[N, C * D, H, W])
-
         return out
