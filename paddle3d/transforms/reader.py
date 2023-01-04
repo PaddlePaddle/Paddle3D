@@ -33,8 +33,39 @@ from paddle3d.utils.logger import logger
 
 __all__ = [
     "LoadImage", "LoadPointCloud", "RemoveCameraInvisiblePointsKITTI",
-    "RemoveCameraInvisiblePointsKITTIV2", "LoadSemanticKITTIRange"
+    "RemoveCameraInvisiblePointsKITTIV2", "LoadSemanticKITTIRange",
+    "LoadMapsFromFiles"
 ]
+
+
+@manager.TRANSFORMS.add_component
+class LoadMapsFromFiles(object):
+    def __init__(self, map_data_root, k=None):
+        self.map_data_root = map_data_root
+        self.k=k
+    
+    def resize_map(self, map_mask, scale_factor=2):
+        H, W = map_mask.shape[: 2]
+        map_mask_resized = cv2.resize(map_mask.astype(np.uint8), (scale_factor * W, scale_factor * H))
+        return map_mask_resized.astype(np.float32)
+    
+    def __call__(self, results):
+        
+        map_filename = results['map_filename']
+        map_filename = os.path.join(self.map_data_root, os.path.basename(map_filename))
+        maps = np.load(map_filename)
+        map_mask = maps['arr_0'].astype(np.float32)
+        
+        map_mask = self.resize_map(map_mask, scale_factor=2)  # for (512, 512) gt_map
+        
+        maps = map_mask.transpose((2,0,1))
+        results['gt_map'] = maps
+        maps = rearrange(maps, 'c (h h1) (w w2) -> (h w) c h1 w2 ', h1=16, w2=16)
+        #maps = maps.reshape(256,3*256)
+        maps = maps.reshape(1024,3*256)  # for (512, 512) gt_map
+        results['map_shape'] = maps.shape
+        results['maps'] = maps
+        return results
 
 
 @manager.TRANSFORMS.add_component
@@ -468,7 +499,8 @@ class LoadMultiViewImageFromFiles(TransformABC):
             -  1: cv2.IMREAD_COLOR
     """
 
-    def __init__(self, to_float32=False, imread_flag=-1):
+    def __init__(self, data_root, to_float32=False, imread_flag=-1):
+        self.data_root = data_root
         self.to_float32 = to_float32
         self.imread_flag = imread_flag
 

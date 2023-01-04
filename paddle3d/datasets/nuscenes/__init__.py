@@ -14,3 +14,4 @@
 
 from .nuscenes_multi_view_det import NuscenesMVDataset
 from .nuscenes_pointcloud_det import NuscenesPCDataset
+from .nuscenes_multi_view_det_seg import NuscenesMVSegDataset

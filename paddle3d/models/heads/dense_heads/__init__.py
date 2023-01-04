@@ -15,5 +15,6 @@
 from .anchor_head import *
 from .coders import NMSFreeCoder
 from .petr_head import PETRHead
+from .petr_head_seg import PETRHeadSeg
 from .point_head import PointHeadSimple
 from .target_assigner import *
