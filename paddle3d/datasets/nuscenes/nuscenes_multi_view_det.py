@@ -36,6 +36,7 @@ from paddle3d.geometries import BBoxes3D, CoordMode
 from paddle3d.sample import Sample, SampleMeta
 from paddle3d.transforms import TransformABC
 from paddle3d.utils.logger import logger
+from paddle3d.datasets.nuscenes.nuscenes_metric import NuScenesSegMetric
 
 
 def is_filepath(x):
@@ -151,13 +152,13 @@ class NuscenesMVDataset(NuscenesDetDataset):
         dst = np.array([0.5, 0.5, 0])
         src = np.array(origin)
         gt_bboxes_3d[:, :3] += gt_bboxes_3d[:, 3:6] * (dst - src)
-        gt_bboxes_3d = BBoxes3D(gt_bboxes_3d,
-                                coordmode=2,
-                                origin=[0.5, 0.5, 0.5])
+        gt_bboxes_3d = BBoxes3D(
+            gt_bboxes_3d, coordmode=2, origin=[0.5, 0.5, 0.5])
 
-        anns_results = dict(gt_bboxes_3d=gt_bboxes_3d,
-                            gt_labels_3d=gt_labels_3d,
-                            gt_names=gt_names_3d)
+        anns_results = dict(
+            gt_bboxes_3d=gt_bboxes_3d,
+            gt_labels_3d=gt_labels_3d,
+            gt_names=gt_names_3d)
         return anns_results
 
     def get_data_info(self, index):
@@ -215,11 +216,12 @@ class NuscenesMVDataset(NuscenesDetDataset):
                 lidar2img_rts.append(lidar2img_rt)
 
             sample.update(
-                dict(img_timestamp=img_timestamp,
-                     img_filename=image_paths,
-                     lidar2img=lidar2img_rts,
-                     intrinsics=intrinsics,
-                     extrinsics=extrinsics))
+                dict(
+                    img_timestamp=img_timestamp,
+                    img_filename=image_paths,
+                    lidar2img=lidar2img_rts,
+                    intrinsics=intrinsics,
+                    extrinsics=extrinsics))
 
         # if not self.is_test_mode:
         if self.mode == 'train':
@@ -282,8 +284,8 @@ class NuscenesMVDataset(NuscenesDetDataset):
                 self.data_infos = pickle.load(open(train_ann_cache_file, 'rb'))
                 return
 
-        self.nusc = NuScenesManager.get(version=self.version,
-                                        dataroot=self.dataset_root)
+        self.nusc = NuScenesManager.get(
+            version=self.version, dataroot=self.dataset_root)
 
         if self.version == 'v1.0-trainval':
             train_scenes = nuscenes_split.train
@@ -370,10 +372,10 @@ class NuscenesMVDataset(NuscenesDetDataset):
         # Homogeneous transform of current sample from ego car coordinate to sensor coordinate
         curr_sample_cs = self.nusc.get("calibrated_sensor",
                                        sample_data["calibrated_sensor_token"])
-        curr_sensor_from_car = transform_matrix(curr_sample_cs["translation"],
-                                                Quaternion(
-                                                    curr_sample_cs["rotation"]),
-                                                inverse=True)
+        curr_sensor_from_car = transform_matrix(
+            curr_sample_cs["translation"],
+            Quaternion(curr_sample_cs["rotation"]),
+            inverse=True)
         # Homogeneous transformation matrix of current sample from global coordinate to ego car coordinate
         curr_sample_pose = self.nusc.get("ego_pose",
                                          sample_data["ego_pose_token"])
@@ -442,8 +444,8 @@ class NuscenesMVDataset(NuscenesDetDataset):
     @property
     def metric(self):
         if not hasattr(self, 'nusc'):
-            self.nusc = NuScenesManager.get(version=self.version,
-                                            dataroot=self.dataset_root)
+            self.nusc = NuScenesManager.get(
+                version=self.version, dataroot=self.dataset_root)
         return super().metric
 
     def collate_fn(self, batch: List):
@@ -688,10 +690,158 @@ def obtain_sensor2top(nusc,
     e2g_r_s_mat = Quaternion(e2g_r_s).rotation_matrix
     R = (l2e_r_s_mat.T @ e2g_r_s_mat.T) @ (
         np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
-    T = (l2e_t_s @ e2g_r_s_mat.T +
-         e2g_t_s) @ (np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
+    T = (l2e_t_s @ e2g_r_s_mat.T + e2g_t_s) @ (
+        np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
     T -= e2g_t @ (np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T
                   ) + l2e_t @ np.linalg.inv(l2e_r_mat).T
     sweep['sensor2lidar_rotation'] = R.T  # points @ R.T + T
     sweep['sensor2lidar_translation'] = T
     return sweep
+
+
+@manager.DATASETS.add_component
+class NuscenesMVSegDataset(NuscenesMVDataset):
+    """
+    This datset only add camera intrinsics and extrinsics to the results.
+    """
+    DATASET_NAME = "Nuscenes"
+
+    def __init__(self,
+                 dataset_root: str,
+                 ann_file: str = None,
+                 lane_ann_file: str = None,
+                 mode: str = "train",
+                 transforms: Union[TransformABC, List[TransformABC]] = None,
+                 max_sweeps: int = 10,
+                 class_names: Union[list, tuple] = None,
+                 use_valid_flag: bool = False,
+                 load_interval: int = 1):
+        self.mode = mode
+        self.dataset_root = dataset_root
+        self.filter_empty_gt = True
+        self.box_type_3d = 'LiDAR'
+        self.box_mode_3d = None
+        self.ann_file = ann_file
+        self.version = self.VERSION_MAP[self.mode]
+        self.load_interval = load_interval
+
+        self.max_sweeps = max_sweeps
+        self._build_data()
+        self.metadata = self.data_infos['metadata']
+
+        self.data_infos = list(
+            sorted(self.data_infos['infos'], key=lambda e: e['timestamp']))
+
+        if isinstance(transforms, list):
+            transforms = T.Compose(transforms)
+
+        self.transforms = transforms
+
+        if not self.is_test_mode:
+            self.flag = np.zeros(len(self), dtype=np.uint8)
+
+        self.modality = dict(
+            use_camera=True,
+            use_lidar=False,
+            use_radar=False,
+            use_map=True,
+            use_external=True,
+        )
+        self.with_velocity = True
+        self.use_valid_flag = use_valid_flag
+        self.channel = "LIDAR_TOP"
+        if class_names is not None:
+            self.class_names = class_names
+        else:
+            self.class_names = list(self.CLASS_MAP.keys())
+        self.lane_infos = self.load_annotations(lane_ann_file)
+
+    def get_data_info(self, index):
+        """Get data info according to the given index.
+        Args:
+            index (int): Index of the sample data to get.
+        Returns:
+            dict: Data information that will be passed to the data \
+                preprocessing pipelines. It includes the following keys:
+
+                - sample_idx (str): Sample index.
+                - pts_filename (str): Filename of point clouds.
+                - sweeps (list[dict]): Infos of sweeps.
+                - timestamp (float): Sample timestamp.
+                - img_filename (str, optional): Image filename.
+                - lidar2img (list[np.ndarray], optional): Transformations \
+                    from lidar to different cameras.
+                - ann_info (dict): Annotation info.
+        """
+        info = self.data_infos[index]
+        lane_info = self.lane_infos[index]
+
+        sample = Sample(path=None, modality="multiview")
+        sample.sample_idx = info['token']
+        sample.meta.id = info['token']
+        sample.pts_filename = info['lidar_path']
+        sample.sweeps = info['sweeps']
+        sample.timestamp = info['timestamp'] / 1e6
+        sample.map_filename = lane_info['maps']['map_mask']
+
+        if self.modality['use_camera']:
+            image_paths = []
+            lidar2img_rts = []
+            intrinsics = []
+            extrinsics = []
+            img_timestamp = []
+            for cam_type, cam_info in info['cams'].items():
+                img_timestamp.append(cam_info['timestamp'] / 1e6)
+                image_paths.append(cam_info['data_path'])
+                # obtain lidar to image transformation matrix
+                lidar2cam_r = np.linalg.inv(cam_info['sensor2lidar_rotation'])
+                lidar2cam_t = cam_info[
+                    'sensor2lidar_translation'] @ lidar2cam_r.T
+                lidar2cam_rt = np.eye(4)
+                lidar2cam_rt[:3, :3] = lidar2cam_r.T
+                lidar2cam_rt[3, :3] = -lidar2cam_t
+                intrinsic = cam_info['cam_intrinsic']
+                viewpad = np.eye(4)
+                viewpad[:intrinsic.shape[0], :intrinsic.shape[1]] = intrinsic
+                lidar2img_rt = (viewpad @ lidar2cam_rt.T)
+                intrinsics.append(viewpad)
+                extrinsics.append(lidar2cam_rt)
+                lidar2img_rts.append(lidar2img_rt)
+
+            sample.update(
+                dict(
+                    img_timestamp=img_timestamp,
+                    img_filename=image_paths,
+                    lidar2img=lidar2img_rts,
+                    intrinsics=intrinsics,
+                    extrinsics=extrinsics))
+
+        if self.mode == 'train':
+            annos = self.get_ann_info(index)
+            sample.ann_info = annos
+        return sample
+
+    def load_annotations(self, lane_ann_file):
+        """Load annotations from ann_file.
+
+        Args:
+            ann_file (str): Path of the annotation file.
+
+        Returns:
+            list[dict]: List of annotations sorted by timestamps.
+        """
+        data = pickle.load(open(lane_ann_file, 'rb'))
+        data_infos = list(sorted(data['infos'], key=lambda e: e['timestamp']))
+        data_infos = data_infos[::self.load_interval]
+        self.metadata = data['metadata']
+        self.version = self.metadata['version']
+        return data_infos
+
+    @property
+    def metric(self):
+        return NuScenesSegMetric(
+            class_names=self.class_names,
+            data_infos=self.data_infos,
+            modality=self.modality,
+            version=self.version,
+            dataset_root=self.dataset_root)
