@@ -36,7 +36,6 @@ from paddle3d.apis import manager
 from paddle3d.models.layers.param_init import (constant_init,
                                                xavier_uniform_init)
 from paddle3d.models.voxel_encoders.pillar_encoder import build_norm_layer
-
 from .transformer_layers import (FFN, BaseTransformerLayer, MultiHeadAttention,
                                  TransformerLayerSequence)
 
@@ -97,15 +96,15 @@ class PETRTransformer(nn.Layer):
         """
         bs, n, c, h, w = x.shape
 
-        # [bs, n, c, h, w] -> [n*h*w, bs, c]
-        memory = x.transpose([1, 3, 4, 0, 2]).reshape([-1, bs, c])
+        # [bs, n, c, h, w] -> [bs, n*h*w, c]
+        memory = x.transpose([0, 1, 3, 4, 2]).reshape([bs, -1, c])
 
-        # [bs, n, c, h, w] -> [n*h*w, bs, c]
-        pos_embed = pos_embed.transpose([1, 3, 4, 0, 2]).reshape([-1, bs, c])
-        # [num_query, dim] -> [num_query, bs, dim]
-        query_embed = query_embed.unsqueeze(1).tile([1, bs, 1])
+        # [bs, n, c, h, w] -> [bs, n*h*w, c]
+        pos_embed = pos_embed.transpose([0, 1, 3, 4, 2]).reshape([bs, -1, c])
+        # [num_query, dim] -> [bs, num_query, dim]
+        query_embed = query_embed.unsqueeze(0).tile([bs, 1, 1])
         # [bs, n, h, w] -> [bs, n*h*w]
-        mask = mask.reshape([bs, -1])
+        mask = mask.reshape([bs, 1, -1])
         target = paddle.zeros_like(query_embed)
 
         out_dec = self.decoder(
@@ -117,7 +116,6 @@ class PETRTransformer(nn.Layer):
             key_padding_mask=mask,
             reg_branch=reg_branch,
         )
-        out_dec = out_dec.transpose([0, 2, 1, 3])
         memory = memory.reshape([n, h, w, bs, c]).transpose([3, 0, 4, 1, 2])
         return out_dec, memory
 
@@ -156,13 +154,11 @@ class PETRDNTransformer(nn.Layer):
         """Forward function for `Transformer`.
         """
         bs, n, c, h, w = x.shape
-        memory = x.transpose([1, 3, 4, 0, 2]).reshape(
-            [-1, bs, c])  # [bs, n, c, h, w] -> [n*h*w, bs, c]
-        pos_embed = pos_embed.transpose([1, 3, 4, 0, 2]).reshape(
-            [-1, bs, c])  # [bs, n, c, h, w] -> [n*h*w, bs, c]
-        query_embed = query_embed.transpose(
-            [1, 0, 2])  # [num_query, dim] -> [num_query, bs, dim]
-        mask = mask.reshape([bs, -1])  # [bs, n, h, w] -> [bs, n*h*w]
+        memory = x.transpose([0, 1, 3, 4, 2]).reshape(
+            [bs, -1, c])  # [bs, n, c, h, w] -> [n*h*w, bs, c]
+        pos_embed = pos_embed.transpose([0, 1, 3, 4, 2]).reshape(
+            [bs, -1, c])  # [bs, n, c, h, w] -> [n*h*w, bs, c]
+        mask = mask.reshape([bs, 1, -1])  # [bs, n, h, w] -> [bs, n*h*w]
         target = paddle.zeros_like(query_embed)
 
         # out_dec: [num_layers, num_query, bs, dim]
@@ -176,7 +172,6 @@ class PETRDNTransformer(nn.Layer):
             attn_masks=[attn_masks, None],
             reg_branch=reg_branch,
         )
-        out_dec = out_dec.transpose([0, 2, 1, 3])
         memory = memory.reshape([n, h, w, bs, c]).transpose([3, 0, 4, 1, 2])
         return out_dec, memory
 
@@ -340,11 +335,6 @@ class PETRMultiheadAttention(nn.Layer):
         if key_pos is not None:
             key = key + key_pos
 
-        if True:
-            query = query.transpose([1, 0, 2])
-            key = key.transpose([1, 0, 2])
-            value = value.transpose([1, 0, 2])
-
         if key_padding_mask is None:
             if attn_mask is not None:
                 attn_mask = ~attn_mask
@@ -357,8 +347,7 @@ class PETRMultiheadAttention(nn.Layer):
         else:
             if attn_mask is None:
                 attn_mask = ~key_padding_mask
-                attn_mask = attn_mask.unsqueeze(1).unsqueeze(1)
-
+                attn_mask = attn_mask.unsqueeze(1)  #.unsqueeze(1)
                 out = self.attn(
                     query=query,
                     key=key,
@@ -367,9 +356,6 @@ class PETRMultiheadAttention(nn.Layer):
                 )
             else:
                 raise NotImplementedError('key_padding_mask is not None')
-
-        if True:
-            out = out.transpose([1, 0, 2])
 
         return identity + self.dropout(self.proj_drop(out))
 

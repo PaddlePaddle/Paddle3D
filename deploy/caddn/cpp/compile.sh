@@ -30,7 +30,7 @@ OPENCV_DIR=/workspace/cadnn/opencv-3.4.7/build/
 CUDNN_LIB=/usr/local/x86_64-pc-linux-gnu/
 CUDA_LIB=/usr/local/cuda/lib64
 TENSORRT_ROOT=/usr/local/TensorRT-8.2.5.1
-CUSTOM_OPERATOR_FILES="custom_ops/grid_sample_3d.cc;custom_ops/grid_sample_3d.cu;custom_ops/iou3d_nms.cpp;custom_ops/iou3d_nms_api.cpp;custom_ops/iou3d_nms_kernel.cu"
+CUSTOM_OPERATOR_FILES="custom_ops/iou3d_nms.cpp;custom_ops/iou3d_nms_api.cpp;custom_ops/iou3d_nms_kernel.cu"
 
 
 cmake .. -DPADDLE_LIB=${LIB_DIR} \
