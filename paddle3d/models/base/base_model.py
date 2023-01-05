@@ -63,13 +63,13 @@ class Base3DModel(abc.ABC, nn.Layer):
     def outputs(self) -> List[dict]:
         """Model output description."""
 
-    def forward(self, samples):
+    def forward(self, samples, *args, **kwargs):
         if self.in_export_mode:
-            return self.export_forward(samples)
+            return self.export_forward(samples, *args, **kwargs)
         elif self.training:
-            return self.train_forward(samples)
+            return self.train_forward(samples, *args, **kwargs)
 
-        return self.test_forward(samples)
+        return self.test_forward(samples, *args, **kwargs)
 
     @abc.abstractproperty
     def sensor(self) -> str:

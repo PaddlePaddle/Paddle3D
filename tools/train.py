@@ -140,12 +140,7 @@ def main(args):
     if not os.path.exists(args.cfg):
         raise RuntimeError("Config file `{}` does not exist!".format(args.cfg))
 
-    cfg = Config(
-        path=args.cfg,
-        learning_rate=args.learning_rate,
-        iters=args.iters,
-        epochs=args.epochs,
-        batch_size=args.batch_size)
+    cfg = Config(path=args.cfg)
 
     if args.model is not None:
         load_pretrained_model(cfg.model, args.model)
@@ -154,6 +149,12 @@ def main(args):
         quant_config = get_qat_config(args.quant_config)
         cfg.model.build_slim_model(quant_config['quant_config'])
         update_dic(cfg.dic, quant_config['finetune_config'])
+
+    cfg.update(
+        learning_rate=args.learning_rate,
+        batch_size=args.batch_size,
+        iters=args.iters,
+        epochs=args.epochs)
 
     if cfg.train_dataset is None:
         raise RuntimeError(

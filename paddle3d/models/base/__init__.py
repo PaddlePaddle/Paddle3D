@@ -16,3 +16,4 @@ from .base_model import add_export_args, Base3DModel
 from .base_detection import BaseDetectionModel
 from .base_lidar_detection import BaseLidarModel
 from .base_mono_detection import BaseMonoModel
+from .base_multiview_detection import BaseMultiViewModel

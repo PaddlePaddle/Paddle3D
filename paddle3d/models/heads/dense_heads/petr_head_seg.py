@@ -313,7 +313,7 @@ class PETRHeadseg(nn.Layer):
 
     def position_embeding(self, img_feats, img_metas, masks=None):
         eps = 1e-5
-        if hasattr(self, 'export_model') and self.export_model:
+        if getattr(self, 'in_export_mode', False):
             pad_h, pad_w = img_metas['image_shape']
         else:
             pad_h, pad_w, _ = img_metas[0]['pad_shape'][0]
@@ -345,7 +345,7 @@ class PETRHeadseg(nn.Layer):
             coords[..., 2:3],
             paddle.ones_like(coords[..., 2:3]) * eps)
 
-        if not (hasattr(self, 'export_model') and self.export_model):
+        if not getattr(self, 'in_export_mode', False):
             img2lidars = []
             for img_meta in img_metas:
                 img2lidar = []

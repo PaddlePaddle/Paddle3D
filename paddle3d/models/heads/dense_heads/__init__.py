@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from .anchor_head import *
-from .coders import NMSFreeCoder
 from .petr_head import PETRHead
 from .petr_head_seg import PETRHeadseg
 from .point_head import PointHeadSimple

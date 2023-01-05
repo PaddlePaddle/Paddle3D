@@ -39,14 +39,21 @@ class NuScenesMetric(MetricABC):
     """
     """
 
-    def __init__(self, nuscense: NuScenes, mode: str, channel: str,
-                 class_names: list, attrmap: dict):
+    def __init__(self,
+                 nuscense: NuScenes,
+                 mode: str,
+                 channel: str,
+                 class_names: list,
+                 attrmap: dict,
+                 eval_version='detection_cvpr_2019'):
         self.nusc = nuscense
         self.mode = mode
         self.channel = channel
         self.class_names = class_names
         self.attrmap = attrmap
         self.predictions = []
+        self.eval_version = eval_version
+        self.eval_detection_configs = config_factory(self.eval_version)
 
     def _parse_predictions_to_eval_format(self,
                                           predictions: List[Sample]) -> dict:
@@ -55,7 +62,6 @@ class NuScenesMetric(MetricABC):
         res = {}
         for pred in predictions:
             filter_fake_result(pred)
-            num_boxes = pred.bboxes_3d.shape[0]
 
             # transform bboxes from second format to nuscenes format
             nus_box_list = second_bbox_to_nuscenes_box(pred)
@@ -74,11 +80,21 @@ class NuScenesMetric(MetricABC):
                 # Move box to ego vehicle coord system
                 box.rotate(Quaternion(channel_pose["rotation"]))
                 box.translate(np.array(channel_pose["translation"]))
+
+                # filter det in ego.
+                # TODO(luoqianhui): where this filter is need?
+                cls_range_map = self.eval_detection_configs.class_range
+                radius = np.linalg.norm(box.center[:2], 2)
+                det_range = cls_range_map[self.class_names[box.label]]
+                if radius > det_range:
+                    continue
+
                 # Move box to global coord system
                 box.rotate(Quaternion(ego_pose["rotation"]))
                 box.translate(np.array(ego_pose["translation"]))
                 global_box_list.append(box)
 
+            num_boxes = len(global_box_list)
             res[pred.meta.id] = []
             for idx in range(num_boxes):
                 box = global_box_list[idx]

@@ -238,7 +238,7 @@ class PETRHead(nn.Layer):
         self.code_weights.stop_gradient = True
 
         self.bbox_coder = bbox_coder
-        self.pc_range = self.bbox_coder.pc_range
+        self.pc_range = self.bbox_coder.point_cloud_range
         self._init_layers()
         self.transformer = transformer
         self.pd_eps = paddle.to_tensor(np.finfo('float32').eps)
@@ -362,7 +362,7 @@ class PETRHead(nn.Layer):
 
     def position_embeding(self, img_feats, img_metas, masks=None):
         eps = 1e-5
-        if hasattr(self, 'export_model') and self.export_model:
+        if getattr(self, 'in_export_mode', False):
             pad_h, pad_w = img_metas['image_shape']
         else:
             pad_h, pad_w, _ = img_metas[0]['pad_shape'][0]
@@ -394,7 +394,7 @@ class PETRHead(nn.Layer):
             coords[..., 2:3],
             paddle.ones_like(coords[..., 2:3]) * eps)
 
-        if not (hasattr(self, 'export_model') and self.export_model):
+        if not getattr(self, 'in_export_mode', False):
             img2lidars = []
             for img_meta in img_metas:
                 img2lidar = []
