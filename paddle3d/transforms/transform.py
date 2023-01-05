@@ -35,7 +35,9 @@ __all__ = [
     "GlobalTranslate", "ShufflePoint", "SamplePoint", "SamplePointByVoxels",
     "FilterPointOutsideRange", "FilterBBoxOutsideRange", "HardVoxelize",
     "RandomObjectPerturb", "ConvertBoxFormat", "ResizeShortestEdge",
-    "RandomContrast", "RandomBrightness", "RandomSaturation", "ToVisionBasedBox"
+    "RandomContrast", "RandomBrightness", "RandomSaturation",
+    "ToVisionBasedBox", "PhotoMetricDistortionMultiViewImage",
+    "RandomScaleImageMultiViewImage"
 ]
 
 
@@ -1251,14 +1253,16 @@ class SampleFilerByKey(object):
     """Collect data from the loader relevant to the specific task.
     """
 
-    def __init__(self,
-                 keys,
-                 meta_keys=('filename', 'ori_shape', 'img_shape', 'lidar2img',
-                            'depth2img', 'cam2img', 'pad_shape', 'scale_factor',
-                            'flip', 'pcd_horizontal_flip', 'pcd_vertical_flip',
-                            'box_type_3d', 'img_norm_cfg', 'pcd_trans',
-                            'sample_idx', 'pcd_scale_factor', 'pcd_rotation',
-                            'pts_filename', 'transformation_3d_flow')):
+    def __init__(
+            self,
+            keys,
+            meta_keys=('filename', 'ori_shape', 'img_shape', 'lidar2img',
+                       'depth2img', 'cam2img', 'pad_shape', 'scale_factor',
+                       'flip', 'pcd_horizontal_flip', 'pcd_vertical_flip',
+                       'box_mode_3d', 'box_type_3d', 'img_norm_cfg',
+                       'pcd_trans', 'sample_idx', 'prev_idx', 'next_idx',
+                       'pcd_scale_factor', 'pcd_rotation', 'pts_filename',
+                       'transformation_3d_flow', 'scene_token', 'can_bus')):
         self.keys = keys
         self.meta_keys = meta_keys
 
@@ -1283,3 +1287,222 @@ class SampleFilerByKey(object):
         for key in self.keys:
             filtered_sample[key] = sample[key]
         return filtered_sample
+
+
+@manager.TRANSFORMS.add_component
+class PhotoMetricDistortionMultiViewImage(object):
+    """Apply photometric distortion to image sequentially, every transformation
+    is applied with a probability of 0.5. The position of np.random.contrast is in
+    second or second to last.
+    1. np.random.brightness
+    2. np.random.contrast (mode 0)
+    3. convert color from BGR to HSV
+    4. np.random.saturation
+    5. np.random.hue
+    6. convert color from HSV to BGR
+    7. np.random.contrast (mode 1)
+    8. np.random.y swap channels
+
+    This class is modified from https://github.com/fundamentalvision/BEVFormer/blob/master/projects/mmdet3d_plugin/datasets/pipelines/transform_3d.py#L99
+
+    Args:
+        brightness_delta (int): delta of brightness.
+        contrast_range (tuple): range of contrast.
+        saturation_range (tuple): range of saturation.
+        hue_delta (int): delta of hue.
+    """
+
+    def __init__(self,
+                 brightness_delta=32,
+                 contrast_range=(0.5, 1.5),
+                 saturation_range=(0.5, 1.5),
+                 hue_delta=18):
+        self.brightness_delta = brightness_delta
+        self.contrast_lower, self.contrast_upper = contrast_range
+        self.saturation_lower, self.saturation_upper = saturation_range
+        self.hue_delta = hue_delta
+
+    def convert_color_factory(self, src, dst):
+
+        code = getattr(cv2, f'COLOR_{src.upper()}2{dst.upper()}')
+
+        def convert_color(img):
+            out_img = cv2.cvtColor(img, code)
+            return out_img
+
+        convert_color.__doc__ = f"""Convert a {src.upper()} image to {dst.upper()}
+            image.
+
+        Args:
+            img (ndarray or str): The input image.
+
+        Returns:
+            ndarray: The converted {dst.upper()} image.
+        """
+
+        return convert_color
+
+    def __call__(self, sample):
+        """Call function to perform photometric distortion on images.
+        Args:
+            sample (dict): Result dict from loading pipeline.
+        Returns:
+            dict: Result dict with images distorted.
+        """
+        imgs = sample['img']
+        new_imgs = []
+        for img in imgs:
+            assert img.dtype == np.float32, \
+                'PhotoMetricDistortion needs the input image of dtype np.float32,'\
+                ' please set "to_float32=True" in "LoadImageFromFile" pipeline'
+            # np.random.brightness
+            if np.random.randint(2):
+                delta = np.random.uniform(-self.brightness_delta,
+                                          self.brightness_delta)
+                img += delta
+
+            # mode == 0 --> do np.random.contrast first
+            # mode == 1 --> do np.random.contrast last
+            mode = np.random.randint(2)
+            if mode == 1:
+                if np.random.randint(2):
+                    alpha = np.random.uniform(self.contrast_lower,
+                                              self.contrast_upper)
+                    img *= alpha
+
+            # convert color from BGR to HSV
+            img = self.convert_color_factory('bgr', 'hsv')(img)
+
+            # np.random.saturation
+            if np.random.randint(2):
+                img[..., 1] *= np.random.uniform(self.saturation_lower,
+                                                 self.saturation_upper)
+
+            # np.random.hue
+            if np.random.randint(2):
+                img[..., 0] += np.random.uniform(-self.hue_delta,
+                                                 self.hue_delta)
+                img[..., 0][img[..., 0] > 360] -= 360
+                img[..., 0][img[..., 0] < 0] += 360
+
+            # convert color from HSV to BGR
+            img = self.convert_color_factory('hsv', 'bgr')(img)
+
+            # np.random.contrast
+            if mode == 0:
+                if np.random.randint(2):
+                    alpha = np.random.uniform(self.contrast_lower,
+                                              self.contrast_upper)
+                    img *= alpha
+
+            # np.random.y swap channels
+            if np.random.randint(2):
+                img = img[..., np.random.permutation(3)]
+            new_imgs.append(img)
+        sample['img'] = new_imgs
+        return sample
+
+
+@manager.TRANSFORMS.add_component
+class RandomScaleImageMultiViewImage(object):
+    """Random scale the image
+    This class is modified from https://github.com/fundamentalvision/BEVFormer/blob/master/projects/mmdet3d_plugin/datasets/pipelines/transform_3d.py#L289
+    Args:
+        scales
+    """
+
+    def __init__(self, scales=[]):
+        self.scales = scales
+        assert len(self.scales) == 1
+
+    def __call__(self, sample):
+        """Call function to pad images, masks, semantic segmentation maps.
+        Args:
+            sample (dict): Result dict from loading pipeline.
+        Returns:
+            dict: Updated result dict.
+        """
+        rand_ind = np.random.permutation(range(len(self.scales)))[0]
+        rand_scale = self.scales[rand_ind]
+
+        y_size = [int(img.shape[0] * rand_scale) for img in sample['img']]
+        x_size = [int(img.shape[1] * rand_scale) for img in sample['img']]
+        scale_factor = np.eye(4)
+        scale_factor[0, 0] *= rand_scale
+        scale_factor[1, 1] *= rand_scale
+        sample['img'] = [
+            imresize(img, (x_size[idx], y_size[idx]), return_scale=False)
+            for idx, img in enumerate(sample['img'])
+        ]
+        lidar2img = [scale_factor @ l2i for l2i in sample['lidar2img']]
+        sample['lidar2img'] = lidar2img
+        sample['img_shape'] = [img.shape for img in sample['img']]
+        sample['ori_shape'] = [img.shape for img in sample['img']]
+
+        return sample
+
+
+def imresize(img,
+             size,
+             return_scale=False,
+             interpolation='bilinear',
+             out=None,
+             backend=None):
+    """Resize image to a given size.
+
+    Args:
+        img (ndarray): The input image.
+        size (tuple[int]): Target size (w, h).
+        return_scale (bool): Whether to return `w_scale` and `h_scale`.
+        interpolation (str): Interpolation method, accepted values are
+            "nearest", "bilinear", "bicubic", "area", "lanczos" for 'cv2'
+            backend, "nearest", "bilinear" for 'pillow' backend.
+        out (ndarray): The output destination.
+        backend (str | None): The image resize backend type. Options are `cv2`,
+            `pillow`, `None`. If backend is None, the global imread_backend
+            specified by ``cv2`` will be used. Default: None.
+
+    Returns:
+        tuple | ndarray: (`resized_img`, `w_scale`, `h_scale`) or
+            `resized_img`.
+    """
+    h, w = img.shape[:2]
+    if backend is None:
+        backend = 'cv2'
+    if backend not in ['cv2', 'pillow']:
+        raise ValueError(f'backend: {backend} is not supported for resize.'
+                         f"Supported backends are 'cv2', 'pillow'")
+
+    if backend == 'pillow':
+        assert img.dtype == np.uint8, 'Pillow backend only support uint8 type'
+        pil_image = Image.fromarray(img)
+        pil_image = pil_image.resize(size, pillow_interp_codes[interpolation])
+        resized_img = np.array(pil_image)
+    else:
+        resized_img = cv2.resize(
+            img, size, dst=out, interpolation=cv2_interp_codes[interpolation])
+    if not return_scale:
+        return resized_img
+    else:
+        w_scale = size[0] / w
+        h_scale = size[1] / h
+        return resized_img, w_scale, h_scale
+
+
+cv2_interp_codes = {
+    'nearest': cv2.INTER_NEAREST,
+    'bilinear': cv2.INTER_LINEAR,
+    'bicubic': cv2.INTER_CUBIC,
+    'area': cv2.INTER_AREA,
+    'lanczos': cv2.INTER_LANCZOS4
+}
+
+if Image is not None:
+    pillow_interp_codes = {
+        'nearest': Image.NEAREST,
+        'bilinear': Image.BILINEAR,
+        'bicubic': Image.BICUBIC,
+        'box': Image.BOX,
+        'lanczos': Image.LANCZOS,
+        'hamming': Image.HAMMING
+    }

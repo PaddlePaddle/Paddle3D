@@ -10,6 +10,8 @@ for op_name, op_dict in custom_ops.items():
     if paddle.device.is_compiled_with_cuda():
         extension = CUDAExtension
         flags = {'cxx': ['-DPADDLE_WITH_CUDA']}
+        if 'extra_cuda_cflags' in op_dict:
+            flags['nvcc'] = op_dict.pop('extra_cuda_cflags')
     else:
         sources = filter(lambda x: x.endswith('cu'), sources)
         extension = CppExtension
@@ -17,9 +19,5 @@ for op_name, op_dict in custom_ops.items():
     if len(sources) == 0:
         continue
 
-    extension = extension(sources=sources)
-    setup(
-        name=op_name,
-        ext_modules=extension,
-        extra_compile_args=flags,
-        **op_dict)
+    extension = extension(sources=sources, extra_compile_args=flags)
+    setup(name=op_name, ext_modules=extension)
