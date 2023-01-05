@@ -11,7 +11,7 @@ amp_cfg:
 train_dataset:
   type: NuscenesMVDataset
   dataset_root: data/nuscenes/
-  ann_file: data/nuscenes/mmdet3d_nuscenes_30f_infos_train.pkl
+  ann_file: data/nuscenes/petr_nuscenes_annotation_train.pkl
   mode: train
   use_valid_flag: True
   class_names: [
@@ -68,7 +68,7 @@ train_dataset:
 val_dataset:
   type: NuscenesMVDataset
   dataset_root: data/nuscenes/
-  ann_file: data/nuscenes/mmdet3d_nuscenes_30f_infos_val.pkl
+  ann_file: data/nuscenes/petr_nuscenes_annotation_val.pkl
   mode: val
   class_names: ['car', 'truck', 'construction_vehicle', 'bus', 'trailer',
                     'barrier', 'motorcycle', 'bicycle', 'pedestrian',
@@ -190,7 +190,7 @@ model:
     bbox_coder:
       type: NMSFreeCoder
       post_center_range: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
-      pc_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+      point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
       max_num: 300
       voxel_size: [0.2, 0.2, 8]
       num_classes: 10

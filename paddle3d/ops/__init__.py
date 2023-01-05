@@ -27,7 +27,7 @@ from paddle3d.utils.logger import logger
 custom_ops = {
     'voxelize': {
         'sources': ['voxel/voxelize_op.cc', 'voxel/voxelize_op.cu'],
-        'version': '0.1.0',
+        'version': '0.1.0'
     },
     'iou3d_nms_cuda': {
         'sources': [
@@ -35,7 +35,7 @@ custom_ops = {
             'iou3d_nms/iou3d_nms.cpp', 'iou3d_nms/iou3d_nms_kernel.cu'
         ],
         'version':
-        '0.1.0',
+        '0.1.0'
     },
     'centerpoint_postprocess': {
         'sources': [
@@ -44,7 +44,7 @@ custom_ops = {
             'centerpoint_postprocess/postprocess.cu'
         ],
         'version':
-        '0.1.0',
+        '0.1.0'
     },
     'grid_sample_3d': {
         'sources': [
@@ -59,9 +59,9 @@ custom_ops = {
             "assign_score_withk/assign_score_withk_cuda.cc",
             "assign_score_withk/assign_score_withk_kernel.cu"
         ],
-        'extra_cuda_cflags': ['-arch=sm_60'],
         'version':
         '0.1.0',
+        'extra_cuda_cflags': ['-arch=sm_60'],
     },
     'pointnet2_ops': {
         'sources': [
@@ -87,6 +87,15 @@ custom_ops = {
         ],
         'version':
         '0.1.0'
+    },
+    'ms_deform_attn': {
+        'sources': [
+            'ms_deform_attn/ms_deform_attn.cc',
+            'ms_deform_attn/ms_deform_attn.cu'
+        ],
+        'version':
+        '0.1.0',
+        'extra_cuda_cflags': ['-arch=sm_60'],
     }
 }
 
