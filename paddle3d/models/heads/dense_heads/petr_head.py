@@ -238,7 +238,7 @@ class PETRHead(nn.Layer):
         self.code_weights.stop_gradient = True
 
         self.bbox_coder = bbox_coder
-        self.pc_range = self.bbox_coder.pc_range
+        self.pc_range = self.bbox_coder.point_cloud_range
         self._init_layers()
         self.transformer = transformer
         self.pd_eps = paddle.to_tensor(np.finfo('float32').eps)

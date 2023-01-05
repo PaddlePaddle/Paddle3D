@@ -26,7 +26,7 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
 聚合主流3D感知算法及精度调优策略，覆盖单目、点云等多种模态及检测、分割等多种任务类型。
 
 
-### 🎗️端到端全流程 
+### 🎗️端到端全流程
 
 支持KITTI、nuScenes、Waymo等主流3D数据集，提供从数据处理、模型搭建、训练调优到部署落地的全流程能力，极致优化模型性能，适配多种自动驾驶主流芯片，支持计算图优化、TensorRT/OpenVINO等加速库，并提供了开箱即用的部署教程，5分钟即可完成模型部署。
 
@@ -64,7 +64,7 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
 
   - **🎗️Paddle3D v1.0正式版解读**
     - `文章传送门`：[Paddle3D正式版发布！BEV、单目、激光雷达3D感知算法开箱即用，无缝衔接Apollo](https://mp.weixin.qq.com/s/LL0DgKxEVsfhpFO6HedQ7Q)
-  
+
     <div align="center">
     <img src="https://user-images.githubusercontent.com/61035602/210311019-bdb15ec8-e8b9-471c-aa1d-d2f953a6939a.png"  height = "250" caption='' />
     <p></p>
@@ -72,7 +72,7 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
 
   - **🚦自动驾驶感知系统揭秘**
     - `课程录播&PPT传送门`：[自动驾驶感知系统揭秘](https://aistudio.baidu.com/aistudio/education/group/info/26961)
-  
+
     <div align="center">
     <img src="https://user-images.githubusercontent.com/61035602/210315230-83ace5d1-1851-4d9b-b305-4290edf9dde8.png"  height = "300" caption='' />
     <p></p>
@@ -133,12 +133,12 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
         <ul>
         <ul>
           <li><a href="docs/models/petr">PETR</a></li>
-          <li><a href="docs/models/petr">PETRv2</a></li> 
-          <li><a href="https://github.com/PaddlePaddle/Paddle3D/pull/152">BEVFormer</a></li>
+          <li><a href="docs/models/petr">PETRv2</a></li>
+          <li><a href="docs/models/bevformer">BEVFormer</a></li>
         </ul>
       </td>
       <td>
-        <ul> 
+        <ul>
             <li><a href="paddle3d/models/backbones">DLA</a></li>
             <li><a href="paddle3d/models/backbones">HRNet</a></li>
             <li><a href="paddle3d/models/backbones">ResNet</a></li>
