@@ -51,6 +51,11 @@ class OneCycleAdam(object):
         self._grad_clip = self.optimizer._grad_clip
         self.optimizer._grad_clip = None
 
+    @property
+    def _parameter_list(self):
+        return self.optimizer._parameter_list
+
+
     def _set_beta1(self, beta1, pow):
         """_set_beta1"""
         # currently support Adam and AdamW only
@@ -70,7 +75,7 @@ class OneCycleAdam(object):
 
     def before_iter(self, curr_iter):
         """before_iter"""
-        lr = self._learning_rate.get_lr(curr_iter=curr_iter)
+        lr = self._learning_rate.get_lr(curr_iter)
         self.optimizer.set_lr(lr)
         beta1 = self.beta1.get_momentum(curr_iter=curr_iter)
         self._set_beta1(beta1, pow=curr_iter + 1)
@@ -118,6 +123,10 @@ class OneCycleAdam(object):
         self.regularize()
         self.optimizer.step()
         self.optimizer.clear_grad()
+
+    def step(self):
+        self.before_iter(self._learning_rate.last_epoch + 1)
+        self.after_iter()
 
     def set_state_dict(self, optimizer):
         self.optimizer.set_state_dict(optimizer)

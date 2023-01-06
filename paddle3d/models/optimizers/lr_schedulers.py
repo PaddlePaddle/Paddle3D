@@ -37,13 +37,17 @@ class OneCycleWarmupDecayLr(LRScheduler):
                  base_learning_rate,
                  lr_ratio_peak=10,
                  lr_ratio_trough=1e-4,
-                 step_ratio_peak=0.4):
+                 step_ratio_peak=0.4,
+                 last_epoch=-1,
+                 verbose=False):
         self.base_learning_rate = base_learning_rate
         self.lr_ratio_peak = lr_ratio_peak
         self.lr_ratio_trough = lr_ratio_trough
         self.step_ratio_peak = step_ratio_peak
         self.lr_phases = []  # init lr_phases
         self.anneal_func = annealing_cos
+        self.last_epoch = last_epoch
+        self.verbose = verbose
 
     def before_run(self, max_iters):
         """before_run"""
@@ -54,8 +58,10 @@ class OneCycleWarmupDecayLr(LRScheduler):
             self.lr_ratio_trough
         ])
 
-    def get_lr(self, curr_iter):
+    def get_lr(self, curr_iter=None):
         """get_lr"""
+        if curr_iter is None:
+            curr_iter = self.last_epoch
         for (start_iter, end_iter, lr_start_ratio,
              lr_end_ratio) in self.lr_phases:
             if start_iter <= curr_iter < end_iter:
