@@ -19,6 +19,7 @@ from collections import defaultdict
 from typing import Callable, Optional, Union
 
 import paddle
+from paddle.distributed import fleet
 from visualdl import LogWriter
 
 import paddle3d.env as env
@@ -121,7 +122,8 @@ class Trainer:
             checkpoint: Union[dict, CheckpointABC] = dict(),
             scheduler: Union[dict, SchedulerABC] = dict(),
             dataloader_fn: Union[dict, Callable] = dict(),
-            amp_cfg: Optional[dict] = None):
+            amp_cfg: Optional[dict] = None,
+            fleet: Optional[int] = False):
 
         self.model = model
         self.optimizer = optimizer
@@ -240,6 +242,7 @@ class Trainer:
             logger.info(
                 'Use AMP train, AMP config: {}, Scaler config: {}'.format(
                     amp_cfg_, scaler_cfg_))
+        self.fleet = fleet
 
     def train(self):
         """
@@ -260,11 +263,18 @@ class Trainer:
                     self.model)
 
         model = self.model
-        if env.nranks > 1:
-            if not paddle.distributed.parallel.parallel_helper._is_parallel_ctx_initialized(
-            ):
-                paddle.distributed.init_parallel_env()
-            model = paddle.DataParallel(self.model)
+        if self.fleet:
+            strategy = fleet.DistributedStrategy()
+            strategy.find_unused_parameters = False
+            fleet.init(is_collective=True, strategy=strategy)
+            model = fleet.distributed_model(model)
+            self.optimizer = fleet.distributed_optimizer(self.optimizer)
+        else:
+            if env.nranks > 1:
+                if not paddle.distributed.parallel.parallel_helper._is_parallel_ctx_initialized(
+                ):
+                    paddle.distributed.init_parallel_env()
+                model = paddle.DataParallel(self.model)
 
         losses_sum = defaultdict(float)
         timer = Timer(iters=self.iters - self.cur_iter)
