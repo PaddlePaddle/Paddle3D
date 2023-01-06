@@ -20,6 +20,7 @@ This code is based on https://github.com/TRAILab/CaDDN/blob/master/tools/train_u
 Ths copyright of CaDDN is as follows:
 Apache-2.0 license [see LICENSE for details].
 """
+
 from functools import partial
 
 import paddle
@@ -32,18 +33,21 @@ from .utils import annealing_cos
 
 @manager.LR_SCHEDULERS.add_component
 class OneCycleWarmupDecayLr(LRScheduler):
-
     def __init__(self,
                  base_learning_rate,
                  lr_ratio_peak=10,
                  lr_ratio_trough=1e-4,
-                 step_ratio_peak=0.4):
+                 step_ratio_peak=0.4,
+                 last_epoch=-1,
+                 verbose=False):
         self.base_learning_rate = base_learning_rate
         self.lr_ratio_peak = lr_ratio_peak
         self.lr_ratio_trough = lr_ratio_trough
         self.step_ratio_peak = step_ratio_peak
         self.lr_phases = []  # init lr_phases
         self.anneal_func = annealing_cos
+        self.last_epoch = last_epoch
+        self.verbose = verbose
 
     def before_run(self, max_iters):
         """before_run"""
@@ -54,8 +58,10 @@ class OneCycleWarmupDecayLr(LRScheduler):
             self.lr_ratio_trough
         ])
 
-    def get_lr(self, curr_iter):
+    def get_lr(self, curr_iter=None):
         """get_lr"""
+        if curr_iter is None:
+            curr_iter = self.last_epoch
         for (start_iter, end_iter, lr_start_ratio,
              lr_end_ratio) in self.lr_phases:
             if start_iter <= curr_iter < end_iter:
@@ -66,7 +72,6 @@ class OneCycleWarmupDecayLr(LRScheduler):
 
 
 class LRSchedulerCycle(LRScheduler):
-
     def __init__(self, total_step, lr_phases, mom_phases):
 
         self.total_step = total_step
@@ -78,12 +83,12 @@ class LRSchedulerCycle(LRScheduler):
             if isinstance(lambda_func, str):
                 lambda_func = eval(lambda_func)
             if i < len(lr_phases) - 1:
-                self.lr_phases.append(
-                    (int(start * total_step),
-                     int(lr_phases[i + 1][0] * total_step), lambda_func))
+                self.lr_phases.append((int(start * total_step),
+                                       int(lr_phases[i + 1][0] * total_step),
+                                       lambda_func))
             else:
-                self.lr_phases.append(
-                    (int(start * total_step), total_step, lambda_func))
+                self.lr_phases.append((int(start * total_step), total_step,
+                                       lambda_func))
         assert self.lr_phases[0][0] == 0
         self.mom_phases = []
         for i, (start, lambda_func) in enumerate(mom_phases):
@@ -92,19 +97,18 @@ class LRSchedulerCycle(LRScheduler):
             if isinstance(lambda_func, str):
                 lambda_func = eval(lambda_func)
             if i < len(mom_phases) - 1:
-                self.mom_phases.append(
-                    (int(start * total_step),
-                     int(mom_phases[i + 1][0] * total_step), lambda_func))
+                self.mom_phases.append((int(start * total_step),
+                                        int(mom_phases[i + 1][0] * total_step),
+                                        lambda_func))
             else:
-                self.mom_phases.append(
-                    (int(start * total_step), total_step, lambda_func))
+                self.mom_phases.append((int(start * total_step), total_step,
+                                        lambda_func))
         assert self.mom_phases[0][0] == 0
         super().__init__()
 
 
 @manager.OPTIMIZERS.add_component
 class OneCycle(LRSchedulerCycle):
-
     def __init__(self, total_step, lr_max, moms, div_factor, pct_start):
         self.lr_max = lr_max
         self.moms = moms
@@ -154,8 +158,8 @@ class CosineAnnealingDecayByEpoch(paddle.optimizer.lr.CosineAnnealingDecay):
         if self.last_epoch == 0:
             return self.base_lr
         else:
-            cur_epoch = (self.last_epoch +
-                         self.warmup_iters) // self.iters_per_epoch
+            cur_epoch = (
+                self.last_epoch + self.warmup_iters) // self.iters_per_epoch
             return annealing_cos(self.base_lr, self.eta_min,
                                  cur_epoch / self.T_max)
 
