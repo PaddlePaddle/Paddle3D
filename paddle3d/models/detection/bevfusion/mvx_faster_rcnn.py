@@ -12,8 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .anchor3d_generator import *
-from .anchor_generator import *
-from .axis_aligned_target_assigner import *
-from .hungarian_assigner import HungarianAssigner3D
-from .max_iou_assigner import *
+from paddle3d.apis import manager
+from paddle3d.models.detection.bevfusion.mvx_two_stage import \
+    MVXTwoStageDetector
+
+__all__ = ['MVXFasterRCNN']
+
+@manager.MODELS.add_component
+class MVXFasterRCNN(MVXTwoStageDetector):
+    """Multi-modality model using Faster R-CNN."""
+
+    def __init__(self, **kwargs):
+        super(MVXFasterRCNN, self).__init__(**kwargs)

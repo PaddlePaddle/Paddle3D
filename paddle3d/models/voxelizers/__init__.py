@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .voxelize import HardVoxelizer
+from .voxelize_v2 import HardVoxelizerV2

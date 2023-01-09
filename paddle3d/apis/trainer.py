@@ -260,6 +260,7 @@ class Trainer:
                     self.model)
 
         model = self.model
+        logger.info(model)
         if env.nranks > 1:
             if not paddle.distributed.parallel.parallel_helper._is_parallel_ctx_initialized(
             ):
@@ -267,6 +268,7 @@ class Trainer:
             model = paddle.DataParallel(self.model)
 
         losses_sum = defaultdict(float)
+        grad_norm_sum = 0
         timer = Timer(iters=self.iters - self.cur_iter)
 
         while self.cur_iter < self.iters:
@@ -281,7 +283,7 @@ class Trainer:
                     break
 
                 lr = self.optimizer.get_lr()
-                output = training_step(
+                output, grad_norm = training_step(
                     model,
                     self.optimizer,
                     sample,
@@ -289,38 +291,37 @@ class Trainer:
                     scaler=self.scaler,
                     amp_cfg=self.amp_cfg)
 
-                if isinstance(output['loss'], dict):
-                    for k, v in output['loss'].items():
-                        losses_sum[k] += float(v)
-
-                losses_sum['total_loss'] += float(output['total_loss'])
+                for loss_name, loss_value in output.items():
+                    losses_sum[loss_name] += float(loss_value)
+                grad_norm_sum += grad_norm
 
                 timer.step()
                 status = self.scheduler.step()
 
                 if status.do_log and env.local_rank == 0:
-
                     loss_log = ''
+                    for loss_name, loss_value in losses_sum.items():
+                        loss_value = loss_value / self.scheduler.log_interval
+                        loss_log += ', {}={:.6f}'.format(loss_name, loss_value)
+                        self.log_writer.add_scalar(
+                            tag='Training/' + loss_name,
+                            value=loss_value,
+                            step=self.cur_iter)
+                    grad_norm_sum = grad_norm_sum / self.scheduler.log_interval
+
+                    logger.info(
+                        '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f}, grad_norm={:.6f} | ETA {}'
+                        .format(self.cur_epoch, self.epochs, self.cur_iter,
+                                self.iters, loss_log, lr, grad_norm_sum,
+                                timer.eta))
 
                     self.log_writer.add_scalar(
                         tag='Training/learning_rate',
                         value=lr,
                         step=self.cur_iter)
 
-                    for k, v in losses_sum.items():
-                        loss_val = v / self.scheduler.log_interval
-                        loss_log += ', {}={:.6f}'.format(k, loss_val)
-                        self.log_writer.add_scalar(
-                            tag='Training/' + k,
-                            value=loss_val,
-                            step=self.cur_iter)
-
-                    logger.info(
-                        '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f} | ETA {}'
-                        .format(self.cur_epoch, self.epochs, self.cur_iter,
-                                self.iters, loss_log, lr, timer.eta))
-
                     losses_sum.clear()
+                    grad_norm_sum = 0
 
                 if status.do_eval and env.local_rank == 0:
                     # TODO: whether to save a checkpoint based on the metric

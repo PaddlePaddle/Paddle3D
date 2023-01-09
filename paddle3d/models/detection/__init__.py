@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import bevformer, caddn, centerpoint, iassd, petr, pointpillars, smoke, pv_rcnn, voxel_rcnn
+from . import bevformer, bevfusion, caddn, centerpoint, iassd, petr, pointpillars, smoke, pv_rcnn, voxel_rcnn
 from .bevformer import *
+from .bevfusion import *
 from .caddn import *
 from .centerpoint import *
 from .iassd import *

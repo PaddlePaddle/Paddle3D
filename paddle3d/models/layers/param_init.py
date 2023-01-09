@@ -22,6 +22,12 @@ import paddle.nn as nn
 from paddle3d.utils.logger import logger
 
 
+def bias_init_with_prob(prior_prob):
+    """initialize conv/fc bias value according to a given probability value."""
+    bias_init = float(-np.log((1 - prior_prob) / prior_prob))
+    return bias_init
+
+
 def constant_init(param, **kwargs):
     """
     Initialize the `param` with constants.

@@ -160,12 +160,33 @@ class Config(object):
 
     @property
     def optimizer(self) -> paddle.optimizer.Optimizer:
-        params = self.dic.get('optimizer', {}).copy()
+        optimizer_cfg = self.dic.get('optimizer', {}).copy()
 
-        params['learning_rate'] = self.lr_scheduler
-        params['parameters'] = self.model.parameters()
+        # set different lr and different wd in different layer
+        # according to custom key
+        # base_wd = optimizer_cfg.get('weight_decay', None)
+        # parameters = []
+        # for name, params in self.model.named_parameters():
+        #     param_group = {'params': [params]}
+        #     if not params.trainable:
+        #         parameters.append(param_group)
+        #         continue
 
-        return self._load_object(params)
+        #     for key in list(decay_cfg.keys()):
+        #         if key in name:
+        #             if base_wd is not None:
+        #                 decay_mult = decay_cfg[key].get('decay_mult')
+        #                 param_group['weight_decay'] = base_wd * decay_mult
+
+        #     parameters.append(param_group)
+
+        # optimizer_cfg['parameters'] = parameters
+
+        optimizer_cfg['learning_rate'] = self.lr_scheduler
+        optimizer_cfg['parameters'] = filter(lambda p: p.trainable,
+                                             self.model.parameters())
+
+        return self._load_object(optimizer_cfg)
 
     @property
     def model(self) -> paddle.nn.Layer:
