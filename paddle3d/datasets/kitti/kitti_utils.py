@@ -243,6 +243,9 @@ def projection_matrix_decomposition(proj):
 
 
 def filter_fake_result(detection: Sample):
+    if detection.get('bboxes_3d', None) is None:
+        return
+
     box3d = detection.bboxes_3d
     scores = detection.confidences
     labels = detection.labels
