@@ -309,16 +309,16 @@ class Trainer:
                             step=self.cur_iter)
                     grad_norm_sum = grad_norm_sum / self.scheduler.log_interval
 
+                    self.log_writer.add_scalar(
+                        tag='Training/learning_rate',
+                        value=lr,
+                        step=self.cur_iter)
+
                     logger.info(
                         '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f}, grad_norm={:.6f} | ETA {}'
                         .format(self.cur_epoch, self.epochs, self.cur_iter,
                                 self.iters, loss_log, lr, grad_norm_sum,
                                 timer.eta))
-
-                    self.log_writer.add_scalar(
-                        tag='Training/learning_rate',
-                        value=lr,
-                        step=self.cur_iter)
 
                     losses_sum.clear()
                     grad_norm_sum = 0

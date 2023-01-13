@@ -78,10 +78,11 @@ class Config(object):
         else:
             raise RuntimeError('Config file should in yaml format!')
 
-        self.update(learning_rate=learning_rate,
-                    batch_size=batch_size,
-                    iters=iters,
-                    epochs=epochs)
+        self.update(
+            learning_rate=learning_rate,
+            batch_size=batch_size,
+            iters=iters,
+            epochs=epochs)
 
     def _update_dic(self, dic: Dict, base_dic: Dict):
         '''Update config from dic based base_dic
@@ -161,26 +162,6 @@ class Config(object):
     @property
     def optimizer(self) -> paddle.optimizer.Optimizer:
         optimizer_cfg = self.dic.get('optimizer', {}).copy()
-
-        # set different lr and different wd in different layer
-        # according to custom key
-        # base_wd = optimizer_cfg.get('weight_decay', None)
-        # parameters = []
-        # for name, params in self.model.named_parameters():
-        #     param_group = {'params': [params]}
-        #     if not params.trainable:
-        #         parameters.append(param_group)
-        #         continue
-
-        #     for key in list(decay_cfg.keys()):
-        #         if key in name:
-        #             if base_wd is not None:
-        #                 decay_mult = decay_cfg[key].get('decay_mult')
-        #                 param_group['weight_decay'] = base_wd * decay_mult
-
-        #     parameters.append(param_group)
-
-        # optimizer_cfg['parameters'] = parameters
 
         optimizer_cfg['learning_rate'] = self.lr_scheduler
         optimizer_cfg['parameters'] = filter(lambda p: p.trainable,
@@ -303,8 +284,8 @@ class Config(object):
             if recursive:
                 params = {}
                 for key, val in dic.items():
-                    params[key] = self._load_object(obj=val,
-                                                    recursive=recursive)
+                    params[key] = self._load_object(
+                        obj=val, recursive=recursive)
             else:
                 params = dic
             try:

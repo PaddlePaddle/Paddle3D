@@ -27,7 +27,6 @@ from .anchor_mixins import AnchorTrainMixin, limit_period, multi_apply
 from .samplers import PseudoSampler
 from .target_assigner import MaxIoUAssigner
 
-
 __all__ = ['Anchor3DHead']
 
 
@@ -148,10 +147,10 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
         """Forward function on a single-scale feature map.
 
         Args:
-            x (torch.Tensor): Input features.
+            x (paddle.Tensor): Input features.
 
         Returns:
-            tuple[torch.Tensor]: Contain score of each class, bbox \
+            tuple[paddle.Tensor]: Contain score of each class, bbox \
                 regression and direction classification predictions.
         """
         cls_score = self.conv_cls(x)
@@ -165,11 +164,11 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
         """Forward pass.
 
         Args:
-            feats (list[torch.Tensor]): Multi-level features, e.g.,
+            feats (list[paddle.Tensor]): Multi-level features, e.g.,
                 features produced by FPN.
 
         Returns:
-            tuple[list[torch.Tensor]]: Multi-level class score, bbox \
+            tuple[list[paddle.Tensor]]: Multi-level class score, bbox \
                 and direction predictions.
         """
         return multi_apply(self.forward_single, feats)
@@ -183,7 +182,7 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
             device (str): device of current module.
 
         Returns:
-            list[list[torch.Tensor]]: Anchors of each image, valid flags \
+            list[list[paddle.Tensor]]: Anchors of each image, valid flags \
                 of each image.
         """
         num_imgs = len(input_metas)
@@ -199,20 +198,20 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
         """Calculate loss of Single-level results.
 
         Args:
-            cls_score (torch.Tensor): Class score in single-level.
-            bbox_pred (torch.Tensor): Bbox prediction in single-level.
-            dir_cls_preds (torch.Tensor): Predictions of direction class
+            cls_score (paddle.Tensor): Class score in single-level.
+            bbox_pred (paddle.Tensor): Bbox prediction in single-level.
+            dir_cls_preds (paddle.Tensor): Predictions of direction class
                 in single-level.
-            labels (torch.Tensor): Labels of class.
-            label_weights (torch.Tensor): Weights of class loss.
-            bbox_targets (torch.Tensor): Targets of bbox predictions.
-            bbox_weights (torch.Tensor): Weights of bbox loss.
-            dir_targets (torch.Tensor): Targets of direction predictions.
-            dir_weights (torch.Tensor): Weights of direction loss.
+            labels (paddle.Tensor): Labels of class.
+            label_weights (paddle.Tensor): Weights of class loss.
+            bbox_targets (paddle.Tensor): Targets of bbox predictions.
+            bbox_weights (paddle.Tensor): Weights of bbox loss.
+            dir_targets (paddle.Tensor): Targets of direction predictions.
+            dir_weights (paddle.Tensor): Weights of direction loss.
             num_total_samples (int): The number of valid samples.
 
         Returns:
-            tuple[torch.Tensor]: Losses of class, bbox \
+            tuple[paddle.Tensor]: Losses of class, bbox \
                 and direction, respectively.
         """
         # classification loss
@@ -289,13 +288,13 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
         """Convert the rotation difference to difference in sine function.
 
         Args:
-            boxes1 (torch.Tensor): Original Boxes in shape (NxC), where C>=7
+            boxes1 (paddle.Tensor): Original Boxes in shape (NxC), where C>=7
                 and the 7th dimension is rotation dimension.
-            boxes2 (torch.Tensor): Target boxes in shape (NxC), where C>=7 and
+            boxes2 (paddle.Tensor): Target boxes in shape (NxC), where C>=7 and
                 the 7th dimension is rotation dimension.
 
         Returns:
-            tuple[torch.Tensor]: ``boxes1`` and ``boxes2`` whose 7th \
+            tuple[paddle.Tensor]: ``boxes1`` and ``boxes2`` whose 7th \
                 dimensions are changed.
         """
         rad_pred_encoding = paddle.sin(boxes1[..., 6:7]) * paddle.cos(
@@ -319,24 +318,24 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
         """Calculate losses.
 
         Args:
-            cls_scores (list[torch.Tensor]): Multi-level class scores.
-            bbox_preds (list[torch.Tensor]): Multi-level bbox predictions.
-            dir_cls_preds (list[torch.Tensor]): Multi-level direction
+            cls_scores (list[paddle.Tensor]): Multi-level class scores.
+            bbox_preds (list[paddle.Tensor]): Multi-level bbox predictions.
+            dir_cls_preds (list[paddle.Tensor]): Multi-level direction
                 class predictions.
             gt_bboxes (list[:obj:`BaseInstance3DBoxes`]): Gt bboxes
                 of each sample.
-            gt_labels (list[torch.Tensor]): Gt labels of each sample.
+            gt_labels (list[paddle.Tensor]): Gt labels of each sample.
             input_metas (list[dict]): Contain pcd and img's meta info.
-            gt_bboxes_ignore (None | list[torch.Tensor]): Specify
+            gt_bboxes_ignore (None | list[paddle.Tensor]): Specify
                 which bounding.
 
         Returns:
-            dict[str, list[torch.Tensor]]: Classification, bbox, and \
+            dict[str, list[paddle.Tensor]]: Classification, bbox, and \
                 direction losses of each level.
 
-                - loss_cls (list[torch.Tensor]): Classification losses.
-                - loss_bbox (list[torch.Tensor]): Box regression losses.
-                - loss_dir (list[torch.Tensor]): Direction classification \
+                - loss_cls (list[paddle.Tensor]): Classification losses.
+                - loss_bbox (list[paddle.Tensor]): Box regression losses.
+                - loss_dir (list[paddle.Tensor]): Direction classification \
                     losses.
         """
         featmap_sizes = [featmap.shape[-2:] for featmap in cls_scores]
@@ -361,17 +360,6 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
         num_total_samples = (num_total_pos + num_total_neg
                              if self.sampling else num_total_pos)
 
-        # import torch
-        # cls_scores[0] = paddle.to_tensor(torch.load("/workspace/liuxiao28/temp/cls_scores.pth", map_location='cpu').detach().numpy())
-        # bbox_preds[0] = paddle.to_tensor(torch.load("/workspace/liuxiao28/temp/bbox_preds.pth", map_location='cpu').detach().numpy())
-        # dir_cls_preds[0] = paddle.to_tensor(torch.load("/workspace/liuxiao28/temp/dir_cls_preds.pth", map_location='cpu').detach().numpy())
-        # num_total_samples = 63
-        # labels_list[0] = paddle.to_tensor(torch.load("/workspace/liuxiao28/temp/labels_list.pth", map_location='cpu').detach().numpy())
-        # label_weights_list[0] = paddle.to_tensor(torch.load("/workspace/liuxiao28/temp/label_weights_list.pth", map_location='cpu').detach().numpy())
-        # bbox_targets_list[0] = paddle.to_tensor(torch.load("/workspace/liuxiao28/temp/bbox_targets_list.pth", map_location='cpu').detach().numpy())
-        # bbox_weights_list[0] = paddle.to_tensor(torch.load("/workspace/liuxiao28/temp/bbox_weights_list.pth", map_location='cpu').detach().numpy())
-        # dir_targets_list[0] = paddle.to_tensor(torch.load("/workspace/liuxiao28/temp/dir_targets_list.pth", map_location='cpu').detach().numpy())
-        # dir_weights_list[0] = paddle.to_tensor(torch.load("/workspace/liuxiao28/temp/dir_weights_list.pth", map_location='cpu').detach().numpy())
         losses_cls, losses_bbox, losses_dir = multi_apply(
             self.loss_single,
             cls_scores,
@@ -397,13 +385,13 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
         """Get bboxes of anchor head.
 
         Args:
-            cls_scores (list[torch.Tensor]): Multi-level class scores.
-            bbox_preds (list[torch.Tensor]): Multi-level bbox predictions.
-            dir_cls_preds (list[torch.Tensor]): Multi-level direction
+            cls_scores (list[paddle.Tensor]): Multi-level class scores.
+            bbox_preds (list[paddle.Tensor]): Multi-level bbox predictions.
+            dir_cls_preds (list[paddle.Tensor]): Multi-level direction
                 class predictions.
             input_metas (list[dict]): Contain pcd and img's meta info.
             cfg (None | :obj:`ConfigDict`): Training or testing config.
-            rescale (list[torch.Tensor]): Whether th rescale bbox.
+            rescale (list[paddle.Tensor]): Whether th rescale bbox.
 
         Returns:
             list[tuple]: Prediction resultes of batches.
@@ -447,22 +435,22 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
         """Get bboxes of single branch.
 
         Args:
-            cls_scores (torch.Tensor): Class score in single batch.
-            bbox_preds (torch.Tensor): Bbox prediction in single batch.
-            dir_cls_preds (torch.Tensor): Predictions of direction class
+            cls_scores (paddle.Tensor): Class score in single batch.
+            bbox_preds (paddle.Tensor): Bbox prediction in single batch.
+            dir_cls_preds (paddle.Tensor): Predictions of direction class
                 in single batch.
-            mlvl_anchors (List[torch.Tensor]): Multi-level anchors
+            mlvl_anchors (List[paddle.Tensor]): Multi-level anchors
                 in single batch.
             input_meta (list[dict]): Contain pcd and img's meta info.
             cfg (None | :obj:`ConfigDict`): Training or testing config.
-            rescale (list[torch.Tensor]): whether th rescale bbox.
+            rescale (list[paddle.Tensor]): whether th rescale bbox.
 
         Returns:
             tuple: Contain predictions of single batch.
 
                 - bboxes (:obj:`BaseInstance3DBoxes`): Predicted 3d bboxes.
-                - scores (torch.Tensor): Class score of each bbox.
-                - labels (torch.Tensor): Label of each bbox.
+                - scores (paddle.Tensor): Class score of each bbox.
+                - labels (paddle.Tensor): Label of each bbox.
         """
         cfg = self.test_cfg if cfg is None else cfg
         assert len(cls_scores) == len(bbox_preds) == len(mlvl_anchors)
@@ -533,10 +521,10 @@ def xywhr2xyxyr(boxes_xywhr):
     """Convert a rotated boxes in XYWHR format to XYXYR format.
 
     Args:
-        boxes_xywhr (torch.Tensor): Rotated boxes in XYWHR format.
+        boxes_xywhr (paddle.Tensor): Rotated boxes in XYWHR format.
 
     Returns:
-        torch.Tensor: Converted boxes in XYXYR format.
+        paddle.Tensor: Converted boxes in XYXYR format.
     """
     boxes = paddle.zeros_like(boxes_xywhr)
     half_w = boxes_xywhr[:, 2] / 2

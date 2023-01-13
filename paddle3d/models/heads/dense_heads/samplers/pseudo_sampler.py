@@ -73,18 +73,12 @@ class PseudoSampler(object):
 
     def sample(self, assign_result, bboxes, gt_bboxes, *args, **kwargs):
         """Directly returns the positive and negative indices  of samples.
-<<<<<<< HEAD
 
-=======
->>>>>>> Add initial code for bevfusion
         Args:
             assign_result (:obj:`AssignResult`): Assigned results
             bboxes (paddle.Tensor): Bounding boxes
             gt_bboxes (paddle.Tensor): Ground truth boxes
-<<<<<<< HEAD
 
-=======
->>>>>>> Add initial code for bevfusion
         Returns:
             :obj:`SamplingResult`: sampler results
         """

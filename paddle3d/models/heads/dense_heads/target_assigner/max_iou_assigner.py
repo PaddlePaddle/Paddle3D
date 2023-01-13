@@ -1,3 +1,17 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 import paddle
 
@@ -5,27 +19,6 @@ from paddle3d.models.heads.dense_heads.anchor_mixins import limit_period
 from paddle3d.sample import _EasyDict
 
 __all__ = ['MaxIoUAssigner']
-
-
-def load():
-    import torch
-    tensor = torch.load(
-        "/workspace/liuxiao28/temp/tensor.pth",
-        map_location='cpu').detach().numpy()
-    return paddle.to_tensor(tensor)
-
-
-def diff(tensor_1, tensor_2):
-    import numpy as np
-    differ = paddle.mean(paddle.abs(tensor_1 - tensor_2) / paddle.abs(tensor_2))
-    print("mean diff: ", differ.numpy())
-    isclose = np.allclose(tensor_1.numpy(), tensor_2.numpy())
-    print("all close: ", isclose)
-    max_diff = (tensor_1 - tensor_2).abs().max()
-    idx = paddle.nonzero((tensor_1 - tensor_2).abs() == max_diff).numpy()
-    print("max diff: ", max_diff.numpy())
-    if not isclose:
-        print("max diff idx: ", idx)
 
 
 class BboxOverlapsNearest3D(object):
@@ -52,14 +45,14 @@ class BboxOverlapsNearest3D(object):
             between each aligned pair of bboxes1 and bboxes2.
 
         Args:
-            bboxes1 (torch.Tensor): shape (N, 7+N) [x, y, z, h, w, l, ry, v].
-            bboxes2 (torch.Tensor): shape (M, 7+N) [x, y, z, h, w, l, ry, v].
+            bboxes1 (paddle.Tensor): shape (N, 7+N) [x, y, z, h, w, l, ry, v].
+            bboxes2 (paddle.Tensor): shape (M, 7+N) [x, y, z, h, w, l, ry, v].
             mode (str): "iou" (intersection over union) or iof
                 (intersection over foreground).
             is_aligned (bool): Whether the calculation is aligned.
 
         Return:
-            torch.Tensor: If ``is_aligned`` is ``True``, return ious between \
+            paddle.Tensor: If ``is_aligned`` is ``True``, return ious between \
                 bboxes1 and bboxes2 with shape (M, N). If ``is_aligned`` is \
                 ``False``, return shape is M.
         """

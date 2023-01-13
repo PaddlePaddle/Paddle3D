@@ -94,12 +94,12 @@ class VFELayer(nn.Layer):
         """Forward function.
 
         Args:
-            inputs (torch.Tensor): Voxels features of shape (N, M, C).
+            inputs (paddle.Tensor): Voxels features of shape (N, M, C).
                 N is the number of voxels, M is the number of points in
                 voxels, C is the number of channels of point features.
 
         Returns:
-            torch.Tensor: Voxel features. There are three mode under which the
+            paddle.Tensor: Voxel features. There are three mode under which the
                 features have different meaning.
                 - `max_out=False`: Return point-wise features in
                     shape (N, M, C).
@@ -227,10 +227,10 @@ class HardVFE(nn.Layer):
         """Forward functions.
 
         Args:
-            features (torch.Tensor): Features of voxels, shape is MxNxC.
-            num_points (torch.Tensor): Number of points in each voxel.
-            coors (torch.Tensor): Coordinates of voxels, shape is Mx(1+NDim).
-            img_feats (list[torch.Tensor], optional): Image fetures used for
+            features (paddle.Tensor): Features of voxels, shape is MxNxC.
+            num_points (paddle.Tensor): Number of points in each voxel.
+            coors (paddle.Tensor): Coordinates of voxels, shape is Mx(1+NDim).
+            img_feats (list[paddle.Tensor], optional): Image fetures used for
                 multi-modality fusion. Defaults to None.
             img_metas (dict, optional): [description]. Defaults to None.
 

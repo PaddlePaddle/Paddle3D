@@ -1,3 +1,19 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This code is based on https://github.com/ADLab-AutoDrive/BEVFusion/blob/3f992837ad659f050df38d7b0978372425be16ff/mmdet3d/core/anchor/anchor_3d_generator.py
+
 import paddle
 
 from paddle3d.apis import manager
@@ -76,7 +92,7 @@ class Anchor3DRangeGenerator(object):
             device (str): Device where the anchors will be put on.
 
         Returns:
-            list[torch.Tensor]: Anchors in multiple feature levels. \
+            list[paddle.Tensor]: Anchors in multiple feature levels. \
                 The sizes of each tensor should be [N, 4], where \
                 N = width * height * num_base_anchors, width and height \
                 are the sizes of the corresponding feature lavel, \
@@ -104,12 +120,8 @@ class Anchor3DRangeGenerator(object):
                 Defaults to 'cuda'.
 
         Returns:
-            torch.Tensor: Anchors in the overall feature map.
+            paddle.Tensor: Anchors in the overall feature map.
         """
-        # We reimplement the anchor generator using torch in cuda
-        # torch: 0.6975 s for 1000 times
-        # numpy: 4.3345 s for 1000 times
-        # which is ~5 times faster than the numpy implementation
         if not self.size_per_range:
             return self.anchors_single_range(featmap_size, self.ranges[0],
                                              scale, self.sizes, self.rotations)
@@ -133,18 +145,18 @@ class Anchor3DRangeGenerator(object):
         Args:
             feature_size (list[float] | tuple[float]): Feature map size. It is
                 either a list of a tuple of [D, H, W](in order of z, y, and x).
-            anchor_range (torch.Tensor | list[float]): Range of anchors with
+            anchor_range (paddle.Tensor | list[float]): Range of anchors with
                 shape [6]. The order is consistent with that of anchors, i.e.,
                 (x_min, y_min, z_min, x_max, y_max, z_max).
             scale (float | int, optional): The scale factor of anchors.
-            sizes (list[list] | np.ndarray | torch.Tensor): Anchor size with
+            sizes (list[list] | np.ndarray | paddle.Tensor): Anchor size with
                 shape [N, 3], in order of x, y, z.
-            rotations (list[float] | np.ndarray | torch.Tensor): Rotations of
+            rotations (list[float] | np.ndarray | paddle.Tensor): Rotations of
                 anchors in a single feature grid.
             device (str): Devices that the anchors will be put on.
 
         Returns:
-            torch.Tensor: Anchors with shape \
+            paddle.Tensor: Anchors with shape \
                 [*feature_size, num_sizes, num_rots, 7].
         """
         if len(feature_size) == 2:
@@ -159,9 +171,9 @@ class Anchor3DRangeGenerator(object):
         sizes = paddle.to_tensor(sizes).reshape([-1, 3]) * scale
         rotations = paddle.to_tensor(rotations)
 
-        # torch.meshgrid default behavior is 'id', np's default is 'xy'
+        # paddle.meshgrid default behavior is 'id', np's default is 'xy'
         rets = paddle.meshgrid(x_centers, y_centers, z_centers, rotations)
-        # torch.meshgrid returns a tuple rather than list
+        # paddle.meshgrid returns a tuple rather than list
         rets = list(rets)
         tile_shape = [1] * 5
         tile_shape[-2] = int(sizes.shape[0])
@@ -228,18 +240,18 @@ class AlignedAnchor3DRangeGenerator(Anchor3DRangeGenerator):
         Args:
             feature_size (list[float] | tuple[float]): Feature map size. It is
                 either a list of a tuple of [D, H, W](in order of z, y, and x).
-            anchor_range (torch.Tensor | list[float]): Range of anchors with
+            anchor_range (paddle.Tensor | list[float]): Range of anchors with
                 shape [6]. The order is consistent with that of anchors, i.e.,
                 (x_min, y_min, z_min, x_max, y_max, z_max).
             scale (float | int, optional): The scale factor of anchors.
-            sizes (list[list] | np.ndarray | torch.Tensor): Anchor size with
+            sizes (list[list] | np.ndarray | paddle.Tensor): Anchor size with
                 shape [N, 3], in order of x, y, z.
-            rotations (list[float] | np.ndarray | torch.Tensor): Rotations of
+            rotations (list[float] | np.ndarray | paddle.Tensor): Rotations of
                 anchors in a single feature grid.
             device (str): Devices that the anchors will be put on.
 
         Returns:
-            torch.Tensor: Anchors with shape \
+            paddle.Tensor: Anchors with shape \
                 [*feature_size, num_sizes, num_rots, 7].
         """
         if len(feature_size) == 2:
@@ -263,12 +275,12 @@ class AlignedAnchor3DRangeGenerator(Anchor3DRangeGenerator):
             y_centers += y_shift
             x_centers += x_shift
 
-        # torch.meshgrid default behavior is 'id', np's default is 'xy'
+        # paddle.meshgrid default behavior is 'id', np's default is 'xy'
         rets = paddle.meshgrid(x_centers[:feature_size[2]],
                                y_centers[:feature_size[1]],
                                z_centers[:feature_size[0]], rotations)
 
-        # torch.meshgrid returns a tuple rather than list
+        # paddle.meshgrid returns a tuple rather than list
         rets = list(rets)
         tile_shape = [1] * 5
         tile_shape[-2] = int(sizes.shape[0])

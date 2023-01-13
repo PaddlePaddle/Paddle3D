@@ -1,3 +1,17 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 import paddle
 import paddle.nn as nn
@@ -8,6 +22,7 @@ from paddle3d.models.layers.param_init import (constant_init, reset_parameters,
                                                xavier_uniform_init)
 
 __all__ = ['FPNC', 'ConvModule']
+
 
 def build_conv_layer(cfg, *args, **kwargs):
     if cfg is None:
@@ -139,6 +154,9 @@ class FPN(nn.Layer):
                  norm_cfg=None,
                  act_cfg=None,
                  upsample_cfg=dict(mode='nearest')):
+        """
+        This code is based on https://github.com/ADLab-AutoDrive/BEVFusion/blob/3f992837ad659f050df38d7b0978372425be16ff/mmdet3d/models/necks/fpn.py
+        """
         super(FPN, self).__init__()
         assert isinstance(in_channels, list)
         self.in_channels = in_channels
@@ -298,6 +316,9 @@ class FPNC(FPN):
                  fuse_conv_cfg=None,
                  outC=256,
                  **kwargs):
+        """
+        This code is based on https://github.com/ADLab-AutoDrive/BEVFusion/blob/3f992837ad659f050df38d7b0978372425be16ff/mmdet3d/models/necks/fpnc.py
+        """
         super(FPNC, self).__init__(
             conv_cfg=conv_cfg, norm_cfg=norm_cfg, act_cfg=act_cfg, **kwargs)
         self.target_size = (final_dim[0] // downsample,
