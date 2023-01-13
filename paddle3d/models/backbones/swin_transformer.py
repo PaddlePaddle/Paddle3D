@@ -587,7 +587,7 @@ class PatchEmbed(nn.Layer):
 @manager.BACKBONES.add_component
 class SwinTransformer(nn.Layer):
     """ Swin Transformer backbone.
-        A PyTorch impl of : `Swin Transformer: Hierarchical Vision Transformer using Shifted Windows`  -
+        A Paddle impl of : `Swin Transformer: Hierarchical Vision Transformer using Shifted Windows`  -
           https://arxiv.org/pdf/2103.14030
 
     Args:

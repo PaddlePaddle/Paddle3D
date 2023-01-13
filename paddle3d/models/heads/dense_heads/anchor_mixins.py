@@ -95,7 +95,7 @@ class AnchorTrainMixin(object):
                 bboxes of each image.
             input_metas (list[dict]): Meta info of each image.
             gt_bboxes_ignore_list (None | list): Ignore list of gt bboxes.
-            gt_labels_list (list[torch.Tensor]): Gt labels of batches.
+            gt_labels_list (list[paddle.Tensor]): Gt labels of batches.
             label_channels (int): The channel of labels.
             num_classes (int): The number of classes.
             sampling (bool): Whether to sample anchors.
@@ -180,17 +180,17 @@ class AnchorTrainMixin(object):
         """Compute targets of anchors in single batch.
 
         Args:
-            anchors (torch.Tensor): Concatenated multi-level anchor.
+            anchors (paddle.Tensor): Concatenated multi-level anchor.
             gt_bboxes (:obj:`BaseInstance3DBoxes`): Gt bboxes.
-            gt_bboxes_ignore (torch.Tensor): Ignored gt bboxes.
-            gt_labels (torch.Tensor): Gt class labels.
+            gt_bboxes_ignore (paddle.Tensor): Ignored gt bboxes.
+            gt_labels (paddle.Tensor): Gt class labels.
             input_meta (dict): Meta info of each image.
             label_channels (int): The channel of labels.
             num_classes (int): The number of classes.
             sampling (bool): Whether to sample anchors.
 
         Returns:
-            tuple[torch.Tensor]: Anchor targets.
+            tuple[paddle.Tensor]: Anchor targets.
         """
         if isinstance(self.bbox_assigner,
                       list) and (not isinstance(anchors, list)):
@@ -314,16 +314,16 @@ class AnchorTrainMixin(object):
 
         Args:
             bbox_assigner (BaseAssigner): assign positive and negative boxes.
-            anchors (torch.Tensor): Concatenated multi-level anchor.
+            anchors (paddle.Tensor): Concatenated multi-level anchor.
             gt_bboxes (:obj:`BaseInstance3DBoxes`): Gt bboxes.
-            gt_bboxes_ignore (torch.Tensor): Ignored gt bboxes.
-            gt_labels (torch.Tensor): Gt class labels.
+            gt_bboxes_ignore (paddle.Tensor): Ignored gt bboxes.
+            gt_labels (paddle.Tensor): Gt class labels.
             input_meta (dict): Meta info of each image.
             num_classes (int): The number of classes.
             sampling (bool): Whether to sample anchors.
 
         Returns:
-            tuple[torch.Tensor]: Anchor targets.
+            tuple[paddle.Tensor]: Anchor targets.
         """
         anchors = anchors.reshape([-1, anchors.shape[-1]])
         num_valid_anchors = anchors.shape[0]
@@ -395,14 +395,14 @@ def get_direction_target(anchors,
     """Encode direction to 0 ~ num_bins-1.
 
     Args:
-        anchors (torch.Tensor): Concatenated multi-level anchor.
-        reg_targets (torch.Tensor): Bbox regression targets.
+        anchors (paddle.Tensor): Concatenated multi-level anchor.
+        reg_targets (paddle.Tensor): Bbox regression targets.
         dir_offset (int): Direction offset.
         num_bins (int): Number of bins to divide 2*PI.
         one_hot (bool): Whether to encode as one hot.
 
     Returns:
-        torch.Tensor: Encoded direction targets.
+        paddle.Tensor: Encoded direction targets.
     """
     rot_gt = reg_targets[..., 6] + anchors[..., 6]
     offset_rot = limit_period(rot_gt - dir_offset, 0, 2 * np.pi)

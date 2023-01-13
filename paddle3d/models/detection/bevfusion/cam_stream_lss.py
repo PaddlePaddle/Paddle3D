@@ -25,7 +25,6 @@ import time
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-import torch
 from paddle.distributed.fleet.utils import recompute
 from paddle.vision.models import resnet18
 
@@ -268,12 +267,10 @@ class LiftSplatShoot(nn.Layer):
             *self.grid_conf['dbound'],
             dtype='float32').reshape([-1, 1, 1]).expand([-1, fH, fW])
         D, _, _ = ds.shape
-        xs = paddle.linspace(
-            0, ogfW - 1, fW, dtype='float32').reshape([1, 1,
-                                                       fW]).expand([D, fH, fW])
-        ys = paddle.linspace(
-            0, ogfH - 1, fH, dtype='float32').reshape([1, fH,
-                                                       1]).expand([D, fH, fW])
+        # yapf: disable
+        xs = paddle.linspace(0, ogfW - 1, fW, dtype='float32').reshape([1, 1, fW]).expand([D, fH, fW])
+        ys = paddle.linspace(0, ogfH - 1, fH, dtype='float32').reshape([1, fH, 1]).expand([D, fH, fW])
+        # yapf: enable
 
         # D x H x W x 3
         frustum = paddle.stack([xs, ys, ds], axis=-1)
@@ -360,10 +357,10 @@ class LiftSplatShoot(nn.Layer):
         # griddify (B x C x Z x X x Y)
         # TODO(liuxiao): fix this complicate index assignment, the original assignament can't compute gradient when backward.
         final = paddle.zeros([B * self.nx[2] * self.nx[0] * self.nx[1], C])
-        geom_feats = geom_feats[:, 3] * (
-            self.nx[2] * self.nx[0] * self.nx[1]) + geom_feats[:, 2] * (
-                self.nx[0] *
-                self.nx[1]) + geom_feats[:, 0] * self.nx[1] + geom_feats[:, 1]
+        geom_feats = geom_feats[:, 3] * (self.nx[2] * self.nx[0] * self.nx[1]) \
+                     + geom_feats[:, 2] * (self.nx[0] * self.nx[1]) \
+                     + geom_feats[:, 0] * self.nx[1] \
+                     + geom_feats[:, 1]
 
         # inplace version scatter is not supported in static mode
         if getattr(self, "export_model", False):
@@ -382,7 +379,6 @@ class LiftSplatShoot(nn.Layer):
                    post_rots=None,
                    post_trans=None):
         geom = self.get_geometry(rots, trans, post_rots, post_trans)
-        # geom = paddle.to_tensor(torch.load('/workspace/liuxiao28/temp/geom.pth', map_location='cpu').numpy())
         x, depth = self.get_cam_feats(x)
         x = self.voxel_pooling(geom, x)
         return x, depth
