@@ -65,9 +65,14 @@ nuscenes
    ├── sweeps
    ├── v1.0-trainval
    ├── v1.0-test
-   ├── petr_nuscenes_annotation_train.pk
+   ├── petr_nuscenes_annotation_train.pkl
    ├── petr_nuscenes_annotation_val.pkl
 ```
+为了方便，我们提供了生成好的annotation文件
+| 文件名称 | 下载链接 |
+| -- | -- |
+| petr_nuscenes_annotation_train.pkl | [下载](https://paddle3d.bj.bcebos.com/datasets/nuScenes/petr_nuscenes_annotation_train.pkl) |
+| petr_nuscenes_annotation_val.pkl | [下载](https://paddle3d.bj.bcebos.com/datasets/nuScenes/petr_nuscenes_annotation_val.pkl) |
 
 ## <h2 id="7">训练</h2>
 
