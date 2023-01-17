@@ -19,11 +19,13 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle.distribution import Normal
-from paddle3d.ops.iou3d_nms_cuda_v2 import nms_gpu
+from paddle3d.ops.iou3d_nms_cuda_v2 import nms_gpu_v2
 
 __all__ = [
-    'generate_guassian_depth_target', 'map_pointcloud_to_image', 'limit_period', 'box3d_multiclass_nms'
+    'generate_guassian_depth_target', 'map_pointcloud_to_image', 'limit_period',
+    'box3d_multiclass_nms'
 ]
+
 
 class NormalCustom(Normal):
     def __init__(self, loc, scale, name=None):
@@ -38,7 +40,7 @@ def generate_guassian_depth_target(depth,
                                    stride,
                                    cam_depth_range,
                                    constant_std=None):
-    """Generate guassian distribution depth 
+    """Generate guassian distribution depth
     This code is based on https://github.com/ADLab-AutoDrive/BEVFusion/blob/3f992837ad659f050df38d7b0978372425be16ff/mmdet3d/core/utils/gaussian.py#L90
     """
     B, tH, tW = depth.shape
@@ -229,7 +231,7 @@ def box3d_multiclass_nms(mlvl_bboxes,
         order = _scores.argsort(0, descending=True)
         _bboxes_for_nms = paddle.gather(_bboxes_for_nms, index=order)
 
-        keep, num_out = nms_gpu(_bboxes_for_nms, cfg['nms_thr'])
+        keep, num_out = nms_gpu_v2(_bboxes_for_nms, cfg['nms_thr'])
         selected = order[keep[:num_out]]
         _mlvl_bboxes = paddle.gather(mlvl_bboxes, cls_inds)
         bboxes.append(paddle.gather(_mlvl_bboxes, selected))

@@ -18,8 +18,8 @@ Written by Shaoshuai Shi
 All Rights Reserved 2019-2020.
 */
 
-// This version iou3d_nms_v2 takes 3d bboxes in format of [x1, y1, x2, y2, angle]
-// which is different from iou3d_nms
+// This version iou3d_nms_v2 takes 3d bboxes in format of [x1, y1, x2, y2,
+// angle] which is different from iou3d_nms
 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
@@ -41,7 +41,7 @@ void nmsLauncher(const float *boxes, int64_t *mask, int boxes_num,
 void nmsNormalLauncher(const float *boxes, int64_t *mask, int boxes_num,
                        float nms_overlap_thresh);
 
-std::vector<paddle::Tensor> boxes_overlap_bev_gpu(
+std::vector<paddle::Tensor> boxes_overlap_bev_gpu_v2(
     const paddle::Tensor &boxes_a, const paddle::Tensor &boxes_b) {
   // params boxes_a: (N, 5) [x1, y1, x2, y2, angle]
   // params boxes_b: (M, 5) [x1, y1, x2, y2, angle]
@@ -61,7 +61,7 @@ std::vector<paddle::Tensor> boxes_overlap_bev_gpu(
   return {ans_overlap};
 }
 
-std::vector<paddle::Tensor> boxes_iou_bev_gpu(
+std::vector<paddle::Tensor> boxes_iou_bev_gpu_v2(
     const paddle::Tensor &boxes_a_tensor,
     const paddle::Tensor &boxes_b_tensor) {
   // params boxes_a: (N, 5) [x1, y1, x2, y2, angle]
@@ -82,8 +82,8 @@ std::vector<paddle::Tensor> boxes_iou_bev_gpu(
   return {ans_iou_tensor};
 }
 
-std::vector<paddle::Tensor> nms_gpu(const paddle::Tensor &boxes,
-                                    float nms_overlap_thresh) {
+std::vector<paddle::Tensor> nms_gpu_v2(const paddle::Tensor &boxes,
+                                       float nms_overlap_thresh) {
   // params boxes: (N, 5) [x1, y1, x2, y2, angle]
   auto keep = paddle::empty({boxes.shape()[0]}, paddle::DataType::INT32,
                             paddle::CPUPlace());
@@ -138,8 +138,8 @@ std::vector<paddle::Tensor> nms_gpu(const paddle::Tensor &boxes,
   return {keep, num_to_keep_tensor};
 }
 
-std::vector<paddle::Tensor> nms_normal_gpu(const paddle::Tensor &boxes,
-                                           float nms_overlap_thresh) {
+std::vector<paddle::Tensor> nms_normal_gpu_v2(const paddle::Tensor &boxes,
+                                              float nms_overlap_thresh) {
   // params boxes: (N, 5) [x1, y1, x2, y2, angle]
   // params keep: (N)
 
@@ -239,32 +239,32 @@ std::vector<std::vector<int64_t>> BoxesOverlapBevGpuInferShape(
   return {{boxes_a_shape[0], boxes_b_shape[0]}};
 }
 
-PD_BUILD_OP(boxes_iou_bev_gpu)
+PD_BUILD_OP(boxes_iou_bev_gpu_v2)
     .Inputs({"boxes_a_tensor", " boxes_b_tensor"})
     .Outputs({"ans_iou_tensor"})
-    .SetKernelFn(PD_KERNEL(boxes_iou_bev_gpu))
+    .SetKernelFn(PD_KERNEL(boxes_iou_bev_gpu_v2))
     .SetInferDtypeFn(PD_INFER_DTYPE(BoxesIouBevGpuInferDtype))
     .SetInferShapeFn(PD_INFER_SHAPE(BoxesIouBevGpuInferShape));
 
-PD_BUILD_OP(boxes_overlap_bev_gpu)
+PD_BUILD_OP(boxes_overlap_bev_gpu_v2)
     .Inputs({"boxes_a", " boxes_b"})
     .Outputs({"ans_overlap"})
-    .SetKernelFn(PD_KERNEL(boxes_overlap_bev_gpu))
+    .SetKernelFn(PD_KERNEL(boxes_overlap_bev_gpu_v2))
     .SetInferDtypeFn(PD_INFER_DTYPE(BoxesOverlapBevGpuInferDtype))
     .SetInferShapeFn(PD_INFER_SHAPE(BoxesOverlapBevGpuInferShape));
 
-PD_BUILD_OP(nms_gpu)
+PD_BUILD_OP(nms_gpu_v2)
     .Inputs({"boxes"})
     .Outputs({"keep", "num_to_keep"})
     .Attrs({"nms_overlap_thresh: float"})
-    .SetKernelFn(PD_KERNEL(nms_gpu))
+    .SetKernelFn(PD_KERNEL(nms_gpu_v2))
     .SetInferDtypeFn(PD_INFER_DTYPE(NmsInferDtype))
     .SetInferShapeFn(PD_INFER_SHAPE(NmsInferShape));
 
-PD_BUILD_OP(nms_normal_gpu)
+PD_BUILD_OP(nms_normal_gpu_v2)
     .Inputs({"boxes"})
     .Outputs({"keep", "num_to_keep"})
     .Attrs({"nms_overlap_thresh: float"})
     .SetInferShapeFn(PD_INFER_SHAPE(NmsNormalInferShape))
-    .SetKernelFn(PD_KERNEL(nms_normal_gpu))
+    .SetKernelFn(PD_KERNEL(nms_normal_gpu_v2))
     .SetInferDtypeFn(PD_INFER_DTYPE(NmsNormalInferDtype));
