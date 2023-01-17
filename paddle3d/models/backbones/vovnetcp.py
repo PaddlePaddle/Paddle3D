@@ -32,7 +32,7 @@ from paddle.distributed.fleet.utils import recompute
 from paddle3d.apis import manager
 
 GLOBAL_DATA_FORMAT = "NHWC" if os.environ.get(
-    'FLAGS_opt_layout').lower() == 'true' else "NCHW"
+    'FLAGS_opt_layout', 'False').lower() == 'true' else "NCHW"
 
 VoVNet19_slim_dw_eSE = {
     'stem': [64, 64, 64],
