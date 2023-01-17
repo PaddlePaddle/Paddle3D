@@ -186,13 +186,14 @@ class NuscenesMVDataset(NuscenesDetDataset):
         sample.sample_idx = info['token']
         sample.meta.id = info['token']
         sample.pts_filename = osp.join(self.dataset_root, info['lidar_path'])
-        sample.sweeps = info['sweeps']
+        sample.sweeps = copy.deepcopy(info['sweeps'])
         if self.queue_length is None:
             for i in range(len(sample.sweeps)):
                 for cam_type in sample.sweeps[i].keys():
-                    data_path = sample.sweeps[i][cam_type]['data_path']
+                    data_path = info['sweeps'][i][cam_type]['data_path']
                     sample.sweeps[i][cam_type]['data_path'] = osp.join(
                         self.dataset_root, data_path)
+
         sample.timestamp = info['timestamp'] / 1e6
         if self.queue_length is not None:
             sample.ego2global_translation = info['ego2global_translation']
