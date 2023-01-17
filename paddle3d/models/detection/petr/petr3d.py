@@ -218,7 +218,8 @@ class Petr3D(nn.Layer):
                 else:
                     img_feats = self.neck(img_feats[-1])
             else:
-                if os.environ.get('FLAGS_opt_layout').lower() == 'true':
+                if os.environ.get('FLAGS_opt_layout',
+                                  'False').lower() == 'true':
                     img_nhwc = paddle.transpose(img, [0, 2, 3, 1])
                     img_feats = []
                     img_feats_nhwc = self.backbone(img_nhwc)
