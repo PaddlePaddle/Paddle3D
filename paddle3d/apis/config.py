@@ -162,7 +162,6 @@ class Config(object):
     @property
     def optimizer(self) -> paddle.optimizer.Optimizer:
         optimizer_cfg = self.dic.get('optimizer', {}).copy()
-
         optimizer_cfg['learning_rate'] = self.lr_scheduler
         optimizer_cfg['parameters'] = filter(lambda p: p.trainable,
                                              self.model.parameters())
