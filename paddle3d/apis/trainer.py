@@ -279,9 +279,11 @@ class Trainer:
                 if self.cur_iter == 1 and self.do_bind and int(
                         os.environ.get('FLAGS_selected_gpus', 0)) == 0:
                     # Skip the first iter, let all necessary threads to be inited.
-                    # Each thread will assign three cpu cores. If the hardware doesn't have enough cpu cores,
+                    # Each thread will assign three cpu cores.
+                    # IMPORTANT NOTE! If the hardware doesn't have enough cpu cores,
                     # can delete one or two `"(( i++ )) \n" \` in the line 287/288.
-                    cmd = "ps aux | grep \" -u tools/train.py\" | grep -v grep | awk '{print $2}' > taskset.log \n" \
+                    cmd = "bash \n"  \
+                          "ps aux | grep \" -u tools/train.py\" | grep -v grep | awk '{print $2}' > taskset.log \n" \
                           "i=0 \n" \
                           "for pid in `cat taskset.log`; do \n" \
                           "(( i++ )) \n" \
