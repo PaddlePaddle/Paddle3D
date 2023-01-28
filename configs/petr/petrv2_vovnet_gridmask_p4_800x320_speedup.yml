@@ -1,13 +1,6 @@
 batch_size: 1
 epochs: 24
 
-amp_cfg:
-  # only enable backbone and fpn
-  enable: False
-  level: O1
-  scaler:
-    init_loss_scaling: 512.0
-
 train_dataset:
   type: NuscenesMVDataset
   dataset_root: data/nuscenes/
@@ -106,6 +99,7 @@ val_dataset:
 optimizer:
   type: AdamW
   weight_decay: 0.01
+  tensor_fusion: True
   grad_clip:
     type: ClipGradByGlobalNorm
     clip_norm: 35
@@ -123,6 +117,7 @@ lr_scheduler:
   end_lr: 0.0002
 
 model:
+  fused_linear: True
   type: Petr3D
   use_recompute: True
   use_grid_mask: True
