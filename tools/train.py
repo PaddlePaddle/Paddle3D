@@ -27,15 +27,6 @@ from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
 
 
-def str2bool(v):
-    if v.lower() in ("yes", "true", "t", "y", "1"):
-        return True
-    elif v.lower() in ("no", "false", "f", "n", "0"):
-        return False
-    else:
-        raise argparse.ArgumentTypeError("Unsupported value encountered.")
-
-
 def parse_args():
     """
     """
@@ -132,8 +123,6 @@ def parse_args():
         dest='do_bind',
         help='Whether to cpu bind core. '
         'Only valid when use `python -m paddle.distributed.launch tools.train.py <other args>` to train.',
-        default=True,
-        type=str2bool,
         action='store_true')
 
     return parser.parse_args()
@@ -159,6 +148,12 @@ def main(args):
 
     if not args.do_bind:
         logger.info("not use cpu bind core")
+    else:
+        if os.environ.get('FLAGS_selected_gpus') is None:
+            args.do_bind = False
+            logger.warning(
+                "Not use paddle.distributed.launch start the training, set do_bind to false."
+            )
 
     cfg = Config(path=args.cfg)
 
