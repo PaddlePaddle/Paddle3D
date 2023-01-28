@@ -278,20 +278,27 @@ class Trainer:
             for sample in self.train_dataloader:
                 if self.cur_iter == 1 and self.do_bind and int(
                         os.environ.get('FLAGS_selected_gpus', 0)) == 0:
-                    # Skip the first iter, let all necessary threads to be inited.
-                    # Each thread will assign three cpu cores.
-                    # IMPORTANT NOTE! If the hardware doesn't have enough cpu cores,
-                    # can delete one or two `"(( i++ )) \n" \` in the line 287/288.
-                    cmd = "bash \n"  \
-                          "ps aux | grep \" -u tools/train.py\" | grep -v grep | awk '{print $2}' > taskset.log \n" \
-                          "i=0 \n" \
-                          "for pid in `cat taskset.log`; do \n" \
-                          "(( i++ )) \n" \
-                          "taskset -pc  $i,$(( i + 1 )),$(( i + 2 )) $pid \n" \
-                          "(( i++ )) \n" \
-                          "(( i++ )) \n" \
-                          "done \n"
-                    os.system(cmd)
+                    test_cmd = "j=0 | (( j++ ))"
+                    rst = os.system(test_cmd)
+                    if rst != 0:
+                        logger.warning(
+                            "The system doesn't support i++ bash command, will not do cpu core bind"
+                        )
+                    else:
+                        # Skip the first iter, let all necessary threads to be inited.
+                        # Each thread will assign three cpu cores.
+                        # IMPORTANT NOTE! If the hardware doesn't have enough cpu cores,
+                        # can delete one or two `"(( i++ )) \n" \` in the line 287/288.
+                        cmd = "bash \n"  \
+                              "ps aux | grep \" -u tools/train.py\" | grep -v grep | awk '{print $2}' > taskset.log \n" \
+                              "i=0 \n" \
+                              "for pid in `cat taskset.log`; do \n" \
+                              "(( i++ )) \n" \
+                              "taskset -pc  $i,$(( i + 1 )),$(( i + 2 )) $pid \n" \
+                              "(( i++ )) \n" \
+                              "(( i++ )) \n" \
+                              "done \n"
+                        os.system(cmd)
                 self.cur_iter += 1
 
                 if self.cur_iter % self.iters_per_epoch == 1:
