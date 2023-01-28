@@ -122,12 +122,6 @@ def parse_args():
         default=None,
         type=int)
     parser.add_argument(
-        '--seed',
-        dest='seed',
-        help='Set the random seed of paddle during training.',
-        default=None,
-        type=int)
-    parser.add_argument(
         '--quant_config',
         dest='quant_config',
         help='Config for quant model.',
