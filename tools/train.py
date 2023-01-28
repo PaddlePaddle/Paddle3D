@@ -139,7 +139,8 @@ def parse_args():
         help='Whether to cpu bind core. '
         'Only valid when use `python -m paddle.distributed.launch tools.train.py <other args>` to train.',
         default=True,
-        type=str2bool)
+        type=str2bool,
+        action='store_true')
 
     return parser.parse_args()
 
