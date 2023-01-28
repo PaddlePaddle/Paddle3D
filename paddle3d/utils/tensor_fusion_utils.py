@@ -18,6 +18,7 @@ import numpy as np
 import paddle
 from paddle.fluid.framework import EagerParamBase
 from paddle.framework import core
+from paddle import _legacy_C_ops
 
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_storage import (
     GradStorage, ParamStorage)
@@ -142,6 +143,9 @@ def all_reduce_parameters(params, group=None):
 
 def is_fused_matmul_bias_supported():
     if paddle.is_compiled_with_cuda() and not paddle.is_compiled_with_rocm():
-        return hasattr(core.ops, 'fused_gemm_epilogue')
+        if hasattr(core, "ops"):
+            return hasattr(core.ops, 'fused_gemm_epilogue')
+        else:
+            return hasattr(_legacy_C_ops, "fused_gemm_epilogue")
     else:
         return False
