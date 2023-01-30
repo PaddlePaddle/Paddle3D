@@ -14,6 +14,8 @@
 
 import codecs
 import os
+import six
+from ast import literal_eval
 from collections.abc import Iterable, Mapping
 from typing import Any, Dict, Generic, Optional
 
@@ -78,10 +80,11 @@ class Config(object):
         else:
             raise RuntimeError('Config file should in yaml format!')
 
-        self.update(learning_rate=learning_rate,
-                    batch_size=batch_size,
-                    iters=iters,
-                    epochs=epochs)
+        self.update(
+            learning_rate=learning_rate,
+            batch_size=batch_size,
+            iters=iters,
+            epochs=epochs)
 
     def _update_dic(self, dic: Dict, base_dic: Dict):
         '''Update config from dic based base_dic
@@ -120,7 +123,8 @@ class Config(object):
                learning_rate: Optional[float] = None,
                batch_size: Optional[int] = None,
                iters: Optional[int] = None,
-               epochs: Optional[int] = None):
+               epochs: Optional[int] = None,
+               opts: Optional[list] = None):
         '''Update config'''
 
         if learning_rate is not None:
@@ -134,6 +138,26 @@ class Config(object):
 
         if epochs is not None:
             self.dic['epochs'] = epochs
+
+        if opts is not None:
+            if len(opts) % 2 != 0 or len(opts) == 0:
+                raise ValueError(
+                    "Command line options config `--opts` format error! It should be even length like: k1 v1 k2 v2 ... Please check it: {}"
+                    .format(opts))
+            for key, value in zip(opts[0::2], opts[1::2]):
+                if isinstance(value, six.string_types):
+                    try:
+                        value = literal_eval(value)
+                    except ValueError:
+                        pass
+                    except SyntaxError:
+                        pass
+                key_list = key.split('.')
+                dic = self.dic
+                for subkey in key_list[:-1]:
+                    dic.setdefault(subkey, dict())
+                    dic = dic[subkey]
+                dic[key_list[-1]] = value
 
     @property
     def batch_size(self) -> int:
@@ -282,8 +306,8 @@ class Config(object):
             if recursive:
                 params = {}
                 for key, val in dic.items():
-                    params[key] = self._load_object(obj=val,
-                                                    recursive=recursive)
+                    params[key] = self._load_object(
+                        obj=val, recursive=recursive)
             else:
                 params = dic
             try:

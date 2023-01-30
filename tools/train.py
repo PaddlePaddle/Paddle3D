@@ -58,6 +58,8 @@ def parse_args():
         type=int,
         default=None)
     parser.add_argument(
+        '--opts', help='override config options.', default=None, nargs='+')
+    parser.add_argument(
         '--keep_checkpoint_max',
         dest='keep_checkpoint_max',
         help='Maximum number of checkpoints to save',
@@ -154,7 +156,8 @@ def main(args):
         learning_rate=args.learning_rate,
         batch_size=args.batch_size,
         iters=args.iters,
-        epochs=args.epochs)
+        epochs=args.epochs,
+        opts=args.opts)
 
     if cfg.train_dataset is None:
         raise RuntimeError(
