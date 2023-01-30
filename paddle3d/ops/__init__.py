@@ -26,8 +26,13 @@ from paddle3d.utils.logger import logger
 
 custom_ops = {
     'voxelize': {
-        'sources': ['voxel/voxelize_op.cc', 'voxel/voxelize_op.cu'],
-        'version': '0.1.0'
+        'sources': [
+            'voxel/hard_voxelize_op.cc', 'voxel/hard_voxelize_op.cu',
+            'voxel/dynamic_voxelize_op.cc', 'voxel/dynamic_voxelize_op.cu',
+            'voxel/dynamic_scatter_op.cc', 'voxel/dynamic_scatter_op.cu'
+        ],
+        'version':
+        '0.1.0'
     },
     'iou3d_nms_cuda': {
         'sources': [
