@@ -124,12 +124,6 @@ class BEVFormer(nn.Layer):
                 img_metas = [each[i] for each in img_metas_list]
                 if not img_metas[0]['prev_bev_exists']:
                     prev_bev = None
-                if prev_bev is None:
-                    prev_bev = paddle.zeros([
-                        self.pts_bbox_head.bev_w * self.pts_bbox_head.bev_w, bs,
-                        self.pts_bbox_head.transformer.embed_dims
-                    ],
-                                            dtype='float32')
                 img_feats = [each_scale[:, i] for each_scale in img_feats_list]
                 prev_bev = self.pts_bbox_head(
                     img_feats, img_metas, prev_bev, only_bev=True)
@@ -177,12 +171,6 @@ class BEVFormer(nn.Layer):
         img_metas = [each[len_queue - 1] for each in img_metas]
         if not img_metas[0]['prev_bev_exists']:
             prev_bev = None
-        if prev_bev is None:
-            prev_bev = paddle.zeros([
-                self.pts_bbox_head.bev_w * self.pts_bbox_head.bev_w, bs,
-                self.pts_bbox_head.transformer.embed_dims
-            ],
-                                    dtype='float32')
 
         img_feats = self.extract_feat(img=img, img_metas=img_metas)
 
@@ -220,13 +208,6 @@ class BEVFormer(nn.Layer):
         else:
             img_metas[0]['can_bus'][-1] = 0
             img_metas[0]['can_bus'][:3] = 0
-
-        if self.prev_frame_info['prev_bev'] is None:
-            self.prev_frame_info['prev_bev'] = paddle.zeros([
-                self.pts_bbox_head.bev_w * self.pts_bbox_head.bev_w,
-                img.shape[0], self.pts_bbox_head.transformer.embed_dims
-            ],
-                                                            dtype='float32')
 
         new_prev_bev, bbox_results = self.simple_test(
             img_metas, img, prev_bev=self.prev_frame_info['prev_bev'], **kwargs)
@@ -318,9 +299,9 @@ class BEVFormer(nn.Layer):
             "lidar2img":
             paddle.static.InputSpec(
                 shape=[-1, -1, 4, 4], dtype="float32", name='lidar2img'),
-            "img_shape":
+            "pad_shape":
             paddle.static.InputSpec(
-                shape=[6, 3], dtype="int32", name='img_shape'),
+                shape=[6, 3], dtype="int32", name='pad_shape'),
         }
 
         input_spec = [image_spec, pre_bev_spec, img_metas_spec]
