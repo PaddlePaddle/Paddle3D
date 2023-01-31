@@ -82,6 +82,12 @@ nuscenes
 wget https://paddle3d.bj.bcebos.com/pretrained/fcos3d_vovnet_imgbackbone-remapped.pdparams
 ```
 
+设置以下环境变量，在backbone阶段使用NHWC的data_format，加快训练速度
+
+```
+export FLAGS_opt_layout=True
+```
+
 运行以下命令，进行单卡训练
 
 ```
