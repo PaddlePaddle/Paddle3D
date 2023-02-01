@@ -36,9 +36,6 @@ def training_step(model: paddle.nn.Layer,
                   scaler=None,
                   amp_cfg=dict()) -> dict:
 
-    if optimizer.__class__.__name__ == 'OneCycleAdam':
-        optimizer.before_iter(cur_iter - 1)
-
     model.train()
 
     if isinstance(model, paddle.DataParallel) and hasattr(model._layers, 'use_recompute') \
@@ -67,20 +64,16 @@ def training_step(model: paddle.nn.Layer,
             loss = parse_losses(outputs['loss'])
             loss.backward()
 
-    if optimizer.__class__.__name__ == 'OneCycleAdam':
-        optimizer.after_iter()
+    if scaler is not None:
+        scaler.step(optimizer)
+        scaler.update()
+        optimizer.clear_grad()
     else:
-        if scaler is not None:
-            scaler.step(optimizer)
-            scaler.update()
-            optimizer.clear_grad()
-        else:
-            optimizer.step()
+        optimizer.step()
 
-        model.clear_gradients()
-        if isinstance(optimizer._learning_rate,
-                      paddle.optimizer.lr.LRScheduler):
-            optimizer._learning_rate.step()
+    model.clear_gradients()
+    if isinstance(optimizer._learning_rate, paddle.optimizer.lr.LRScheduler):
+        optimizer._learning_rate.step()
 
     with paddle.no_grad():
         if paddle.distributed.is_initialized():

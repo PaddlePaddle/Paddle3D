@@ -78,10 +78,11 @@ class Config(object):
         else:
             raise RuntimeError('Config file should in yaml format!')
 
-        self.update(learning_rate=learning_rate,
-                    batch_size=batch_size,
-                    iters=iters,
-                    epochs=epochs)
+        self.update(
+            learning_rate=learning_rate,
+            batch_size=batch_size,
+            iters=iters,
+            epochs=epochs)
 
     def _update_dic(self, dic: Dict, base_dic: Dict):
         '''Update config from dic based base_dic
@@ -120,7 +121,8 @@ class Config(object):
                learning_rate: Optional[float] = None,
                batch_size: Optional[int] = None,
                iters: Optional[int] = None,
-               epochs: Optional[int] = None):
+               epochs: Optional[int] = None,
+               fleet: Optional[bool] = None):
         '''Update config'''
 
         if learning_rate is not None:
@@ -134,6 +136,9 @@ class Config(object):
 
         if epochs is not None:
             self.dic['epochs'] = epochs
+
+        if fleet is not None:
+            self.dic['fleet'] = fleet
 
     @property
     def batch_size(self) -> int:
@@ -180,6 +185,10 @@ class Config(object):
     @property
     def amp_config(self) -> int:
         return self.dic.get('amp_cfg', None)
+
+    @property
+    def fleet(self) -> bool:
+        return self.dic.get('fleet', False)
 
     @property
     def train_dataset_config(self) -> Dict:
@@ -282,8 +291,8 @@ class Config(object):
             if recursive:
                 params = {}
                 for key, val in dic.items():
-                    params[key] = self._load_object(obj=val,
-                                                    recursive=recursive)
+                    params[key] = self._load_object(
+                        obj=val, recursive=recursive)
             else:
                 params = dic
             try:
@@ -317,7 +326,8 @@ class Config(object):
             'train_dataset': self.train_dataset,
             'val_dataset': self.val_dataset,
             'batch_size': self.batch_size,
-            'amp_cfg': self.amp_config
+            'amp_cfg': self.amp_config,
+            'fleet': self.fleet
         })
 
         return dic

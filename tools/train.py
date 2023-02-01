@@ -118,6 +118,12 @@ def parse_args():
         help='Config for quant model.',
         default=None,
         type=str)
+    parser.add_argument(
+        "--fleet",
+        dest='fleet',
+        help="Use fleet or not",
+        default=None,
+        type=bool)
 
     return parser.parse_args()
 
@@ -154,7 +160,8 @@ def main(args):
         learning_rate=args.learning_rate,
         batch_size=args.batch_size,
         iters=args.iters,
-        epochs=args.epochs)
+        epochs=args.epochs,
+        fleet=args.fleet)
 
     if cfg.train_dataset is None:
         raise RuntimeError(
