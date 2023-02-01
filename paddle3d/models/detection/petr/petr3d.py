@@ -404,3 +404,9 @@ class Petr3D(BaseMultiViewModel):
         if self.pts_bbox_head.with_time:
             return "petrv2_inference"
         return "petr_inference"
+
+    @property
+    def apollo_deploy_name(self):
+        if self.pts_bbox_head.with_time:
+            return "PETR_V2"
+        return "PETR_V1"
