@@ -19,19 +19,6 @@ from paddle.distributed.fleet.utils.hybrid_parallel_util import \
 from paddle3d.sample import Sample
 
 
-def cal_grad_norm(model):
-    """
-    Calcualte the gradient norm of the entire model paremeters.
-    """
-    with paddle.no_grad():
-        grads_norm = [
-            paddle.norm(p.grad.detach(), 2) for p in model.parameters()
-            if p.grad is not None
-        ]
-        total_norm = paddle.norm(paddle.stack(grads_norm), 2)
-    return total_norm.item()
-
-
 def parse_losses(losses):
     """
     Parse the loss tensor in dictionary into a single scalar.
@@ -42,8 +29,8 @@ def parse_losses(losses):
     elif isinstance(losses, dict):
         for loss_name, loss_value in losses.items():
             log_loss[loss_name] = sum(loss_value)
-        total_loss = sum(
-            _loss_value for _loss_name, _loss_value in log_loss.items())
+        total_loss = sum(_loss_value
+                         for _loss_name, _loss_value in log_loss.items())
 
     log_loss['total_loss'] = total_loss
 
@@ -88,9 +75,6 @@ def training_step(model: paddle.nn.Layer,
             loss, log_loss = parse_losses(outputs['loss'])
             loss.backward()
 
-    # compute grad norm
-    grad_norm = cal_grad_norm(model)
-
     # update params
     if optimizer.__class__.__name__ == 'OneCycleAdam':
         optimizer.after_iter()
@@ -116,7 +100,7 @@ def training_step(model: paddle.nn.Layer,
                     loss_clone.scale_(1. / paddle.distributed.get_world_size()))
                 log_loss[loss_name] = loss_clone.item()
 
-    return log_loss, grad_norm
+    return log_loss
 
 
 def validation_step(model: paddle.nn.Layer, sample: Sample) -> dict:

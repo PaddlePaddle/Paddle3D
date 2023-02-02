@@ -22,12 +22,6 @@ import paddle.nn as nn
 from paddle3d.utils.logger import logger
 
 
-def bias_init_with_prob(prior_prob):
-    """initialize conv/fc bias value according to a given probability value."""
-    bias_init = float(-np.log((1 - prior_prob) / prior_prob))
-    return bias_init
-
-
 def constant_init(param, **kwargs):
     """
     Initialize the `param` with constants.
@@ -228,8 +222,8 @@ def _calculate_gain(nonlinearity, param=None):
 def _no_grad_uniform_(tensor, a, b):
     with paddle.no_grad():
         tensor.set_value(
-            paddle.uniform(
-                shape=tensor.shape, dtype=tensor.dtype, min=a, max=b))
+            paddle.uniform(shape=tensor.shape, dtype=tensor.dtype, min=a,
+                           max=b))
     return tensor
 
 
