@@ -86,8 +86,9 @@ class FastFocalLoss(nn.Layer):
         pos_pred_pix = _transpose_and_gather_feat(out, ind)  # B x M x C
 
         index = paddle.arange(start=0, end=pos_pred_pix.shape[0])
+        index = index.reshape([pos_pred_pix.shape[0], 1])
         bs_ind = paddle.broadcast_to(
-            index, shape=[pos_pred_pix.shape[1], pos_pred_pix.shape[0]])
+            index, shape=[pos_pred_pix.shape[0], pos_pred_pix.shape[1]])
         bs_ind = bs_ind.reshape(
             [pos_pred_pix.shape[0], pos_pred_pix.shape[1], 1])
 
