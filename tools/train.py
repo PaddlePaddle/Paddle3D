@@ -118,6 +118,12 @@ def parse_args():
         help='Config for quant model.',
         default=None,
         type=str)
+    parser.add_argument(
+        '--do_bind',
+        dest='do_bind',
+        help='Whether to cpu bind core. '
+        'Only valid when use `python -m paddle.distributed.launch tools.train.py <other args>` to train.',
+        action='store_true')
 
     return parser.parse_args()
 
@@ -139,6 +145,15 @@ def main(args):
 
     if not os.path.exists(args.cfg):
         raise RuntimeError("Config file `{}` does not exist!".format(args.cfg))
+
+    if not args.do_bind:
+        logger.info("not use cpu bind core")
+    else:
+        if os.environ.get('FLAGS_selected_gpus') is None:
+            args.do_bind = False
+            logger.warning(
+                "Not use paddle.distributed.launch start the training, set do_bind to false."
+            )
 
     cfg = Config(path=args.cfg)
 
@@ -190,7 +205,8 @@ def main(args):
         'dataloader_fn': {
             'batch_size': batch_size,
             'num_workers': args.num_workers,
-        }
+        },
+        'do_bind': args.do_bind
     })
 
     trainer = Trainer(**dic)
