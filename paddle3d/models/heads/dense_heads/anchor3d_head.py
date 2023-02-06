@@ -129,7 +129,7 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
     def init_weights(self):
         """Initialize the weights of head."""
         # custom init
-        bias_cls = param_init.init_bias_with_prob(0.01)
+        bias_cls = param_init.init_bias_by_prob(0.01)
         param_init.normal_init(self.conv_cls.weight, std=0.01)
         if self.conv_cls.bias is not None:
             param_init.constant_init(self.conv_cls.bias, value=bias_cls)
@@ -492,11 +492,13 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
             mlvl_dir_scores.append(dir_cls_score)
 
         mlvl_bboxes = paddle.concat(mlvl_bboxes)
-        # mlvl_bboxes_for_nms = mlvl_bboxes[:, :7].clone()
-        mlvl_bboxes_bev = paddle.gather(mlvl_bboxes,
-                                        paddle.to_tensor([0, 1, 3, 4, 6]),
-                                        axis=1)
-        mlvl_bboxes_for_nms = xywhr2xyxyr(mlvl_bboxes_bev)
+        # use 7-dimensions bboxes for nms,
+        mlvl_bboxes_for_nms = mlvl_bboxes[:, :7].clone()
+        mlvl_bboxes_for_nms[:, -1] = -mlvl_bboxes_for_nms[:, -1]
+        # mlvl_bboxes_bev = paddle.gather(mlvl_bboxes,
+        #                                 paddle.to_tensor([0, 1, 3, 4, 6]),
+        #                                 axis=1)
+        # mlvl_bboxes_for_nms = xywhr2xyxyr(mlvl_bboxes_bev)
         mlvl_scores = paddle.concat(mlvl_scores)
         mlvl_dir_scores = paddle.concat(mlvl_dir_scores)
 

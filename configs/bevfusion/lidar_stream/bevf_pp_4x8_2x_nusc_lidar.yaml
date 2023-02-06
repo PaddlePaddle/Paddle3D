@@ -162,7 +162,7 @@ lr_scheduler:
   type: LinearWarmup
   learning_rate:
     type: MultiStepDecay
-    milestones: [20, 23] # [20e, 23e]
+    milestones: [16580, 19217] # [879*20e-1000, 879*23e-1000]
     learning_rate: 0.001
   warmup_steps: 1000
   start_lr: 1.0e-6
