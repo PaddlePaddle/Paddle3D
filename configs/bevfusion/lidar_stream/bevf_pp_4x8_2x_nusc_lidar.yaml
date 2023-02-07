@@ -27,9 +27,9 @@ train_dataset:
       flip_ratio_bev_horizontal: 0.5
     - type: PointsRangeFilter
       point_cloud_range: [-50, -50, -5, 50, 50, 3]
-    - type: ObjectRangeFilter
+    - type: SampleRangeFilter
       point_cloud_range: [-50, -50, -5, 50, 50, 3]
-    - type: ObjectNameFilter
+    - type: SampleNameFilter
       classes: ['car', 'truck', 'trailer', 'bus', 'construction_vehicle',
                 'bicycle', 'motorcycle', 'pedestrian', 'traffic_cone','barrier'
                 ]

@@ -25,9 +25,6 @@ from paddle3d.apis import manager
 from paddle3d.sample import Sample
 from paddle3d.transforms.base import TransformABC
 
-from .utils import (generate_guassian_depth_target, limit_period,
-                    map_pointcloud_to_image)
-
 cv2_interp_codes = {
     'nearest': cv2.INTER_NEAREST,
     'bilinear': cv2.INTER_LINEAR,
@@ -37,210 +34,9 @@ cv2_interp_codes = {
 }
 
 __all__ = [
-    'LoadAnnotations3D', 'LoadMultiViewImageFromFiles', 'ObjectRangeFilter',
-    'ObjectNameFilter', 'ResizeImage', 'NormalizeImage', 'PadImage'
+    'PointsRangeFilter', 'ResizeImage', 'NormalizeImage', 'PadImage',
+    'PointShuffle'
 ]
-
-
-@manager.TRANSFORMS.add_component
-class LoadAnnotations3D(TransformABC):
-    """
-    load annotation
-    """
-
-    def __init__(
-            self,
-            with_bbox_3d=True,
-            with_label_3d=True,
-            with_attr_label=False,
-            with_mask_3d=False,
-            with_seg_3d=False,
-    ):
-        self.with_bbox_3d = with_bbox_3d
-        self.with_label_3d = with_label_3d
-        self.with_attr_label = with_attr_label
-        self.with_mask_3d = with_mask_3d
-        self.with_seg_3d = with_seg_3d
-
-    def _load_bboxes_3d(self, sample) -> Sample:
-        """
-        """
-        sample['gt_bboxes_3d'] = sample['ann_info']['gt_bboxes_3d']
-        sample['bbox3d_fields'].append('gt_bboxes_3d')
-        return sample
-
-    def _load_labels_3d(self, sample) -> Sample:
-        """
-        """
-        sample['gt_labels_3d'] = sample['ann_info']['gt_labels_3d']
-        return sample
-
-    def _load_attr_labels(self, sample) -> Sample:
-        """
-        """
-        sample['attr_labels'] = sample['ann_info']['attr_labels']
-        return sample
-
-    def __call__(self, sample) -> Sample:
-        """Call function to load multiple types annotations.
-        """
-        if self.with_bbox_3d:
-            sample = self._load_bboxes_3d(sample)
-            if sample is None:
-                return None
-
-        if self.with_label_3d:
-            sample = self._load_labels_3d(sample)
-
-        if self.with_attr_label:
-            sample = self._load_attr_labels(sample)
-
-        return sample
-
-
-@manager.TRANSFORMS.add_component
-class LoadMultiViewImageFromFiles(TransformABC):
-    """Load multi channel images from a list of separate channel files.
-
-    Expects results['img_filename'] to be a list of filenames.
-
-    Args:
-        to_float32 (bool): Whether to convert the img to float32.
-            Defaults to False.
-        color_type (str): Color type of the file. Defaults to 'unchanged'.
-    """
-
-    def __init__(self,
-                 to_float32=False,
-                 img_scale=None,
-                 color_type='unchanged',
-                 project_pts_to_img_depth=False,
-                 cam_depth_range=[4.0, 45.0, 1.0],
-                 constant_std=0.5):
-        self.to_float32 = to_float32
-        self.img_scale = img_scale
-        self.color_type = color_type
-        self.project_pts_to_img_depth = project_pts_to_img_depth
-        self.cam_depth_range = cam_depth_range
-        self.constant_std = constant_std
-
-    def __call__(self, sample):
-        """Call function to load multi-view image from files.
-        """
-        filename = sample['img_filename']
-        if self.img_scale is None:
-            img = np.stack([cv2.imread(name) for name in filename], axis=-1)
-        else:
-            raise NotImplementedError
-        if self.to_float32:
-            img = img.astype(np.float32)
-        sample['filename'] = filename
-        # unravel to list, see `Compose` in transforms/base.py
-        # which will transpose each image separately and then stack into array
-        sample['img'] = [img[..., i] for i in range(img.shape[-1])]
-        sample['img_shape'] = img.shape
-        sample['ori_shape'] = img.shape
-        # Set initial values for default meta_keys
-        sample['pad_shape'] = img.shape
-        num_channels = 1 if len(img.shape) < 3 else img.shape[2]
-        sample['img_norm_cfg'] = dict(
-            mean=np.zeros(num_channels, dtype=np.float32),
-            std=np.ones(num_channels, dtype=np.float32),
-            to_rgb=False)
-        sample['img_fields'] = ['img']
-        if self.project_pts_to_img_depth:
-            sample['img_depth'] = []
-            for i in range(len(sample['img'])):
-                depth = map_pointcloud_to_image(
-                    sample['points'],
-                    sample['img'][i],
-                    sample['caminfo'][i]['sensor2lidar_rotation'],
-                    sample['caminfo'][i]['sensor2lidar_translation'],
-                    sample['caminfo'][i]['cam_intrinsic'],
-                    show=False)
-                guassian_depth, min_depth, std_var = generate_guassian_depth_target(
-                    paddle.to_tensor(depth).unsqueeze(0),
-                    stride=8,
-                    cam_depth_range=self.cam_depth_range,
-                    constant_std=self.constant_std)
-                depth = paddle.concat(
-                    [min_depth[0].unsqueeze(-1), guassian_depth[0]], axis=-1)
-                sample['img_depth'].append(depth)
-        return sample
-
-
-@manager.TRANSFORMS.add_component
-class ObjectRangeFilter(TransformABC):
-    """
-    Filter object by the range.
-    Args:
-        point_cloud_range (list[float]): Point cloud range.
-    """
-
-    def __init__(self, point_cloud_range):
-        self.pcd_range = np.array(point_cloud_range, dtype=np.float32)
-        self.bev_range = self.pcd_range[[0, 1, 3, 4]]
-
-    def in_range_bev(self, box_range, gt_bboxes_3d):
-        """
-        Check whether the boxes are in the given range.
-        """
-        in_range_flags = ((gt_bboxes_3d[:, 0] > box_range[0])
-                          & (gt_bboxes_3d[:, 1] > box_range[1])
-                          & (gt_bboxes_3d[:, 0] < box_range[2])
-                          & (gt_bboxes_3d[:, 1] < box_range[3]))
-        return in_range_flags
-
-    def limit_yaw(self, gt_bboxes_3d, offset=0.5, period=np.pi):
-        """Limit the yaw to a given period and offset.
-        Args:
-            offset (float): The offset of the yaw.
-            period (float): The expected period.
-        """
-        gt_bboxes_3d[:, 6] = limit_period(gt_bboxes_3d[:, 6], offset, period)
-        return gt_bboxes_3d
-
-    def __call__(self, sample):
-        """Call function to filter objects by the range.
-        """
-        gt_bboxes_3d = sample['gt_bboxes_3d']
-        gt_labels_3d = sample['gt_labels_3d']
-
-        mask = self.in_range_bev(self.bev_range, gt_bboxes_3d)
-        gt_bboxes_3d = gt_bboxes_3d[mask]
-        gt_labels_3d = gt_labels_3d[mask.astype(np.bool_)]
-
-        # limit rad to [-pi, pi]
-        gt_bboxes_3d = self.limit_yaw(
-            gt_bboxes_3d, offset=0.5, period=2 * np.pi)
-        sample['gt_bboxes_3d'] = gt_bboxes_3d
-        sample['gt_labels_3d'] = gt_labels_3d
-
-        return sample
-
-
-@manager.TRANSFORMS.add_component
-class ObjectNameFilter(TransformABC):
-    """Filter GT objects by their names.
-
-    Args:
-        classes (list[str]): List of class names to be kept for training.
-    """
-
-    def __init__(self, classes):
-        self.classes = classes
-        self.labels = list(range(len(self.classes)))
-
-    def __call__(self, sample):
-        """Call function to filter objects by their names.
-        """
-        gt_labels_3d = sample['gt_labels_3d']
-        gt_bboxes_mask = np.array([n in self.labels for n in gt_labels_3d],
-                                  dtype=np.bool_)
-        sample['gt_bboxes_3d'] = sample['gt_bboxes_3d'][gt_bboxes_mask]
-        sample['gt_labels_3d'] = sample['gt_labels_3d'][gt_bboxes_mask]
-
-        return sample
 
 
 @manager.TRANSFORMS.add_component
@@ -322,12 +118,10 @@ class ResizeImage(TransformABC):
         """
         img_scale_long = [max(s) for s in img_scales]
         img_scale_short = [min(s) for s in img_scales]
-        long_edge = np.random.randint(
-            min(img_scale_long),
-            max(img_scale_long) + 1)
-        short_edge = np.random.randint(
-            min(img_scale_short),
-            max(img_scale_short) + 1)
+        long_edge = np.random.randint(min(img_scale_long),
+                                      max(img_scale_long) + 1)
+        short_edge = np.random.randint(min(img_scale_short),
+                                       max(img_scale_short) + 1)
         img_scale = (long_edge, short_edge)
         return img_scale, None
 
@@ -433,8 +227,10 @@ class ResizeImage(TransformABC):
         new_size, scale_factor = self.rescale_size((w, h),
                                                    scale,
                                                    return_scale=True)
-        rescaled_img = self.imresize(
-            img, new_size, interpolation=interpolation, backend=backend)
+        rescaled_img = self.imresize(img,
+                                     new_size,
+                                     interpolation=interpolation,
+                                     backend=backend)
         if return_scale:
             return rescaled_img, scale_factor
         else:
@@ -542,10 +338,12 @@ class NormalizeImage(TransformABC):
             if key == 'img_depth':
                 continue
             for idx in range(len(results['img'])):
-                results[key][idx] = self._imnormalize(
-                    results[key][idx], self.mean, self.std, self.to_rgb)
-        results['img_norm_cfg'] = dict(
-            mean=self.mean, std=self.std, to_rgb=self.to_rgb)
+                results[key][idx] = self._imnormalize(results[key][idx],
+                                                      self.mean, self.std,
+                                                      self.to_rgb)
+        results['img_norm_cfg'] = dict(mean=self.mean,
+                                       std=self.std,
+                                       to_rgb=self.to_rgb)
         return results
 
 
@@ -603,14 +401,13 @@ class PadImage(object):
             'reflect': cv2.BORDER_REFLECT_101,
             'symmetric': cv2.BORDER_REFLECT
         }
-        img = cv2.copyMakeBorder(
-            img,
-            padding[1],
-            padding[3],
-            padding[0],
-            padding[2],
-            border_type[padding_mode],
-            value=pad_val)
+        img = cv2.copyMakeBorder(img,
+                                 padding[1],
+                                 padding[3],
+                                 padding[0],
+                                 padding[2],
+                                 border_type[padding_mode],
+                                 value=pad_val)
 
         return img
 
@@ -625,14 +422,14 @@ class PadImage(object):
         """Pad images according to ``self.size``."""
         for key in results.get('img_fields', ['img']):
             if self.size is not None:
-                padded_img = self.impad(
-                    results[key], shape=self.size, pad_val=self.pad_val)
+                padded_img = self.impad(results[key],
+                                        shape=self.size,
+                                        pad_val=self.pad_val)
             elif self.size_divisor is not None:
                 for idx in range(len(results[key])):
-                    padded_img = self.impad_to_multiple(
-                        results[key][idx],
-                        self.size_divisor,
-                        pad_val=self.pad_val)
+                    padded_img = self.impad_to_multiple(results[key][idx],
+                                                        self.size_divisor,
+                                                        pad_val=self.pad_val)
                     results[key][idx] = padded_img
         results['pad_shape'] = padded_img.shape
         results['pad_fixed_size'] = self.size
@@ -878,8 +675,9 @@ class LoadPointsFromMultiSweeps(object):
             elif self.test_mode:
                 choices = np.arange(self.sweeps_num)
             else:
-                choices = np.random.choice(
-                    len(results['sweeps']), self.sweeps_num, replace=False)
+                choices = np.random.choice(len(results['sweeps']),
+                                           self.sweeps_num,
+                                           replace=False)
             for idx in choices:
                 sweep = results['sweeps'][idx]
                 points_sweep = self._load_points(sweep['data_path'])
@@ -986,8 +784,8 @@ class GlobalRotScaleTrans(TransformABC):
 
                 if gt_bboxes_3d.shape[1] == 9:
                     # rotate velo vector
-                    gt_bboxes_3d[:, 7:
-                                 9] = gt_bboxes_3d[:, 7:9] @ rot_mat_T[:2, :2]
+                    gt_bboxes_3d[:,
+                                 7:9] = gt_bboxes_3d[:, 7:9] @ rot_mat_T[:2, :2]
                 input_dict['gt_bboxes_3d'] = gt_bboxes_3d
                 input_dict['pcd_rotation'] = rot_mat_T
 
@@ -1168,6 +966,7 @@ class RandomFlip3D(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class PointShuffle(TransformABC):
+
     def __call__(self, input_dict):
         input_dict['points'] = input_dict['points'][np.random.permutation(
             input_dict['points'].shape[0])]
