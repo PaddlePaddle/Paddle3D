@@ -37,12 +37,6 @@ custom_ops = {
         'version':
         '0.1.0'
     },
-    'iou3d_nms_cuda_v2': {
-        'sources':
-        ['iou3d_nms_v2/iou3d_nms_v2.cc', 'iou3d_nms_v2/iou3d_nms_kernel_v2.cu'],
-        'version':
-        '0.1.0',
-    },
     'centerpoint_postprocess': {
         'sources': [
             'centerpoint_postprocess/iou3d_nms_kernel.cu',
