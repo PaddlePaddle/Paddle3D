@@ -47,17 +47,14 @@ def cross_entropy(pred,
     # apply weights and do the reduction
     if weight is not None:
         weight = weight.astype('float32')
-    loss = weight_reduce_loss(loss,
-                              weight=weight,
-                              reduction=reduction,
-                              avg_factor=avg_factor)
+    loss = weight_reduce_loss(
+        loss, weight=weight, reduction=reduction, avg_factor=avg_factor)
 
     return loss
 
 
 @manager.LOSSES.add_component
 class CrossEntropyLoss(nn.Layer):
-
     def __init__(self,
                  use_sigmoid=False,
                  reduction='mean',

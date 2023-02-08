@@ -81,10 +81,11 @@ class Config(object):
         else:
             raise RuntimeError('Config file should in yaml format!')
 
-        self.update(learning_rate=learning_rate,
-                    batch_size=batch_size,
-                    iters=iters,
-                    epochs=epochs)
+        self.update(
+            learning_rate=learning_rate,
+            batch_size=batch_size,
+            iters=iters,
+            epochs=epochs)
 
     def _update_dic(self, dic: Dict, base_dic: Dict):
         '''Update config from dic based base_dic
@@ -314,8 +315,8 @@ class Config(object):
             if recursive:
                 params = {}
                 for key, val in dic.items():
-                    params[key] = self._load_object(obj=val,
-                                                    recursive=recursive)
+                    params[key] = self._load_object(
+                        obj=val, recursive=recursive)
             else:
                 params = dic
             try:

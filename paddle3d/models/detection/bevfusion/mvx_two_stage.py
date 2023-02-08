@@ -28,23 +28,23 @@ class MVXTwoStageDetector(nn.Layer):
     """Base class of Multi-modality"""
 
     def __init__(
-        self,
-        sync_bn=False,
-        freeze_img=True,
-        pts_voxel_layer=None,
-        pts_voxel_encoder=None,
-        pts_middle_encoder=None,
-        pts_fusion_layer=None,
-        img_backbone=None,
-        pts_backbone=None,
-        img_neck=None,
-        pts_neck=None,
-        pts_bbox_head=None,
-        img_roi_head=None,
-        img_rpn_head=None,
-        train_cfg=None,
-        test_cfg=None,
-        pretrained=None,
+            self,
+            sync_bn=False,
+            freeze_img=True,
+            pts_voxel_layer=None,
+            pts_voxel_encoder=None,
+            pts_middle_encoder=None,
+            pts_fusion_layer=None,
+            img_backbone=None,
+            pts_backbone=None,
+            img_neck=None,
+            pts_neck=None,
+            pts_bbox_head=None,
+            img_roi_head=None,
+            img_rpn_head=None,
+            train_cfg=None,
+            test_cfg=None,
+            pretrained=None,
     ):
         super(MVXTwoStageDetector, self).__init__()
 
@@ -274,10 +274,8 @@ class MVXTwoStageDetector(nn.Layer):
             gt_labels_3d = sample['gt_labels_3d']
             points = sample.get('points', None)
 
-        img_feats, pts_feats = self.extract_feat(points,
-                                                 img=img,
-                                                 img_metas=img_metas,
-                                                 gt_bboxes_3d=gt_bboxes_3d)
+        img_feats, pts_feats = self.extract_feat(
+            points, img=img, img_metas=img_metas, gt_bboxes_3d=gt_bboxes_3d)
         losses = dict()
         if pts_feats:
             losses_pts = self.forward_pts_train(pts_feats, gt_bboxes_3d,
@@ -318,8 +316,8 @@ class MVXTwoStageDetector(nn.Layer):
         """
         outs = self.pts_bbox_head(pts_feats)
         loss_inputs = outs + (gt_bboxes_3d, gt_labels_3d, img_metas)
-        losses = self.pts_bbox_head.loss(*loss_inputs,
-                                         gt_bboxes_ignore=gt_bboxes_ignore)
+        losses = self.pts_bbox_head.loss(
+            *loss_inputs, gt_bboxes_ignore=gt_bboxes_ignore)
         return losses
 
     def forward_img_train(self,
@@ -396,9 +394,8 @@ class MVXTwoStageDetector(nn.Layer):
     def simple_test_pts(self, x, img_metas, rescale=True):
         """Test function of point cloud branch."""
         outs = self.pts_bbox_head(x)
-        bbox_list = self.pts_bbox_head.get_bboxes(*outs,
-                                                  img_metas,
-                                                  rescale=rescale)
+        bbox_list = self.pts_bbox_head.get_bboxes(
+            *outs, img_metas, rescale=rescale)
 
         bbox_results = [
             bbox3d2result(bboxes, scores, labels)
@@ -408,21 +405,18 @@ class MVXTwoStageDetector(nn.Layer):
 
     def simple_test(self, points, img_metas, img=None, rescale=True):
         """Test function without augmentaiton."""
-        img_feats, pts_feats = self.extract_feat(points,
-                                                 img=img,
-                                                 img_metas=img_metas)
+        img_feats, pts_feats = self.extract_feat(
+            points, img=img, img_metas=img_metas)
 
         bbox_list = [dict() for i in range(len(img_metas))]
         if pts_feats and self.with_pts_bbox:
-            bbox_pts = self.simple_test_pts(pts_feats,
-                                            img_metas,
-                                            rescale=rescale)
+            bbox_pts = self.simple_test_pts(
+                pts_feats, img_metas, rescale=rescale)
             for result_dict, pts_bbox in zip(bbox_list, bbox_pts):
                 result_dict['pts_bbox'] = pts_bbox
         if img_feats and self.with_img_bbox:
-            bbox_img = self.simple_test_img(img_feats,
-                                            img_metas,
-                                            rescale=rescale)
+            bbox_img = self.simple_test_img(
+                img_feats, img_metas, rescale=rescale)
             for result_dict, img_bbox in zip(bbox_list, bbox_img):
                 result_dict['img_bbox'] = img_bbox
         return bbox_list
@@ -483,6 +477,5 @@ class MVXTwoStageDetector(nn.Layer):
 def bbox3d2result(bboxes, scores, labels):
     """Convert detection results to a list of numpy arrays.
     """
-    return dict(boxes_3d=bboxes.cpu(),
-                scores_3d=scores.cpu(),
-                labels_3d=labels.cpu())
+    return dict(
+        boxes_3d=bboxes.cpu(), scores_3d=scores.cpu(), labels_3d=labels.cpu())

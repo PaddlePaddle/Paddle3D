@@ -111,10 +111,11 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
         # target assigner
         self.sampling = False
         self.bbox_sampler = PseudoSampler()
-        self.bbox_assigner = MaxIoUAssigner(pos_iou_thr=0.6,
-                                            neg_iou_thr=0.3,
-                                            min_pos_iou=0.3,
-                                            ignore_iof_thr=-1)
+        self.bbox_assigner = MaxIoUAssigner(
+            pos_iou_thr=0.6,
+            neg_iou_thr=0.3,
+            min_pos_iou=0.3,
+            ignore_iof_thr=-1)
 
     def _init_layers(self):
         """Initialize neural network layers of the head."""
@@ -221,10 +222,8 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
         cls_score = cls_score.transpose([0, 2, 3,
                                          1]).reshape([-1, self.num_classes])
         assert labels.max().item() <= self.num_classes
-        loss_cls = self.loss_cls(cls_score,
-                                 labels,
-                                 label_weights,
-                                 avg_factor=num_total_samples)
+        loss_cls = self.loss_cls(
+            cls_score, labels, label_weights, avg_factor=num_total_samples)
 
         # regression loss
         bbox_pred = bbox_pred.transpose([0, 2, 3,
@@ -263,18 +262,20 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
             if self.diff_rad_by_sin:
                 pos_bbox_pred, pos_bbox_targets = self.add_sin_difference(
                     pos_bbox_pred, pos_bbox_targets)
-            loss_bbox = self.loss_bbox(pos_bbox_pred,
-                                       pos_bbox_targets,
-                                       pos_bbox_weights,
-                                       avg_factor=num_total_samples)
+            loss_bbox = self.loss_bbox(
+                pos_bbox_pred,
+                pos_bbox_targets,
+                pos_bbox_weights,
+                avg_factor=num_total_samples)
 
             # direction classification loss
             loss_dir = None
             if self.use_direction_classifier:
-                loss_dir = self.loss_dir(pos_dir_cls_preds,
-                                         pos_dir_targets,
-                                         pos_dir_weights,
-                                         avg_factor=num_total_samples)
+                loss_dir = self.loss_dir(
+                    pos_dir_cls_preds,
+                    pos_dir_targets,
+                    pos_dir_weights,
+                    avg_factor=num_total_samples)
         else:
             loss_bbox = 0  # pos_bbox_pred.sum()
             if self.use_direction_classifier:
@@ -298,8 +299,8 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
         """
         rad_pred_encoding = paddle.sin(boxes1[..., 6:7]) * paddle.cos(
             boxes2[..., 6:7])
-        rad_tg_encoding = paddle.cos(boxes1[..., 6:7]) * paddle.sin(boxes2[...,
-                                                                           6:7])
+        rad_tg_encoding = paddle.cos(boxes1[..., 6:7]) * paddle.sin(
+            boxes2[..., 6:7])
         boxes1 = paddle.concat(
             [boxes1[..., :6], rad_pred_encoding, boxes1[..., 7:]], axis=-1)
         boxes2 = paddle.concat(
@@ -356,8 +357,8 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
         (labels_list, label_weights_list, bbox_targets_list, bbox_weights_list,
          dir_targets_list, dir_weights_list, num_total_pos,
          num_total_neg) = cls_reg_targets
-        num_total_samples = (num_total_pos +
-                             num_total_neg if self.sampling else num_total_pos)
+        num_total_samples = (num_total_pos + num_total_neg
+                             if self.sampling else num_total_pos)
 
         losses_cls, losses_bbox, losses_dir = multi_apply(
             self.loss_single,
@@ -371,9 +372,8 @@ class Anchor3DHead(nn.Layer, AnchorTrainMixin):
             dir_targets_list,
             dir_weights_list,
             num_total_samples=num_total_samples)
-        return dict(loss_cls=losses_cls,
-                    loss_bbox=losses_bbox,
-                    loss_dir=losses_dir)
+        return dict(
+            loss_cls=losses_cls, loss_bbox=losses_bbox, loss_dir=losses_dir)
 
     def get_bboxes(self,
                    cls_scores,

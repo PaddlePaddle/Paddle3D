@@ -29,7 +29,6 @@ __all__ = [
 
 
 class NormalCustom(Normal):
-
     def __init__(self, loc, scale, name=None):
         super(NormalCustom, self).__init__(loc, scale, name)
 
@@ -49,14 +48,14 @@ def generate_guassian_depth_target(depth,
     kernel_size = stride
     H = tH // stride
     W = tW // stride
-    unfold_depth = F.unfold(depth.unsqueeze(1),
-                            kernel_size,
-                            dilations=1,
-                            paddings=0,
-                            strides=stride)  #B, Cxkxk, HxW
-    unfold_depth = unfold_depth.reshape([B, -1, H,
-                                         W]).transpose([0, 2, 3,
-                                                        1])  # B, H, W, kxk
+    unfold_depth = F.unfold(
+        depth.unsqueeze(1),
+        kernel_size,
+        dilations=1,
+        paddings=0,
+        strides=stride)  #B, Cxkxk, HxW
+    unfold_depth = unfold_depth.reshape([B, -1, H, W]).transpose(
+        [0, 2, 3, 1])  # B, H, W, kxk
     valid_mask = (unfold_depth != 0)  # BN, H, W, kxk
 
     valid_mask_f = valid_mask.astype('float32')  # BN, H, W, kxk

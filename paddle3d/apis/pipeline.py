@@ -31,8 +31,8 @@ def parse_losses(losses):
     elif isinstance(losses, dict):
         for loss_name, loss_value in losses.items():
             log_loss[loss_name] = sum(loss_value)
-        total_loss = sum(_loss_value
-                         for _loss_name, _loss_value in log_loss.items())
+        total_loss = sum(
+            _loss_value for _loss_name, _loss_value in log_loss.items())
 
     log_loss['total_loss'] = total_loss
 

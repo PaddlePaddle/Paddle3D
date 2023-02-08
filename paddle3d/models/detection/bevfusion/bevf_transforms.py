@@ -118,10 +118,12 @@ class ResizeImage(TransformABC):
         """
         img_scale_long = [max(s) for s in img_scales]
         img_scale_short = [min(s) for s in img_scales]
-        long_edge = np.random.randint(min(img_scale_long),
-                                      max(img_scale_long) + 1)
-        short_edge = np.random.randint(min(img_scale_short),
-                                       max(img_scale_short) + 1)
+        long_edge = np.random.randint(
+            min(img_scale_long),
+            max(img_scale_long) + 1)
+        short_edge = np.random.randint(
+            min(img_scale_short),
+            max(img_scale_short) + 1)
         img_scale = (long_edge, short_edge)
         return img_scale, None
 
@@ -227,10 +229,8 @@ class ResizeImage(TransformABC):
         new_size, scale_factor = self.rescale_size((w, h),
                                                    scale,
                                                    return_scale=True)
-        rescaled_img = self.imresize(img,
-                                     new_size,
-                                     interpolation=interpolation,
-                                     backend=backend)
+        rescaled_img = self.imresize(
+            img, new_size, interpolation=interpolation, backend=backend)
         if return_scale:
             return rescaled_img, scale_factor
         else:
@@ -338,12 +338,10 @@ class NormalizeImage(TransformABC):
             if key == 'img_depth':
                 continue
             for idx in range(len(results['img'])):
-                results[key][idx] = self._imnormalize(results[key][idx],
-                                                      self.mean, self.std,
-                                                      self.to_rgb)
-        results['img_norm_cfg'] = dict(mean=self.mean,
-                                       std=self.std,
-                                       to_rgb=self.to_rgb)
+                results[key][idx] = self._imnormalize(
+                    results[key][idx], self.mean, self.std, self.to_rgb)
+        results['img_norm_cfg'] = dict(
+            mean=self.mean, std=self.std, to_rgb=self.to_rgb)
         return results
 
 
@@ -401,13 +399,14 @@ class PadImage(object):
             'reflect': cv2.BORDER_REFLECT_101,
             'symmetric': cv2.BORDER_REFLECT
         }
-        img = cv2.copyMakeBorder(img,
-                                 padding[1],
-                                 padding[3],
-                                 padding[0],
-                                 padding[2],
-                                 border_type[padding_mode],
-                                 value=pad_val)
+        img = cv2.copyMakeBorder(
+            img,
+            padding[1],
+            padding[3],
+            padding[0],
+            padding[2],
+            border_type[padding_mode],
+            value=pad_val)
 
         return img
 
@@ -422,14 +421,14 @@ class PadImage(object):
         """Pad images according to ``self.size``."""
         for key in results.get('img_fields', ['img']):
             if self.size is not None:
-                padded_img = self.impad(results[key],
-                                        shape=self.size,
-                                        pad_val=self.pad_val)
+                padded_img = self.impad(
+                    results[key], shape=self.size, pad_val=self.pad_val)
             elif self.size_divisor is not None:
                 for idx in range(len(results[key])):
-                    padded_img = self.impad_to_multiple(results[key][idx],
-                                                        self.size_divisor,
-                                                        pad_val=self.pad_val)
+                    padded_img = self.impad_to_multiple(
+                        results[key][idx],
+                        self.size_divisor,
+                        pad_val=self.pad_val)
                     results[key][idx] = padded_img
         results['pad_shape'] = padded_img.shape
         results['pad_fixed_size'] = self.size
@@ -675,9 +674,8 @@ class LoadPointsFromMultiSweeps(object):
             elif self.test_mode:
                 choices = np.arange(self.sweeps_num)
             else:
-                choices = np.random.choice(len(results['sweeps']),
-                                           self.sweeps_num,
-                                           replace=False)
+                choices = np.random.choice(
+                    len(results['sweeps']), self.sweeps_num, replace=False)
             for idx in choices:
                 sweep = results['sweeps'][idx]
                 points_sweep = self._load_points(sweep['data_path'])
@@ -784,8 +782,8 @@ class GlobalRotScaleTrans(TransformABC):
 
                 if gt_bboxes_3d.shape[1] == 9:
                     # rotate velo vector
-                    gt_bboxes_3d[:,
-                                 7:9] = gt_bboxes_3d[:, 7:9] @ rot_mat_T[:2, :2]
+                    gt_bboxes_3d[:, 7:
+                                 9] = gt_bboxes_3d[:, 7:9] @ rot_mat_T[:2, :2]
                 input_dict['gt_bboxes_3d'] = gt_bboxes_3d
                 input_dict['pcd_rotation'] = rot_mat_T
 
@@ -966,7 +964,6 @@ class RandomFlip3D(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class PointShuffle(TransformABC):
-
     def __call__(self, input_dict):
         input_dict['points'] = input_dict['points'][np.random.permutation(
             input_dict['points'].shape[0])]

@@ -18,6 +18,7 @@ from paddle3d.models.detection.bevfusion.mvx_two_stage import \
 
 __all__ = ['MVXFasterRCNN']
 
+
 @manager.MODELS.add_component
 class MVXFasterRCNN(MVXTwoStageDetector):
     """Multi-modality model using Faster R-CNN."""
