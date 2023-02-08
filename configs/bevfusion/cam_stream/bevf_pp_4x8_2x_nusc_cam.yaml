@@ -66,7 +66,7 @@ model:
   num_views: 6
   final_dim: [900, 1600]
   downsample: 8
-  load_img_from: /workspace/liuxiao28/Paddle3D/mask_rcnn_dbswin-t_fpn_3x_nuim_cocopre.pdparams
+  load_img_from: ./mask_rcnn_dbswin-t_fpn_3x_nuim_cocopre.pdparams
   img_backbone:
       type: CBSwinTransformer
       embed_dim: 96
