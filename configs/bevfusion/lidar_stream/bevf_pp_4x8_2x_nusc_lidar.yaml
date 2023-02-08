@@ -125,7 +125,7 @@ model:
           type: DeltaXYZWLHRBBoxCoder
           code_size: 9
         loss_cls:
-            type: FocalLoss
+            type: WeightedFocalLoss
             use_sigmoid: true
             gamma: 2.0
             alpha: 0.25
