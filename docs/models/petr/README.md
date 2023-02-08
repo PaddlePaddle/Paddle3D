@@ -65,9 +65,14 @@ nuscenes
    ├── sweeps
    ├── v1.0-trainval
    ├── v1.0-test
-   ├── petr_nuscenes_annotation_train.pk
+   ├── petr_nuscenes_annotation_train.pkl
    ├── petr_nuscenes_annotation_val.pkl
 ```
+为了方便，我们提供了生成好的annotation文件
+| 文件名称 | 下载链接 |
+| -- | -- |
+| petr_nuscenes_annotation_train.pkl | [下载](https://paddle3d.bj.bcebos.com/datasets/nuScenes/petr_nuscenes_annotation_train.pkl) |
+| petr_nuscenes_annotation_val.pkl | [下载](https://paddle3d.bj.bcebos.com/datasets/nuScenes/petr_nuscenes_annotation_val.pkl) |
 
 ## <h2 id="7">训练</h2>
 
@@ -75,6 +80,12 @@ nuscenes
 
 ```
 wget https://paddle3d.bj.bcebos.com/pretrained/fcos3d_vovnet_imgbackbone-remapped.pdparams
+```
+
+设置以下环境变量，在backbone阶段使用NHWC的data_format，加快训练速度
+
+```
+export FLAGS_opt_layout=True
 ```
 
 运行以下命令，进行单卡训练

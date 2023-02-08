@@ -13,10 +13,12 @@
 # limitations under the License.
 
 import paddle
+from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.hybrid_parallel_util import \
     fused_allreduce_gradients
 
 from paddle3d.sample import Sample
+from paddle3d.utils.tensor_fusion_utils import all_reduce_parameters
 
 
 def parse_losses(losses):
@@ -42,7 +44,9 @@ def training_step(model: paddle.nn.Layer,
                   sample: Sample,
                   cur_iter: int,
                   scaler=None,
-                  amp_cfg=dict()) -> dict:
+                  amp_cfg=dict(),
+                  all_fused_tensors=None,
+                  group=None) -> dict:
 
     if optimizer.__class__.__name__ == 'OneCycleAdam':
         optimizer.before_iter(cur_iter - 1)
@@ -62,7 +66,11 @@ def training_step(model: paddle.nn.Layer,
                 outputs = model(sample)
                 loss, log_loss = parse_losses(outputs['loss'])
                 loss.backward()
-        fused_allreduce_gradients(list(model.parameters()), None)
+        if all_fused_tensors is None:
+            fused_allreduce_gradients(list(model.parameters()), None)
+        else:
+            assert group is not None
+            all_reduce_parameters(all_fused_tensors, group)
     else:
         if scaler is not None:
             with paddle.amp.auto_cast(**amp_cfg):
@@ -82,11 +90,11 @@ def training_step(model: paddle.nn.Layer,
         if scaler is not None:
             scaler.step(optimizer)
             scaler.update()
-            optimizer.clear_grad()
         else:
             optimizer.step()
 
-        model.clear_gradients()
+        optimizer.clear_grad()
+
         if isinstance(optimizer._learning_rate,
                       paddle.optimizer.lr.LRScheduler):
             optimizer._learning_rate.step()

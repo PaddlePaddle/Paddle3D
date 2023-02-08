@@ -224,9 +224,20 @@ class Petr3D(BaseMultiViewModel):
                 else:
                     img_feats = self.neck(img_feats[-1])
             else:
-                img_feats = self.backbone(img)
-                if isinstance(img_feats, dict):
-                    img_feats = list(img_feats.values())
+                if os.environ.get('FLAGS_opt_layout',
+                                  'False').lower() == 'true':
+                    img_nhwc = paddle.transpose(img, [0, 2, 3, 1])
+                    img_feats = []
+                    img_feats_nhwc = self.backbone(img_nhwc)
+                    if isinstance(img_feats_nhwc, dict):
+                        img_feats_nhwc = list(img_feats_nhwc.values())
+                    for img_feat_nhwc in img_feats_nhwc:
+                        img_feats.append(
+                            paddle.transpose(img_feat_nhwc, [0, 3, 1, 2]))
+                else:
+                    img_feats = self.backbone(img)
+                    if isinstance(img_feats, dict):
+                        img_feats = list(img_feats.values())
                 img_feats = self.neck(img_feats)
         else:
             return None
@@ -404,3 +415,9 @@ class Petr3D(BaseMultiViewModel):
         if self.pts_bbox_head.with_time:
             return "petrv2_inference"
         return "petr_inference"
+
+    @property
+    def apollo_deploy_name(self):
+        if self.pts_bbox_head.with_time:
+            return "PETR_V2"
+        return "PETR_V1"

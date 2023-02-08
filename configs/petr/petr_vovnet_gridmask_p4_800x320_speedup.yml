@@ -6,7 +6,6 @@ train_dataset:
   dataset_root: data/nuscenes/
   ann_file: data/nuscenes/petr_nuscenes_annotation_train.pkl
   mode: train
-  use_valid_flag: True
   class_names: [
             'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
             'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
@@ -14,12 +13,6 @@ train_dataset:
   transforms:
     - type: LoadMultiViewImageFromFiles
       to_float32: True
-    - type: LoadMultiViewImageFromMultiSweepsFiles
-      sweeps_num: 1
-      to_float32: True
-      pad_empty_sweeps: True
-      sweep_range: [3, 27]
-      test_mode: False
     - type: LoadAnnotations3D
       with_bbox_3d: True
       with_label_3d: True
@@ -53,10 +46,6 @@ train_dataset:
       size_divisor: 32
     - type: SampleFilerByKey
       keys: ['gt_bboxes_3d', 'gt_labels_3d', 'img']
-      meta_keys: ['filename', 'ori_shape', 'img_shape', 'lidar2img',
-                  'intrinsics', 'extrinsics', 'pad_shape',
-                  'scale_factor', 'flip', 'box_type_3d', 'img_norm_cfg', 'sample_idx',
-                  'timestamp']
 
 val_dataset:
   type: NuscenesMVDataset
@@ -69,11 +58,6 @@ val_dataset:
   transforms:
     - type: LoadMultiViewImageFromFiles
       to_float32: True
-    - type: LoadMultiViewImageFromMultiSweepsFiles
-      sweeps_num: 1
-      to_float32: True
-      pad_empty_sweeps: True
-      sweep_range: [3, 27]
     - type: ResizeCropFlipImage
       sample_aug_cfg:
           resize_lim: [0.47, 0.625]
@@ -91,43 +75,23 @@ val_dataset:
       size_divisor: 32
     - type: SampleFilerByKey
       keys: ['img']
-      meta_keys: ['filename', 'ori_shape', 'img_shape', 'lidar2img',
-                  'intrinsics', 'extrinsics', 'pad_shape',
-                  'scale_factor', 'flip', 'box_type_3d', 'img_norm_cfg', 'sample_idx',
-                  'timestamp']
-
-optimizer:
-  type: AdamW
-  weight_decay: 0.01
-  grad_clip:
-    type: ClipGradByGlobalNorm
-    clip_norm: 35
-    # auto_skip_clip: True
-
-lr_scheduler:
-  type: LinearWarmup
-  learning_rate:
-    type: CosineAnnealingDecay
-    learning_rate: 0.0002
-    T_max: 84408 # 3517 * 24
-    eta_min: 0.0000002
-  warmup_steps: 500
-  start_lr: 0.00006666666
-  end_lr: 0.0002
 
 model:
+  fused_linear: True
   type: Petr3D
   use_recompute: True
   use_grid_mask: True
   backbone:
-    type: VoVNetCP ###use checkpoint to save memory
+    # use recompute to save memory
+    type: VoVNetCP
     spec_name: V-99-eSE
     norm_eval: True
     frozen_stages: -1
     input_ch: 3
     out_features: ('stage4','stage5',)
   neck:
-    type: CPFPN  ###remove unused parameters
+    # remove unused parameters
+    type: CPFPN
     in_channels: [768, 1024]
     out_channels: 256
     num_outs: 2
@@ -138,12 +102,7 @@ model:
     num_query: 900
     LID: true
     with_multiview: true
-    with_position: true
-    with_fpe: true
-    with_time: true
-    with_multi: true
     position_range: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
-    code_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     normedlinear: False
     transformer:
       type: PETRTransformer
@@ -190,3 +149,23 @@ model:
       type: WeightedL1Loss
       loss_weight: 0.25
       reduction: sum
+
+
+optimizer:
+  type: AdamW
+  weight_decay: 0.01
+  tensor_fusion: True
+  grad_clip:
+    type: ClipGradByGlobalNorm
+    clip_norm: 35
+
+lr_scheduler:
+  type: LinearWarmup
+  learning_rate:
+    type: CosineAnnealingDecay
+    learning_rate: 0.0002
+    T_max: 84408 # 3517 * 24e
+    eta_min: 0.0000002
+  warmup_steps: 500
+  start_lr: 0.0
+  end_lr: 0.0002

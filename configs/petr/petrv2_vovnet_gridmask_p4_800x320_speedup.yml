@@ -99,6 +99,7 @@ val_dataset:
 optimizer:
   type: AdamW
   weight_decay: 0.01
+  tensor_fusion: True
   grad_clip:
     type: ClipGradByGlobalNorm
     clip_norm: 35
@@ -116,6 +117,7 @@ lr_scheduler:
   end_lr: 0.0002
 
 model:
+  fused_linear: True
   type: Petr3D
   use_recompute: True
   use_grid_mask: True
