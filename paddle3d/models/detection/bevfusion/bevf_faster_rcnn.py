@@ -29,7 +29,7 @@ from paddle3d.models.necks.fpnc import ConvModule
 from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
 
-__all__ = ['BEVF_FasterRCNN']
+__all__ = ['BEVFFasterRCNN']
 
 
 class SE_Block(nn.Layer):
@@ -52,7 +52,7 @@ class SE_Block(nn.Layer):
 
 
 @manager.MODELS.add_component
-class BEVF_FasterRCNN(MVXFasterRCNN):
+class BEVFFasterRCNN(MVXFasterRCNN):
     """Multi-modality BEVFusion."""
 
     def __init__(self,
@@ -85,7 +85,7 @@ class BEVF_FasterRCNN(MVXFasterRCNN):
             lic (int): channel dimension of LiDAR BEV feature.
 
         """
-        super(BEVF_FasterRCNN, self).__init__(**kwargs)
+        super(BEVFFasterRCNN, self).__init__(**kwargs)
         self.num_views = num_views
         self.lc_fusion = lc_fusion
         self.img_depth_loss_weight = img_depth_loss_weight

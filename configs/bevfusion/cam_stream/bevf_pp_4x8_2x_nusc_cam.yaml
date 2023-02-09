@@ -59,7 +59,7 @@ val_dataset:
   mode: val
 
 model:
-  type: BEVF_FasterRCNN
+  type: BEVFFasterRCNN
   camera_stream: true
   lss: false
   grid: 0.5
