@@ -13,6 +13,6 @@
 # limitations under the License.
 
 from .base import PaddleModel
-# Register models and architectures
-# Monocular 3D object detection task
-from .mono_det_task import register
+# Register models and suites
+# Monocular 3D object detection
+from .mono_det import register

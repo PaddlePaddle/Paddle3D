@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import sys
 import abc
 
@@ -20,8 +21,8 @@ from .utils.misc import run_cmd as _run_cmd, abspath
 
 class BaseRunner(metaclass=abc.ABCMeta):
 
-    def __init__(self, repo_root_path):
-        self.repo_root_path = abspath(repo_root_path)
+    def __init__(self, runner_root_path):
+        self.runner_root_path = abspath(runner_root_path)
 
         self.python = sys.executable
 
@@ -69,5 +70,9 @@ class BaseRunner(metaclass=abc.ABCMeta):
         if switch_wdir:
             if 'wd' in kwargs:
                 raise KeyError
-            kwargs['wd'] = self.repo_root_path
+            if isinstance(switch_wdir, str):
+                # In this case `switch_wdir` specifies a relative path
+                kwargs['wd'] = os.path.join(self.runner_root_path, switch_wdir)
+            else:
+                kwargs['wd'] = self.runner_root_path
         return _run_cmd(cmd, **kwargs)

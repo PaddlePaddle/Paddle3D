@@ -44,7 +44,7 @@ class MonoDetModel(BaseModel):
             save_dir = abspath(save_dir)
 
         # Update YAML config file
-        config_file_path = self.arch_info['config_path']
+        config_file_path = self.model_info['config_path']
         config = MonoDetConfig.build_from_file(config_file_path)
         config._update_dataset_config(dataset)
         if amp is not None:
@@ -101,7 +101,7 @@ class MonoDetModel(BaseModel):
             save_dir = abspath(save_dir)
 
         # Update YAML config file
-        config_file_path = self.arch_info['config_path']
+        config_file_path = self.model_info['config_path']
         config = MonoDetConfig.build_from_file(config_file_path)
         config_file_path = self.config_file_path
         config.dump(config_file_path)
@@ -133,7 +133,7 @@ class MonoDetModel(BaseModel):
         if input_path is not None:
             cli_args.append(CLIArgument('--image', input_path))
 
-        infer_dir = self.arch_info['infer_dir']
+        infer_dir = self.model_info['infer_dir']
         # The inference script does not require a config file
         self.runner.infer(None, cli_args, device, infer_dir, save_dir)
 
@@ -152,12 +152,12 @@ class MonoDetModel(BaseModel):
             save_dir = abspath(save_dir)
 
         # Update YAML config file
-        config_file_path = self.arch_info['config_path']
+        config_file_path = self.model_info['config_path']
         config = MonoDetConfig.build_from_file(config_file_path)
         config._update_dataset_config(dataset)
         config_file_path = self.config_file_path
         config.dump(config_file_path)
-        ac_config_file_path = self.arch_info['auto_compression_config_path']
+        ac_config_file_path = self.model_info['auto_compression_config_path']
         # TODO: Allow updates of auto compression config file
 
         # Parse CLI arguments

@@ -14,24 +14,24 @@
 
 import os.path as osp
 
-from ..base.register import register_arch_info, register_model_info
+from ..base.register import register_model_info, register_suite_info
 from .model import MonoDetModel
 from .runner import MonoDetRunner
 
 # XXX: Hard-code relative path of repo root dir
 REPO_ROOT_PATH = osp.abspath(osp.join(osp.dirname(__file__), '..', '..'))
-register_model_info({
-    'model_name': 'MonoDetModel',
-    'model_cls': MonoDetModel,
-    'runner_cls': MonoDetRunner,
-    'repo_root_path': REPO_ROOT_PATH
+register_suite_info({
+    'suite_name': 'MonoDet',
+    'model': MonoDetModel,
+    'runner': MonoDetRunner,
+    'runner_root_path': REPO_ROOT_PATH
 })
 
-register_arch_info({
-    'arch_name':
+register_model_info({
+    'model_name':
     'smoke',
-    'model':
-    'MonoDetModel',
+    'suite':
+    'MonoDet',
     'config_path':
     osp.join(REPO_ROOT_PATH, 'configs', 'smoke',
              'smoke_dla34_no_dcn_kitti.yml'),

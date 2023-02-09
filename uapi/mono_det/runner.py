@@ -48,11 +48,7 @@ class MonoDetRunner(BaseRunner):
         args_str = ' '.join(str(arg) for arg in cli_args)
         cmd = f"{self.python} vis.py {args_str}"
         python_infer_dir = os.path.join(infer_dir, 'python')
-        self.run_cmd(cmd,
-                     switch_wdir=False,
-                     wd=python_infer_dir,
-                     echo=True,
-                     silent=False)
+        self.run_cmd(cmd, switch_wdir=python_infer_dir, echo=True, silent=False)
         if save_dir is not None:
             # According to
             # https://github.com/PaddlePaddle/Paddle3D/blob/3cf884ecbc94330be0e2db780434bb60b9b4fe8c/deploy/smoke/python/vis.py#L135
