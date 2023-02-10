@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .base import PaddleModel
+from .base import PaddleModel, Config
 # Register models and suites
 # Monocular 3D object detection
 from .mono_det import register

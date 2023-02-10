@@ -14,6 +14,8 @@
 
 import os
 import shutil
+import re
+from glob import iglob
 
 from ..base import BaseRunner
 from ..base.utils.arg import CLIArgument
@@ -58,9 +60,27 @@ class MonoDetRunner(BaseRunner):
                 os.makedirs(save_dir)
             shutil.move(src=pred_path, dst=save_dir)
 
-    def compression(self, config_file_path, cli_args, device):
-        python, device_type = self.distributed(device)
-        # `device_type` ignored
-        args_str = ' '.join(str(arg) for arg in cli_args)
-        cmd = f"{python} tools/train.py --do_eval --config {config_file_path} {args_str}"
-        self.run_cmd(cmd, switch_wdir=True, echo=True, silent=False)
+    def compression(self, config_file_path, train_cli_args, export_cli_args,
+                    device, train_save_dir):
+        # Step 1: Train model
+        self.train(config_file_path, train_cli_args, device)
+
+        # Step 2: Export model
+        # Get the path of all checkpoints and find the latest one
+        max_iter = 0
+        latest_ckp_path = None
+        for p in iglob(os.path.join(train_save_dir, 'iter_*')):
+            m = re.search(r'iter_(\d+)$', p)
+            if m is not None:
+                iter_ = m.group(1)
+                iter_ = int(iter_)
+                if iter_ > max_iter:
+                    max_iter = iter_
+                    latest_ckp_path = p
+        if not os.path.exists(latest_ckp_path):
+            raise FileNotFoundError
+        # XXX: Make in-place modification
+        export_cli_args.append(
+            CLIArgument('--model',
+                        os.path.join(latest_ckp_path, 'model.pdparams')))
+        self.export(config_file_path, export_cli_args, device)

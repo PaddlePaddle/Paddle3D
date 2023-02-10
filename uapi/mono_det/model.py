@@ -17,14 +17,13 @@ import os.path as osp
 from ..base import BaseModel
 from ..base.utils.arg import CLIArgument
 from ..base.utils.misc import abspath
-from .config import MonoDetConfig
 
 
 class MonoDetModel(BaseModel):
     _SAVE_NAME = 'model'
 
     def train(self,
-              dataset,
+              dataset=None,
               batch_size=None,
               learning_rate=None,
               epochs_iters=None,
@@ -33,10 +32,13 @@ class MonoDetModel(BaseModel):
               dy2st=None,
               amp=None,
               save_dir=None):
-        # NOTE: We must use an absolute path here,
-        # so we can run the scripts either inside or outside the repo dir.
-        dataset = abspath(dataset)
-        if dy2st == True:
+        if dataset is not None:
+            # NOTE: We must use an absolute path here,
+            # so we can run the scripts either inside or outside the repo dir.
+            dataset = abspath(dataset)
+        if device is None:
+            device = 'gpu'
+        if dy2st:
             raise ValueError(f"`dy2st`={dy2st} is not supported.")
         if resume_path is not None:
             resume_path = abspath(resume_path)
@@ -44,9 +46,8 @@ class MonoDetModel(BaseModel):
             save_dir = abspath(save_dir)
 
         # Update YAML config file
-        config_file_path = self.model_info['config_path']
-        config = MonoDetConfig.build_from_file(config_file_path)
-        config._update_dataset_config(dataset)
+        config = self.config.copy()
+        config.update_dataset(dataset)
         if amp is not None:
             # XXX: Currently, we hard-code the AMP settings according to
             # https://github.com/PaddlePaddle/Paddle3D/blob/3cf884ecbc94330be0e2db780434bb60b9b4fe8c/configs/smoke/smoke_dla34_no_dcn_kitti_amp.yml#L6
@@ -86,23 +87,17 @@ class MonoDetModel(BaseModel):
 
         self.runner.train(config_file_path, cli_args, device)
 
-    def predict(self,
-                weight_path=None,
-                device=None,
-                input_path=None,
-                save_dir=None):
+    def predict(self, weight_path, input_path, device=None, save_dir=None):
         raise RuntimeError(
             f"`{self.__class__.__name__}.predict()` is not implemented.")
 
-    def export(self, weight_path=None, save_dir=None):
-        if weight_path is not None:
-            weight_path = abspath(weight_path)
+    def export(self, weight_path, save_dir=None):
+        weight_path = abspath(weight_path)
         if save_dir is not None:
             save_dir = abspath(save_dir)
 
         # Update YAML config file
-        config_file_path = self.model_info['config_path']
-        config = MonoDetConfig.build_from_file(config_file_path)
+        config = self.config.copy()
         config_file_path = self.config_file_path
         config.dump(config_file_path)
 
@@ -117,10 +112,11 @@ class MonoDetModel(BaseModel):
 
         self.runner.export(config_file_path, cli_args, None)
 
-    def infer(self, model_dir, device=None, input_path=None, save_dir=None):
+    def infer(self, model_dir, input_path, device=None, save_dir=None):
         model_dir = abspath(model_dir)
-        if input_path is not None:
-            input_path = abspath(input_path)
+        input_path = abspath(input_path)
+        if device is None:
+            device = 'gpu'
         if save_dir is not None:
             save_dir = abspath(save_dir)
 
@@ -138,41 +134,52 @@ class MonoDetModel(BaseModel):
         self.runner.infer(None, cli_args, device, infer_dir, save_dir)
 
     def compression(self,
-                    dataset,
+                    weight_path,
+                    dataset=None,
                     batch_size=None,
                     learning_rate=None,
                     epochs_iters=None,
                     device=None,
-                    weight_path=None,
                     save_dir=None):
-        dataset = abspath(dataset)
-        if weight_path is not None:
-            weight_path = abspath(weight_path)
+        weight_path = abspath(weight_path)
+        if dataset is not None:
+            dataset = abspath(dataset)
         if save_dir is not None:
             save_dir = abspath(save_dir)
 
         # Update YAML config file
-        config_file_path = self.model_info['config_path']
-        config = MonoDetConfig.build_from_file(config_file_path)
-        config._update_dataset_config(dataset)
+        config = self.config.copy()
+        config.update_dataset(dataset)
         config_file_path = self.config_file_path
         config.dump(config_file_path)
         ac_config_file_path = self.model_info['auto_compression_config_path']
         # TODO: Allow updates of auto compression config file
 
         # Parse CLI arguments
-        cli_args = []
-        cli_args.append(CLIArgument('--quant_config', ac_config_file_path))
+        train_cli_args = []
+        export_cli_args = []
+        train_cli_args.append(CLIArgument('--quant_config',
+                                          ac_config_file_path))
+        export_cli_args.append(
+            CLIArgument('--quant_config', ac_config_file_path))
         if batch_size is not None:
-            cli_args.append(CLIArgument('--batch_size', batch_size))
+            train_cli_args.append(CLIArgument('--batch_size', batch_size))
         if learning_rate is not None:
-            cli_args.append(CLIArgument('--learning_rate', learning_rate))
+            train_cli_args.append(CLIArgument('--learning_rate', learning_rate))
         if epochs_iters is not None:
             # NOTE: Paddle3D supports both `--iters` and `--epochs`, and we use `--iters` here.
-            cli_args.append(CLIArgument('--iters', epochs_iters))
+            train_cli_args.append(CLIArgument('--iters', epochs_iters))
         if weight_path is not None:
-            cli_args.append(CLIArgument('--model', weight_path))
+            train_cli_args.append(CLIArgument('--model', weight_path))
         if save_dir is not None:
-            cli_args.append(CLIArgument('--save_dir', save_dir))
+            train_cli_args.append(CLIArgument('--save_dir', save_dir))
+            # The exported model saved in a subdirectory named `infer`
+            export_cli_args.append(
+                CLIArgument('--save_dir', osp.join(save_dir, 'infer')))
+        else:
+            # According to
+            # https://github.com/PaddlePaddle/Paddle3D/blob/3cf884ecbc94330be0e2db780434bb60b9b4fe8c/tools/train.py#L100
+            save_dir = 'output'
 
-        self.runner.compression(config_file_path, cli_args, device)
+        self.runner.compression(config_file_path, train_cli_args,
+                                export_cli_args, device, save_dir)

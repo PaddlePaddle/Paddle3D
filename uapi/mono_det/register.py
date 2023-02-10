@@ -17,6 +17,7 @@ import os.path as osp
 from ..base.register import register_model_info, register_suite_info
 from .model import MonoDetModel
 from .runner import MonoDetRunner
+from .config import MonoDetConfig
 
 # XXX: Hard-code relative path of repo root dir
 REPO_ROOT_PATH = osp.abspath(osp.join(osp.dirname(__file__), '..', '..'))
@@ -24,6 +25,7 @@ register_suite_info({
     'suite_name': 'MonoDet',
     'model': MonoDetModel,
     'runner': MonoDetRunner,
+    'config': MonoDetConfig,
     'runner_root_path': REPO_ROOT_PATH
 })
 
@@ -37,6 +39,7 @@ register_model_info({
              'smoke_dla34_no_dcn_kitti.yml'),
     'auto_compression_config_path':
     osp.join(REPO_ROOT_PATH, 'configs', 'quant', 'smoke_kitti.yml'),
+    'supported_apis': ['train', 'export', 'infer', 'compression'],
     # Additional info
     'infer_dir':
     'deploy/smoke'

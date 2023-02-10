@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 import yaml
 from paddle3d.apis.config import Config
 
@@ -21,6 +19,7 @@ from ..base import BaseConfig
 
 
 class MonoDetConfig(BaseConfig):
+    # TODO: ABC of PP3DConfig
     # Refer to https://github.com/PaddlePaddle/Paddle3D/blob/develop/paddle3d/apis/config.py
     def update(self, dict_like_obj):
 
@@ -46,9 +45,34 @@ class MonoDetConfig(BaseConfig):
         with open(config_file_path, 'w') as f:
             yaml.dump(self.dict, f)
 
-    def _update_dataset_config(self, dataset_root_path):
-        ds_cfg = self._make_kitti_mono_dataset_config(dataset_root_path)
+    def update_dataset(self, dataset_path, dataset_type=None):
+        if dataset_type is None:
+            dataset_type = 'KITTI'
+        if dataset_type == 'KITTI':
+            ds_cfg = self._make_kitti_mono_dataset_config(dataset_path)
+        else:
+            raise ValueError(f"{dataset_type} is not supported.")
         self.update(ds_cfg)
+
+    def update_optimizer(self, optimizer_type):
+        # Not yet implemented
+        raise NotImplementedError
+
+    def update_backbone(self, backbone_type):
+        # Not yet implemented
+        raise NotImplementedError
+
+    def update_lr_scheduler(self, lr_scheduler_type):
+        # Not yet implemented
+        raise NotImplementedError
+
+    def update_batch_size(self, batch_size, mode='train'):
+        # Not yet implemented
+        raise NotImplementedError
+
+    def update_weight_decay(self, weight_decay):
+        # Not yet implemented
+        raise NotImplementedError
 
     def _make_kitti_mono_dataset_config(self, dataset_root_path):
         return {

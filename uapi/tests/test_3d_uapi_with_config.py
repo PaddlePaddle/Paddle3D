@@ -18,12 +18,12 @@ import sys
 __dir__ = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.abspath(os.path.join(__dir__, '..', '..')))
 
-from uapi import PaddleModel
+from uapi import PaddleModel, Config
 
 if __name__ == '__main__':
-    model = PaddleModel(model_name='smoke')
+    config = Config('smoke')
 
-    print(model.supported_apis)
+    model = PaddleModel(config=config)
 
     model.train(dataset='uapi/tests/data/KITTI',
                 batch_size=1,
