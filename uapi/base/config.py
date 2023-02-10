@@ -16,10 +16,20 @@ import abc
 import collections.abc
 from collections import OrderedDict
 
+from .register import get_registered_model_info, build_config_from_model_info
+
 __all__ = ['Config', 'BaseConfig']
 
 
 class Config(object):
+    # We constrain function params here
+    def __new__(cls, model_name, config_file_path=None):
+        model_info = get_registered_model_info(model_name)
+        return build_config_from_model_info(model_info,
+                                            config_file_path=config_file_path)
+
+
+class _Config(object):
     _DICT_TYPE_ = OrderedDict
 
     def __init__(self, cfg=None):
@@ -59,6 +69,9 @@ class Config(object):
     def copy(self):
         return type(self)(self)
 
+    def pop(self, key):
+        self._dict.pop(key)
+
     def __repr__(self):
         return format_cfg(self, indent=0)
 
@@ -67,16 +80,63 @@ class Config(object):
         self._dict.update(dict_like_obj)
 
 
-class BaseConfig(Config, metaclass=abc.ABCMeta):
+class BaseConfig(_Config, metaclass=abc.ABCMeta):
+    """
+    Abstract base class of Config.
+
+    Config provides the funtionality to load, parse, or dump to a
+        configuration file with a specific format. Also, it provides
+        APIs to update configurations of several important
+        hyperparameters and model components.
+    """
+
+    @abc.abstractmethod
+    def load(self, config_file_path):
+        """Load configurations from a file."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def dump(self, config_file_path):
+        """Dump configurations to a file."""
+        raise NotImplementedError
 
     @abc.abstractmethod
     def update(self, dict_like_obj):
+        """Update configurations from a dict-like object."""
         raise NotImplementedError
 
-    def load(self, config_file_path):
+    @abc.abstractmethod
+    def update_dataset(self, dataset_path, dataset_type=None):
+        """Update configurations of dataset."""
         raise NotImplementedError
 
-    def dump(self, config_file_path):
+    @abc.abstractmethod
+    def update_optimizer(self, optimizer_type):
+        """Update configurations of optimizer."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def update_backbone(self, backbone_type):
+        """Update configurations of backbone."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def update_lr_scheduler(self, lr_scheduler_type):
+        """Update configurations of lr scheduler."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def update_batch_size(self, batch_size, mode='train'):
+        """
+        Update batch size.
+
+        By default this method modifies the training batch size.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def update_weight_decay(self, weight_decay):
+        """Update configurations of weight decay."""
         raise NotImplementedError
 
     @classmethod
