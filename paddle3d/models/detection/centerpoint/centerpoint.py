@@ -87,13 +87,18 @@ class CenterPoint(BaseLidarModel):
         return voxels, coordinates, num_points_in_voxel
 
     def extract_feat(self, data):
-        voxels, coordinates, num_points_in_voxel = self.voxelizer(
-            data['points'])
-        data["features"] = voxels
-        data["num_points_in_voxel"] = num_points_in_voxel
-        data["coors"] = coordinates
-        input_features = self.voxel_encoder(
-            data["features"], data["num_points_in_voxel"], data["coors"])
+        if self.voxelizer.__class__.__name__ == 'HardVoxelizer':
+            voxels, coordinates, num_points_in_voxel = self.voxelizer(
+                data['points'])
+            data["features"] = voxels
+            data["num_points_in_voxel"] = num_points_in_voxel
+            data["coors"] = coordinates
+            input_features = self.voxel_encoder(
+                data["features"], data["num_points_in_voxel"], data["coors"])
+        elif self.voxelizer.__class__.__name__ == 'DynamicVoxelizer':
+            voxels, coors = self.voxelizer(data['points'])
+            input_features, feature_coors = self.voxel_encoder(voxels, coors)
+            data["coors"] = feature_coors
         x = self.middle_encoder(input_features, data["coors"],
                                 data["batch_size"])
         x = self.backbone(x)

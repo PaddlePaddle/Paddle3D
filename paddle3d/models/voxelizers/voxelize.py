@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# ------------------------------------------------------------------------
+# DynamicVoxelizer is modified from https://github.com/open-mmlab/mmdetection3d/blob/master/mmdet3d/models/detectors/dynamic_voxelnet.py
+# Copyright (c) OpenMMLab. All rights reserved.
+# ------------------------------------------------------------------------
+
 import numpy as np
 import paddle
 import paddle.nn as nn
@@ -20,7 +25,7 @@ import paddle.nn.functional as F
 from paddle3d.apis import manager
 from paddle3d.ops import voxelize
 
-__all__ = ['HardVoxelizer']
+__all__ = ['HardVoxelizer', 'DynamicVoxelizer']
 
 
 @manager.VOXELIZERS.add_component
@@ -80,3 +85,29 @@ class HardVoxelizer(nn.Layer):
             voxels, coors_pad, num_points_per_voxel = self.single_forward(
                 points, max_num_voxels, 0)
             return voxels, coors_pad, num_points_per_voxel
+
+
+@manager.VOXELIZERS.add_component
+class DynamicVoxelizer(nn.Layer):
+    def __init__(self, voxel_size, point_cloud_range):
+        super(DynamicVoxelizer, self).__init__()
+        self.voxel_size = voxel_size
+        self.point_cloud_range = point_cloud_range
+
+    def single_forward(self, point, bs_idx):
+        coors = voxelize.dynamic_voxelize(point, self.voxel_size,
+                                          self.point_cloud_range)
+        coors = coors.reshape([1, -1, 3])
+        coors_pad = F.pad(
+            coors, [1, 0], value=bs_idx, mode='constant', data_format="NCL")
+        coors_pad = coors_pad.reshape([-1, 4])
+        return coors_pad
+
+    def forward(self, points):
+        batch_coors = []
+        for bs_idx, point in enumerate(points):
+            coors_pad = self.single_forward(point, bs_idx)
+            batch_coors.append(coors_pad)
+        coors_batch = paddle.concat(batch_coors, axis=0)
+        points_batch = paddle.concat(points, axis=0)
+        return points_batch, coors_batch
