@@ -21,3 +21,4 @@ from .smooth_l1_loss import smooth_l1_loss
 from .disentangled_box3d_loss import DisentangledBox3DLoss, unproject_points2d
 from .weight_loss import (WeightedCrossEntropyLoss, WeightedSmoothL1Loss,
                           get_corner_loss_lidar)
+from .lane_loss import SigmoidCELoss, FocalDiceLoss

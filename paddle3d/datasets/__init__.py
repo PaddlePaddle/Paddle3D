@@ -15,5 +15,5 @@
 from .base import BaseDataset
 from .kitti import KittiDepthDataset, KittiMonoDataset, KittiPCDataset
 from .modelnet40 import ModelNet40
-from .nuscenes import NuscenesMVDataset, NuscenesPCDataset
+from .nuscenes import NuscenesMVDataset, NuscenesPCDataset, NuscenesMVSegDataset
 from .waymo import WaymoPCDataset
