@@ -14,6 +14,7 @@
 
 import os
 import sys
+import shutil
 
 __dir__ = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.abspath(os.path.join(__dir__, '..', '..')))
@@ -24,6 +25,9 @@ if __name__ == '__main__':
     config = Config('smoke')
 
     model = PaddleModel(config=config)
+
+    if os.path.exists('uapi/tests/3d_res'):
+        shutil.rmtree('uapi/tests/3d_res')
 
     model.train(dataset='uapi/tests/data/KITTI',
                 batch_size=1,

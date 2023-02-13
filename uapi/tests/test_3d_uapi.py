@@ -14,6 +14,7 @@
 
 import os
 import sys
+import shutil
 
 __dir__ = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.abspath(os.path.join(__dir__, '..', '..')))
@@ -22,6 +23,9 @@ from uapi import PaddleModel
 
 if __name__ == '__main__':
     model = PaddleModel(model_name='smoke')
+
+    if os.path.exists('uapi/tests/3d_res'):
+        shutil.rmtree('uapi/tests/3d_res')
 
     print(model.supported_apis)
 
