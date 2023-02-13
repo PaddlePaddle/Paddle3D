@@ -36,13 +36,13 @@ class MonoDetConfig(BaseConfig):
         dict_ = _merge_config_dicts(dict_like_obj, self.dict)
         self.reset_from_dict(dict_)
 
-    def load(self, config_file_path):
-        cfg_obj = Config(path=config_file_path)
+    def load(self, config_path):
+        cfg_obj = Config(path=config_path)
         dict_ = cfg_obj.dic
         self.reset_from_dict(dict_)
 
-    def dump(self, config_file_path):
-        with open(config_file_path, 'w') as f:
+    def dump(self, config_path):
+        with open(config_path, 'w') as f:
             yaml.dump(self.dict, f)
 
     def update_dataset(self, dataset_path, dataset_type=None):
@@ -52,6 +52,16 @@ class MonoDetConfig(BaseConfig):
             ds_cfg = self._make_kitti_mono_dataset_config(dataset_path)
         else:
             raise ValueError(f"{dataset_type} is not supported.")
+        # Prune old config
+        keys_to_deprecate = ('transforms', 'mode')
+        if 'train_dataset' in self:
+            for key in list(k for k in self.train_dataset
+                            if k not in keys_to_deprecate):
+                self.train_dataset.pop(key)
+        if 'val_dataset' in self:
+            for key in list(k for k in self.val_dataset
+                            if k not in keys_to_deprecate):
+                self.val_dataset.pop(key)
         self.update(ds_cfg)
 
     def update_optimizer(self, optimizer_type):

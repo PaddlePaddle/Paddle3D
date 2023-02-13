@@ -23,25 +23,25 @@ from ..base.utils.arg import CLIArgument
 
 class MonoDetRunner(BaseRunner):
 
-    def train(self, config_file_path, cli_args, device):
+    def train(self, config_path, cli_args, device):
         python, device_type = self.distributed(device)
         # `device_type` ignored
         args_str = ' '.join(str(arg) for arg in cli_args)
-        cmd = f"{python} tools/train.py --do_eval --config {config_file_path} {args_str}"
+        cmd = f"{python} tools/train.py --do_eval --config {config_path} {args_str}"
         self.run_cmd(cmd, switch_wdir=True, echo=True, silent=False)
 
-    def predict(self, config_file_path, cli_args, device):
+    def predict(self, config_path, cli_args, device):
         raise RuntimeError(
             f"`{self.__class__.__name__}.predict()` is not implemented.")
 
-    def export(self, config_file_path, cli_args, device):
+    def export(self, config_path, cli_args, device):
         # `device` unused
         args_str = ' '.join(str(arg) for arg in cli_args)
-        cmd = f"{self.python} tools/export.py --config {config_file_path} {args_str}"
+        cmd = f"{self.python} tools/export.py --config {config_path} {args_str}"
         self.run_cmd(cmd, switch_wdir=True, echo=True, silent=False)
 
-    def infer(self, config_file_path, cli_args, device, infer_dir, save_dir):
-        # `config_file_path` unused
+    def infer(self, config_path, cli_args, device, infer_dir, save_dir):
+        # `config_path` unused
         _, device_type = self.distributed(device)
         if device_type not in ('cpu', 'gpu'):
             raise ValueError(f"`device`={device} is not supported.")
@@ -60,10 +60,10 @@ class MonoDetRunner(BaseRunner):
                 os.makedirs(save_dir)
             shutil.move(src=pred_path, dst=save_dir)
 
-    def compression(self, config_file_path, train_cli_args, export_cli_args,
-                    device, train_save_dir):
+    def compression(self, config_path, train_cli_args, export_cli_args, device,
+                    train_save_dir):
         # Step 1: Train model
-        self.train(config_file_path, train_cli_args, device)
+        self.train(config_path, train_cli_args, device)
 
         # Step 2: Export model
         # Get the path of all checkpoints and find the latest one
@@ -83,4 +83,4 @@ class MonoDetRunner(BaseRunner):
         export_cli_args.append(
             CLIArgument('--model',
                         os.path.join(latest_ckp_path, 'model.pdparams')))
-        self.export(config_file_path, export_cli_args, device)
+        self.export(config_path, export_cli_args, device)

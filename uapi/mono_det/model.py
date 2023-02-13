@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os.path as osp
+import warnings
 
 from ..base import BaseModel
 from ..base.utils.arg import CLIArgument
@@ -31,6 +32,7 @@ class MonoDetModel(BaseModel):
               resume_path=None,
               dy2st=False,
               amp=None,
+              use_vdl=True,
               save_dir=None):
         if dataset is not None:
             # NOTE: We must use an absolute path here,
@@ -40,8 +42,15 @@ class MonoDetModel(BaseModel):
             raise ValueError(f"`dy2st`={dy2st} is not supported.")
         if resume_path is not None:
             resume_path = abspath(resume_path)
+        if not use_vdl:
+            warnings.warn(
+                "Currently, Paddle3D does not support disabling VisualDL during training."
+            )
         if save_dir is not None:
             save_dir = abspath(save_dir)
+        else:
+            # `save_dir` is None
+            save_dir = abspath(osp.join('output', 'train'))
 
         # Update YAML config file
         config = self.config.copy()
@@ -60,8 +69,8 @@ class MonoDetModel(BaseModel):
                 }
             }
             config.update(amp_cfg)
-        config_file_path = self.config_file_path
-        config.dump(config_file_path)
+        config_path = self._config_path
+        config.dump(config_path)
 
         # Parse CLI arguments
         cli_args = []
@@ -83,7 +92,7 @@ class MonoDetModel(BaseModel):
         if save_dir is not None:
             cli_args.append(CLIArgument('--save_dir', save_dir))
 
-        self.runner.train(config_file_path, cli_args, device)
+        self.runner.train(config_path, cli_args, device)
 
     def predict(self, weight_path, input_path, device='gpu', save_dir=None):
         raise RuntimeError(
@@ -93,11 +102,14 @@ class MonoDetModel(BaseModel):
         weight_path = abspath(weight_path)
         if save_dir is not None:
             save_dir = abspath(save_dir)
+        else:
+            # `save_dir` is None
+            save_dir = abspath(osp.join('output', 'export'))
 
         # Update YAML config file
         config = self.config.copy()
-        config_file_path = self.config_file_path
-        config.dump(config_file_path)
+        config_path = self._config_path
+        config.dump(config_path)
 
         # Parse CLI arguments
         cli_args = []
@@ -108,13 +120,16 @@ class MonoDetModel(BaseModel):
         # Fix save name
         cli_args.append(CLIArgument('--save_name', self._SAVE_NAME))
 
-        self.runner.export(config_file_path, cli_args, None)
+        self.runner.export(config_path, cli_args, None)
 
     def infer(self, model_dir, input_path, device='gpu', save_dir=None):
         model_dir = abspath(model_dir)
         input_path = abspath(input_path)
         if save_dir is not None:
             save_dir = abspath(save_dir)
+        else:
+            # `save_dir` is None
+            save_dir = abspath(osp.join('output', 'infer'))
 
         # Parse CLI arguments
         cli_args = []
@@ -136,28 +151,34 @@ class MonoDetModel(BaseModel):
                     learning_rate=None,
                     epochs_iters=None,
                     device='gpu',
+                    use_vdl=True,
                     save_dir=None):
         weight_path = abspath(weight_path)
         if dataset is not None:
             dataset = abspath(dataset)
+        if not use_vdl:
+            warnings.warn(
+                "Currently, Paddle3D does not support disabling VisualDL during training."
+            )
         if save_dir is not None:
             save_dir = abspath(save_dir)
+        else:
+            # `save_dir` is None
+            save_dir = abspath(osp.join('output', 'compress'))
 
         # Update YAML config file
         config = self.config.copy()
         config.update_dataset(dataset)
-        config_file_path = self.config_file_path
-        config.dump(config_file_path)
-        ac_config_file_path = self.model_info['auto_compression_config_path']
+        config_path = self._config_path
+        config.dump(config_path)
+        ac_config_path = self.model_info['auto_compression_config_path']
         # TODO: Allow updates of auto compression config file
 
         # Parse CLI arguments
         train_cli_args = []
         export_cli_args = []
-        train_cli_args.append(CLIArgument('--quant_config',
-                                          ac_config_file_path))
-        export_cli_args.append(
-            CLIArgument('--quant_config', ac_config_file_path))
+        train_cli_args.append(CLIArgument('--quant_config', ac_config_path))
+        export_cli_args.append(CLIArgument('--quant_config', ac_config_path))
         if batch_size is not None:
             train_cli_args.append(CLIArgument('--batch_size', batch_size))
         if learning_rate is not None:
@@ -177,5 +198,5 @@ class MonoDetModel(BaseModel):
             # https://github.com/PaddlePaddle/Paddle3D/blob/3cf884ecbc94330be0e2db780434bb60b9b4fe8c/tools/train.py#L100
             save_dir = 'output'
 
-        self.runner.compression(config_file_path, train_cli_args,
-                                export_cli_args, device, save_dir)
+        self.runner.compression(config_path, train_cli_args, export_cli_args,
+                                device, save_dir)
