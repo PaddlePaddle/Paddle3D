@@ -65,9 +65,7 @@ class BaseModel(metaclass=abc.ABCMeta):
         self._patch_unavail_apis()
 
     def _patch_unavail_apis(self):
-
         def _make_unavailable(bnd_method):
-
             def _unavailable_api(*args, **kwargs):
                 model_name = self.name
                 api_name = bnd_method.__name__
