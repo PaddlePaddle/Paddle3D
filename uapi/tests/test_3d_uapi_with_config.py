@@ -29,12 +29,13 @@ if __name__ == '__main__':
     if os.path.exists('uapi/tests/3d_res'):
         shutil.rmtree('uapi/tests/3d_res')
 
-    model.train(dataset='uapi/tests/data/KITTI',
-                batch_size=1,
-                epochs_iters=10,
-                device='gpu:0',
-                amp='O1',
-                save_dir='uapi/tests/3d_res')
+    model.train(
+        dataset='uapi/tests/data/KITTI',
+        batch_size=1,
+        epochs_iters=10,
+        device='gpu:0',
+        amp='O1',
+        save_dir='uapi/tests/3d_res')
 
     # `model.predict()` not implemented
     try:
@@ -46,18 +47,21 @@ if __name__ == '__main__':
     except Exception as e:
         print(e)
 
-    model.export(weight_path='uapi/tests/3d_res/iter_10/model.pdparams',
-                 save_dir='uapi/tests/3d_res/infer')
+    model.export(
+        weight_path='uapi/tests/3d_res/iter_10/model.pdparams',
+        save_dir='uapi/tests/3d_res/infer')
 
-    model.infer(model_dir='uapi/tests/3d_res/infer',
-                device='gpu',
-                input_path='uapi/tests/data/KITTI/training/image_2/000004.png',
-                save_dir='uapi/tests/3d_res/infer_res')
+    model.infer(
+        model_dir='uapi/tests/3d_res/infer',
+        device='gpu',
+        input_path='uapi/tests/data/KITTI/training/image_2/000004.png',
+        save_dir='uapi/tests/3d_res/infer_res')
 
-    model.compression(dataset='uapi/tests/data/KITTI',
-                      batch_size=2,
-                      learning_rate=0.1,
-                      epochs_iters=10,
-                      device='cpu',
-                      weight_path='uapi/tests/3d_res/iter_10/model.pdparams',
-                      save_dir='uapi/tests/3d_res/compress')
+    model.compression(
+        dataset='uapi/tests/data/KITTI',
+        batch_size=2,
+        learning_rate=0.1,
+        epochs_iters=10,
+        device='cpu',
+        weight_path='uapi/tests/3d_res/iter_10/model.pdparams',
+        save_dir='uapi/tests/3d_res/compress')

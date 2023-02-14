@@ -22,7 +22,6 @@ from ..base.utils.arg import CLIArgument
 
 
 class MonoDetRunner(BaseRunner):
-
     def train(self, config_path, cli_args, device):
         python, device_type = self.distributed(device)
         # `device_type` ignored
