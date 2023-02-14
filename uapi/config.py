@@ -51,14 +51,14 @@ class PP3DConfig(BaseConfig):
         else:
             raise ValueError(f"{dataset_type} is not supported.")
         # Prune old config
-        keys_to_deprecate = ('transforms', 'mode')
+        keys_to_keep = ('transforms', 'mode')
         if 'train_dataset' in self:
-            for key in list(k for k in self.train_dataset
-                            if k not in keys_to_deprecate):
+            for key in list(
+                    k for k in self.train_dataset if k not in keys_to_keep):
                 self.train_dataset.pop(key)
         if 'val_dataset' in self:
             for key in list(
-                    k for k in self.val_dataset if k not in keys_to_deprecate):
+                    k for k in self.val_dataset if k not in keys_to_keep):
                 self.val_dataset.pop(key)
         self.update(ds_cfg)
 
