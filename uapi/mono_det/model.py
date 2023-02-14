@@ -189,15 +189,10 @@ class MonoDetModel(BaseModel):
             train_cli_args.append(CLIArgument('--iters', epochs_iters))
         if weight_path is not None:
             train_cli_args.append(CLIArgument('--model', weight_path))
-        if save_dir is not None:
-            train_cli_args.append(CLIArgument('--save_dir', save_dir))
-            # The exported model saved in a subdirectory named `infer`
-            export_cli_args.append(
-                CLIArgument('--save_dir', osp.join(save_dir, 'infer')))
-        else:
-            # According to
-            # https://github.com/PaddlePaddle/Paddle3D/blob/3cf884ecbc94330be0e2db780434bb60b9b4fe8c/tools/train.py#L100
-            save_dir = 'output'
+        train_cli_args.append(CLIArgument('--save_dir', save_dir))
+        # The exported model saved in a subdirectory named `infer`
+        export_cli_args.append(
+            CLIArgument('--save_dir', osp.join(save_dir, 'infer')))
 
         self.runner.compression(config_path, train_cli_args, export_cli_args,
                                 device, save_dir)
