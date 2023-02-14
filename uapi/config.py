@@ -15,14 +15,12 @@
 import yaml
 from paddle3d.apis.config import Config
 
-from ..base import BaseConfig
+from .base import BaseConfig
 
 
-class MonoDetConfig(BaseConfig):
-    # TODO: ABC of PP3DConfig
+class PP3DConfig(BaseConfig):
     # Refer to https://github.com/PaddlePaddle/Paddle3D/blob/develop/paddle3d/apis/config.py
     def update(self, dict_like_obj):
-
         def _merge_config_dicts(dict_from, dict_to):
             # According to
             # https://github.com/PaddlePaddle/Paddle3D/blob/3cf884ecbc94330be0e2db780434bb60b9b4fe8c/paddle3d/apis/config.py#L90
@@ -59,8 +57,8 @@ class MonoDetConfig(BaseConfig):
                             if k not in keys_to_deprecate):
                 self.train_dataset.pop(key)
         if 'val_dataset' in self:
-            for key in list(k for k in self.val_dataset
-                            if k not in keys_to_deprecate):
+            for key in list(
+                    k for k in self.val_dataset if k not in keys_to_deprecate):
                 self.val_dataset.pop(key)
         self.update(ds_cfg)
 

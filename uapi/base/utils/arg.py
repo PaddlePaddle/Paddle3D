@@ -14,7 +14,6 @@
 
 
 class CLIArgument(object):
-
     def __init__(self, key, val='', sep=' '):
         super().__init__()
         self.key = str(key)

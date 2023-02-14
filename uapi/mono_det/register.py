@@ -17,7 +17,7 @@ import os.path as osp
 from ..base.register import register_model_info, register_suite_info
 from .model import MonoDetModel
 from .runner import MonoDetRunner
-from .config import MonoDetConfig
+from ..config import PP3DConfig
 
 # XXX: Hard-code relative path of repo root dir
 REPO_ROOT_PATH = osp.abspath(osp.join(osp.dirname(__file__), '..', '..'))
@@ -25,7 +25,7 @@ register_suite_info({
     'suite_name': 'MonoDet',
     'model': MonoDetModel,
     'runner': MonoDetRunner,
-    'config': MonoDetConfig,
+    'config': PP3DConfig,
     'runner_root_path': REPO_ROOT_PATH
 })
 
