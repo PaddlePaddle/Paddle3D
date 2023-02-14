@@ -179,7 +179,8 @@ class Config(object):
                 set_params = True
 
         if not set_params:
-            params['parameters'] = self.model.parameters()
+            params['parameters'] = filter(lambda p: p.trainable,
+                                          self.model.parameters())
             optimizer = self._load_object(params)
 
         return optimizer

@@ -22,13 +22,21 @@ from paddle3d.utils.tensor_fusion_utils import all_reduce_parameters
 
 
 def parse_losses(losses):
-    total_loss = 0
+    """
+    Parse the loss tensor in dictionary into a single scalar.
+    """
+    log_loss = dict()
     if isinstance(losses, paddle.Tensor):
-        total_loss += losses
+        total_loss = losses
     elif isinstance(losses, dict):
-        for k, v in losses.items():
-            total_loss += v
-    return total_loss
+        for loss_name, loss_value in losses.items():
+            log_loss[loss_name] = sum(loss_value)
+        total_loss = sum(
+            _loss_value for _loss_name, _loss_value in log_loss.items())
+
+    log_loss['total_loss'] = total_loss
+
+    return total_loss, log_loss
 
 
 def training_step(model: paddle.nn.Layer,
@@ -51,12 +59,12 @@ def training_step(model: paddle.nn.Layer,
             if scaler is not None:
                 with paddle.amp.auto_cast(**amp_cfg):
                     outputs = model(sample)
-                    loss = parse_losses(outputs['loss'])
+                    loss, log_loss = parse_losses(outputs['loss'])
                     scaled_loss = scaler.scale(loss)
                     scaled_loss.backward()
             else:
                 outputs = model(sample)
-                loss = parse_losses(outputs['loss'])
+                loss, log_loss = parse_losses(outputs['loss'])
                 loss.backward()
         if all_fused_tensors is None:
             fused_allreduce_gradients(list(model.parameters()), None)
@@ -67,14 +75,15 @@ def training_step(model: paddle.nn.Layer,
         if scaler is not None:
             with paddle.amp.auto_cast(**amp_cfg):
                 outputs = model(sample)
-                loss = parse_losses(outputs['loss'])
+                loss, log_loss = parse_losses(outputs['loss'])
                 scaled_loss = scaler.scale(loss)
                 scaled_loss.backward()
         else:
             outputs = model(sample)
-            loss = parse_losses(outputs['loss'])
+            loss, log_loss = parse_losses(outputs['loss'])
             loss.backward()
 
+    # update params
     if optimizer.__class__.__name__ == 'OneCycleAdam':
         optimizer.after_iter()
     else:
@@ -90,8 +99,16 @@ def training_step(model: paddle.nn.Layer,
                       paddle.optimizer.lr.LRScheduler):
             optimizer._learning_rate.step()
 
-    outputs['total_loss'] = loss
-    return outputs
+    # reduce loss when distributed training
+    if paddle.distributed.is_initialized():
+        with paddle.no_grad():
+            for loss_name, loss_value in log_loss.items():
+                loss_clone = loss_value.clone()
+                paddle.distributed.all_reduce(
+                    loss_clone.scale_(1. / paddle.distributed.get_world_size()))
+                log_loss[loss_name] = loss_clone.item()
+
+    return log_loss
 
 
 def validation_step(model: paddle.nn.Layer, sample: Sample) -> dict:

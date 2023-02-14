@@ -308,6 +308,7 @@ class Trainer:
                     break
 
                 lr = self.optimizer.get_lr()
+
                 output = training_step(
                     model,
                     self.optimizer,
@@ -319,31 +320,26 @@ class Trainer:
                                               'all_fused_tensors', None),
                     group=group)
 
-                if isinstance(output['loss'], dict):
-                    for k, v in output['loss'].items():
-                        losses_sum[k] += float(v)
-
-                losses_sum['total_loss'] += float(output['total_loss'])
+                for loss_name, loss_value in output.items():
+                    losses_sum[loss_name] += float(loss_value)
 
                 timer.step()
                 status = self.scheduler.step()
 
                 if status.do_log and env.local_rank == 0:
-
                     loss_log = ''
+                    for loss_name, loss_value in losses_sum.items():
+                        loss_value = loss_value / self.scheduler.log_interval
+                        loss_log += ', {}={:.6f}'.format(loss_name, loss_value)
+                        self.log_writer.add_scalar(
+                            tag='Training/' + loss_name,
+                            value=loss_value,
+                            step=self.cur_iter)
 
                     self.log_writer.add_scalar(
                         tag='Training/learning_rate',
                         value=lr,
                         step=self.cur_iter)
-
-                    for k, v in losses_sum.items():
-                        loss_val = v / self.scheduler.log_interval
-                        loss_log += ', {}={:.6f}'.format(k, loss_val)
-                        self.log_writer.add_scalar(
-                            tag='Training/' + k,
-                            value=loss_val,
-                            step=self.cur_iter)
 
                     logger.info(
                         '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f} | ETA {}'

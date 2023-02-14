@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .anchor3d_generator import *
-from .anchor_generator import *
-from .axis_aligned_target_assigner import *
-from .hungarian_assigner import HungarianAssigner3D
-from .max_iou_assigner import *
+from .bevf_faster_rcnn import *
+from .bevf_transforms import *
+from .mvx_faster_rcnn import *

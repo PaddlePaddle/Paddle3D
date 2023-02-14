@@ -1,0 +1,169 @@
+batch_size: 4 # 8 gpu, total bs=32
+epochs: 24
+
+train_dataset:
+  type: NuscenesMMDataset
+  ann_file: ./data/nuscenes/nuscenes_infos_train.pkl
+  data_root: ./data/nuscenes
+  class_names: [
+            'car', 'truck', 'trailer', 'bus', 'construction_vehicle',
+            'bicycle', 'motorcycle', 'pedestrian', 'traffic_cone', 'barrier'
+        ]
+  modality: multiview
+  transforms:
+    - type: LoadAnnotations3D
+      with_bbox_3d: true
+      with_label_3d: true
+    - type: LoadMultiViewImageFromFiles
+    - type: SampleRangeFilter
+      point_cloud_range: [-50, -50, -5, 50, 50, 3]
+    - type: SampleNameFilter
+      classes: ['car', 'truck', 'trailer', 'bus', 'construction_vehicle',
+                'bicycle', 'motorcycle', 'pedestrian', 'traffic_cone','barrier'
+                ]
+    - type: ResizeImage
+      img_scale: [[800, 448]]
+      keep_ratio: true
+    - type: NormalizeImage
+      mean: [123.675, 116.28, 103.53]
+      std: [58.395, 57.12, 57.375]
+      to_rgb: true
+    - type: PadImage
+      size_divisor: 32
+    - type: SampleFilterByKey
+      keys: ['img', 'gt_bboxes_3d', 'gt_labels_3d']
+  mode: train
+
+val_dataset:
+  type: NuscenesMMDataset
+  ann_file: ./data/nuscenes/nuscenes_infos_val.pkl
+  data_root: ./data/nuscenes
+  class_names: [
+            'car', 'truck', 'trailer', 'bus', 'construction_vehicle',
+            'bicycle', 'motorcycle', 'pedestrian', 'traffic_cone', 'barrier'
+        ]
+  modality: multiview
+  transforms:
+    - type: LoadMultiViewImageFromFiles
+    - type: ResizeImage
+      img_scale: [[800, 448]]
+      keep_ratio: true
+    - type: NormalizeImage
+      mean: [123.675, 116.28, 103.53]
+      std: [58.395, 57.12, 57.375]
+      to_rgb: true
+    - type: PadImage
+      size_divisor: 32
+    - type: SampleFilterByKey
+      keys: ['img']
+  mode: val
+
+model:
+  type: BEVFFasterRCNN
+  camera_stream: true
+  lss: false
+  grid: 0.5
+  num_views: 6
+  final_dim: [900, 1600]
+  downsample: 8
+  load_img_from: ./mask_rcnn_dbswin-t_fpn_3x_nuim_cocopre.pdparams
+  img_backbone:
+      type: CBSwinTransformer
+      embed_dim: 96
+      depths: [2, 2, 6, 2]
+      num_heads: [3, 6, 12, 24]
+      window_size: 7
+      mlp_ratio: 4.0
+      qkv_bias: true
+      qk_scale: null
+      drop_rate: 0.0
+      attn_drop_rate: 0.0
+      drop_path_rate: 0.2
+      ape: false
+      patch_norm: true
+      out_indices: [0, 1, 2, 3]
+  img_neck:
+      type: FPNC
+      final_dim: [900, 1600]
+      downsample: 8
+      in_channels: [96, 192, 384, 768]
+      out_channels: 256
+      use_adp: true
+      num_outs: 5
+  pts_bbox_head:
+        type: Anchor3DHead
+        num_classes: 10
+        in_channels: 256
+        feat_channels: 256
+        use_direction_classifier: true
+        anchor_generator:
+          type: AlignedAnchor3DRangeGenerator
+          ranges: [[-49.6, -49.6, -1.80032795, 49.6, 49.6, -1.80032795],
+                    [-49.6, -49.6, -1.74440365, 49.6, 49.6, -1.74440365],
+                    [-49.6, -49.6, -1.68526504, 49.6, 49.6, -1.68526504],
+                    [-49.6, -49.6, -1.67339111, 49.6, 49.6, -1.67339111],
+                    [-49.6, -49.6, -1.61785072, 49.6, 49.6, -1.61785072],
+                    [-49.6, -49.6, -1.80984986, 49.6, 49.6, -1.80984986],
+                    [-49.6, -49.6, -1.763965, 49.6, 49.6, -1.763965]]
+          sizes: [[1.95017717, 4.60718145, 1.72270761],
+                   [2.4560939, 6.73778078, 2.73004906],
+                   [2.87427237, 12.01320693, 3.81509561],
+                   [0.60058911, 1.68452161, 1.27192197],
+                   [0.66344886, 0.7256437, 1.75748069],
+                   [0.39694519, 0.40359262, 1.06232151],
+                   [2.49008838, 0.48578221, 0.98297065]]
+          custom_values: [0, 0]
+          rotations: [0, 1.57]
+          reshape_out: true
+        assigner_per_size: false
+        diff_rad_by_sin: true
+        dir_offset: 0.7854  # pi/4
+        dir_limit_offset: 0
+        bbox_coder:
+          type: DeltaXYZWLHRBBoxCoder
+          code_size: 9
+        loss_cls:
+            type: WeightedFocalLoss
+            use_sigmoid: true
+            gamma: 2.0
+            alpha: 0.25
+            loss_weight: 1.0
+        loss_bbox:
+            type: SmoothL1Loss
+            beta: 0.1111111111111111
+            loss_weight: 1.0
+        loss_dir:
+            type: CrossEntropyLoss
+            use_sigmoid: false
+            loss_weight: 0.2
+        use_sigmoid_cls: true
+        train_cfg:
+          code_weight: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.2, 0.2]
+          pos_weight: -1
+        test_cfg:
+          use_rotate_nms: true
+          nms_across_levels: false
+          nms_pre: 1000
+          nms_thr: 0.2
+          score_thr: 0.05
+          min_bbox_size: 0
+          max_num: 500
+
+optimizer:
+  type: AdamW
+  beta1: 0.9
+  beta2: 0.999
+  weight_decay: 0.05
+  grad_clip:
+    type: ClipGradByGlobalNorm
+    clip_norm: 35
+
+lr_scheduler:
+  type: LinearWarmup
+  learning_rate:
+    type: MultiStepDecay
+    milestones: [16580, 19217] # [879*20e-1000, 879*23e-1000], need to minus warmup iters
+    learning_rate: 0.001
+  warmup_steps: 1000
+  start_lr: 1.0e-6
+  end_lr: 0.001

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .cbnet import *
 from .dla import *
 from .hrnet import *
 from .resnet import *
