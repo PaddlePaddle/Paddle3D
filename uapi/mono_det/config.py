@@ -34,3 +34,18 @@ class MonoDetConfig(PP3DConfig):
                     k for k in self.val_dataset if k not in keys_to_keep):
                 self.val_dataset.pop(key)
         self.update(ds_cfg)
+
+    def _update_amp(self, amp):
+        # XXX: Currently, we hard-code the AMP settings according to
+        # https://github.com/PaddlePaddle/Paddle3D/blob/3cf884ecbc94330be0e2db780434bb60b9b4fe8c/configs/smoke/smoke_dla34_no_dcn_kitti_amp.yml#L6
+        amp_cfg = {
+            'amp_cfg': {
+                'enable': True,
+                'level': amp,
+                'scaler': {
+                    'init_loss_scaling': 1024.0
+                },
+                'custom_black_list': ['matmul_v2', 'elementwise_mul']
+            }
+        }
+        self.update(amp_cfg)
