@@ -24,11 +24,14 @@ class BaseRunner(metaclass=abc.ABCMeta):
     Abstract base class of Runner.
 
     Runner is responsible for executing training/inference/compression commands.
+
+    Args:
+        runner_root_path (str): Path of the directory where the scripts reside.
     """
 
     def __init__(self, runner_root_path):
-        # The path to the directory where the scripts reside,
-        # e.g. the root directory of the repository.
+        super().__init__()
+
         self.runner_root_path = abspath(runner_root_path)
         # Path to python interpreter
         self.python = sys.executable
@@ -43,7 +46,7 @@ class BaseRunner(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def train(self, config_path, cli_args, device):
+    def train(self, config_path, cli_args, device, ips):
         """
         Execute model training command.
 
@@ -51,6 +54,26 @@ class BaseRunner(metaclass=abc.ABCMeta):
             config_path (str): Path of the configuration file.
             cli_args (list[utils.arg.CLIArgument]): List of command-line Arguments.
             device (str): A string that describes the device(s) to use, e.g., 'cpu', 'xpu:0', 'gpu:1,2'.
+            ips (str): Paddle cluster node ips, e.g., '192.168.0.16,192.168.0.17'.
+
+        Returns:
+            subprocess.CompletedProcess
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def evaluate(self, config_path, cli_args, device, ips):
+        """
+        Execute model evaluation command.
+
+        Args:
+            config_path (str): Path of the configuration file.
+            cli_args (list[utils.arg.CLIArgument]): List of command-line Arguments.
+            device (str): A string that describes the device(s) to use, e.g., 'cpu', 'xpu:0', 'gpu:1,2'.
+            ips (str): Paddle cluster node ips, e.g., '192.168.0.16,192.168.0.17'.
+
+        Returns:
+            subprocess.CompletedProcess
         """
         raise NotImplementedError
 
@@ -63,6 +86,9 @@ class BaseRunner(metaclass=abc.ABCMeta):
             config_path (str): Path of the configuration file.
             cli_args (list[utils.arg.CLIArgument]): List of command-line Arguments.
             device (str): A string that describes the device(s) to use, e.g., 'cpu', 'xpu:0', 'gpu:1,2'.
+
+        Returns:
+            subprocess.CompletedProcess
         """
         raise NotImplementedError
 
@@ -75,6 +101,9 @@ class BaseRunner(metaclass=abc.ABCMeta):
             config_path (str): Path of the configuration file.
             cli_args (list[utils.arg.CLIArgument]): List of command-line Arguments.
             device (str): A string that describes the device(s) to use, e.g., 'cpu', 'xpu:0', 'gpu:1,2'.
+
+        Returns:
+            subprocess.CompletedProcess
         """
         raise NotImplementedError
 
@@ -87,6 +116,9 @@ class BaseRunner(metaclass=abc.ABCMeta):
             config_path (str): Path of the configuration file.
             cli_args (list[utils.arg.CLIArgument]): List of command-line Arguments.
             device (str): A string that describes the device(s) to use, e.g., 'cpu', 'xpu:0', 'gpu:1,2'.
+
+        Returns:
+            subprocess.CompletedProcess
         """
         raise NotImplementedError
 
@@ -104,36 +136,50 @@ class BaseRunner(metaclass=abc.ABCMeta):
                 export.
             device (str): A string that describes the device(s) to use, e.g., 'cpu', 'xpu:0', 'gpu:1,2'.
             train_save_dir (str): Directory to store model snapshots and the exported model.
+
+        Returns:
+            tuple[subprocess.CompletedProcess]
         """
         raise NotImplementedError
 
-    def distributed(self, device):
+    def distributed(self, device, ips=None):
         # TODO: docstring
         python = self.python
         if device is None:
             # By default use a GPU device
             return python, 'gpu'
-        # According to https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/device/set_device_cn.html
-        if ':' not in device:
+        device, dev_ids = self.parse_device(device)
+        if len(dev_ids) == 0:
             return python, device
         else:
-            device, dev_ids = device.split(':')
-            num_devices = len(dev_ids.split(','))
+            num_devices = len(dev_ids)
+            dev_ids = ','.join(dev_ids)
         if num_devices > 1:
             python += " -m paddle.distributed.launch"
             python += f" --gpus {dev_ids}"
+            if ips is not None:
+                python += f" --ips {ips}"
         elif num_devices == 1:
             # TODO: Accommodate Windows system
             python = f"CUDA_VISIBLE_DEVICES={dev_ids} {python}"
         return python, device
 
-    def run_cmd(self, cmd, switch_wdir=False, **kwargs):
+    def parse_device(self, device):
+        # According to https://www.paddlepaddle.org.cn/documentation/docs/zh/api/paddle/device/set_device_cn.html
+        if ':' not in device:
+            return device, []
+        else:
+            device_type, dev_ids = device.split(':')
+            dev_ids = dev_ids.split(',')
+            return device_type, dev_ids
+
+    def run_cmd(self, cmd, switch_wdir=False, silent=True, echo=False):
         if switch_wdir:
-            if 'wd' in kwargs:
-                raise KeyError
             if isinstance(switch_wdir, str):
                 # In this case `switch_wdir` specifies a relative path
-                kwargs['wd'] = os.path.join(self.runner_root_path, switch_wdir)
+                cwd = os.path.join(self.runner_root_path, switch_wdir)
             else:
-                kwargs['wd'] = self.runner_root_path
-        return _run_cmd(cmd, **kwargs)
+                cwd = self.runner_root_path
+        else:
+            cwd = None
+        return _run_cmd(cmd, cwd=cwd, silent=silent, echo=echo)

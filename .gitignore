@@ -118,3 +118,6 @@ dmypy.json
 .DS_Store
 .idea/
 FETCH_HEAD
+
+/uapi/tests/data
+/uapi/tests/3d_res

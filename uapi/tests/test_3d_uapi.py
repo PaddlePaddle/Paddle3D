@@ -37,6 +37,10 @@ if __name__ == '__main__':
         amp='O1',
         save_dir='uapi/tests/3d_res')
 
+    model.evaluate(
+        weight_path='uapi/tests/3d_res/iter_10/model.pdparams',
+        dataset='uapi/tests/data/KITTI')
+
     # `model.predict()` not implemented
     try:
         model.predict(

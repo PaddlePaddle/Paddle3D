@@ -33,6 +33,7 @@ class MonoDetModel(BaseModel):
               dy2st=False,
               amp=None,
               use_vdl=True,
+              ips=None,
               save_dir=None):
         if dataset is not None:
             # NOTE: We must use an absolute path here,
@@ -93,7 +94,38 @@ class MonoDetModel(BaseModel):
         if save_dir is not None:
             cli_args.append(CLIArgument('--save_dir', save_dir))
 
-        self.runner.train(config_path, cli_args, device)
+        return self.runner.train(config_path, cli_args, device, ips)
+
+    def evaluate(self,
+                 weight_path,
+                 dataset=None,
+                 batch_size=None,
+                 device='gpu',
+                 amp=None,
+                 ips=None):
+        weight_path = abspath(weight_path)
+        if dataset is not None:
+            dataset = abspath(dataset)
+
+        # Update YAML config file
+        config = self.config.copy()
+        config.update_dataset(dataset)
+        if amp is not None:
+            if amp != 'OFF':
+                raise ValueError("AMP evaluation is not supported.")
+        config_path = self._config_path
+        config.dump(config_path)
+
+        # Parse CLI arguments
+        cli_args = []
+        if weight_path is not None:
+            cli_args.append(CLIArgument('--model', weight_path))
+        if batch_size is not None:
+            cli_args.append(CLIArgument('--batch_size', batch_size))
+            if batch_size != 1:
+                raise ValueError("Batch size other than 1 is not supported.")
+
+        return self.runner.evaluate(config_path, cli_args, device, ips)
 
     def predict(self, weight_path, input_path, device='gpu', save_dir=None):
         raise RuntimeError(
@@ -121,7 +153,7 @@ class MonoDetModel(BaseModel):
         # Fix save name
         cli_args.append(CLIArgument('--save_name', self._SAVE_NAME))
 
-        self.runner.export(config_path, cli_args, None)
+        return self.runner.export(config_path, cli_args, None)
 
     def infer(self, model_dir, input_path, device='gpu', save_dir=None):
         model_dir = abspath(model_dir)
@@ -141,9 +173,10 @@ class MonoDetModel(BaseModel):
         if input_path is not None:
             cli_args.append(CLIArgument('--image', input_path))
 
-        infer_dir = self.model_info['infer_dir']
+        infer_dir = osp.join(self.runner.runner_root_path,
+                             self.model_info['infer_dir'])
         # The inference script does not require a config file
-        self.runner.infer(None, cli_args, device, infer_dir, save_dir)
+        return self.runner.infer(None, cli_args, device, infer_dir, save_dir)
 
     def compression(self,
                     weight_path,
@@ -194,5 +227,5 @@ class MonoDetModel(BaseModel):
         export_cli_args.append(
             CLIArgument('--save_dir', osp.join(save_dir, 'infer')))
 
-        self.runner.compression(config_path, train_cli_args, export_cli_args,
-                                device, save_dir)
+        return self.runner.compression(config_path, train_cli_args,
+                                       export_cli_args, device, save_dir)

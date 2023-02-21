@@ -15,3 +15,4 @@
 from .model import MonoDetModel
 from .runner import MonoDetRunner
 from . import register
+from .dataset_check import check_dataset

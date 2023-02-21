@@ -17,7 +17,7 @@ import os.path as osp
 from ..base.register import register_model_info, register_suite_info
 from .model import MonoDetModel
 from .runner import MonoDetRunner
-from ..config import PP3DConfig
+from .config import MonoDetConfig
 
 # XXX: Hard-code relative path of repo root dir
 _file_path = osp.realpath(__file__)
@@ -26,7 +26,7 @@ register_suite_info({
     'suite_name': 'MonoDet',
     'model': MonoDetModel,
     'runner': MonoDetRunner,
-    'config': PP3DConfig,
+    'config': MonoDetConfig,
     'runner_root_path': REPO_ROOT_PATH
 })
 
@@ -40,7 +40,22 @@ register_model_info({
              'smoke_dla34_no_dcn_kitti.yml'),
     'auto_compression_config_path':
     osp.join(REPO_ROOT_PATH, 'configs', 'quant', 'smoke_kitti.yml'),
-    'supported_apis': ['train', 'export', 'infer', 'compression'],
+    'supported_apis': ['train', 'evaluate', 'export', 'infer', 'compression'],
+    'supported_train_opts': {
+        'device': ['cpu', 'gpu_nxcx'],
+        'dy2st': False,
+        'amp': ['O1', 'O2']
+    },
+    'supported_evaluate_opts': {
+        'device': ['cpu', 'gpu_nxcx']
+    },
+    'supported_infer_opts': {
+        'device': ['cpu', 'gpu']
+    },
+    'supported_compression_opts': {
+        'device': ['cpu', 'gpu_nxcx']
+    },
+    'supported_dataset_types': [],
     # Additional info
     'infer_dir':
     'deploy/smoke'
