@@ -160,6 +160,12 @@ class MonoDetModel(BaseModel):
         cli_args.append(CLIArgument('--params_file', params_file_path))
         if input_path is not None:
             cli_args.append(CLIArgument('--image', input_path))
+        if device is not None:
+            device_type, _ = self.runner.parse_device(device)
+            if device_type not in ('cpu', 'gpu'):
+                raise ValueError(f"`device`={device} is not supported.")
+            if device_type == 'gpu':
+                cli_args.append(CLIArgument('--use_gpu', '', sep=''))
 
         infer_dir = osp.join(self.runner.runner_root_path,
                              self.model_info['infer_dir'])

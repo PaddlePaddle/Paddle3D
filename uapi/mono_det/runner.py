@@ -21,15 +21,13 @@ from ..base.utils.arg import CLIArgument
 
 class MonoDetRunner(BaseRunner):
     def train(self, config_path, cli_args, device, ips):
-        python, device_type = self.distributed(device, ips)
-        # `device_type` ignored
+        python = self.distributed(device, ips)
         args_str = ' '.join(str(arg) for arg in cli_args)
         cmd = f"{python} tools/train.py --config {config_path} {args_str}"
         return self.run_cmd(cmd, switch_wdir=True, echo=True, silent=False)
 
     def evaluate(self, config_path, cli_args, device, ips):
-        python, device_type = self.distributed(device, ips)
-        # `device_type` ignored
+        python = self.distributed(device, ips)
         args_str = ' '.join(str(arg) for arg in cli_args)
         cmd = f"{python} tools/evaluate.py --config {config_path} {args_str}"
         return self.run_cmd(cmd, switch_wdir=True, echo=True, silent=False)
@@ -45,12 +43,7 @@ class MonoDetRunner(BaseRunner):
         return self.run_cmd(cmd, switch_wdir=True, echo=True, silent=False)
 
     def infer(self, config_path, cli_args, device, infer_dir, save_dir):
-        # `config_path` unused
-        _, device_type = self.distributed(device)
-        if device_type not in ('cpu', 'gpu'):
-            raise ValueError(f"`device`={device} is not supported.")
-        if device_type == 'gpu':
-            cli_args.append(CLIArgument('--use_gpu', '', sep=''))
+        # `config_path` and `device` unused
         args_str = ' '.join(str(arg) for arg in cli_args)
         cmd = f"{self.python} vis.py {args_str}"
         python_infer_dir = os.path.join(infer_dir, 'python')
