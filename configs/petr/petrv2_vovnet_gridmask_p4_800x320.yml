@@ -119,6 +119,8 @@ model:
   type: Petr3D
   use_recompute: True
   use_grid_mask: True
+  # training model under @to_static
+  to_static: False
   backbone:
     type: VoVNetCP ###use checkpoint to save memory
     spec_name: V-99-eSE

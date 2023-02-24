@@ -118,6 +118,12 @@ def parse_args():
         help='Config for quant model.',
         default=None,
         type=str)
+    parser.add_argument(
+        '--to_static',
+        dest='to_static',
+        help='Whether to static training.',
+        default=False,
+        type=bool)
 
     return parser.parse_args()
 
@@ -141,6 +147,9 @@ def main(args):
         raise RuntimeError("Config file `{}` does not exist!".format(args.cfg))
 
     cfg = Config(path=args.cfg)
+
+    if args.to_static:
+        cfg.dic['model']['to_static'] = args.to_static
 
     if args.model is not None:
         load_pretrained_model(cfg.model, args.model)

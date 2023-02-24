@@ -15,8 +15,10 @@
 import paddle
 from paddle.distributed.fleet.utils.hybrid_parallel_util import \
     fused_allreduce_gradients
+from paddle.jit import to_static
 
 from paddle3d.sample import Sample
+from paddle3d.utils.logger import logger
 
 
 def parse_losses(losses):
@@ -98,3 +100,13 @@ def validation_step(model: paddle.nn.Layer, sample: Sample) -> dict:
     with paddle.no_grad():
         outputs = model(sample)
     return outputs['preds']
+
+
+def apply_to_static(support_to_static, model, image_shape=None):
+    if support_to_static:
+        specs = None
+        if image_shape is not None:
+            specs = image_shape
+        model = to_static(model, input_spec=specs)
+        logger.info("Successfully to apply @to_static with specs: {}".format(specs))
+    return model

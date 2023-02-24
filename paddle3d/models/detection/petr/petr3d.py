@@ -25,8 +25,9 @@ import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 from PIL import Image
+from paddle.static import InputSpec
 
-from paddle3d.apis import manager
+from paddle3d.apis import manager, apply_to_static
 from paddle3d.models.base import BaseMultiViewModel
 from paddle3d.geometries import BBoxes3D
 from paddle3d.sample import Sample, SampleMeta
@@ -128,7 +129,8 @@ class Petr3D(BaseMultiViewModel):
                  use_recompute=False,
                  us_ms=False,
                  multi_scale=None,
-                 box_with_velocity: bool = False):
+                 box_with_velocity: bool = False,
+                 to_static=False):
         num_cameras = 12 if pts_bbox_head.with_time else 6
         super(Petr3D, self).__init__(
             box_with_velocity=box_with_velocity,
@@ -137,6 +139,34 @@ class Petr3D(BaseMultiViewModel):
         self.pts_bbox_head = pts_bbox_head
         self.backbone = backbone
         self.neck = neck
+        self.to_static = to_static
+        if self.to_static:
+            self.pts_bbox_head.to_static = True
+            for transformerlayer in self.pts_bbox_head.transformer.decoder.layers:
+                transformerlayer.use_recompute = False
+            self.backbone.stage2.OSA2_1.use_checkpoint = False
+            self.backbone.stage3.OSA3_1.use_checkpoint = False
+            self.backbone.stage3.OSA3_2.use_checkpoint = False
+            self.backbone.stage3.OSA3_3.use_checkpoint = False
+            self.backbone.stage4.OSA4_1.use_checkpoint = False
+            self.backbone.stage4.OSA4_2.use_checkpoint = False
+            self.backbone.stage4.OSA4_3.use_checkpoint = False
+            self.backbone.stage4.OSA4_4.use_checkpoint = False
+            self.backbone.stage4.OSA4_5.use_checkpoint = False
+            self.backbone.stage4.OSA4_6.use_checkpoint = False
+            self.backbone.stage4.OSA4_7.use_checkpoint = False
+            self.backbone.stage4.OSA4_8.use_checkpoint = False
+            self.backbone.stage4.OSA4_9.use_checkpoint = False
+            self.backbone.stage5.OSA5_1.use_checkpoint = False
+            self.backbone.stage5.OSA5_2.use_checkpoint = False
+            self.backbone.stage5.OSA5_3.use_checkpoint = False
+            specs_head = ([InputSpec([1, 12, 256, 20, 50]), InputSpec([1, 12, 256, 10, 25])], None, 
+                            [InputSpec([4, 4], dtype=paddle.float64) for i in range(12)], InputSpec([12]))
+            specs_neck = [[InputSpec([12, 768, 20, 50]), InputSpec([12, 1024, 10, 25])]]
+            specs_backbone = [InputSpec([12, 3, 320, 800])]
+            apply_to_static(to_static, self.pts_bbox_head, image_shape=specs_head)
+            apply_to_static(to_static, self.backbone, image_shape=specs_backbone)
+            apply_to_static(to_static, self.neck, image_shape=specs_neck)
         self.use_grid_mask = use_grid_mask
         self.use_recompute = use_recompute
         self.us_ms = us_ms
@@ -235,9 +265,11 @@ class Petr3D(BaseMultiViewModel):
                         img_feats.append(
                             paddle.transpose(img_feat_nhwc, [0, 3, 1, 2]))
                 else:
+                    # breakpoint()
                     img_feats = self.backbone(img)
                     if isinstance(img_feats, dict):
                         img_feats = list(img_feats.values())
+                # breakpoint()
                 img_feats = self.neck(img_feats)
         else:
             return None
@@ -263,7 +295,13 @@ class Petr3D(BaseMultiViewModel):
                           gt_bboxes_ignore=None):
         """
         """
-        outs = self.pts_bbox_head(pts_feats, img_metas)
+        if self.to_static:
+            timestamp = paddle.to_tensor(np.asarray(img_metas[0]['timestamp']))
+            outs = self.pts_bbox_head(pts_feats, img_metas=None, 
+                                    lidar2img=img_metas[0]['lidar2img'], 
+                                    timestamp=timestamp)
+        else:
+            outs = self.pts_bbox_head(pts_feats, img_metas=img_metas)
         loss_inputs = [gt_bboxes_3d, gt_labels_3d, outs]
         losses = self.pts_bbox_head.loss(*loss_inputs)
 
