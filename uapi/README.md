@@ -15,7 +15,7 @@ Please follow [the installation docs of Paddle3D](https://github.com/PaddlePaddl
 
 ### 2.1 Prepare Dataset for Testing
 
-Create a directory named `uapi_demo` in the root directory of Paddle3D repo. After that, download the demo dataset from [here](https://paddleseg.bj.bcebos.com/tmp/gdf/mini_kitti.zip). Unzip the files to `uapi_demo/data/mini_kitti`.
+Create a directory named `uapi_demo` in the root directory of Paddle3D repo. After that, download the demo dataset from [here](https://paddle-model-ecology.bj.bcebos.com/uapi/data/mini_kitti.zip). Unzip the files to `uapi_demo/data/mini_kitti`.
 
 ### 2.2 Run Demo Script
 

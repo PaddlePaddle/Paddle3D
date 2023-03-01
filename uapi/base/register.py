@@ -16,54 +16,35 @@ from collections import OrderedDict
 
 # TODO: We need a lightweight RDBMS to handle these tables.
 
-model_zoo = OrderedDict()
-suite_zoo = OrderedDict()
 
-MODEL_INFO_REQUIRED_KEYS = ('model_name', 'suite', 'config_path',
-                            'auto_compression_config_path', 'supported_apis')
-MODEL_INFO_PRIMARY_KEY = 'model_name'
-assert MODEL_INFO_PRIMARY_KEY in MODEL_INFO_REQUIRED_KEYS
-SUITE_INFO_REQUIRED_KEYS = ('suite_name', 'model', 'runner', 'config',
-                            'runner_root_path')
-SUITE_INFO_PRIMARY_KEY = 'suite_name'
-assert SUITE_INFO_PRIMARY_KEY in SUITE_INFO_REQUIRED_KEYS
+class Registry(object):
+    def __init__(self, required_keys, primary_key):
+        super().__init__()
+        self._table = OrderedDict()
+        self.required_keys = required_keys
+        self.primary_key = primary_key
+        assert self.primary_key in self.required_keys
 
-# Relations:
-# 'suite' in model info <-> 'suite_name' in suite info
+    def register_record(self, record, validate=True):
+        if validate:
+            self._validate_record(record)
+        prim = record[self.primary_key]
+        self._table[prim] = record
 
+    def _validate_record(self, record):
+        for key in self.required_keys:
+            if key not in record:
+                raise KeyError(f"Key '{key}' is required, but not found.")
 
-def _validate_model_info(model_info):
-    for key in MODEL_INFO_REQUIRED_KEYS:
-        if key not in model_info:
-            raise KeyError(f"Key '{key}' is required, but not found.")
+    def query(self, prim_key):
+        return self._table[prim_key]
 
+    def all_records(self):
+        yield from self._table.items()
 
-def _validate_suite_info(suite_info):
-    for key in SUITE_INFO_REQUIRED_KEYS:
-        if key not in suite_info:
-            raise KeyError(f"Key '{key}' is required, but not found.")
-
-
-def register_model_info(data):
-    global model_zoo
-    _validate_model_info(data)
-    prim_key = data[MODEL_INFO_PRIMARY_KEY]
-    model_zoo[prim_key] = data
-
-
-def register_suite_info(data):
-    global suite_zoo
-    _validate_suite_info(data)
-    prim_key = data[SUITE_INFO_PRIMARY_KEY]
-    suite_zoo[prim_key] = data
-
-
-def get_registered_model_info(prim_key):
-    return model_zoo[prim_key]
-
-
-def get_registered_suite_info(prim_key):
-    return suite_zoo[prim_key]
+    def __str__(self):
+        # TODO: Tabulate records in prettier format
+        return str(self._table)
 
 
 def build_runner_from_model_info(model_info):
@@ -82,3 +63,25 @@ def build_model_from_model_info(model_info, config=None):
     model_cls = suite_info['model']
     model_name = model_info['model_name']
     return model_cls(model_name=model_name, config=config)
+
+
+MODEL_INFO_REQUIRED_KEYS = ('model_name', 'suite', 'config_path',
+                            'auto_compression_config_path', 'supported_apis')
+MODEL_INFO_PRIMARY_KEY = 'model_name'
+MODEL_INFO_REGISTRY = Registry(MODEL_INFO_REQUIRED_KEYS, MODEL_INFO_PRIMARY_KEY)
+
+SUITE_INFO_REQUIRED_KEYS = ('suite_name', 'model', 'runner', 'config',
+                            'dataset_checker', 'runner_root_path')
+SUITE_INFO_PRIMARY_KEY = 'suite_name'
+SUITE_INFO_REGISTRY = Registry(SUITE_INFO_REQUIRED_KEYS, SUITE_INFO_PRIMARY_KEY)
+
+# Relations:
+# 'suite' in model info <-> 'suite_name' in suite info
+
+# Set aliases for backward compatibility
+model_zoo = MODEL_INFO_REGISTRY
+suite_zoo = SUITE_INFO_REGISTRY
+get_registered_model_info = MODEL_INFO_REGISTRY.query
+get_registered_suite_info = SUITE_INFO_REGISTRY.query
+register_model_info = MODEL_INFO_REGISTRY.register_record
+register_suite_info = SUITE_INFO_REGISTRY.register_record

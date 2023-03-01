@@ -14,12 +14,13 @@
 
 import abc
 import inspect
+import functools
 
 from .config import Config
 from .register import (get_registered_model_info, build_runner_from_model_info,
                        build_model_from_model_info)
 from .utils.misc import CachedProperty as cached_property
-from .utils.path import create_yaml_config_file
+from .utils.cache import create_yaml_config_file
 
 
 class PaddleModel(object):
@@ -44,7 +45,7 @@ class BaseModel(metaclass=abc.ABCMeta):
     Abstract base class of Model.
 
     Model defines how Config and Runner interact with each other. In addition, Model
-        provides users with multiple APIs to perform model training, prediction, etc.
+    provides users with multiple APIs to perform model training, prediction, etc.
 
     Args:
         model_name (str): A registered model name.
@@ -70,8 +71,18 @@ class BaseModel(metaclass=abc.ABCMeta):
         self._patch_apis()
 
     @abc.abstractmethod
-    def train(self, dataset, batch_size, epochs_iters, device, resume_path,
-              dy2st, amp, use_vdl, ips, save_dir):
+    def train(self,
+              dataset=None,
+              batch_size=None,
+              learning_rate=None,
+              epochs_iters=None,
+              ips=None,
+              device='gpu',
+              resume_path=None,
+              dy2st=False,
+              amp='OFF',
+              use_vdl=True,
+              save_dir=None):
         """
         Train a model.
 
@@ -81,22 +92,21 @@ class BaseModel(metaclass=abc.ABCMeta):
             batch_size (int|None): Number of samples in each mini-batch. If multiple devices are used, this
                 is the batch size on each device. If None, use the setting in the config file or a
                 pre-defined default batch size.
-            epochs_iters (int|None): Total iterations or epochs of model training. If None, use the setting in
+            learning_rate (float|None): Learning rate of model training. If None, use the setting in the config
+                file.
+            epochs_iters (int|None): Total epochs or iterations of model training. If None, use the setting in
                 the config file or a pre-defined default value of epochs/iterations.
-            device (str|None): A string that describes the device(s) to use, e.g., 'cpu', 'xpu:0', 'gpu:1,2'. If
-                None, use the setting in the config file or a default setting.
-            resume_path (str|None): If not None, resume training from the model snapshot stored in `resume_path`.
-                If None, use the setting in the config file or a default setting.
-            dy2st (bool|None): Whether or not to enable dynamic-to-static training. If None, use the setting in
-                the config file or a default setting.
-            amp (str|None): Optimization level to use in AMP training. Choices are ['O1', 'O2', 'OFF', None].
-                If None, use the setting in the config file or a default setting.
-            use_vdl (bool|None): Whether or not to enable VisualDL during training. If None, use a default
-                setting. If `use_vdl` is True and `save_dir` is None, the VisualDL logs will be stored in
-                `output/train`.
             ips (str|None): If not None, enable multi-machine training mode. `ips` specifies Paddle cluster node
                 ips, e.g., '192.168.0.16,192.168.0.17'.
-            save_dir (str|None): Directory to store model snapshots and logs. If None, use `output/train`.
+            device (str): A string that describes the device(s) to use, e.g., 'cpu', 'gpu', 'gpu:1,2'.
+                Default: 'gpu'.
+            resume_path (str|None): If not None, resume training from the model snapshot stored in `resume_path`.
+                If None, use the setting in the config file or a default setting.
+            dy2st (bool): Whether or not to enable dynamic-to-static training. Default: False.
+            amp (str): Optimization level to use in AMP training. Choices are ['O1', 'O2', 'OFF']. Default: 'OFF'.
+            use_vdl (bool): Whether or not to enable VisualDL during training. Default: True.
+            save_dir (str|None): Directory to store model snapshots and logs. If None, use the setting in the
+                config file.
 
         Returns:
             subprocess.CompletedProcess
@@ -104,7 +114,13 @@ class BaseModel(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def evaluate(self, weight_path, dataset, batch_size, device, amp, ips):
+    def evaluate(self,
+                 weight_path,
+                 dataset=None,
+                 batch_size=None,
+                 ips=None,
+                 device='gpu',
+                 amp='OFF'):
         """
         Evaluate a model.
 
@@ -115,12 +131,11 @@ class BaseModel(metaclass=abc.ABCMeta):
             batch_size (int|None): Number of samples in each mini-batch. If multiple devices are used, this
                 is the batch size on each device. If None, use the setting in the config file or a
                 pre-defined default batch size.
-            device (str|None): A string that describes the device(s) to use, e.g., 'cpu', 'xpu:0', 'gpu:1,2'. If
-                None, use the setting in the config file or a default setting.
-            amp (str|None): Optimization level to use in AMP evaluation. Choices are ['O1', 'O2', 'OFF', None].
-                If None, use the setting in the config file or a default setting.
-            ips (str|None): If not None, enable multi-machine evaluation mode. `ips` specifies Paddle cluster node
-                ips, e.g., '192.168.0.16,192.168.0.17'.
+            ips (str|None): If not None, enable multi-machine evaluation mode. `ips` specifies Paddle cluster
+                node ips, e.g., '192.168.0.16,192.168.0.17'.
+            device (str): A string that describes the device(s) to use, e.g., 'cpu', 'gpu', 'gpu:1,2'.
+                Default: 'gpu'.
+            amp (str): Optimization level to use in AMP training. Choices are ['O1', 'O2', 'OFF']. Default: 'OFF'.
 
         Returns:
             subprocess.CompletedProcess
@@ -128,16 +143,16 @@ class BaseModel(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def predict(self, weight_path, input_path, device, save_dir):
+    def predict(self, weight_path, input_path, device='gpu', save_dir=None):
         """
         Make prediction with a pre-trained model.
 
         Args:
             weight_path (str): Path of the weights to initialize the model.
             input_path (str): Path of the input file, e.g. an image.
-            device (str|None): A string that describes the device(s) to use, e.g., 'cpu', 'xpu:0', 'gpu:1,2'. If
-                None, use the setting in the config file or a default setting.
-            save_dir (str|None): Directory to store prediction results. If None, use `output/predict`.
+            device (str): A string that describes the device to use, e.g., 'cpu', 'gpu'. Default: 'gpu'.
+            save_dir (str|None): Directory to store prediction results. If None, use the setting in the config
+                file.
 
         Returns:
             subprocess.CompletedProcess
@@ -151,7 +166,7 @@ class BaseModel(metaclass=abc.ABCMeta):
 
         Args:
             weight_path (str): Path of the weights to initialize the model.
-            save_dir (str|None): Directory to store the exported model. If None, use `output/export`.
+            save_dir (str): Directory to store the exported model.
 
         Returns:
             subprocess.CompletedProcess
@@ -159,16 +174,16 @@ class BaseModel(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def infer(self, model_dir, input_path, device, save_dir):
+    def infer(self, model_dir, input_path, device='gpu', save_dir=None):
         """
-        Make inference with an exported model.
+        Make inference with an exported inference model.
 
         Args:
             model_dir (str): Path of the model snapshot to load.
             input_path (str): Path of the input file, e.g. an image.
-            device (str|None): A string that describes the device(s) to use, e.g., 'cpu', 'xpu:0', 'gpu:1,2'. If
-                None, use the setting in the config file or a default setting.
-            save_dir (str|None): Directory to store inference results. If None, use `output/infer`.
+            device (str): A string that describes the device(s) to use, e.g., 'cpu', 'gpu'. Default: 'gpu'.
+            save_dir (str|None): Directory to store inference results. If None, use the setting in the config
+                file.
 
         Returns:
             subprocess.CompletedProcess
@@ -176,8 +191,15 @@ class BaseModel(metaclass=abc.ABCMeta):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def compression(self, weight_path, dataset, batch_size, epochs_iters,
-                    device, use_vdl, save_dir):
+    def compression(self,
+                    weight_path,
+                    dataset=None,
+                    batch_size=None,
+                    learning_rate=None,
+                    epochs_iters=None,
+                    device='gpu',
+                    use_vdl=True,
+                    save_dir=None):
         """
         Perform quantization aware training (QAT) and export the quantized model.
 
@@ -188,15 +210,14 @@ class BaseModel(metaclass=abc.ABCMeta):
             batch_size (int|None): Number of samples in each mini-batch. If multiple devices are used, this
                 is the batch size on each device. If None, use the setting in the config file or a
                 pre-defined default batch size.
-            epochs_iters (int|None): Total iterations or epochs of model training. If None, use the setting in
+            learning_rate (float|None): Learning rate of qat training. If None, use the setting in the config
+                file.
+            epochs_iters (int|None): Total epochs of iterations of model training. If None, use the setting in
                 the config file or a pre-defined default value of epochs/iterations.
-            device (str|None): A string that describes the device(s) to use, e.g., 'cpu', 'xpu:0', 'gpu:1,2'. If
-                None, use the setting in the config file or a default setting.
-            use_vdl (bool|None): Whether or not to enable VisualDL during training. If None, use a default
-                setting. If `use_vdl` is True and `save_dir` is None, the VisualDL logs will be stored in
-                `output/compress`.
-            save_dir (str|None): Directory to store model snapshots. The exported model will be saved in the
-                `export` subdirectory of `save_dir`. If None, use `output/compress`.
+            device (str): A string that describes the device(s) to use, e.g., 'cpu', 'gpu'. Default: 'gpu'.
+            use_vdl (bool): Whether or not to enable VisualDL during training. Default: True.
+            save_dir (str|None): Directory to store inference results. If None, use the setting in the config
+                file.
 
         Returns:
             tuple[subprocess.CompletedProcess]
@@ -249,6 +270,7 @@ class BaseModel(metaclass=abc.ABCMeta):
 
     def _patch_apis(self):
         def _make_unavailable(bnd_method):
+            @functools.wraps(bnd_method)
             def _unavailable_api(*args, **kwargs):
                 model_name = self.name
                 api_name = bnd_method.__name__
@@ -258,6 +280,7 @@ class BaseModel(metaclass=abc.ABCMeta):
             return _unavailable_api
 
         def _add_prechecks(bnd_method):
+            @functools.wraps(bnd_method)
             def _api_with_prechecks(*args, **kwargs):
                 sig = inspect.Signature.from_callable(bnd_method)
                 bnd_args = sig.bind(*args, **kwargs)
@@ -286,10 +309,9 @@ class BaseModel(metaclass=abc.ABCMeta):
                 if opts is not None:
                     if 'device' in opts:
                         checks.append(
-                            _CheckDevice(
-                                opts['device'],
-                                self.runner.parse_device,
-                                check_mc=True))
+                            _CheckDevice(opts['device'],
+                                         self.runner.parse_device,
+                                         check_mc=True))
                     if 'dy2st' in opts:
                         checks.append(_CheckDy2St(opts['dy2st']))
                     if 'amp' in opts:
@@ -299,10 +321,9 @@ class BaseModel(metaclass=abc.ABCMeta):
                 if opts is not None:
                     if 'device' in opts:
                         checks.append(
-                            _CheckDevice(
-                                opts['device'],
-                                self.runner.parse_device,
-                                check_mc=True))
+                            _CheckDevice(opts['device'],
+                                         self.runner.parse_device,
+                                         check_mc=True))
                     if 'amp' in opts:
                         checks.append(_CheckAMP(opts['amp']))
             elif api_name == 'predict':
@@ -310,28 +331,25 @@ class BaseModel(metaclass=abc.ABCMeta):
                 if opts is not None:
                     if 'device' in opts:
                         checks.append(
-                            _CheckDevice(
-                                opts['device'],
-                                self.runner.parse_device,
-                                check_mc=False))
+                            _CheckDevice(opts['device'],
+                                         self.runner.parse_device,
+                                         check_mc=False))
             elif api_name == 'infer':
                 opts = self.supported_infer_opts
                 if opts is not None:
                     if 'device' in opts:
                         checks.append(
-                            _CheckDevice(
-                                opts['device'],
-                                self.runner.parse_device,
-                                check_mc=False))
+                            _CheckDevice(opts['device'],
+                                         self.runner.parse_device,
+                                         check_mc=False))
             elif api_name == 'compression':
                 opts = self.supported_compression_opts
                 if opts is not None:
                     if 'device' in opts:
                         checks.append(
-                            _CheckDevice(
-                                opts['device'],
-                                self.runner.parse_device,
-                                check_mc=True))
+                            _CheckDevice(opts['device'],
+                                         self.runner.parse_device,
+                                         check_mc=True))
             else:
                 return bnd_method
 

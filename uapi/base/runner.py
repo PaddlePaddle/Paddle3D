@@ -15,6 +15,10 @@
 import os
 import sys
 import abc
+import io
+import locale
+import subprocess
+import asyncio
 
 from .utils.misc import run_cmd as _run_cmd, abspath
 
@@ -28,7 +32,6 @@ class BaseRunner(metaclass=abc.ABCMeta):
     Args:
         runner_root_path (str): Path of the directory where the scripts reside.
     """
-
     def __init__(self, runner_root_path):
         super().__init__()
 
@@ -179,7 +182,8 @@ class BaseRunner(metaclass=abc.ABCMeta):
                 silent=False,
                 echo=True,
                 pipe_stdout=False,
-                pipe_stderr=False):
+                pipe_stderr=False,
+                blocking=True):
         if switch_wdir:
             if isinstance(switch_wdir, str):
                 # In this case `switch_wdir` specifies a relative path
@@ -188,10 +192,86 @@ class BaseRunner(metaclass=abc.ABCMeta):
                 cwd = self.runner_root_path
         else:
             cwd = None
-        return _run_cmd(
-            cmd,
-            cwd=cwd,
-            silent=silent,
-            echo=echo,
-            pipe_stdout=pipe_stdout,
-            pipe_stderr=pipe_stderr)
+
+        if blocking:
+            return _run_cmd(cmd,
+                            cwd=cwd,
+                            silent=silent,
+                            echo=echo,
+                            pipe_stdout=pipe_stdout,
+                            pipe_stderr=pipe_stderr,
+                            blocking=blocking)
+        else:
+            # Refer to
+            # https://stackoverflow.com/questions/17190221/subprocess-popen-cloning-stdout-and-stderr-both-to-terminal-and-variables/25960956
+            @asyncio.coroutine
+            def _read_display_and_record_from_stream(in_stream, out_stream,
+                                                     buf):
+                # According to
+                # https://docs.python.org/3/library/subprocess.html#frequently-used-arguments
+                _ENCODING = locale.getpreferredencoding(False)
+                chars = []
+                while True:
+                    flush = False
+                    char = yield from in_stream.read(1)
+                    if char == b'':
+                        break
+                    chars.append(char)
+                    if char == b'\n':
+                        flush = True
+                    elif char == b'\r':
+                        # NOTE: In order to get tqdm progress bars to produce normal outputs
+                        # we treat '\r' as an ending character of line
+                        flush = True
+                    if flush:
+                        line = b''.join(chars)
+                        line = line.decode(_ENCODING)
+                        out_stream.write(line)
+                        buf.write(line)
+                        chars.clear()
+
+            @asyncio.coroutine
+            def _tee_proc_call(proc_call, stdout_buf, stderr_buf):
+                proc = yield from proc_call
+                yield from asyncio.gather(
+                    _read_display_and_record_from_stream(
+                        proc.stdout, sys.stdout, stdout_buf),
+                    _read_display_and_record_from_stream(
+                        proc.stderr, sys.stderr, stderr_buf))
+                # NOTE: https://docs.python.org/3/library/subprocess.html#subprocess.Popen.wait
+                retcode = yield from proc.wait()
+                return retcode
+
+            if not (pipe_stdout and pipe_stderr):
+                raise ValueError(
+                    "In non-blocking mode, please set `pipe_stdout` and `pipe_stderr` to True."
+                )
+
+            if os.name == 'nt':
+                raise NotImplementedError(
+                    "Currently we do not have an implementation for Windows system."
+                )
+
+            # Non-blocking call with stdout and stderr piped
+            with io.StringIO() as stdout_buf, io.StringIO() as stderr_buf:
+                proc_call = _run_cmd(cmd,
+                                     cwd=cwd,
+                                     echo=echo,
+                                     silent=silent,
+                                     pipe_stdout=True,
+                                     pipe_stderr=True,
+                                     blocking=False,
+                                     async_run=True)
+                # FIXME: tqdm progress bars can not be normally displayed
+                # XXX: For simplicity, we cache entire stdout and stderr content, which can
+                # take up lots of memory.
+                loop = asyncio.get_event_loop()
+                try:
+                    retcode = loop.run_until_complete(
+                        _tee_proc_call(proc_call, stdout_buf, stderr_buf))
+                    cp = subprocess.CompletedProcess(cmd, retcode,
+                                                     stdout_buf.getvalue(),
+                                                     stderr_buf.getvalue())
+                    return cp
+                finally:
+                    loop.close()

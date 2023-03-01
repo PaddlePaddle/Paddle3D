@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import os
-import contextlib
 import subprocess
 
 
@@ -23,33 +23,41 @@ def run_cmd(cmd,
             timeout=None,
             echo=False,
             pipe_stdout=False,
-            pipe_stderr=False):
+            pipe_stderr=False,
+            blocking=True,
+            async_run=False,
+            text=True):
     """Wrap around `subprocess.run()` to execute a shell command."""
-    # XXX: This function is not safe!!!
-    cfg = dict(check=True, shell=True, timeout=timeout, cwd=cwd)
+    if blocking:
+        cfg = dict(check=True, timeout=timeout, cwd=cwd)
+    else:
+        cfg = dict(cwd=cwd)
+
     if silent:
         cfg['stdout'] = subprocess.DEVNULL
-    if echo:
-        print(cmd)
-    if pipe_stdout or pipe_stderr:
+    if not async_run and (pipe_stdout or pipe_stderr):
         cfg['text'] = True
     if pipe_stdout:
         cfg['stdout'] = subprocess.PIPE
     if pipe_stderr:
         cfg['stderr'] = subprocess.PIPE
-        cfg['check'] = False
+        if blocking:
+            cfg['check'] = False
 
-    return subprocess.run(cmd, **cfg)
+    if echo:
+        print(cmd)
 
-
-@contextlib.contextmanager
-def switch_working_dir(new_wd):
-    cwd = os.getcwd()
-    os.chdir(new_wd)
-    try:
-        yield
-    finally:
-        os.chdir(cwd)
+    if blocking:
+        return subprocess.run(cmd, shell=True, **cfg)
+    else:
+        if async_run:
+            return asyncio.create_subprocess_shell(cmd, **cfg)
+        else:
+            if text:
+                cfg.update(dict(bufsize=1, text=True))
+            else:
+                cfg.update(dict(bufsize=0, text=False))
+            return subprocess.Popen(cmd, shell=True, **cfg)
 
 
 def abspath(path):
@@ -59,10 +67,11 @@ def abspath(path):
 class CachedProperty(object):
     """
     A property that is only computed once per instance and then replaces itself with an ordinary attribute.
-    The implementation refers to https://github.com/pydanny/cached-property/blob/master/cached_property.py .
-        Note that this implementation does NOT work in multi-thread or coroutine senarios.
-    """
 
+    The implementation refers to https://github.com/pydanny/cached-property/blob/master/cached_property.py .
+
+    Note that this implementation does NOT work in multi-thread or coroutine senarios.
+    """
     def __init__(self, func):
         super().__init__()
         self.func = func

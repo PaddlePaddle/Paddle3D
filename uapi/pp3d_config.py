@@ -19,7 +19,7 @@ from .base import BaseConfig
 
 
 class PP3DConfig(BaseConfig):
-    # Refer to https://github.com/PaddlePaddle/Paddle3D/blob/develop/paddle3d/apis/config.py
+    # Refer to https://github.com/PaddlePaddle/Paddle3D/blob/release/1.0/paddle3d/apis/config.py
     def update(self, dict_like_obj):
         def _merge_config_dicts(dict_from, dict_to):
             # According to
@@ -68,3 +68,23 @@ class PP3DConfig(BaseConfig):
                 'dataset_root': dataset_root_path,
             },
         }
+
+    def _get_epochs_iters(self):
+        # TODO
+        raise NotImplementedError
+
+    def _get_learning_rate(self):
+        # TODO
+        raise NotImplementedError
+
+    def _get_batch_size(self, mode='train'):
+        # TODO
+        raise NotImplementedError
+
+    def _get_qat_epochs_iters(self):
+        # TODO
+        raise NotImplementedError
+
+    def _get_qat_learning_rate(self):
+        # TODO
+        raise NotImplementedError

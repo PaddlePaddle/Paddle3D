@@ -18,6 +18,7 @@ from ..base.register import register_model_info, register_suite_info
 from .model import MonoDetModel
 from .runner import MonoDetRunner
 from .config import MonoDetConfig
+from .check_dataset import check_dataset
 
 # XXX: Hard-code relative path of repo root dir
 _file_path = osp.realpath(__file__)
@@ -27,6 +28,7 @@ register_suite_info({
     'model': MonoDetModel,
     'runner': MonoDetRunner,
     'config': MonoDetConfig,
+    'dataset_checker': check_dataset,
     'runner_root_path': REPO_ROOT_PATH
 })
 

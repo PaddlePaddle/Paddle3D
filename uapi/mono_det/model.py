@@ -28,12 +28,12 @@ class MonoDetModel(BaseModel):
               batch_size=None,
               learning_rate=None,
               epochs_iters=None,
+              ips=None,
               device='gpu',
               resume_path=None,
               dy2st=False,
-              amp=None,
+              amp='OFF',
               use_vdl=True,
-              ips=None,
               save_dir=None):
         if dataset is not None:
             # NOTE: We must use an absolute path here,
@@ -88,9 +88,9 @@ class MonoDetModel(BaseModel):
                  weight_path,
                  dataset=None,
                  batch_size=None,
+                 ips=None,
                  device='gpu',
-                 amp=None,
-                 ips=None):
+                 amp='OFF'):
         weight_path = abspath(weight_path)
         if dataset is not None:
             dataset = abspath(dataset)

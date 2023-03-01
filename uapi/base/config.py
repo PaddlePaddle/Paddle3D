@@ -89,16 +89,15 @@ class BaseConfig(_Config, metaclass=abc.ABCMeta):
     Abstract base class of Config.
 
     Config provides the funtionality to load, parse, or dump to a
-        configuration file with a specific format. Also, it provides
-        APIs to update configurations of several important
-        hyperparameters and model components.
+    configuration file with a specific format. Also, it provides
+    APIs to update configurations of several important
+    hyperparameters and model components.
 
     Args:
         model_name (str): A registered model name.
         config_path (str|None): Path of a configuration file.
         cfg (BaseConfig|None): `BaseConfig` object to initialize from.
     """
-
     def __init__(self, model_name, config_path=None, cfg=None):
         super().__init__(cfg=cfg)
         self.model_name = model_name
@@ -141,6 +140,35 @@ class BaseConfig(_Config, metaclass=abc.ABCMeta):
 
         By default this method modifies the training batch size.
         """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _get_epochs_iters(self):
+        """Get total number of epochs or iterations in training."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _get_learning_rate(self):
+        """Get learning rate used in training."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _get_batch_size(self, mode='train'):
+        """
+        Get batch size.
+
+        By default this method returns the training batch size.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _get_qat_epochs_iters(self):
+        """Get total number of epochs or iterations in QAT."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def _get_qat_learning_rate(self):
+        """Get learning rate used in QAT."""
         raise NotImplementedError
 
     def copy(self):
