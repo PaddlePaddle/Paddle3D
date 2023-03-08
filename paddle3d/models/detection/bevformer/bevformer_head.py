@@ -377,16 +377,23 @@ class BEVFormerHead(nn.Layer):
         labels = paddle.full((num_bboxes, ),
                              self.num_classes,
                              dtype=paddle.int64)
-        labels[pos_inds] = gt_labels[sampling_result.pos_assigned_gt_inds]
+        labels = paddle.scatter(
+            labels, pos_inds,
+            paddle.gather(
+                gt_labels, sampling_result.pos_assigned_gt_inds, axis=0))
         label_weights = paddle.ones((num_bboxes, ))
 
         # bbox targets
         bbox_targets = paddle.zeros_like(bbox_pred)[..., :gt_c]
         bbox_weights = paddle.zeros_like(bbox_pred)
-        bbox_weights[pos_inds] = 1.0
+        bbox_weights = paddle.scatter(
+            bbox_weights, pos_inds,
+            paddle.ones([pos_inds.shape[0], bbox_weights.shape[-1]],
+                        dtype=bbox_weights.dtype))
 
         # DETR
-        bbox_targets[pos_inds] = sampling_result.pos_gt_bboxes
+        bbox_targets = paddle.scatter(bbox_targets, pos_inds,
+                                      sampling_result.pos_gt_bboxes)
         return (labels, label_weights, bbox_targets, bbox_weights, pos_inds,
                 neg_inds)
 
