@@ -162,10 +162,6 @@ class CrossAttention(nn.Layer):
 
         init_val = [dim_head ** (-0.5) for _ in range(self.heads)]
         initializer = paddle.nn.initializer.Assign(init_val)
-        # self.code_weights = self.create_parameter(
-        #     [len(self.code_weights)], default_initializer=initializer)
-        self.scale_g = self.create_parameter([len(init_val)], default_initializer=initializer)
-        self.scale_a = self.create_parameter([len(init_val)], default_initializer=initializer)
 
         self.proj_dict = nn.LayerDict({
             'q_g':nn.Linear(dim, heads * dim_head, bias_attr=qkv_bias),
@@ -179,18 +175,9 @@ class CrossAttention(nn.Layer):
         self.prenorm = norm(dim)
         self.mlp = nn.Sequential(nn.Linear(dim, 2 * dim), nn.GELU(), nn.Linear(2 * dim, dim))
         self.postnorm = norm(dim)
-        
-        # self.scale =  nn.ParameterDict({
-        #     'g': nn.Parameter(torch.tensor([dim_head ** (-0.5) for _ in range(self.heads)])),
-        #     'a': nn.Parameter(torch.tensor([dim_head ** (-0.5) for _ in range(self.heads)]))
-        # })
-        # init_val = paddle.to_tensor([dim_head ** (-0.5) for _ in range(self.heads)])
-        # init_val = [dim_head ** (-0.5) for _ in range(self.heads)]
-        # initializer = paddle.nn.initializer.Assign(init_val)
-        # # self.code_weights = self.create_parameter(
-        # #     [len(self.code_weights)], default_initializer=initializer)
-        # self.scale_g = self.create_parameter([len(init_val)], default_initializer=initializer)
-        # self.scale_a = self.create_parameter([len(init_val)], default_initializer=initializer)
+
+        self.scale_a = self.create_parameter([len(init_val)], default_initializer=initializer)
+        self.scale_g = self.create_parameter([len(init_val)], default_initializer=initializer)
 
     def forward(self, k_g, q_g, k_a, q_a, v, mask):
         """
@@ -214,24 +201,17 @@ class CrossAttention(nn.Layer):
         q_a = q_a[:, None].expand([b, n, Q, d])
         
         # Group the head dim with batch dim
-        # k_g = rearrange(k_g, 'b ... (m d) -> (b m) ... d', m=self.heads, d=self.dim_head)
         bb, nn, hw, c = k_g.shape
         k_g = k_g.reshape([bb, nn, hw, self.heads, self.dim_head]).transpose([0, 3, 1, 2, 4]).reshape([-1, nn ,hw, self.dim_head])
-        # q_g = rearrange(q_g, 'b ... (m d) -> (b m) ... d', m=self.heads, d=self.dim_head)
         q_g = q_g.reshape([b, n, Q, self.heads, self.dim_head]).transpose([0, 3, 1, 2, 4]).reshape([-1, nn ,Q, self.dim_head])
-        # k_a = rearrange(k_a, 'b ... (m d) -> (b m) ... d', m=self.heads, d=self.dim_head)
         k_a = k_a.reshape([bb, nn, hw, self.heads, self.dim_head]).transpose([0, 3, 1, 2, 4]).reshape([-1, nn ,hw, self.dim_head])
-        # q_a = rearrange(q_a, 'b ... (m d) -> (b m) ... d', m=self.heads, d=self.dim_head)
         q_a = q_a.reshape([b, n, Q, self.heads, self.dim_head]).transpose([0, 3, 1, 2, 4]).reshape([-1, nn ,Q, self.dim_head])
-        # v = rearrange(v, 'b n k (m d) -> (b m) (n k) d', m=self.heads, d=self.dim_head)
         v = v.reshape([bb, nn, hw, self.heads, self.dim_head]).transpose([0, 3, 1, 2, 4]).reshape([-1, nn * hw, self.dim_head])
         
         # Dot product attention along cameras   
         dot_g =  paddle.einsum('b n Q d, b n K d -> b n Q K', q_g, k_g)
         dot_a =  paddle.einsum('b n Q d, b n K d -> b n Q K', q_a, k_a)
-        # dot_g = rearrange(dot_g, '(b m) ... -> b m ...', m=self.heads) 
         dot_g = dot_g.reshape([b, self.heads, n, Q, hw])
-        # dot_a = rearrange(dot_a, '(b m) ... -> b m ...', m=self.heads)
         dot_a = dot_a.reshape([b, self.heads, n, Q, hw])
 
         dot_a = dot_a * self.scale_a.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1).unsqueeze(0)
@@ -241,15 +221,13 @@ class CrossAttention(nn.Layer):
         def masked_fill(x, mask, value):
             y = paddle.full(x.shape, value, x.dtype)
             return paddle.where(mask, y, x)
+
         dot = masked_fill(dot, mask[:, None, :, None, :], float('-inf'))
-        # dot.masked_fill_(mask[:, None, :, None, :], float('-inf')) # padding region
-        # dot = rearrange(dot, 'b m n Q K -> (b m) Q (n K)')
         dot = dot.transpose([0, 1, 3, 2, 4]).reshape([b * self.heads, Q, -1])
         att = F.softmax(dot, axis=-1)
 
         # Combine values (image level features).
         a = paddle.einsum('b Q K, b K d -> b Q d', att, v)
-        # a = rearrange(a, '(b m) ... d -> b ... (m d)', m=self.heads, d=self.dim_head)
         a = a.reshape([b, self.heads, Q, self.dim_head]).transpose([0, 2, 1, 3]).reshape([b, Q, self.heads * self.dim_head])
         # Combine multiple heads
         z = self.proj(a)
@@ -304,17 +282,6 @@ class CAPETransformer(nn.Layer):
                     groups=30,
                     heads=8,
                     hidden_dim=512),
-                # att_layer=dict(type='CrossViewAttention',
-                #     hidden_dim=512,
-                #     num_queries=900,
-                #     qkv_bias=True,
-                #     heads=4,
-                #     dim_head= 32,
-                #     conditional=True),
-                # tf_layer=dict(
-                #     groups=30,
-                #     heads=8,
-                #     hidden_dim=512),
                 scalar = 10,
                 noise_scale = 1.0,
                 noise_trans = 0.0,
@@ -327,7 +294,7 @@ class CAPETransformer(nn.Layer):
         self.hidden_dim = att_layer.hidden_dim
         self.feat_dim = feat_dim
         self.with_time = with_time
-        # print()
+
         ys, xs = paddle.meshgrid(
             paddle.arange(feat_stride / 2, image_height, feat_stride),
             paddle.arange(feat_stride / 2, image_width, feat_stride))
@@ -349,10 +316,8 @@ class CAPETransformer(nn.Layer):
         
         #TODO: use camera PE
         self.camera_embedding = nn.Embedding(num_cameras, self.hidden_dim)
-        # self.obj_pe = nn.Embedding(self.num_queries, self.hidden_dim)
         
         self.bev_embed = MLP(self.hidden_dim * 3 // 2, self.hidden_dim, self.hidden_dim, 2)
-        # self.img_embed = MLP(self.hidden_dim * 3 // 2, self.hidden_dim, self.hidden_dim, 2)
         
         self.feature_linear = nn.Linear(feat_dim, self.hidden_dim)
 
@@ -525,26 +490,20 @@ class CAPETransformer(nn.Layer):
     
     def prepare_emb(self, feature, mask, I_inv, R_inv, t, ref_points, img_metas, seq_length):
         img_embed, _ = self.position_embeding(feature, I_inv, img_metas, mask)
-        # img_embed = rearrange(img_embed, 'b n d h w -> b n (h w) d')
         img_embed = img_embed.flatten(-2).transpose([0, 1, 3, 2])
         bs, nc, d, h, w = feature.shape#[:2]
         ref_points_unormalized = ref_points * (self.bound[1] - self.bound[0]) + self.bound[0]
         
-        # feature = rearrange(feature, 'b n d h w -> (b n) (h w) d')
         feature = feature.reshape([bs * nc, d, h * w]).transpose([0, 2, 1])
         feature = self.feature_linear(feature)
-        # feature = rearrange(feature, '(b n) k d -> b n k d', b=bs, n=nc)
         feature = feature.reshape([bs, nc, h * w, -1])
 
         if self.with_fpe:
             img_embed = self.fpe(img_embed, feature)
         
-        # mask = rearrange(mask, 'b n h w -> b n (h w)')
         mask = mask.reshape([bs, nc, -1])
         # ref_points_unormalized.shape: bs N 3 
-        # print("111 ref_points_unormalized", ref_points_unormalized.shape)
         ref_points_unormalized = ref_points_unormalized[:, None].tile([seq_length, 1, 1, 1]) # 2 * bs 1 Q 3
-        # print(ref_points_unormalized.shape)
         R = paddle.inverse(R_inv)
 
         world = ref_points_unormalized + t[:, :, None] # b n Q 3
@@ -573,7 +532,6 @@ class CAPETransformer(nn.Layer):
         # W, H, D, 3
         coords = paddle.stack(paddle.meshgrid(
             [coords_w, coords_h, coords_d])).transpose([1, 2, 3, 0])
-        # coords = paddle.concat((coords, paddle.ones_like(coords[..., :1])), -1)
         coords[..., :2] = coords[..., :2] * paddle.maximum(
             coords[..., 2:3],
             paddle.ones_like(coords[..., 2:3]) * eps)
@@ -585,17 +543,9 @@ class CAPETransformer(nn.Layer):
                 img2lidar.append(np.linalg.inv(img_meta['lidar2img'][i]))
             img2lidars.append(np.asarray(img2lidar))
 
-        # img2lidars = np.asarray(img2lidars)
-
-        # (B, N, 4, 4)
-        # img2lidars = paddle.to_tensor(img2lidars).astype(coords.dtype)
-
         coords = coords.reshape([1, 1, W, H, D, 3]).tile(
             [B, N, 1, 1, 1, 1]).reshape([B, N, W, H, D, 3, 1])
         I_inv = I_inv.reshape([B, N, 1, 1, 1, 9]).tile([1, 1, W, H, D, 1]).reshape([B, N, W, H, D, 3, 3])
-
-        # img2lidars = img2lidars.reshape([B, N, 1, 1, 1, 16]).tile(
-        #     [1, 1, W, H, D, 1]).reshape([B, N, W, H, D, 4, 4])
 
         coords3d = paddle.matmul(I_inv, coords)
         coords3d = coords3d.reshape(coords3d.shape[:-1])[..., :3]
@@ -622,15 +572,13 @@ class CAPETransformer(nn.Layer):
         return_prev_list = []
         bs, nc, d, h, w = feature.shape#[:2]
         f = 2 if self.with_time else 1
-        # feature = rearrange(feature, 'b (f n) d h w -> (b f) n d h w', f=2, n=self.num_cameras)
+
         feature = feature.reshape([-1, self.num_cameras, d, h, w])
-        # mask = rearrange(mask, 'b (f n) h w -> (b f) n h w', f=2)
         mask = mask.reshape([-1, self.num_cameras, h, w])
-        # I_inv = rearrange(I_inv, 'b (f n) h w -> (b f) n h w', f=2)
+
         I_inv = I_inv.reshape([-1, self.num_cameras, *I_inv.shape[-2:]])
-        # R_inv = rearrange(R_inv, 'b (f n) h w -> (b f) n h w', f=2)
         R_inv = R_inv.reshape([-1, self.num_cameras, *R_inv.shape[-2:]])
-        # t = rearrange(t, 'b (f n) h w -> (b f) n (h w)', f=2)
+
         t = t.reshape([-1, self.num_cameras, t.shape[-2] * t.shape[-1]])
         x = self.content_prior.weight.unsqueeze(0).tile([bs, 1, 1])
         
@@ -698,7 +646,6 @@ class CrossViewAttention(nn.Layer):
         self.cross_attend = CrossAttention(hidden_dim, heads, dim_head, qkv_bias)
         self.conditional = MLP(hidden_dim, hidden_dim, hidden_dim, 2) if conditional else None
         self.sl_layer = nn.MultiHeadAttention(hidden_dim, heads, dropout=0.1)
-        # self.sl_layer = nn.MultiheadAttention(hidden_dim, heads, dropout=0.1, batch_first=True)
         self.norm1 = nn.LayerNorm(hidden_dim)
         self.dropout1 = nn.Dropout(0.1)
 

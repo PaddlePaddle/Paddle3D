@@ -636,9 +636,7 @@ class PETRHead(nn.Layer):
             reference_points = reference_points.unsqueeze(0).tile(
                 [batch_size, 1, 1])
 
-            # outs_dec, _ = self.transformer(x, masks, query_embeds, pos_embed,
-            print(' mask is None')
-            outs_dec, _ = self.transformer(x, None, query_embeds, pos_embed,
+            outs_dec, _ = self.transformer(x, masks, query_embeds, pos_embed,
                                            self.reg_branches)
 
             outs_dec = nan_to_num(outs_dec)
@@ -863,10 +861,8 @@ class PETRHead(nn.Layer):
         reference_points = reference_points.unsqueeze(0).tile(
             [batch_size, 1, 1])
 
-        outs_dec, _ = self.transformer(x, None, query_embeds, pos_embed,
+        outs_dec, _ = self.transformer(x, masks, query_embeds, pos_embed,
                                        self.reg_branches)
-        # outs_dec, _ = self.transformer(x, masks, query_embeds, pos_embed,
-        #                                self.reg_branches)
 
         outs_dec = nan_to_num(outs_dec)
 

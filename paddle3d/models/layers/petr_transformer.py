@@ -104,8 +104,7 @@ class PETRTransformer(nn.Layer):
         # [num_query, dim] -> [bs, num_query, dim]
         query_embed = query_embed.unsqueeze(0).tile([bs, 1, 1])
         # [bs, n, h, w] -> [bs, n*h*w]
-        if mask is not None:
-            mask = mask.reshape([bs, 1, -1])
+        mask = mask.reshape([bs, 1, -1])
         target = paddle.zeros_like(query_embed)
 
         out_dec = self.decoder(

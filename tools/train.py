@@ -159,8 +159,7 @@ def main(args):
 
     if args.model is not None:
         load_pretrained_model(cfg.model, args.model)
-    paddle.save(cfg.model.state_dict(), 'capet_vov99_800x320_init.pdparams')
-    b = aa
+
     if args.quant_config:
         quant_config = get_qat_config(args.quant_config)
         cfg.model.build_slim_model(quant_config['quant_config'])

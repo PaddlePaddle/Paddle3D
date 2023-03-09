@@ -98,7 +98,7 @@ def main(args):
     if args.quant_config:
         quant_config = get_qat_config(args.quant_config)
         cfg.model.build_slim_model(quant_config['quant_config'])
-    paddle.save(cfg.model.state_dict(), 'capet_r50_704x256_24ep_wocbgs_imagenet_init.pdparams')
+
     if args.model is not None:
         load_pretrained_model(cfg.model, args.model)
         dic['checkpoint'] = None
