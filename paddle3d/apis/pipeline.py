@@ -39,6 +39,15 @@ def parse_losses(losses):
     return total_loss, log_loss
 
 
+def validate_grad(model):
+    empty_grad_name = []
+    for n, p in model.named_parameters():
+        if p.trainable and p.grad is None:
+            empty_grad_name.append(n)
+    if len(empty_grad_name) > 0:
+        raise ValueError('No gradient found in these parameters which require grad: {}'.format(empty_grad_name))
+
+
 def training_step(model: paddle.nn.Layer,
                   optimizer: paddle.optimizer.Optimizer,
                   sample: Sample,
@@ -82,6 +91,10 @@ def training_step(model: paddle.nn.Layer,
             outputs = model(sample)
             loss, log_loss = parse_losses(outputs['loss'])
             loss.backward()
+    
+    # check grad if is empty in the first iter
+    if cur_iter == 1:
+        validate_grad(model)
 
     # update params
     if optimizer.__class__.__name__ == 'OneCycleAdam':
