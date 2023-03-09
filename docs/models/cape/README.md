@@ -29,9 +29,9 @@ CAPE提出了一种相机视角嵌入信息（CAmera viewPosition Embedding）�
 ## <h2 id="4">模型库</h2>
 | 模型 |  骨干网络  | 3DmAP | NDS |  模型下载 | 配置文件 |  日志 |
 | :--: | :-------: | :--------: | :-------------------: | :------: | :-----: | :--: |
-|cape |  r50    | 34.72 | 40.58 | [model](https://paddle3d.bj.bcebos.com/models/cape/cape_r50_1408x512_epoch_24.pdparams) | [config](../../../configs/cape/cape_r50_1408x512_24ep_wocbgs_imagenet_pretrain.yml) | -) \| - |
-|capet |  r50    | 31.78 | 44.22 | [model](https://paddle3d.bj.bcebos.com/models/cape/capet_r50_704x256_epoch_24.pdparams) | [config](../../../configs/cape/capet_r50_704x256_24ep_wocbgs_imagenet_pretrain.yml) | - \| - |
-|capet |  v99    | 44.72 | 54.36 | [model](https://paddle3d.bj.bcebos.com/models/cape/capet_vov99_800x320_epoch_24.pdparams) | [config](../../../configs/cape/capet_vovnet_800x320_24ep_wocbgs_load_dd3d_pretrain.yml) | - \| - |
+|cape |  r50    | 34.72 | 40.58 | [model](https://paddle3d.bj.bcebos.com/models/cape/cape_r50_1408x512_epoch_24.pdparams) | [config](../../../configs/cape/cape_r50_1408x512_24ep_wocbgs_imagenet_pretrain.yml) | - |
+|capet |  r50    | 31.78 | 44.22 | [model](https://paddle3d.bj.bcebos.com/models/cape/capet_r50_704x256_epoch_24.pdparams) | [config](../../../configs/cape/capet_r50_704x256_24ep_wocbgs_imagenet_pretrain.yml) | - |
+|capet |  v99    | 44.72 | 54.36 | [model](https://paddle3d.bj.bcebos.com/models/cape/capet_vov99_800x320_epoch_24.pdparams) | [config](../../../configs/cape/capet_vovnet_800x320_24ep_wocbgs_load_dd3d_pretrain.yml) | - |
 
 
 ## <h2 id="5">使用教程</h2>
@@ -85,4 +85,3 @@ todo
 ```
 python tools/evaluate.py --config configs/cape/capet_vovnet_800x320_24ep_wocbgs_load_dd3d_pretrain.yml --model /path/to/your/capet_vov99_800x320_epoch_24.pdparams
 ```
-

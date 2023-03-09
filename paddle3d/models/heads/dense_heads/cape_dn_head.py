@@ -40,42 +40,7 @@ from paddle3d.models.losses.focal_loss import FocalLoss, WeightedFocalLoss
 from paddle3d.models.losses.weight_loss import WeightedL1Loss
 
 from .samplers.pseudo_sampler import PseudoSampler
-
-from .petr_head import reduce_mean, SELayer
-
-
-class RegLayer(nn.Layer):
-    def __init__(
-            self,
-            embed_dims=256,
-            shared_reg_fcs=2,
-            group_reg_dims=(2, 1, 3, 2, 2),  # xy, z, size, rot, velo
-            act_layer=nn.ReLU,
-            drop=0.0):
-        super().__init__()
-
-        reg_branch = []
-        for _ in range(shared_reg_fcs):
-            reg_branch.append(nn.Linear(embed_dims, embed_dims))
-            reg_branch.append(act_layer())
-            reg_branch.append(nn.Dropout(drop))
-        self.reg_branch = nn.Sequential(*reg_branch)
-
-        self.task_heads = nn.LayerList()
-        for reg_dim in group_reg_dims:
-            task_head = nn.Sequential(
-                nn.Linear(embed_dims, embed_dims), act_layer(),
-                nn.Linear(embed_dims, reg_dim))
-            self.task_heads.append(task_head)
-
-    def forward(self, x):
-        reg_feat = self.reg_branch(x)
-        outs = []
-        for task_head in self.task_heads:
-            out = task_head(reg_feat.clone())
-            outs.append(out)
-        outs = paddle.concat(outs, -1)
-        return outs
+from .petr_head import reduce_mean, SELayer, RegLayer, multi_apply
 
 
 @manager.HEADS.add_component
@@ -83,45 +48,44 @@ class CAPETemporalDNHead(nn.Layer):
     """Implements the CAPETemporalDNHead.
     """
 
-    def __init__(
-            self,
-            num_classes,
-            in_channels,
-            num_query=100,
-            num_reg_fcs=2,
-            transformer=None,
-            temporal_fusion_layer=None,
-            sync_cls_avg_factor=False,
-            positional_encoding=None,
-            code_weights=None,
-            bbox_coder=None,
-            loss_cls=None,
-            loss_bbox=None,
-            loss_iou=None,
-            assigner=None,
-            with_position=True,
-            with_multiview=False,
-            depth_step=0.8,
-            depth_num=64,
-            LID=False,
-            depth_start=1,
-            position_level=0,
-            position_range=[-65, -65, -8.0, 65, 65, 8.0],
-            group_reg_dims=(2, 1, 3, 2, 2),
-            scalar=5,
-            noise_scale=0.4,
-            noise_trans=0.0,
-            dn_weight=1.0,
-            split=0.5,
-            init_cfg=None,
-            with_fpe=False,
-            with_time=False,
-            with_multi=False,
-            with_denoise=False,
-            normedlinear=False,
-            with_prev_aux_loss=False,
-            prev_aux_loss_weight=0.1,
-            **kwargs):
+    def __init__(self,
+                 num_classes,
+                 in_channels,
+                 num_query=100,
+                 num_reg_fcs=2,
+                 transformer=None,
+                 temporal_fusion_layer=None,
+                 sync_cls_avg_factor=False,
+                 positional_encoding=None,
+                 code_weights=None,
+                 bbox_coder=None,
+                 loss_cls=None,
+                 loss_bbox=None,
+                 loss_iou=None,
+                 assigner=None,
+                 with_position=True,
+                 with_multiview=False,
+                 depth_step=0.8,
+                 depth_num=64,
+                 LID=False,
+                 depth_start=1,
+                 position_level=0,
+                 position_range=[-65, -65, -8.0, 65, 65, 8.0],
+                 group_reg_dims=(2, 1, 3, 2, 2),
+                 scalar=5,
+                 noise_scale=0.4,
+                 noise_trans=0.0,
+                 dn_weight=1.0,
+                 split=0.5,
+                 init_cfg=None,
+                 with_fpe=False,
+                 with_time=False,
+                 with_multi=False,
+                 with_denoise=False,
+                 normedlinear=False,
+                 with_prev_aux_loss=False,
+                 prev_aux_loss_weight=0.1,
+                 **kwargs):
 
         if 'code_size' in kwargs:
             self.code_size = kwargs['code_size']
@@ -196,9 +160,8 @@ class CAPETemporalDNHead(nn.Layer):
         self.with_prev_aux_loss = with_prev_aux_loss
         if self.with_prev_aux_loss:
             self.prev_aux_loss_weight = prev_aux_loss_weight
-        
-        self._init_layers()
 
+        self._init_layers()
 
     def _init_layers(self):
         """Initialize layers of the transformer head."""
@@ -235,7 +198,7 @@ class CAPETemporalDNHead(nn.Layer):
         # The initialization for transformer is important
         self.cls_branches.apply(param_init.reset_parameters)
         self.reg_branches.apply(param_init.reset_parameters)
-        
+
         self.transformer.init_weights()
         # param_init.uniform_init(self.reference_points.weight, 0, 1)
         if self.loss_cls.use_sigmoid:
@@ -249,14 +212,14 @@ class CAPETemporalDNHead(nn.Layer):
         for img_meta in img_metas:
             extrinsic = []
             intrinsic = []
-            
+
             for i in range(len(img_meta['extrinsics'])):
-                 # see the definition in dataset!!!!
+                # see the definition in dataset!!!!
                 extrinsic.append(img_meta['extrinsics'][i].T)
                 intrinsic.append(img_meta['intrinsics'][i])
             extrinsics.append(np.asarray(extrinsic))
             intrinsics.append(np.asarray(intrinsic))
-            
+
         extrinsics = np.asarray(extrinsics, dtype=np.float32)
         # (B, N, 4, 4)
         extrinsics = paddle.to_tensor(extrinsics)
@@ -485,15 +448,14 @@ class CAPETemporalDNHead(nn.Layer):
                 masks[img_id, cam_id, :img_h, :img_w] = 0
 
         # interpolate masks to have the same spatial shape with x
-        masks = F.interpolate(
-            masks, size=x.shape[-2:]).astype('bool')
+        masks = F.interpolate(masks, size=x.shape[-2:]).astype('bool')
 
         extrinsics, intrinsics = self._get_camera_parameters(img_metas)
 
         R = extrinsics[:, :, :3, :3]
         R_inv = paddle.inverse(R)
         t = R_inv @ extrinsics[:, :, :3, 3:4]
-        I_inv = paddle.inverse(intrinsics[:, :, :3, :3])   
+        I_inv = paddle.inverse(intrinsics[:, :, :3, :3])
 
         if self.with_time:
             time_stamps = []
@@ -505,21 +467,23 @@ class CAPETemporalDNHead(nn.Layer):
 
             mean_time_stamp = (
                 time_stamp[:, 1, :] - time_stamp[:, 0, :]).mean(-1)
-            
+
         # forward twice
         mask_dict = None
         if not self.with_prev_aux_loss:
-            outs_dec, reference_points, mask_dict = self.transformer(x, masks, I_inv, R_inv, t, img_metas, False)
+            outs_dec, reference_points, mask_dict = self.transformer(
+                x, masks, I_inv, R_inv, t, img_metas, False)
             outs_dec = nan_to_num(outs_dec)
         else:
-            outs_dec, prev_out_dec, reference_points, mask_dict = self.transformer(x, masks, I_inv, R_inv, t, img_metas, True)
+            outs_dec, prev_out_dec, reference_points, mask_dict = self.transformer(
+                x, masks, I_inv, R_inv, t, img_metas, True)
             outs_dec = nan_to_num(outs_dec)
             prev_out_dec = nan_to_num(prev_out_dec)
 
         outputs_classes = []
         outputs_coords = []
         prev_outputs_classes = []
-        prev_outputs_coords = []       
+        prev_outputs_coords = []
 
         for lvl in range(outs_dec.shape[0]):
             reference = inverse_sigmoid(reference_points.clone())
@@ -544,14 +508,15 @@ class CAPETemporalDNHead(nn.Layer):
             if self.with_prev_aux_loss:
                 prev_outputs_class = self.cls_branches[lvl](prev_out_dec[lvl])
                 prev_tmp = self.reg_branches[lvl](prev_out_dec[lvl])
-            
+
                 prev_tmp[..., 0:2] += reference[..., 0:2]
                 prev_tmp[..., 0:2] = F.sigmoid(prev_tmp[..., 0:2])
                 prev_tmp[..., 4:5] += reference[..., 2:3]
                 prev_tmp[..., 4:5] = F.sigmoid(prev_tmp[..., 4:5])
                 if self.with_time:
-                    prev_tmp[..., 8:] = prev_tmp[..., 8:] / mean_time_stamp[:, None, None]
-                
+                    prev_tmp[..., 8:] = prev_tmp[
+                        ..., 8:] / mean_time_stamp[:, None, None]
+
                 prev_outputs_coord = prev_tmp
                 prev_outputs_classes.append(prev_outputs_class)
                 prev_outputs_coords.append(prev_outputs_coord)
@@ -597,18 +562,29 @@ class CAPETemporalDNHead(nn.Layer):
             prev_all_cls_scores = paddle.stack(prev_outputs_classes)
             prev_all_bbox_preds = paddle.stack(prev_outputs_coords)
 
-            prev_all_bbox_preds[..., 0:1] = (prev_all_bbox_preds[..., 0:1] * (self.pc_range[3] - self.pc_range[0]) + self.pc_range[0])
-            prev_all_bbox_preds[..., 1:2] = (prev_all_bbox_preds[..., 1:2] * (self.pc_range[4] - self.pc_range[1]) + self.pc_range[1])
-            prev_all_bbox_preds[..., 4:5] = (prev_all_bbox_preds[..., 4:5] * (self.pc_range[5] - self.pc_range[2]) + self.pc_range[2])
+            prev_all_bbox_preds[..., 0:1] = (
+                prev_all_bbox_preds[..., 0:1] *
+                (self.pc_range[3] - self.pc_range[0]) + self.pc_range[0])
+            prev_all_bbox_preds[..., 1:2] = (
+                prev_all_bbox_preds[..., 1:2] *
+                (self.pc_range[4] - self.pc_range[1]) + self.pc_range[1])
+            prev_all_bbox_preds[..., 4:5] = (
+                prev_all_bbox_preds[..., 4:5] *
+                (self.pc_range[5] - self.pc_range[2]) + self.pc_range[2])
 
             outs['mean_time_stamp'] = mean_time_stamp
-            
+
             if mask_dict and mask_dict['pad_size'] > 0:
-                prev_output_known_class = prev_all_cls_scores[:, :, :mask_dict['pad_size'], :]
-                prev_output_known_coord = prev_all_bbox_preds[:, :, :mask_dict['pad_size'], :]
-                prev_outputs_class = prev_all_cls_scores[:, :, mask_dict['pad_size']:, :]
-                prev_outputs_coord = prev_all_bbox_preds[:, :, mask_dict['pad_size']:, :]
-                mask_dict['prev_output_known_lbs_bboxes']=(prev_output_known_class,prev_output_known_coord)
+                prev_output_known_class = prev_all_cls_scores[:, :, :mask_dict[
+                    'pad_size'], :]
+                prev_output_known_coord = prev_all_bbox_preds[:, :, :mask_dict[
+                    'pad_size'], :]
+                prev_outputs_class = prev_all_cls_scores[:, :, mask_dict[
+                    'pad_size']:, :]
+                prev_outputs_coord = prev_all_bbox_preds[:, :, mask_dict[
+                    'pad_size']:, :]
+                mask_dict['prev_output_known_lbs_bboxes'] = (
+                    prev_output_known_class, prev_output_known_coord)
                 outs['dn_mask_dict'] = mask_dict
                 outs['prev_all_cls_scores'] = prev_outputs_class
                 outs['prev_all_bbox_preds'] = prev_outputs_coord
@@ -621,19 +597,25 @@ class CAPETemporalDNHead(nn.Layer):
         Args:
             mask_dict: a dict that contains dn information
         """
-        output_known_class, output_known_coord = mask_dict['output_known_lbs_bboxes']
+        output_known_class, output_known_coord = mask_dict[
+            'output_known_lbs_bboxes']
         known_labels, known_bboxs = mask_dict['known_lbs_bboxes']
         map_known_indice = mask_dict['map_known_indice'].astype('int64')
         known_indice = mask_dict['known_indice'].astype('int64')
         batch_idx = mask_dict['batch_idx'].astype('int64')
         bid = batch_idx[known_indice]
         if len(output_known_class) > 0:
-            output_known_class = output_known_class.transpose([1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
-            output_known_coord = output_known_coord.transpose([1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
+            output_known_class = output_known_class.transpose(
+                [1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
+            output_known_coord = output_known_coord.transpose(
+                [1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
             if self.with_prev_aux_loss:
-                prev_output_known_class, prev_output_known_coord = mask_dict['prev_output_known_lbs_bboxes']
-                prev_output_known_class = prev_output_known_class.transpose([1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
-                prev_output_known_coord = prev_output_known_coord.transpose([1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
+                prev_output_known_class, prev_output_known_coord = mask_dict[
+                    'prev_output_known_lbs_bboxes']
+                prev_output_known_class = prev_output_known_class.transpose(
+                    [1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
+                prev_output_known_coord = prev_output_known_coord.transpose(
+                    [1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
         num_tgt = known_indice.numel()
         if self.with_prev_aux_loss:
             return known_labels, known_bboxs, output_known_class, output_known_coord, prev_output_known_class, prev_output_known_coord, num_tgt
@@ -641,14 +623,14 @@ class CAPETemporalDNHead(nn.Layer):
             return known_labels, known_bboxs, output_known_class, output_known_coord, num_tgt
 
     def loss_single_with_prev_loss(self,
-                    cls_scores,
-                    bbox_preds,
-                    prev_cls_scores,
-                    prev_bbox_preds,
-                    time,
-                    gt_bboxes_list,
-                    gt_labels_list,
-                    gt_bboxes_ignore_list=None):
+                                   cls_scores,
+                                   bbox_preds,
+                                   prev_cls_scores,
+                                   prev_bbox_preds,
+                                   time,
+                                   gt_bboxes_list,
+                                   gt_labels_list,
+                                   gt_bboxes_ignore_list=None):
         pass
 
     def dn_loss_single(self,
@@ -706,7 +688,6 @@ class CAPETemporalDNHead(nn.Layer):
         loss_bbox = nan_to_num(loss_bbox)
 
         return self.dn_weight * loss_cls, self.dn_weight * loss_bbox
-
 
     def _get_target_single(self,
                            cls_score,
@@ -876,7 +857,7 @@ class CAPETemporalDNHead(nn.Layer):
         # regression L1 loss
         bbox_preds = bbox_preds.reshape([-1, bbox_preds.shape[-1]])
         normalized_bbox_targets = normalize_bbox(bbox_targets, self.pc_range)
-        # paddle.all
+
         isnotnan = paddle.isfinite(normalized_bbox_targets).all(axis=-1)
         bbox_weights = bbox_weights * self.code_weights
 
