@@ -21,3 +21,4 @@ from .petr_transformer import (PETRDNTransformer, PETRTransformer,
 from .positional_encoding import SinePositionalEncoding3D
 from .pyramid_pool import *
 from .normalization import *
+from .cape_transformer import CrossAttention, CAPETransformer, CrossViewAttention
