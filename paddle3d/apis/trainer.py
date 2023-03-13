@@ -122,7 +122,7 @@ class Trainer:
             scheduler: Union[dict, SchedulerABC] = dict(),
             dataloader_fn: Union[dict, Callable] = dict(),
             amp_cfg: Optional[dict] = None,
-            do_bind: Optional[bool] = True):
+            do_bind: Optional[bool] = False):
 
         self.model = model
         self.optimizer = optimizer
