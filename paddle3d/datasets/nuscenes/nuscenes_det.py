@@ -320,3 +320,11 @@ class NuscenesDetDataset(BaseDataset):
             channel=self.channel,
             class_names=self.class_names,
             attrmap=self.ATTRIBUTE_MAP_REVERSE)
+
+    @property
+    def name(self) -> str:
+        return "nuScenes"
+
+    @property
+    def labels(self) -> List[str]:
+        return self.class_names

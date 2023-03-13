@@ -500,7 +500,6 @@ def eval_class(gt_annos,
             [[0.7, 0.5, 0.5], [0.7, 0.5, 0.5], [0.7, 0.5, 0.5]]
             format: [metric, class]. choose one from matrix above.
         num_parts: int. a parameter for fast calculate algorithm
-
     Returns:
         dict of recall, precision and aos
     """
@@ -725,7 +724,8 @@ def get_official_eval_result(gt_annos,
                              difficultys=[0, 1, 2],
                              z_axis=1,
                              z_center=1.0,
-                             metric_types=("bbox", "bev", "3d")):
+                             metric_types=("bbox", "bev", "3d"),
+                             recall_type='R40'):
     """
         gt_annos and dt_annos must contains following keys:
         [bbox, location, dimensions, rotation_y, score]
@@ -793,11 +793,19 @@ def get_official_eval_result(gt_annos,
 
             for metric_type in metric_types:
                 if metric_type == "aos":
-                    res[curcls][overlap][metric_type] = get_mAP_r40(
-                        metrics["bbox"]["orientation"][j, :, i])
+                    if recall_type == 'R40':
+                        res[curcls][overlap][metric_type] = get_mAP_r40(
+                            metrics["bbox"]["orientation"][j, :, i])
+                    elif recall_type == 'R11':
+                        res[curcls][overlap][metric_type] = get_mAP_v2(
+                            metrics["bbox"]["orientation"][j, :, i])
                 else:
-                    res[curcls][overlap][metric_type] = get_mAP_r40(
-                        metrics[metric_type]["precision"][j, :, i])
+                    if recall_type == 'R40':
+                        res[curcls][overlap][metric_type] = get_mAP_r40(
+                            metrics[metric_type]["precision"][j, :, i])
+                    elif recall_type == 'R11':
+                        res[curcls][overlap][metric_type] = get_mAP_v2(
+                            metrics[metric_type]["precision"][j, :, i])
 
     return res
 

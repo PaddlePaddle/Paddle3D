@@ -1,10 +1,10 @@
 colorlog
 easydict
 filelock
-numba
+numba >= 0.56
 numpy
 nuscenes-devkit
-opencv-python
+opencv-python <= 4.6.0
 pandas
 paddledet
 paddleseg
@@ -13,6 +13,6 @@ pyyaml
 pillow<=8.3.2
 rarfile
 scikit-image
+scikit-learn
 visualdl
-sklearn
 h5py

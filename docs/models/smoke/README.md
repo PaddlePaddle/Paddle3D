@@ -35,8 +35,8 @@ SMOKE是一个单阶段的单目3D检测模型，该论文创新性地提出了�
 
 | 模型 |  骨干网络  | 3DmAP Mod. | Car<br>Easy Mod. Hard | Pedestrian<br>Easy Mod. Hard | Cyclist<br>Easy Mod. Hard | 模型下载 | 配置文件 |  日志 |
 | :--: | :-------: | :--------: | :-------------------: | :--------------------------: | :-----------------------: | :------: | :-----: | :--: |
-|SMOKE |  DLA34    | 2.94 |  6.26 5.16 4.54 | 3.04 2.73 2.23 | 1.69 0.95 0.94 | [model](https://paddle3d.bj.bcebos.com/models/smoke/smoke_dla34_no_dcn_kitti/model.pdparams) | [config](../../../configs/smoke/smoke_dla34_no_dcn_kitti.yml) | [log](https://paddle3d.bj.bcebos.com/models/smoke/smoke_dla34_no_dcn_kitti/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=1650ec346b4426486bd079b506fc1f86) |
-|SMOKE |  HRNet18  | 4.05 | 8.48 6.44 5.74 | 5.02 4.23 3.06 | 2.59 1.49 1.37 | [model](https://paddle3d.bj.bcebos.com/models/smoke/smoke_hrnet18_no_dcn_kitti/model.pdparams) | [config](../../../configs/smoke/smoke_hrnet18_no_dcn_kitti.yml) | [log](https://paddle3d.bj.bcebos.com/models/smoke/smoke_hrnet18_no_dcn_kitti/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=4e31655b33d0f44b0c19399df8fb7b00) |
+|SMOKE |  DLA34    | 2.94 |  6.26 5.16 4.54 | 3.04 2.73 2.23 | 1.69 0.95 0.94 | [model](https://bj.bcebos.com/paddle3d/models/smoke/smoke_dla34_no_dcn_kitti/model.pdparams) | [config](../../../configs/smoke/smoke_dla34_no_dcn_kitti.yml) | [log](https://bj.bcebos.com/paddle3d/models/smoke/smoke_dla34_no_dcn_kitti/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=1650ec346b4426486bd079b506fc1f86) |
+|SMOKE |  HRNet18  | 4.05 | 8.48 6.44 5.74 | 5.02 4.23 3.06 | 2.59 1.49 1.37 | [model](https://bj.bcebos.com/paddle3d/models/smoke/smoke_hrnet18_no_dcn_kitti/model.pdparams) | [config](../../../configs/smoke/smoke_hrnet18_no_dcn_kitti.yml) | [log](https://bj.bcebos.com/paddle3d/models/smoke/smoke_hrnet18_no_dcn_kitti/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=4e31655b33d0f44b0c19399df8fb7b00) |
 
 **注意：** KITTI benchmark使用4张V100 GPU训练得出。
 
@@ -100,7 +100,7 @@ fleetrun tools/train.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --nu
 export CUDA_VISIBLE_DEVICES=0
 
 # 使用Paddle3D提供的预训练模型进行评估
-python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --num_workers 2 --batch_size 1 --model output/iter_70000/model.pdparams
+python tools/evaluate.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --num_workers 2 --model output/iter_70000/model.pdparams
 ```
 
 <br>
@@ -143,6 +143,18 @@ python tools/export.py --config configs/smoke/smoke_dla34_no_dcn_kitti.yml --mod
 
     ```shell
     python infer.py --model_file /path/to/smoke.pdmodel --params_file /path/to/smoke.pdiparams --image /path/to/image --use_gpu
+    ```
+
+* 执行CPU预测并显示3d框
+
+    ```shell
+    python vis.py --model_file /path/to/smoke.pdmodel --params_file /path/to/smoke.pdiparams --image /path/to/image
+    ```
+
+* 执行GPU预测并显示3d框
+
+    ```shell
+    python vis.py --model_file /path/to/smoke.pdmodel --params_file /path/to/smoke.pdiparams --image /path/to/image --use_gpu
     ```
 
 * 执行TRT预测

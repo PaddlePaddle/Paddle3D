@@ -24,6 +24,7 @@ from paddle.static import InputSpec
 from skimage import io
 
 from paddle3d.apis.config import Config
+from paddle3d.ops.iou3d_nms_cuda import nms_gpu
 
 
 def parse_args():

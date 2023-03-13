@@ -12,6 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import datasets, models, transforms
+__version__ = "1.0.0"
 
-__version__ = "0.5.0"
+import paddle
+from packaging.version import Version
+
+paddle_version = Version(paddle.__version__)
+minimum_paddle_version = Version("2.4.0")
+develop_version = Version("0.0.0")
+
+if paddle_version < minimum_paddle_version and paddle_version != develop_version:
+    raise RuntimeError("Please upgrade PaddlePaddle version to {}".format(
+        minimum_paddle_version))
+
+from . import datasets, models, transforms

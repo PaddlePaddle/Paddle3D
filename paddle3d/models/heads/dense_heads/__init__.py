@@ -12,5 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .anchor3d_head import *
 from .anchor_head import *
+from .petr_head import PETRHead
+from .point_head import PointHeadSimple
 from .target_assigner import *

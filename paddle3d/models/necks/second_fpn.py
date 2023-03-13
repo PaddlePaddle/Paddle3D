@@ -28,6 +28,7 @@ from paddle.nn.initializer import Constant, Normal, Uniform
 
 from paddle3d.apis import manager
 from paddle3d.models.backbones.second_backbone import build_conv_layer
+from paddle3d.models.layers.param_init import constant_init, reset_parameters
 from paddle3d.models.voxel_encoders.pillar_encoder import build_norm_layer
 
 __all__ = ['SecondFPN']
@@ -134,6 +135,16 @@ class SecondFPN(nn.Layer):
                 deblock.add_sublayer(str(len(deblock)), SpatialGate())
             deblocks.append(deblock)
         self.deblocks = nn.LayerList(deblocks)
+
+    def init_weights(self):
+        def _init_weights(m):
+            if isinstance(m, (nn.Conv1D, nn.Conv2D, nn.Conv2DTranspose)):
+                reset_parameters(m)
+            elif isinstance(m, (nn.BatchNorm1D, nn.BatchNorm2D)):
+                constant_init(m.weight, value=1)
+                constant_init(m.bias, value=0)
+
+        self.apply(_init_weights)
 
     def forward(self, x):
         ups = [deblock(x[i]) for i, deblock in enumerate(self.deblocks)]

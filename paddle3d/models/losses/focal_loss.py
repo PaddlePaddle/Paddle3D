@@ -16,7 +16,9 @@ import paddle
 import paddle.nn.functional as F
 from paddle import nn
 
+from paddle3d.apis import manager
 from paddle3d.models.layers.layer_libs import _transpose_and_gather_feat
+from paddle3d.models.losses.utils import weight_reduce_loss
 
 
 class FocalLoss(nn.Layer):
@@ -221,3 +223,153 @@ class SigmoidFocalClassificationLoss(nn.Layer):
         assert weights.shape.__len__() == loss.shape.__len__()
 
         return loss * weights
+
+
+def sigmoid_focal_loss(inputs, targets, alpha=-1, gamma=2, reduction="none"):
+    """
+    Loss used in RetinaNet for dense detection: https://arxiv.org/abs/1708.02002.
+    This code is based on https://github.com/facebookresearch/fvcore/blob/6a5360691be65c76188ed99b57ccbbf5fc19924a/fvcore/nn/focal_loss.py#L7
+    Args:
+        inputs: A float tensor of arbitrary shape.
+                The predictions for each example.
+        targets: A float tensor with the same shape as inputs. Stores the binary
+                 classification label for each element in inputs
+                (0 for the negative class and 1 for the positive class).
+        alpha: (optional) Weighting factor in range (0,1) to balance
+                positive vs negative examples. Default = -1 (no weighting).
+        gamma: Exponent of the modulating factor (1 - p_t) to
+               balance easy vs hard examples.
+        reduction: 'none' | 'mean' | 'sum'
+                 'none': No reduction will be applied to the output.
+                 'mean': The output will be averaged.
+                 'sum': The output will be summed.
+    Returns:
+        Loss tensor with the reduction option applied.
+    """
+    inputs = inputs.cast('float32')
+    targets = targets.cast('float32')
+    p = F.sigmoid(inputs)
+    ce_loss = F.binary_cross_entropy_with_logits(
+        inputs, targets, reduction="none")
+    p_t = p * targets + (1 - p) * (1 - targets)
+    loss = ce_loss * ((1 - p_t)**gamma)
+
+    if alpha >= 0:
+        alpha_t = alpha * targets + (1 - alpha) * (1 - targets)
+        loss = alpha_t * loss
+
+    if reduction == "mean":
+        loss = loss.mean()
+    elif reduction == "sum":
+        loss = loss.sum()
+
+    return loss
+
+
+@manager.LOSSES.add_component
+class WeightedFocalLoss(nn.Layer):
+    def __init__(self,
+                 use_sigmoid=True,
+                 gamma=2.0,
+                 alpha=0.25,
+                 reduction='mean',
+                 loss_weight=1.0):
+        """`Focal Loss <https://arxiv.org/abs/1708.02002>`_
+
+        This code is modified from https://github.com/open-mmlab/mmdetection/blob/master/mmdet/models/losses/focal_loss.py#L160
+
+        Args:
+            use_sigmoid (bool, optional): Whether to the prediction is
+                used for sigmoid or softmax. Defaults to True.
+            gamma (float, optional): The gamma for calculating the modulating
+                factor. Defaults to 2.0.
+            alpha (float, optional): A balanced form for Focal Loss.
+                Defaults to 0.25.
+            reduction (str, optional): The method used to reduce the loss into
+                a scalar. Defaults to 'mean'. Options are "none", "mean" and
+                "sum".
+            loss_weight (float, optional): Weight of loss. Defaults to 1.0.
+        """
+        super(WeightedFocalLoss, self).__init__()
+        assert use_sigmoid is True, 'Only sigmoid focal loss supported now.'
+        self.use_sigmoid = use_sigmoid
+        self.gamma = gamma
+        self.alpha = alpha
+        self.reduction = reduction
+        self.loss_weight = loss_weight
+
+    def forward(self,
+                pred,
+                target,
+                weight=None,
+                avg_factor=None,
+                reduction_override=None):
+        """Forward function.
+
+        Args:
+            pred (paddle.Tensor): The prediction.
+            target (paddle.Tensor): The learning label of the prediction.
+            weight (paddle.Tensor, optional): The weight of loss for each
+                prediction. Defaults to None.
+            avg_factor (int, optional): Average factor that is used to average
+                the loss. Defaults to None.
+            reduction_override (str, optional): The reduction method used to
+                override the original reduction method of the loss.
+                Options are "none", "mean" and "sum".
+
+        Returns:
+            paddle.Tensor: The calculated loss
+        """
+        assert reduction_override in (None, 'none', 'mean', 'sum')
+        reduction = (reduction_override
+                     if reduction_override else self.reduction)
+        if self.use_sigmoid:
+            num_classes = pred.shape[1]
+            target = F.one_hot(target, num_classes=num_classes + 1)
+            target = target[:, :num_classes]
+            loss_cls = self.loss_weight * py_sigmoid_focal_loss(
+                pred,
+                target,
+                weight,
+                gamma=self.gamma,
+                alpha=self.alpha,
+                reduction=reduction,
+                avg_factor=avg_factor)
+        else:
+            raise NotImplementedError
+        return loss_cls
+
+
+def py_sigmoid_focal_loss(pred,
+                          target,
+                          weight=None,
+                          gamma=2.0,
+                          alpha=0.25,
+                          reduction='mean',
+                          avg_factor=None):
+    """paddle version of `Focal Loss <https://arxiv.org/abs/1708.02002>`_.
+    This function is modified from https://github.com/open-mmlab/mmdetection/blob/master/mmdet/models/losses/focal_loss.py#L12
+    """
+    pred_sigmoid = F.sigmoid(pred)
+    target = target.astype(pred.dtype)
+    pt = (1 - pred_sigmoid) * target + pred_sigmoid * (1 - target)
+    focal_weight = (alpha * target + (1 - alpha) * (1 - target)) * pt.pow(gamma)
+    loss = F.binary_cross_entropy_with_logits(
+        pred, target, reduction='none') * focal_weight
+    if weight is not None:
+        if weight.shape != loss.shape:
+            if weight.shape[0] == loss.shape[0]:
+                # For most cases, weight is of shape (num_priors, ),
+                #  which means it does not have the second axis num_class
+                weight = weight.reshape([-1, 1])
+            else:
+                # Sometimes, weight per anchor per class is also needed. e.g.
+                #  in FSAF. But it may be flattened of shape
+                #  (num_priors x num_class, ), while loss is still of shape
+                #  (num_priors, num_class).
+                assert weight.numel() == loss.numel()
+                weight = weight.reshape([loss.shape[0], -1])
+        assert weight.ndim == loss.ndim
+    loss = weight_reduce_loss(loss, weight, reduction, avg_factor)
+
+    return loss

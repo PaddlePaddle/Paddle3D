@@ -21,6 +21,8 @@ import paddle
 import yaml
 
 from paddle3d.utils.logger import logger
+from paddle3d.utils.tensor_fusion_utils import (fused_parameters,
+                                                is_fused_matmul_bias_supported)
 
 
 class Config(object):
@@ -73,6 +75,7 @@ class Config(object):
         self._model = None
         self._train_dataset = None
         self._val_dataset = None
+        self._all_fused_tensors = None
         if path.endswith('yml') or path.endswith('yaml'):
             self.dic = self._parse_from_yaml(path)
         else:
@@ -164,9 +167,27 @@ class Config(object):
         params = self.dic.get('optimizer', {}).copy()
 
         params['learning_rate'] = self.lr_scheduler
-        params['parameters'] = self.model.parameters()
+        set_params = False
+        if 'tensor_fusion' in params:
+            tensor_fusion = params.pop('tensor_fusion')
+            if tensor_fusion:
+                self._all_fused_tensors = fused_parameters(
+                    self.model.parameters())
+                params['parameters'] = self._all_fused_tensors
+                optimizer = self._load_object(params)
+                setattr(optimizer, 'all_fused_tensors', self._all_fused_tensors)
+                set_params = True
 
-        return self._load_object(params)
+        if not set_params:
+            params['parameters'] = filter(lambda p: p.trainable,
+                                          self.model.parameters())
+            optimizer = self._load_object(params)
+
+        return optimizer
+
+    @property
+    def all_fused_tensors(self):
+        return self._all_fused_tensors
 
     @property
     def model(self) -> paddle.nn.Layer:
@@ -174,9 +195,24 @@ class Config(object):
         if not model_cfg:
             raise RuntimeError('No model specified in the configuration file.')
 
+        if 'fused_linear' in model_cfg:
+            fused_linear = model_cfg.pop('fused_linear')
+            if fused_linear:
+                if not is_fused_matmul_bias_supported():
+                    logger.warning(
+                        "The flag fused_linear only valid for cuda version higher than 11.6, "
+                        "but the paddle is compiled with cuda " +
+                        paddle.version.cuda())
+                else:
+                    paddle.nn.functional.linear = paddle.incubate.nn.functional.fused_linear
+
         if not self._model:
             self._model = self._load_object(model_cfg)
         return self._model
+
+    @property
+    def amp_config(self) -> int:
+        return self.dic.get('amp_cfg', None)
 
     @property
     def train_dataset_config(self) -> Dict:
@@ -213,6 +249,10 @@ class Config(object):
         if not self._val_dataset:
             self._val_dataset = self._load_object(_val_dataset)
         return self._val_dataset
+
+    @property
+    def export_config(self) -> Dict:
+        return self.dic.get('export', {})
 
     def _load_component(self, com_name: str) -> Any:
         # lazy import
@@ -279,8 +319,10 @@ class Config(object):
                         obj=val, recursive=recursive)
             else:
                 params = dic
-
-            return component(**params)
+            try:
+                return component(**params)
+            except Exception as e:
+                raise type(e)('{} {}'.format(component.__name__, e))
 
         elif isinstance(obj, Iterable) and not isinstance(obj, str):
             return [self._load_object(item) for item in obj]
@@ -307,7 +349,8 @@ class Config(object):
             'model': self.model,
             'train_dataset': self.train_dataset,
             'val_dataset': self.val_dataset,
-            'batch_size': self.batch_size
+            'batch_size': self.batch_size,
+            'amp_cfg': self.amp_config
         })
 
         return dic

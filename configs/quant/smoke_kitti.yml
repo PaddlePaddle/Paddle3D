@@ -1,0 +1,19 @@
+slim_type: QAT
+
+quant_config:
+  weight_quantize_type: channel_wise_abs_max
+  activation_quantize_type: moving_average_abs_max
+  weight_bits: 8
+  activation_bits: 8
+  dtype: int8
+  window_size: 10000
+  moving_rate: 0.9
+  quantizable_layer_type: ['Conv2D', 'Linear']
+
+finetune_config:
+  iters: 40000
+
+  lr_scheduler:
+    type: MultiStepDecay
+    milestones: [32000, 36000]
+    learning_rate: 1.25e-4

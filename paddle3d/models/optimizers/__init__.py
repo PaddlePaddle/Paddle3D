@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .lr_schedulers import OneCycle, OneCycleWarmupDecayLr
+from .lr_schedulers import (CosineAnnealingDecayByEpoch, OneCycle,
+                            OneCycleWarmupDecayLr)
 from .momentum_schedulers import OneCycleDecayWarmupMomentum
 from .optimizers import AdamWOnecycle, OneCycleAdam

@@ -49,9 +49,12 @@ class HardVoxelizer(nn.Layer):
         # bs_idx = bs_idx.reshape([-1, 1])
         # coors_pad = paddle.concat([bs_idx, coors], axis=1)
         coors = coors.reshape([1, -1, 3])
+        coors_dtype = coors.dtype
+        coors = coors.cast('float32')
         coors_pad = F.pad(
             coors, [1, 0], value=bs_idx, mode='constant', data_format="NCL")
         coors_pad = coors_pad.reshape([-1, 4])
+        coors_pad = coors_pad.cast(coors_dtype)
         return voxels, coors_pad, num_points_per_voxel
 
     def forward(self, points):
@@ -60,7 +63,7 @@ class HardVoxelizer(nn.Layer):
         else:
             max_num_voxels = self.max_num_voxels[1]
 
-        if not getattr(self, "export_model", False):
+        if not getattr(self, "in_export_mode", False):
             batch_voxels, batch_coors, batch_num_points = [], [], []
             for bs_idx, point in enumerate(points):
                 voxels, coors_pad, num_points_per_voxel = self.single_forward(

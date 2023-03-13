@@ -23,6 +23,7 @@ import paddle.nn as nn
 from paddle.static import InputSpec
 
 from paddle3d.apis import manager
+from paddle3d.models.base import BaseLidarModel
 from paddle3d.models.detection.pointpillars.anchors_generator import \
     AnchorGenerator
 from paddle3d.sample import Sample
@@ -33,7 +34,7 @@ __all__ = ["PointPillars"]
 
 
 @manager.MODELS.add_component
-class PointPillars(nn.Layer):
+class PointPillars(BaseLidarModel):
     def __init__(self,
                  voxelizer,
                  pillar_encoder,
@@ -44,8 +45,14 @@ class PointPillars(nn.Layer):
                  loss,
                  anchor_configs,
                  anchor_area_threshold=1,
-                 pretrained=None):
-        super(PointPillars, self).__init__()
+                 pretrained=None,
+                 box_with_velocity: bool = False):
+        super().__init__(
+            with_voxelizer=False,
+            box_with_velocity=box_with_velocity,
+            max_num_points_in_voxel=pillar_encoder.max_num_points_in_voxel,
+            in_channels=pillar_encoder.in_channels)
+
         self.voxelizer = voxelizer
         self.pillar_encoder = pillar_encoder
         self.middle_encoder = middle_encoder
@@ -65,55 +72,87 @@ class PointPillars(nn.Layer):
         self.pretrained = pretrained
         self.init_weight()
 
-    def forward(self, samples):
+    def train_forward(self, samples):
         voxels = samples["voxels"]
         coordinates = samples["coords"]
         num_points_per_voxel = samples["num_points_per_voxel"]
 
-        if getattr(self, "export_model", False):
-            coordinates = paddle.concat([
-                paddle.zeros([coordinates.shape[0], 1],
-                             dtype=coordinates.dtype), coordinates
-            ],
-                                        axis=-1)
-            batch_size = None
-        else:
-            batch_size = len(samples["data"])
+        # yapf: disable
+        batch_size = len(samples["data"])
+        pillar_features = self.pillar_encoder(
+            voxels, num_points_per_voxel, coordinates)
+        spatial_features = self.middle_encoder(
+            pillar_features, coordinates, batch_size)
+        # yapf: enable
 
-        pillar_features = self.pillar_encoder(voxels, num_points_per_voxel,
-                                              coordinates)
-
-        spatial_features = self.middle_encoder(pillar_features, coordinates,
-                                               batch_size)
         final_features = self.backbone(spatial_features)
         fused_final_features = self.neck(final_features)
         preds = self.head(fused_final_features)
 
-        if self.training:
-            box_preds = preds["box_preds"]
-            cls_preds = preds["cls_preds"]
-            if self.head.use_direction_classifier:
-                dir_preds = preds["dir_preds"]
-                loss_dict = self.loss(box_preds, cls_preds,
-                                      samples["reg_targets"], samples["labels"],
-                                      dir_preds, self.anchor_generator.anchors)
-            else:
-                loss_dict = self.loss(box_preds, cls_preds,
-                                      samples["reg_targets"], samples["labels"])
-
-            return loss_dict
+        box_preds = preds["box_preds"]
+        cls_preds = preds["cls_preds"]
+        if self.head.use_direction_classifier:
+            dir_preds = preds["dir_preds"]
+            loss_dict = self.loss(box_preds, cls_preds, samples["reg_targets"],
+                                  samples["labels"], dir_preds,
+                                  self.anchor_generator.anchors)
         else:
-            if getattr(self, "export_model", False):
-                anchors_mask = self.anchor_generator(coordinates[:, 1:])
-            else:
-                anchors_mask = []
-                for i in range(batch_size):
-                    batch_mask = coordinates[:, 0] == i
-                    this_coords = coordinates[batch_mask][:, 1:]
-                    anchors_mask.append(self.anchor_generator(this_coords))
-            return self.head.post_process(samples, preds,
-                                          self.anchor_generator.anchors,
-                                          anchors_mask, batch_size)
+            loss_dict = self.loss(box_preds, cls_preds, samples["reg_targets"],
+                                  samples["labels"])
+
+        return loss_dict
+
+    def test_forward(self, samples):
+        voxels = samples["voxels"]
+        coordinates = samples["coords"]
+        num_points_per_voxel = samples["num_points_per_voxel"]
+
+        # yapf: disable
+        batch_size = len(samples["data"])
+        pillar_features = self.pillar_encoder(
+            voxels, num_points_per_voxel, coordinates)
+        spatial_features = self.middle_encoder(
+            pillar_features, coordinates, batch_size)
+        # yapf: enable
+
+        final_features = self.backbone(spatial_features)
+        fused_final_features = self.neck(final_features)
+        preds = self.head(fused_final_features)
+
+        anchors_mask = []
+        for i in range(batch_size):
+            batch_mask = coordinates[:, 0] == i
+            this_coords = coordinates[batch_mask][:, 1:]
+            anchors_mask.append(self.anchor_generator(this_coords))
+        return self.head.post_process(samples, preds,
+                                      self.anchor_generator.anchors,
+                                      anchors_mask, batch_size)
+
+    def export_forward(self, samples):
+        voxels = samples["voxels"]
+        coordinates = samples["coords"]
+        num_points_per_voxel = samples["num_points_per_voxel"]
+
+        # yapf: disable
+        coordinates = paddle.concat([
+            paddle.zeros([coordinates.shape[0], 1], dtype=coordinates.dtype),
+            coordinates
+        ], axis=-1)
+        batch_size = None
+        pillar_features = self.pillar_encoder(
+            voxels, num_points_per_voxel, coordinates)
+        spatial_features = self.middle_encoder(
+            pillar_features, coordinates, batch_size)
+        # yapf: enable
+
+        final_features = self.backbone(spatial_features)
+        fused_final_features = self.neck(final_features)
+        preds = self.head(fused_final_features)
+
+        anchors_mask = self.anchor_generator(coordinates[:, 1:])
+        return self.head.post_process(samples, preds,
+                                      self.anchor_generator.anchors,
+                                      anchors_mask, batch_size)
 
     def init_weight(self):
         if self.pretrained is not None:
@@ -167,31 +206,3 @@ class PointPillars(nn.Layer):
             "batch data can only contains: tensor, numpy.ndarray, "
             "dict, list, number, paddle3d.Sample, but got {}".format(
                 type(sample)))
-
-    def export(self, save_dir: str, **kwargs):
-        self.export_model = True
-        self.voxelizer.export_model = True
-        self.middle_encoder.export_model = True
-        self.head.export_model = True
-
-        save_path = os.path.join(save_dir, 'pointpillars')
-
-        input_spec = [{
-            "voxels":
-            InputSpec(
-                shape=[
-                    -1, self.pillar_encoder.max_num_points_in_voxel,
-                    self.pillar_encoder.in_channels
-                ],
-                name='voxels',
-                dtype='float32'),
-            "coords":
-            InputSpec(shape=[-1, 3], name='coords', dtype='int32'),
-            "num_points_per_voxel":
-            InputSpec(shape=[-1], name='num_points_per_voxel', dtype='int32'),
-        }]
-
-        paddle.jit.to_static(self, input_spec=input_spec)
-        paddle.jit.save(self, save_path)
-
-        logger.info("Exported model is saved in {}".format(save_dir))

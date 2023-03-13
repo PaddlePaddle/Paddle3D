@@ -12,9 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 import paddle
+import paddle.nn as nn
 import paddle.nn.functional as F
-from paddle import nn
+
+from paddle3d.apis import manager
+
+from paddle3d.models.common import boxes_to_corners_3d
 
 
 class WeightedCrossEntropyLoss(nn.Layer):
@@ -44,6 +49,7 @@ class WeightedCrossEntropyLoss(nn.Layer):
         return loss
 
 
+@manager.LOSSES.add_component
 class WeightedSmoothL1Loss(nn.Layer):
     """
     This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/loss_utils.py#L80
@@ -65,9 +71,10 @@ class WeightedSmoothL1Loss(nn.Layer):
         """
         super(WeightedSmoothL1Loss, self).__init__()
         self.beta = beta
-        self.code_weights = code_weights
+        self.code_weights = paddle.to_tensor(code_weights)
 
-    def smooth_l1_loss(self, diff, beta):
+    @staticmethod
+    def smooth_l1_loss(diff, beta):
         if beta < 1e-5:
             loss = paddle.abs(diff)
         else:
@@ -77,7 +84,7 @@ class WeightedSmoothL1Loss(nn.Layer):
 
         return loss
 
-    def forward(self, input, target, weights):
+    def forward(self, input, target, weights=None):
         """
         Args:
             input: (B, #anchors, #codes) float tensor.
@@ -106,3 +113,75 @@ class WeightedSmoothL1Loss(nn.Layer):
                 1] == loss.shape[1]
             loss = loss * weights.unsqueeze(-1)
         return loss
+
+
+def get_corner_loss_lidar(pred_bbox3d, gt_bbox3d):
+    """
+    Args:
+        pred_bbox3d: (N, 7) float Tensor.
+        gt_bbox3d: (N, 7) float Tensor.
+
+    Returns:
+        corner_loss: (N) float Tensor.
+    """
+    assert pred_bbox3d.shape[0] == gt_bbox3d.shape[0]
+
+    pred_box_corners = boxes_to_corners_3d(pred_bbox3d)
+    gt_box_corners = boxes_to_corners_3d(gt_bbox3d)
+
+    gt_bbox3d_flip = gt_bbox3d.clone()
+    gt_bbox3d_flip[:, 6] += np.pi
+    gt_box_corners_flip = boxes_to_corners_3d(gt_bbox3d_flip)
+    # (N, 8)
+    corner_dist = paddle.minimum(
+        paddle.linalg.norm(pred_box_corners - gt_box_corners, axis=2),
+        paddle.linalg.norm(pred_box_corners - gt_box_corners_flip, axis=2))
+    # (N, 8)
+    corner_loss = WeightedSmoothL1Loss.smooth_l1_loss(corner_dist, beta=1.0)
+
+    return corner_loss.mean(axis=1)
+
+
+@manager.LOSSES.add_component
+class WeightedL1Loss(nn.Layer):
+    """
+    """
+
+    def __init__(self, reduction='mean', loss_weight=1.0):
+        """
+        Args:
+            beta: Scalar float.
+                L1 to L2 change point.
+                For beta values < 1e-5, L1 loss is computed.
+            code_weights: (#codes) float list if not None.
+                Code-wise weights.
+        """
+        super(WeightedL1Loss, self).__init__()
+        self.loss_weight = loss_weight
+        self.reduction = reduction
+        self.loss = nn.L1Loss(reduction='none')
+
+    def forward(self, input, target, weight=None):
+        """
+        Args:
+            input: (B, #anchors, #codes) float tensor.
+                Ecoded predicted locations of objects.
+            target: (B, #anchors, #codes) float tensor.
+                Regression targets.
+            weights: (B, #anchors) float tensor if not None.
+
+        Returns:
+            loss: (B, #anchors) float tensor.
+                Weighted smooth l1 loss without reduction.
+        """
+
+        loss = self.loss(input, target)
+        if weight is not None:
+            loss *= weight
+
+        if self.reduction == 'mean':
+            loss = loss.mean()
+        elif self.reduction == 'sum':
+            loss = loss.sum()
+
+        return loss * self.loss_weight

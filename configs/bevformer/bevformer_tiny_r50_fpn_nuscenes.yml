@@ -1,0 +1,200 @@
+batch_size: 1
+epochs: 24
+train_dataset:
+  type: NuscenesMVDataset
+  dataset_root: ./datasets/nuscenes
+  ann_file: ./datasets/nuscenes/bevformer_nuscenes_annotation_train.pkl
+  queue_length: 3
+  use_valid_flag: True
+  mode: train
+  class_names: [
+            'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
+            'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
+        ]
+  transforms:
+    - type: LoadMultiViewImageFromFiles
+      to_float32: True
+    - type: PhotoMetricDistortionMultiViewImage
+    - type: LoadAnnotations3D
+      with_bbox_3d: True
+      with_label_3d: True
+    - type: SampleRangeFilter
+      point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+    - type: SampleNameFilter
+      classes: [
+            'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
+            'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
+        ]
+    - type: NormalizeMultiviewImage
+      mean: [123.675, 116.28, 103.53]
+      std: [58.395, 57.12, 57.375]
+      to_rgb: True
+    - type: RandomScaleImageMultiViewImage
+      scales: [0.5]
+    - type: PadMultiViewImage
+      size_divisor: 32
+    - type: SampleFilerByKey
+      keys: ['gt_bboxes_3d', 'gt_labels_3d', 'img']
+
+val_dataset:
+  type: NuscenesMVDataset
+  dataset_root: ./datasets/nuscenes
+  ann_file: ./datasets/nuscenes/bevformer_nuscenes_annotation_val.pkl
+  queue_length: 3
+  mode: val
+  class_names: ['car', 'truck', 'construction_vehicle', 'bus', 'trailer',
+                    'barrier', 'motorcycle', 'bicycle', 'pedestrian',
+                    'traffic_cone']
+  transforms:
+    - type: LoadMultiViewImageFromFiles
+      to_float32: True
+    - type: NormalizeMultiviewImage
+      mean: [123.675, 116.28, 103.53]
+      std: [58.395, 57.12, 57.375]
+      to_rgb: True
+    - type: RandomScaleImageMultiViewImage
+      scales: [0.5]
+    - type: PadMultiViewImage
+      size_divisor: 32
+    - type: SampleFilerByKey
+      keys: ['img']
+
+optimizer:
+  type: AdamW
+  weight_decay: 0.01
+  grad_clip:
+    type: ClipGradByGlobalNorm
+    clip_norm: 35
+
+lr_scheduler:
+  type: LinearWarmup
+  learning_rate:
+    type: CosineAnnealingDecayByEpoch
+    learning_rate: 0.0002
+    T_max: 24
+    eta_min: 0.0000002
+  warmup_steps: 500
+  start_lr: 0.00006666666
+  end_lr: 0.0002
+
+model:
+  type: BEVFormer
+  use_grid_mask: True
+  video_test_mode: True
+  backbone:
+    type: $paddledet.ResNet
+    depth: 50
+    lr_mult_list: [0.1, 0.1, 0.1, 0.1]
+    return_idx: [3]
+  neck:
+    type: $paddledet.FPN
+    in_channels: [2048]
+    out_channel: 256
+    spatial_scales: [0.03125]
+    has_extra_convs: True
+    extra_stage: 0
+    use_c5: False
+  pts_bbox_head:
+    type: 'BEVFormerHead'
+    bev_h: 50
+    bev_w: 50
+    num_classes: 10
+    in_channels: 256
+    num_query: 900
+    sync_cls_avg_factor: True
+    with_box_refine: True
+    as_two_stage: False
+    positional_encoding:
+      type: 'LearnedPositionalEncoding'
+      num_feats: 128
+      row_num_embed: 50
+      col_num_embed: 50
+    transformer:
+      type: 'PerceptionTransformer'
+      rotate_prev_bev: True
+      use_shift: True
+      use_can_bus: True
+      embed_dims: 256
+      encoder:
+        type: 'BEVFormerEncoder'
+        num_layers: 3
+        point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+        num_points_in_pillar: 4
+        return_intermediate: False
+        transformerlayers:
+          type_name: 'BEVFormerLayer'
+          attn_cfgs:  [
+            {
+              type_name: 'TemporalSelfAttention',
+              embed_dims: 256,
+              num_levels: 1
+            },
+            {
+              type_name: 'SpatialCrossAttention',
+              point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0],
+              deformable_attention: {
+                type_name: 'MSDeformableAttention3D',
+                embed_dims: 256,
+                num_points: 8,
+                num_levels: 1
+              },
+              embed_dims: 256
+            }
+          ]
+          feedforward_channels: 512
+          ffn_dropout: 0.1
+          operation_order: ['self_attn', 'norm', 'cross_attn', 'norm', 'ffn', 'norm']
+      decoder:
+        type: 'DetectionTransformerDecoder'
+        num_layers: 6
+        return_intermediate: True
+        transformerlayers:
+          type_name: 'DetrTransformerDecoderLayer'
+          attn_cfgs: [
+            {
+              type_name: 'MultiheadAttention',
+              embed_dims: 256,
+              num_heads: 8,
+              dropout: 0.1
+            },
+            {
+              type_name: 'CustomMSDeformableAttention',
+              embed_dims: 256,
+              num_levels: 1
+            },
+          ]
+          feedforward_channels: 512
+          ffn_dropout: 0.1
+          operation_order: ['self_attn', 'norm', 'cross_attn', 'norm', 'ffn', 'norm']
+    bbox_coder:
+      type: 'NMSFreeCoder'
+      post_center_range: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
+      point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+      max_num: 300
+      voxel_size: [0.2, 0.2, 8]
+      num_classes: 10
+    loss_cls:
+      type: 'WeightedFocalLoss'
+      use_sigmoid: True
+      gamma: 2.0
+      alpha: 0.25
+      loss_weight: 2.0
+    loss_bbox:
+      type: 'L1Loss'
+      loss_weight: 0.25
+    loss_iou:
+      type: 'GIoULoss'
+      loss_weight: 0.0
+    assigner:
+      type: 'HungarianAssigner3D'
+      cls_cost:
+        type: 'FocalLossCost'
+        weight: 2.0
+      reg_cost:
+        type: 'BBox3DL1Cost'
+        weight: 0.25
+      iou_cost:
+        type: 'IoUCost'
+        weight: 0.0 # Fake cost. This is just to make it compatible with DETR head.
+    sampler:
+      type: 'PseudoSampler'

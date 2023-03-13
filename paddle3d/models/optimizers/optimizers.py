@@ -46,8 +46,10 @@ class OneCycleAdam(object):
             name=name,
             lazy_mode=lazy_mode)
         self.weight_decay = weight_decay
-        self.learning_rate = learning_rate
+        self._learning_rate = learning_rate
         self.beta1 = beta1
+        self._grad_clip = self.optimizer._grad_clip
+        self.optimizer._grad_clip = None
 
     def _set_beta1(self, beta1, pow):
         """_set_beta1"""
@@ -61,14 +63,14 @@ class OneCycleAdam(object):
 
     def before_run(self, max_iters):
         """before_run"""
-        if self.learning_rate is not None:
-            self.learning_rate.before_run(max_iters)
+        if self._learning_rate is not None:
+            self._learning_rate.before_run(max_iters)
         if self.beta1 is not None:
             self.beta1.before_run(max_iters)
 
     def before_iter(self, curr_iter):
         """before_iter"""
-        lr = self.learning_rate.get_lr(curr_iter=curr_iter)
+        lr = self._learning_rate.get_lr(curr_iter=curr_iter)
         self.optimizer.set_lr(lr)
         beta1 = self.beta1.get_momentum(curr_iter=curr_iter)
         self._set_beta1(beta1, pow=curr_iter + 1)
@@ -86,8 +88,33 @@ class OneCycleAdam(object):
                 for param in param_group['params']:
                     param.set_value(param * scale_value)
 
+    def clip_grad(self):
+        if not isinstance(self.optimizer._param_groups[0], dict):
+            params_grads = []
+            for param in self.optimizer._param_groups:
+                if param.stop_gradient:
+                    continue
+                if param._grad_ivar() is not None:
+                    grad_var = param._grad_ivar()
+                    params_grads.append((param, grad_var))
+        else:
+            # optimize parameters in groups
+            for idx, param_group in enumerate(self.optimizer._param_groups):
+                params_grads = defaultdict(lambda: list())
+                for param in param_group['params']:
+                    if param.stop_gradient:
+                        continue
+                    if param._grad_ivar() is not None:
+                        grad_var = param._grad_ivar()
+                        params_grads['params'].append((param, grad_var))
+                params_grads.update(
+                    {k: v
+                     for k, v in param_group.items() if k != 'params'})
+        self._grad_clip(params_grads)
+
     def after_iter(self):
         """after_iter"""
+        self.clip_grad()
         self.regularize()
         self.optimizer.step()
         self.optimizer.clear_grad()

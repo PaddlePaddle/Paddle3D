@@ -21,6 +21,7 @@ import paddle
 
 from paddle3d.apis.config import Config
 from paddle3d.apis.trainer import Trainer
+from paddle3d.slim import get_qat_config
 from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
 
@@ -50,8 +51,18 @@ def parse_args():
         help='Num workers for data loader',
         type=int,
         default=2)
+    parser.add_argument(
+        '--quant_config',
+        dest='quant_config',
+        help='Config for quant model.',
+        default=None,
+        type=str)
 
     return parser.parse_args()
+
+
+def worker_init_fn(worker_id):
+    np.random.seed(1024)
 
 
 def main(args):
@@ -79,9 +90,14 @@ def main(args):
     dic.update({
         'dataloader_fn': {
             'batch_size': batch_size,
-            'num_workers': args.num_workers
+            'num_workers': args.num_workers,
+            'worker_init_fn': worker_init_fn
         }
     })
+
+    if args.quant_config:
+        quant_config = get_qat_config(args.quant_config)
+        cfg.model.build_slim_model(quant_config['quant_config'])
 
     if args.model is not None:
         load_pretrained_model(cfg.model, args.model)

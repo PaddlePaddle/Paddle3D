@@ -17,12 +17,6 @@ repos:
     -   id: detect-private-key
     -   id: check-added-large-files
 
--   repo: https://github.com/pycqa/isort
-    rev: 5.10.1
-    hooks:
-    -   id: isort
-        name: isort (python)
-
 -   repo: local
     hooks:
     -   id: flake8

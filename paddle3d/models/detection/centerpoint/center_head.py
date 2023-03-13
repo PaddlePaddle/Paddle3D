@@ -567,7 +567,7 @@ class CenterHead(nn.Layer):
 
     def post_processing(self, batch_box_preds, batch_hm, test_cfg,
                         post_center_range, task_id):
-        if not getattr(self, "export_model", False):
+        if not getattr(self, "in_export_mode", False):
             batch_size = len(batch_hm)
             prediction_dicts = []
             for i in range(batch_size):

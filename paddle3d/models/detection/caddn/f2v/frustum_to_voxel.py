@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
 import paddle
 import paddle.nn as nn
 
@@ -24,20 +25,22 @@ class FrustumToVoxel(nn.Layer):
     This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/models/backbones_3d/f2v/frustum_to_voxel.py#L8
     """
 
-    def __init__(self, grid_size, pc_range, sample_cfg, disc_cfg):
+    def __init__(self, voxel_size, pc_range, sample_cfg, disc_cfg):
         """
         Initializes module to transform frustum features to voxel features via 3D transformation and sampling
         Args:
-            grid_size [np.array(3)]: Voxel grid shape [X, Y, Z]
+            voxel_size [np.array(3)]: Voxel size [X, Y, Z]
             pc_range [list]: Voxelization point cloud range [X_min, Y_min, Z_min, X_max, Y_max, Z_max]
             disc_cfg [dict]: Depth discretiziation configuration
         """
         super().__init__()
-        self.grid_size = grid_size
+        point_cloud_range = np.asarray(pc_range)
+        grid_size = (point_cloud_range[3:] - point_cloud_range[:3]) / voxel_size
+        grid_size = np.round(grid_size).astype(np.int64)
         self.pc_range = pc_range
         self.disc_cfg = disc_cfg
         self.grid_generator = FrustumGridGenerator(
-            grid_size=grid_size, pc_range=pc_range, disc_cfg=disc_cfg)
+            voxel_size=voxel_size, pc_range=pc_range, disc_cfg=disc_cfg)
         self.sampler = Sampler(**sample_cfg)
 
     def forward(self, batch_dict):

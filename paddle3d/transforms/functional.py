@@ -15,6 +15,7 @@
 import copy
 from typing import Tuple
 
+import cv2
 import numba
 import numpy as np
 
@@ -43,6 +44,26 @@ def normalize(im: np.ndarray, mean: Tuple[float, float, float],
     im -= mean
     im /= std
     return im
+
+
+def normalize_use_cv2(im: np.ndarray,
+                      mean: np.ndarray,
+                      std: np.ndarray,
+                      to_rgb=True):
+    """normalize an image with mean and std use cv2.
+    """
+    img = im.copy().astype(np.float32)
+
+    mean = np.float64(mean.reshape(1, -1))
+    stdinv = 1 / np.float64(std.reshape(1, -1))
+    if to_rgb:
+        # inplace
+        cv2.cvtColor(img, cv2.COLOR_BGR2RGB, img)
+    # inplace
+    cv2.subtract(img, mean, img)
+    # inplace
+    cv2.multiply(img, stdinv, img)
+    return img
 
 
 def get_frustum(im_bbox, C, near_clip=0.001, far_clip=100):
@@ -341,3 +362,50 @@ def random_depth_image_horizontal(data_dict=None):
     data_dict['gt_boxes'] = aug_gt_boxes
 
     return data_dict
+
+
+def blend_transform(img: np.ndarray, src_image: np.ndarray, src_weight: float,
+                    dst_weight: float):
+    """
+    Transforms pixel colors with PIL enhance functions.
+    """
+    if img.dtype == np.uint8:
+        img = img.astype(np.float32)
+        img = src_weight * src_image + dst_weight * img
+        out = np.clip(img, 0, 255).astype(np.uint8)
+    else:
+        out = src_weight * src_image + dst_weight * img
+    return out
+
+
+def sample_point(sample, num_points):
+    """ Randomly sample points by distance
+    """
+    if num_points == -1:
+        return sample
+
+    points = sample.data
+    if num_points < len(points):
+        pts_depth = np.linalg.norm(points[:, 0:3], axis=1)
+        pts_near_flag = pts_depth < 40.0
+        far_idxs_choice = np.where(pts_near_flag == 0)[0]
+        near_idxs = np.where(pts_near_flag == 1)[0]
+        choice = []
+        if num_points > len(far_idxs_choice):
+            near_idxs_choice = np.random.choice(
+                near_idxs, num_points - len(far_idxs_choice), replace=False)
+            choice = np.concatenate((near_idxs_choice, far_idxs_choice), axis=0) \
+                if len(far_idxs_choice) > 0 else near_idxs_choice
+        else:
+            choice = np.arange(0, len(points), dtype=np.int32)
+            choice = np.random.choice(choice, num_points, replace=False)
+        np.random.shuffle(choice)
+    else:
+        choice = np.arange(0, len(points), dtype=np.int32)
+        if num_points > len(points):
+            extra_choice = np.random.choice(choice, num_points - len(points))
+            choice = np.concatenate((choice, extra_choice), axis=0)
+        np.random.shuffle(choice)
+    sample.data = sample.data[choice]
+
+    return sample

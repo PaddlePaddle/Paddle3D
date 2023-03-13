@@ -22,6 +22,7 @@ import paddle
 import paddle3d.env as paddle3d_env
 from paddle3d.apis.config import Config
 from paddle3d.apis.trainer import Trainer
+from paddle3d.slim import update_dic, get_qat_config
 from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
 
@@ -101,15 +102,28 @@ def parse_args():
         '--save_interval',
         dest='save_interval',
         help=
-        'How many iters/epochs to save a model snapshot once during training.',
+        'How many iters/epochs to save a model snapshot once during training.' \
+        'Default None means 1000 if using iters or 5 for epochs',
         type=int,
-        default=1000)
+        default=None)
     parser.add_argument(
         '--seed',
         dest='seed',
         help='Set the random seed of paddle during training.',
         default=None,
         type=int)
+    parser.add_argument(
+        '--quant_config',
+        dest='quant_config',
+        help='Config for quant model.',
+        default=None,
+        type=str)
+    parser.add_argument(
+        '--do_bind',
+        dest='do_bind',
+        help='Whether to cpu bind core. '
+        'Only valid when use `python -m paddle.distributed.launch tools.train.py <other args>` to train.',
+        action='store_true')
 
     return parser.parse_args()
 
@@ -132,12 +146,30 @@ def main(args):
     if not os.path.exists(args.cfg):
         raise RuntimeError("Config file `{}` does not exist!".format(args.cfg))
 
-    cfg = Config(
-        path=args.cfg,
+    if not args.do_bind:
+        logger.info("not use cpu bind core")
+    else:
+        if os.environ.get('FLAGS_selected_gpus') is None:
+            args.do_bind = False
+            logger.warning(
+                "Not use paddle.distributed.launch start the training, set do_bind to false."
+            )
+
+    cfg = Config(path=args.cfg)
+
+    if args.model is not None:
+        load_pretrained_model(cfg.model, args.model)
+
+    if args.quant_config:
+        quant_config = get_qat_config(args.quant_config)
+        cfg.model.build_slim_model(quant_config['quant_config'])
+        update_dic(cfg.dic, quant_config['finetune_config'])
+
+    cfg.update(
         learning_rate=args.learning_rate,
+        batch_size=args.batch_size,
         iters=args.iters,
-        epochs=args.epochs,
-        batch_size=args.batch_size)
+        epochs=args.epochs)
 
     if cfg.train_dataset is None:
         raise RuntimeError(
@@ -152,6 +184,13 @@ def main(args):
 
     dic = cfg.to_dict()
     batch_size = dic.pop('batch_size')
+    save_interval = args.save_interval
+    if save_interval is None:
+        if cfg.iters:
+            save_interval = 1000
+        if cfg.epochs:
+            save_interval = 5
+
     dic.update({
         'resume': args.resume,
         'checkpoint': {
@@ -159,18 +198,16 @@ def main(args):
             'save_dir': args.save_dir
         },
         'scheduler': {
-            'save_interval': args.save_interval,
+            'save_interval': save_interval,
             'log_interval': args.log_interval,
             'do_eval': args.do_eval
         },
         'dataloader_fn': {
             'batch_size': batch_size,
             'num_workers': args.num_workers,
-        }
+        },
+        'do_bind': args.do_bind
     })
-
-    if args.model is not None:
-        load_pretrained_model(cfg.model, args.model)
 
     trainer = Trainer(**dic)
     trainer.train()
