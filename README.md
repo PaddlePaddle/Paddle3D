@@ -36,7 +36,7 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
 
 <div align="center">
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/61035602/209662380-6f67d4df-12a1-43b0-a79e-424eb4f4dc75.png" align="middle" width="980"/>
+  <img src="https://user-images.githubusercontent.com/33575107/224960808-3bb1a328-cb20-48ce-b6b6-9d6ec1cc8222.png" align="middle" width="980"/>
 </p>
 </div>
 
