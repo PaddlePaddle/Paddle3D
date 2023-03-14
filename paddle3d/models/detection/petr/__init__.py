@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .petr3d import Petr3D
+from .cape import CAPE
