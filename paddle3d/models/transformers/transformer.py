@@ -166,25 +166,17 @@ class PerceptionTransformer(nn.Layer):
             [each['can_bus'][0] for each in kwargs['img_metas']])
         delta_y = paddle.concat(
             [each['can_bus'][1] for each in kwargs['img_metas']])
-        #np.save('delta_x.npy', delta_x.numpy())
-        #np.save('delta_y.npy', delta_y.numpy())
         ego_angle = paddle.concat(
             [each['can_bus'][-2] / pi_tensor for each in kwargs['img_metas']])
-        #np.save('ego_angle.npy', ego_angle)
         grid_length_y = grid_length[0]
         grid_length_x = grid_length[1]
         translation_length = paddle.sqrt(delta_x**2 + delta_y**2)
-        #np.save('translation_length.npy', translation_length.numpy())
         translation_angle = paddle.atan2(delta_y, delta_x) / pi_tensor
-        # translation_angle = paddle.angle(delta_y, delta_x) / pi_tensor
-        #np.save('translation_angle.npy', translation_angle.numpy())
         bev_angle = ego_angle - translation_angle
         shift_y = translation_length * \
             paddle.cos(bev_angle * pi_tensor) / grid_length_y / bev_h
         shift_x = translation_length * \
             paddle.sin(bev_angle * pi_tensor) / grid_length_x / bev_w
-        #np.save('shift_x.npy', shift_x.numpy())
-        #np.save('shift_y.npy', shift_y.numpy())
 
         shift_y = shift_y * self.use_shift
         shift_x = shift_x * self.use_shift
@@ -193,39 +185,19 @@ class PerceptionTransformer(nn.Layer):
                               shift_y]).transpose([1, 0])  # xy, bs -> bs, xy
 
         shift = shift.cast(bev_queries.dtype)
-        '''
         if prev_bev is not None:
             if prev_bev.shape[1] == bev_h * bev_w:
                 prev_bev = prev_bev.transpose([1, 0, 2])
             if self.rotate_prev_bev:
                 for i in range(bs):
                     rotation_angle = kwargs['img_metas'][i]['can_bus'][-1]
-                    tmp_prev_bev = prev_bev[:, i].reshape([
-                        bev_h, bev_w, -1]).transpose([2, 0, 1])
-                    tmp_prev_bev = rotate(tmp_prev_bev, rotation_angle,
-                                          center=self.rotate_center)
-                    # #np.save('tmp_prev_bev.npy', tmp_prev_bev.numpy())
-                    tmp_prev_bev = tmp_prev_bev.transpose([1, 2, 0]).reshape([
-                        bev_h * bev_w, 1, -1])
-                    prev_bev[:, i] = tmp_prev_bev[:, 0]
-        '''
-        if prev_bev is not None:
-            if self.rotate_prev_bev:
-                for i in range(bs):
-                    valid_prev_bev = prev_bev[:, i].cast('bool').any().cast(
-                        'int32')
-                    rotation_angle = kwargs['img_metas'][i]['can_bus'][-1]
                     tmp_prev_bev = prev_bev[:, i].reshape(
                         [bev_h, bev_w, -1]).transpose([2, 0, 1])
                     tmp_prev_bev = rotate(
                         tmp_prev_bev, rotation_angle, center=self.rotate_center)
-                    # #np.save('tmp_prev_bev.npy', tmp_prev_bev.numpy())
                     tmp_prev_bev = tmp_prev_bev.transpose([1, 2, 0]).reshape(
                         [bev_h * bev_w, 1, -1])
-                    prev_bev[:,
-                             i] = tmp_prev_bev[:,
-                                               0] * valid_prev_bev + prev_bev[:, i] * (
-                                                   1 - valid_prev_bev)
+                    prev_bev[:, i] = tmp_prev_bev[:, 0]
 
         # add can bus signals
         # can_bus = paddle.to_tensor(
@@ -258,13 +230,6 @@ class PerceptionTransformer(nn.Layer):
         feat_flatten = feat_flatten.transpose(
             [0, 2, 1, 3])  # (num_cam, H*W, bs, embed_dims)
 
-        # #np.save('bev_queries.npy', bev_queries.numpy())
-        # #np.save('feat_flatten.npy', feat_flatten.numpy())
-        # #np.save('bev_pos.npy', bev_pos.numpy())
-        # #np.save('prev_bev.npy', prev_bev.numpy())
-        # #np.save('spatial_shapes.npy', spatial_shapes.numpy())
-        # #np.save('level_start_index.npy', level_start_index.numpy())
-        # #np.save('shift.npy', shift.numpy())
         bev_embed = self.encoder(
             bev_queries,
             feat_flatten,
@@ -277,8 +242,6 @@ class PerceptionTransformer(nn.Layer):
             prev_bev=prev_bev,
             shift=shift,
             **kwargs)
-        # #np.save('bev_embed.npy', bev_embed.numpy())
-        # exit()
         return bev_embed
 
     def forward(self,

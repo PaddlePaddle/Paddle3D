@@ -263,7 +263,6 @@ class BEVFormerHead(nn.Layer):
                 img_metas=img_metas,
                 prev_bev=prev_bev,
             )
-            bev_embed = bev_embed.transpose([1, 0, 2])
             return bev_embed
         else:
             outputs = self.transformer(

@@ -162,8 +162,8 @@ class BEVFormerEncoder(nn.Layer):
             reference_points_cam[..., 2:3],
             paddle.ones_like(reference_points_cam[..., 2:3]) * eps)
 
-        reference_points_cam[..., 0] /= img_metas[0]['img_shape'][0][1]
-        reference_points_cam[..., 1] /= img_metas[0]['img_shape'][0][0]
+        reference_points_cam[..., 0] /= img_metas[0]['pad_shape'][0][1]
+        reference_points_cam[..., 1] /= img_metas[0]['pad_shape'][0][0]
 
         bev_mask = (bev_mask & (reference_points_cam[..., 1:2] > 0.0)
                     & (reference_points_cam[..., 1:2] < 1.0)
@@ -225,7 +225,6 @@ class BEVFormerEncoder(nn.Layer):
             dim='2d',
             bs=bev_query.shape[1],
             dtype=bev_query.dtype)
-        # np.save("e_ref_2d.npy", ref_2d.numpy())
 
         reference_points_cam, bev_mask = self.point_sampling(
             ref_3d, self.point_cloud_range, kwargs['img_metas'])
@@ -235,44 +234,22 @@ class BEVFormerEncoder(nn.Layer):
         #shift_ref_2d = ref_2d
         #shift_ref_2d += shift[:, None, None, :]
         ref_2d += shift[:, None, None, :]
-        # np.save("e_shift_ref_2d.npy", ref_2d.numpy())
-        # np.save("e_ref_2dref_2d.npy", ref_2d.numpy())
 
         # (num_query, bs, embed_dims) -> (bs, num_query, embed_dims)
         bev_query = bev_query.transpose([1, 0, 2])
         bev_pos = bev_pos.transpose([1, 0, 2])
         bs, len_bev, num_bev_level, _ = ref_2d.shape
-        '''
         if prev_bev is not None:
             prev_bev = prev_bev.transpose([1, 0, 2])
-            prev_bev = paddle.stack(
-                [prev_bev, bev_query], 1).reshape([bs*2, len_bev, -1])
+            prev_bev = paddle.stack([prev_bev, bev_query],
+                                    1).reshape([bs * 2, len_bev, -1])
             # TODO(qianhui): fix this clone bugs: paddle equal means clone but torch not
             #hybird_ref_2d = paddle.stack([shift_ref_2d, ref_2d], 1).reshape(
             hybird_ref_2d = paddle.stack([ref_2d, ref_2d], 1).reshape(
-                [bs*2, len_bev, num_bev_level, 2])
+                [bs * 2, len_bev, num_bev_level, 2])
         else:
             hybird_ref_2d = paddle.stack([ref_2d, ref_2d], 1).reshape(
-                [bs*2, len_bev, num_bev_level, 2])
-        '''
-        prev_bev = prev_bev.transpose([1, 0, 2])
-        valid_prev_bev = prev_bev.cast('bool').any().cast('int32')
-        prev_bev = prev_bev * valid_prev_bev + bev_query * (1 - valid_prev_bev)
-        prev_bev = paddle.stack([prev_bev, bev_query],
-                                1).reshape([bs * 2, len_bev, -1])
-        hybird_ref_2d = paddle.stack([ref_2d, ref_2d], 1).reshape(
-            [bs * 2, len_bev, num_bev_level, 2])
-
-        # np.save("e_bev_query.npy", bev_query.numpy())
-        # np.save("e_key.npy", key.numpy())
-        # np.save("e_value.npy", value.numpy())
-        # np.save("e_bev_posbev_pos.npy", bev_pos.numpy())
-        # np.save("e_hybird_ref_2d.npy", hybird_ref_2d.numpy())
-        # np.save("e_ref_3d.npy", ref_3d.numpy())
-        # np.save("e_spatial_shapes.npy", spatial_shapes.numpy())
-        # np.save("e_reference_points_cam.npy", reference_points_cam.numpy())
-        # np.save("e_bev_mask.npy", bev_mask.numpy())
-        # np.save("e_prev_bev.npy", prev_bev.numpy())
+                [bs * 2, len_bev, num_bev_level, 2])
         for lid, layer in enumerate(self.layers):
             output = layer(
                 bev_query,
@@ -290,7 +267,6 @@ class BEVFormerEncoder(nn.Layer):
                 bev_mask=bev_mask,
                 prev_bev=prev_bev,
                 **kwargs)
-            # np.save("e_output_{}.npy".format(lid), output.numpy())
 
             bev_query = output
             if self.return_intermediate:
