@@ -137,6 +137,12 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
           <li><a href="docs/models/bevformer">BEVFormer</a></li>
           <li><a href="docs/models/cape">CAPE</a></li>
         </ul>
+        </ul>
+          <li><b>BEV-Fusion</b></li>
+        <ul>
+        <ul>
+          <li><a href="docs/models/bevfusion">BEVFusion(ADLab)</a></li>
+        </ul>
       </td>
       <td>
         <ul>
