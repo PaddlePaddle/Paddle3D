@@ -585,7 +585,7 @@ class MMResNet(nn.Layer):
     def train(self):
         """Convert the model into training mode while keep normalization layer
         freezed."""
-        super(BevResNet, self).train()
+        super(MMResNet, self).train()
         self._freeze_stages()
         if self.norm_eval:
             for m in self.sublayers():
