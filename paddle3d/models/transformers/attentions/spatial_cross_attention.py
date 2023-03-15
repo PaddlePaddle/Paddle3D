@@ -152,6 +152,7 @@ class SpatialCrossAttention(nn.Layer):
             index_query_per_img = mask_per_img[0].sum(-1).nonzero().squeeze(-1)
             indexes.append(index_query_per_img)
         max_len = paddle.max(bev_mask.any(-1).sum(-1))
+        max_len = max_len.numpy()
         #max_len = 2500
         #max_len = max([len(each) for each in indexes])
 
