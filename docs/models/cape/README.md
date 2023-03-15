@@ -20,7 +20,7 @@ We form the 3D position embeddings under the local camera-view coordinate system
 
 ## <h2 id="2">简介</h2>
 
-CAPE提出了一种相机视角嵌入信息（CAmera viewPosition Embedding）的方法，通过视角归一化的方式，来降低直接使用3D全局位置嵌入信息来学习图像和3D空间之间的对应关系的难度. 该方法在nuScenes数据集的纯视觉配置上取得了SOTA的表现, 并**中稿CVPR2023**。
+CAPE提出了一种相机视角嵌入信息（CAmera view Position Embedding）的方法，通过视角归一化的方式，来降低直接使用3D全局位置嵌入信息来学习图像和3D空间之间的对应关系的难度. 该方法在nuScenes数据集的纯视觉配置上取得了SOTA的表现, 并**中稿CVPR2023**。
 
 视角归一化示意图：
 <div align="center">
