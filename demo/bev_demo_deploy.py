@@ -19,38 +19,39 @@ def parse_args():
         help=
         "Parameter filename, Specify this when your model is a combined model.",
         required=True)
-    parser.add_argument('--lidar_file',
-                        type=str,
-                        help='The lidar path.',
-                        required=True)
-    parser.add_argument('--calib_file',
-                        type=str,
-                        help='The lidar path.',
-                        required=True)
-    parser.add_argument("--num_point_dim",
-                        type=int,
-                        default=4,
-                        help="Dimension of a point in the lidar file.")
-    parser.add_argument("--point_cloud_range",
-                        dest='point_cloud_range',
-                        nargs='+',
-                        help="Range of point cloud for voxelize operation.",
-                        type=float,
-                        default=None)
-    parser.add_argument("--voxel_size",
-                        dest='voxel_size',
-                        nargs='+',
-                        help="Size of voxels for voxelize operation.",
-                        type=float,
-                        default=None)
-    parser.add_argument("--max_points_in_voxel",
-                        type=int,
-                        default=100,
-                        help="Maximum number of points in a voxel.")
-    parser.add_argument("--max_voxel_num",
-                        type=int,
-                        default=12000,
-                        help="Maximum number of voxels.")
+    parser.add_argument(
+        '--lidar_file', type=str, help='The lidar path.', required=True)
+    parser.add_argument(
+        '--calib_file', type=str, help='The lidar path.', required=True)
+    parser.add_argument(
+        "--num_point_dim",
+        type=int,
+        default=4,
+        help="Dimension of a point in the lidar file.")
+    parser.add_argument(
+        "--point_cloud_range",
+        dest='point_cloud_range',
+        nargs='+',
+        help="Range of point cloud for voxelize operation.",
+        type=float,
+        default=None)
+    parser.add_argument(
+        "--voxel_size",
+        dest='voxel_size',
+        nargs='+',
+        help="Size of voxels for voxelize operation.",
+        type=float,
+        default=None)
+    parser.add_argument(
+        "--max_points_in_voxel",
+        type=int,
+        default=100,
+        help="Maximum number of points in a voxel.")
+    parser.add_argument(
+        "--max_voxel_num",
+        type=int,
+        default=12000,
+        help="Maximum number of voxels.")
     parser.add_argument("--gpu_id", type=int, default=0, help="GPU card id.")
     parser.add_argument(
         "--use_trt",
@@ -68,18 +69,20 @@ def parse_args():
         default=0,
         help="Whether to load the tensorrt graph optimization from a disk path."
     )
-    parser.add_argument("--trt_static_dir",
-                        type=str,
-                        help="Path of a tensorrt graph optimization directory.")
+    parser.add_argument(
+        "--trt_static_dir",
+        type=str,
+        help="Path of a tensorrt graph optimization directory.")
     parser.add_argument(
         "--collect_shape_info",
         type=int,
         default=0,
         help="Whether to collect dynamic shape before using tensorrt.")
-    parser.add_argument("--dynamic_shape_file",
-                        type=str,
-                        default="",
-                        help="Path of a dynamic shape file for tensorrt.")
+    parser.add_argument(
+        "--dynamic_shape_file",
+        type=str,
+        default="",
+        help="Path of a dynamic shape file for tensorrt.")
 
     return parser.parse_args()
 
@@ -100,12 +103,13 @@ def init_predictor(model_file,
         precision_mode = paddle.inference.PrecisionType.Float32
         if trt_precision == 1:
             precision_mode = paddle.inference.PrecisionType.Half
-        config.enable_tensorrt_engine(workspace_size=1 << 30,
-                                      max_batch_size=1,
-                                      min_subgraph_size=10,
-                                      precision_mode=precision_mode,
-                                      use_static=trt_use_static,
-                                      use_calib_mode=False)
+        config.enable_tensorrt_engine(
+            workspace_size=1 << 30,
+            max_batch_size=1,
+            min_subgraph_size=10,
+            precision_mode=precision_mode,
+            use_static=trt_use_static,
+            use_calib_mode=False)
         if collect_shape_info:
             config.collect_shape_range_info(dynamic_shape_file)
         else:

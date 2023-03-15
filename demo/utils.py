@@ -200,11 +200,8 @@ def get_img(img_path):
     return img, origin_shape, target_shape
 
 
-def total_pred_by_conf_to_kitti_records(total_pred,
-                                        conf,
-                                        class_names=[
-                                            "Car", "Cyclist", "Pedestrian"
-                                        ]):
+def total_pred_by_conf_to_kitti_records(
+        total_pred, conf, class_names=["Car", "Cyclist", "Pedestrian"]):
     """convert total_pred to kitti_records"""
     kitti_records_list = []
     for p in total_pred:
@@ -220,11 +217,8 @@ def total_pred_by_conf_to_kitti_records(total_pred,
     return kitti_records
 
 
-def total_imgpred_by_conf_to_kitti_records(total_pred,
-                                           conf,
-                                           class_names=[
-                                               "Car", "Cyclist", "Pedestrian"
-                                           ]):
+def total_imgpred_by_conf_to_kitti_records(
+        total_pred, conf, class_names=["Car", "Cyclist", "Pedestrian"]):
     """convert total_pred to kitti_records"""
     kitti_records_list = []
     for idx in range(len(total_pred['confidences'])):
@@ -389,11 +383,9 @@ def hardvoxelize(points, point_cloud_range, voxel_size, max_points_in_voxel,
 def preprocess(file_path, num_point_dim, point_cloud_range, voxel_size,
                max_points_in_voxel, max_voxel_num):
     points = read_point(file_path, num_point_dim)
-    voxels, coords, num_points_per_voxel = hardvoxelize(points,
-                                                        point_cloud_range,
-                                                        voxel_size,
-                                                        max_points_in_voxel,
-                                                        max_voxel_num)
+    voxels, coords, num_points_per_voxel = hardvoxelize(
+        points, point_cloud_range, voxel_size, max_points_in_voxel,
+        max_voxel_num)
 
     return voxels, coords, num_points_per_voxel
 
@@ -461,21 +453,23 @@ def draw_lidar(pc,
         fig: created or used fig
     '''
     if fig is None:
-        fig = mlab.figure(figure=None,
-                          bgcolor=bgcolor,
-                          fgcolor=None,
-                          engine=None,
-                          size=(1600, 1000))
+        fig = mlab.figure(
+            figure=None,
+            bgcolor=bgcolor,
+            fgcolor=None,
+            engine=None,
+            size=(1600, 1000))
     if color is None: color = pc[:, 2]
-    mlab.points3d(pc[:, 0],
-                  pc[:, 1],
-                  pc[:, 2],
-                  color,
-                  color=pts_color,
-                  mode=pts_mode,
-                  colormap='gnuplot',
-                  scale_factor=pts_scale,
-                  figure=fig)
+    mlab.points3d(
+        pc[:, 0],
+        pc[:, 1],
+        pc[:, 2],
+        color,
+        color=pts_color,
+        mode=pts_mode,
+        colormap='gnuplot',
+        scale_factor=pts_scale,
+        figure=fig)
 
     # draw origin
     mlab.points3d(0, 0, 0, color=(1, 1, 1), mode='sphere', scale_factor=0.2)
@@ -553,11 +547,12 @@ def draw_lidar(pc,
                 figure=fig)
 
     # mlab.orientation_axes()
-    mlab.view(azimuth=180,
-              elevation=70,
-              focalpoint=[12.0909996, -1.04700089, -2.03249991],
-              distance=62.0,
-              figure=fig)
+    mlab.view(
+        azimuth=180,
+        elevation=70,
+        focalpoint=[12.0909996, -1.04700089, -2.03249991],
+        distance=62.0,
+        figure=fig)
     return fig
 
 
@@ -586,13 +581,14 @@ def draw_gt_boxes3d(gt_boxes3d,
         if color_list is not None:
             color = color_list[n]
         if draw_text:
-            mlab.text3d(b[4, 0],
-                        b[4, 1],
-                        b[4, 2],
-                        '%d' % n,
-                        scale=text_scale,
-                        color=color,
-                        figure=fig)
+            mlab.text3d(
+                b[4, 0],
+                b[4, 1],
+                b[4, 2],
+                '%d' % n,
+                scale=text_scale,
+                color=color,
+                figure=fig)
         for k in range(0, 4):
             # http://docs.enthought.com/mayavi/mayavi/auto/mlab_helper_functions.html
             i, j = k, (k + 1) % 4
@@ -628,11 +624,12 @@ def show_lidar_with_boxes(pc_velo, objects, scores, calib):
         Draw 3d box in LiDAR point cloud (in velo coord system) '''
 
     # print(('All point num: ', pc_velo.shape[0]))
-    fig = mlab.figure(figure=None,
-                      bgcolor=(0, 0, 0),
-                      fgcolor=None,
-                      engine=None,
-                      size=(1000, 500))
+    fig = mlab.figure(
+        figure=None,
+        bgcolor=(0, 0, 0),
+        fgcolor=None,
+        engine=None,
+        size=(1000, 500))
 
     draw_lidar(pc_velo, fig=fig)
 

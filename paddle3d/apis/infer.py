@@ -57,10 +57,9 @@ class Infer(Trainer):
             scheduler: Union[dict, SchedulerABC] = dict(),
             dataloader_fn: Union[dict, Callable] = dict(),
             amp_cfg: Optional[dict] = None):
-        super(Infer,
-              self).__init__(model, optimizer, iters, epochs, train_dataset,
-                             val_dataset, resume, checkpoint, scheduler,
-                             dataloader_fn, amp_cfg)
+        super(Infer, self).__init__(
+            model, optimizer, iters, epochs, train_dataset, val_dataset, resume,
+            checkpoint, scheduler, dataloader_fn, amp_cfg)
 
     def infer(self, mode) -> float:
         """

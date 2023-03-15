@@ -15,31 +15,32 @@ def parse_args():
     """
     parser = argparse.ArgumentParser(description='Model evaluation')
     # params of training
-    parser.add_argument("--config",
-                        dest="cfg",
-                        help="The config file.",
-                        default=None,
-                        type=str)
-    parser.add_argument('--batch_size',
-                        dest='batch_size',
-                        help='Mini batch size of one gpu or cpu',
-                        type=int,
-                        default=None)
-    parser.add_argument('--model',
-                        dest='model',
-                        help='pretrained parameters of the model',
-                        type=str,
-                        default=None)
-    parser.add_argument('--num_workers',
-                        dest='num_workers',
-                        help='Num workers for data loader',
-                        type=int,
-                        default=2)
-    parser.add_argument('--quant_config',
-                        dest='quant_config',
-                        help='Config for quant model.',
-                        default=None,
-                        type=str)
+    parser.add_argument(
+        "--config", dest="cfg", help="The config file.", default=None, type=str)
+    parser.add_argument(
+        '--batch_size',
+        dest='batch_size',
+        help='Mini batch size of one gpu or cpu',
+        type=int,
+        default=None)
+    parser.add_argument(
+        '--model',
+        dest='model',
+        help='pretrained parameters of the model',
+        type=str,
+        default=None)
+    parser.add_argument(
+        '--num_workers',
+        dest='num_workers',
+        help='Num workers for data loader',
+        type=int,
+        default=2)
+    parser.add_argument(
+        '--quant_config',
+        dest='quant_config',
+        help='Config for quant model.',
+        default=None,
+        type=str)
 
     return parser.parse_args()
 
