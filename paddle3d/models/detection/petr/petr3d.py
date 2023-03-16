@@ -160,12 +160,21 @@ class Petr3D(BaseMultiViewModel):
             self.backbone.stage5.OSA5_1.use_checkpoint = False
             self.backbone.stage5.OSA5_2.use_checkpoint = False
             self.backbone.stage5.OSA5_3.use_checkpoint = False
-            specs_head = ([InputSpec([1, 12, 256, 20, 50]), InputSpec([1, 12, 256, 10, 25])], None, 
-                            [InputSpec([4, 4], dtype=paddle.float64) for i in range(12)], InputSpec([12]))
-            specs_neck = [[InputSpec([12, 768, 20, 50]), InputSpec([12, 1024, 10, 25])]]
+            specs_head = ([
+                InputSpec([1, 12, 256, 20, 50]),
+                InputSpec([1, 12, 256, 10, 25])
+            ], None, [
+                InputSpec([4, 4], dtype=paddle.float64) for i in range(12)
+            ], InputSpec([12]))
+            specs_neck = [[
+                InputSpec([12, 768, 20, 50]),
+                InputSpec([12, 1024, 10, 25])
+            ]]
             specs_backbone = [InputSpec([12, 3, 320, 800])]
-            apply_to_static(to_static, self.pts_bbox_head, image_shape=specs_head)
-            apply_to_static(to_static, self.backbone, image_shape=specs_backbone)
+            apply_to_static(
+                to_static, self.pts_bbox_head, image_shape=specs_head)
+            apply_to_static(
+                to_static, self.backbone, image_shape=specs_backbone)
             apply_to_static(to_static, self.neck, image_shape=specs_neck)
         self.use_grid_mask = use_grid_mask
         self.use_recompute = use_recompute
@@ -267,9 +276,11 @@ class Petr3D(BaseMultiViewModel):
                 else:
                     # breakpoint()
                     img_feats = self.backbone(img)
+
                     from paddle.amp.auto_cast import _in_amp_guard
                     if _in_amp_guard():
                         img_feats = dtype2float32(img_feats)
+
                     if isinstance(img_feats, dict):
                         img_feats = list(img_feats.values())
                 # breakpoint()
@@ -300,9 +311,11 @@ class Petr3D(BaseMultiViewModel):
         """
         if self.to_static:
             timestamp = paddle.to_tensor(np.asarray(img_metas[0]['timestamp']))
-            outs = self.pts_bbox_head(pts_feats, img_metas=None, 
-                                    lidar2img=img_metas[0]['lidar2img'], 
-                                    timestamp=timestamp)
+            outs = self.pts_bbox_head(
+                pts_feats,
+                img_metas=None,
+                lidar2img=img_metas[0]['lidar2img'],
+                timestamp=timestamp)
         else:
             outs = self.pts_bbox_head(pts_feats, img_metas=img_metas)
         loss_inputs = [gt_bboxes_3d, gt_labels_3d, outs]
