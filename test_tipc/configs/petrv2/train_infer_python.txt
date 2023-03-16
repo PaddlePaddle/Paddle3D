@@ -37,7 +37,7 @@ inference_dir:null
 infer_model:test_tipc/output/exported_model/petrv2.pdmodel
 infer_export:null
 infer_quant:False
-inference:deploy/petr/python/infer.py --model_file test_tipc/output/exported_model/petrv2.pdmodel --params_file test_tipc/output/exported_model/petrv2.pdiparams --img_paths  
+inference:deploy/petr/python/infer.py --model_file test_tipc/output/exported_model/petrv2.pdmodel --params_file test_tipc/output/exported_model/petrv2.pdiparams
 null:null
 null:null
 null:null
