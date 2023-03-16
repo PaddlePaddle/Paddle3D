@@ -361,7 +361,11 @@ class PETRHead(nn.Layer):
             for m in self.cls_branches:
                 param_init.constant_init(m[-1].bias, value=bias_val)
 
-    def position_embeding(self, img_feats, img_metas, masks=None, lidar2img=None):
+    def position_embeding(self,
+                          img_feats,
+                          img_metas,
+                          masks=None,
+                          lidar2img=None):
         eps = 1e-5
         if getattr(self, 'in_export_mode', False):
             pad_h, pad_w = img_metas['image_shape']
@@ -560,7 +564,11 @@ class PETRHead(nn.Layer):
 
         return padded_reference_points, attn_mask, mask_dict
 
-    def forward(self, mlvl_feats, img_metas=None, lidar2img=None, timestamp=None):
+    def forward(self,
+                mlvl_feats,
+                img_metas=None,
+                lidar2img=None,
+                timestamp=None):
         """Forward function.
         Args:
             mlvl_feats (tuple[Tensor]): Features from the upstream

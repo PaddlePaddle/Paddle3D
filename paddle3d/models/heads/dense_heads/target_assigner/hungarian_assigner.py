@@ -25,9 +25,8 @@
 import numpy as np
 import paddle
 
-from paddle3d.models.heads.dense_heads.match_costs import (BBox3DL1Cost,
-                                                           FocalLossCost,
-                                                           IoUCost)
+from paddle3d.models.heads.dense_heads.match_costs import (
+    BBox3DL1Cost, FocalLossCost, IoUCost)
 from paddle3d.sample import _EasyDict
 
 try:
@@ -46,6 +45,7 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
     neginf_value = paddle.full_like(x, float("-inf"))
     nan = paddle.full_like(x, nan)
     assert x.dtype in [paddle.float16, paddle.float32, paddle.float64]
+
     if posinf is None:
         if x.dtype == paddle.float32:
             posinf = np.finfo(np.float32).max
@@ -54,6 +54,7 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
         else:
             posinf = np.finfo(np.float16).max
     posinf = paddle.full_like(x, posinf)
+
     if neginf is None:
         if x.dtype == paddle.float32:
             neginf = np.finfo(np.float32).min
@@ -69,7 +70,6 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
 
 
 def normalize_bbox(bboxes, pc_range):
-
     cx = bboxes[..., 0:1]
     cy = bboxes[..., 1:2]
     cz = bboxes[..., 2:3]
