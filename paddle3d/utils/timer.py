@@ -57,7 +57,7 @@ class Timer:
             return 0
 
         return self.elasped_time / self.cur_iter
-    
+
     @property
     def ips(self):
         if not self.total_samples or self.cur_iter == 0:
