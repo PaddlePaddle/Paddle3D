@@ -28,6 +28,7 @@ from paddle3d.apis.scheduler import Scheduler, SchedulerABC
 from paddle3d.utils.logger import logger
 from paddle3d.utils.shm_utils import _get_shared_memory_size_in_M
 from paddle3d.utils.timer import Timer
+from paddle3d.utils.profiler import add_profiler_step
 
 
 def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
@@ -120,11 +121,13 @@ class Trainer:
             # TODO: Default parameters should not use mutable objects, there is a risk
             checkpoint: Union[dict, CheckpointABC] = dict(),
             scheduler: Union[dict, SchedulerABC] = dict(),
+            profiler_options: Optional[dict] = None,
             dataloader_fn: Union[dict, Callable] = dict(),
             amp_cfg: Optional[dict] = None):
 
         self.model = model
         self.optimizer = optimizer
+        self.batchsize = dataloader_fn['batch_size']
 
         _dataloader_build_fn = default_dataloader_build_fn(
             **dataloader_fn) if isinstance(dataloader_fn,
@@ -135,6 +138,7 @@ class Trainer:
             val_dataset, self.model) if val_dataset else None
         self.val_dataset = val_dataset
 
+        self.profiler_options = profiler_options
         self.resume = resume
         vdl_file_name = None
         self.iters_per_epoch = len(self.train_dataloader)
@@ -280,6 +284,8 @@ class Trainer:
                 if self.cur_iter > self.iters:
                     break
 
+                add_profiler_step(self.profiler_options)
+
                 lr = self.optimizer.get_lr()
                 output = training_step(
                     model,
@@ -295,7 +301,7 @@ class Trainer:
 
                 losses_sum['total_loss'] += float(output['total_loss'])
 
-                timer.step()
+                timer.step(self.batchsize)
                 status = self.scheduler.step()
 
                 if status.do_log and env.local_rank == 0:
@@ -316,9 +322,9 @@ class Trainer:
                             step=self.cur_iter)
 
                     logger.info(
-                        '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f} | ETA {}'
+                        '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f}, batch_cost: {:.6f} sec, ips: {:.6f} images/s | ETA {}'
                         .format(self.cur_epoch, self.epochs, self.cur_iter,
-                                self.iters, loss_log, lr, timer.eta))
+                                self.iters, loss_log, lr, timer.speed, timer.ips, timer.eta))
 
                     losses_sum.clear()
 

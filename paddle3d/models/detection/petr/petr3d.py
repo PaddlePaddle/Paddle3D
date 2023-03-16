@@ -267,6 +267,9 @@ class Petr3D(BaseMultiViewModel):
                 else:
                     # breakpoint()
                     img_feats = self.backbone(img)
+                    from paddle.amp.auto_cast import _in_amp_guard
+                    if _in_amp_guard():
+                        img_feats = dtype2float32(img_feats)
                     if isinstance(img_feats, dict):
                         img_feats = list(img_feats.values())
                 # breakpoint()

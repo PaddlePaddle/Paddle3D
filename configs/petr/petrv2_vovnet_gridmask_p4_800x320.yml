@@ -1,6 +1,13 @@
 batch_size: 1
 epochs: 24
 
+amp_cfg:
+  # only enable backbone and fpn
+  enable: False
+  level: O1
+  scaler:
+    init_loss_scaling: 512.0
+
 train_dataset:
   type: NuscenesMVDataset
   dataset_root: data/nuscenes/

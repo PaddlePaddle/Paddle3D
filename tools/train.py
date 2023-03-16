@@ -124,6 +124,26 @@ def parse_args():
         help='Whether to static training.',
         default=False,
         type=bool)
+     # for profiler
+    parser.add_argument(
+        '-p',
+        '--profiler_options',
+        type=str,
+        default=None,
+        help=
+        'The option of profiler, which should be in format \"key1=value1;key2=value2;key3=value3\".'
+    )
+
+    # add for amp training
+    parser.add_argument('--amp',
+                        action='store_true',
+                        default=False,
+                        help='whether to enable amp training')
+    parser.add_argument('--amp_level',
+                        type=str,
+                        default='O2',
+                        choices=['O1', 'O2'],
+                        help='level of amp training; O2 represent pure fp16')
 
     return parser.parse_args()
 
@@ -150,6 +170,10 @@ def main(args):
 
     if args.to_static:
         cfg.dic['model']['to_static'] = args.to_static
+    
+    if args.amp:
+        cfg.dic['amp_cfg']['enable'] = True
+        cfg.dic['amp_cfg']['level'] = args.amp_level
 
     if args.model is not None:
         load_pretrained_model(cfg.model, args.model)
@@ -199,7 +223,8 @@ def main(args):
         'dataloader_fn': {
             'batch_size': batch_size,
             'num_workers': args.num_workers,
-        }
+        },
+        'profiler_options': args.profiler_options
     })
 
     trainer = Trainer(**dic)
