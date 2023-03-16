@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import List, Union
 
 import cv2
+import paddle
 import numpy as np
 from PIL import Image
 
@@ -26,6 +27,7 @@ from paddle3d.datasets.semantic_kitti.semantic_kitti import \
     SemanticKITTIDataset
 from paddle3d.geometries import PointCloud
 from paddle3d.geometries.bbox import points_in_convex_polygon_3d_jit
+from paddle3d.models.detection.bevfusion.utils import generate_guassian_depth_target, map_pointcloud_to_image
 from paddle3d.sample import Sample
 from paddle3d.transforms import functional as F
 from paddle3d.transforms.base import TransformABC
@@ -468,8 +470,16 @@ class LoadMultiViewImageFromFiles(TransformABC):
             -  1: cv2.IMREAD_COLOR
     """
 
-    def __init__(self, to_float32=False, imread_flag=-1):
+    def __init__(self,
+                 to_float32=False,
+                 project_pts_to_img_depth=False,
+                 cam_depth_range=[4.0, 45.0, 1.0],
+                 constant_std=0.5,
+                 imread_flag=-1):
         self.to_float32 = to_float32
+        self.project_pts_to_img_depth = project_pts_to_img_depth
+        self.cam_depth_range = cam_depth_range
+        self.constant_std = constant_std
         self.imread_flag = imread_flag
 
     def __call__(self, sample):
@@ -489,13 +499,33 @@ class LoadMultiViewImageFromFiles(TransformABC):
         sample['ori_shape'] = img.shape
 
         sample['pad_shape'] = img.shape
-        sample['scale_factor'] = 1.0
+        # sample['scale_factor'] = 1.0
         num_channels = 1 if len(img.shape) < 3 else img.shape[2]
 
         sample['img_norm_cfg'] = dict(
             mean=np.zeros(num_channels, dtype=np.float32),
             std=np.ones(num_channels, dtype=np.float32),
             to_rgb=False)
+        sample['img_fields'] = ['img']
+
+        if self.project_pts_to_img_depth:
+            sample['img_depth'] = []
+            for i in range(len(sample['img'])):
+                depth = map_pointcloud_to_image(
+                    sample['points'],
+                    sample['img'][i],
+                    sample['caminfo'][i]['sensor2lidar_rotation'],
+                    sample['caminfo'][i]['sensor2lidar_translation'],
+                    sample['caminfo'][i]['cam_intrinsic'],
+                    show=False)
+                guassian_depth, min_depth, std_var = generate_guassian_depth_target(
+                    paddle.to_tensor(depth).unsqueeze(0),
+                    stride=8,
+                    cam_depth_range=self.cam_depth_range,
+                    constant_std=self.constant_std)
+                depth = paddle.concat(
+                    [min_depth[0].unsqueeze(-1), guassian_depth[0]], axis=-1)
+                sample['img_depth'].append(depth)
         return sample
 
 

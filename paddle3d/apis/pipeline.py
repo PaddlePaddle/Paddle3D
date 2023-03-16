@@ -13,22 +13,32 @@
 # limitations under the License.
 
 import paddle
+from paddle.distributed import fleet
 from paddle.distributed.fleet.utils.hybrid_parallel_util import \
     fused_allreduce_gradients
 from paddle.jit import to_static
 
 from paddle3d.sample import Sample
 from paddle3d.utils.logger import logger
+from paddle3d.utils.tensor_fusion_utils import all_reduce_parameters
 
 
 def parse_losses(losses):
-    total_loss = 0
+    """
+    Parse the loss tensor in dictionary into a single scalar.
+    """
+    log_loss = dict()
     if isinstance(losses, paddle.Tensor):
-        total_loss += losses
+        total_loss = losses
     elif isinstance(losses, dict):
-        for k, v in losses.items():
-            total_loss += v
-    return total_loss
+        for loss_name, loss_value in losses.items():
+            log_loss[loss_name] = sum(loss_value)
+        total_loss = sum(
+            _loss_value for _loss_name, _loss_value in log_loss.items())
+
+    log_loss['total_loss'] = total_loss
+
+    return total_loss, log_loss
 
 
 def training_step(model: paddle.nn.Layer,
@@ -36,7 +46,9 @@ def training_step(model: paddle.nn.Layer,
                   sample: Sample,
                   cur_iter: int,
                   scaler=None,
-                  amp_cfg=dict()) -> dict:
+                  amp_cfg=dict(),
+                  all_fused_tensors=None,
+                  group=None) -> dict:
 
     if optimizer.__class__.__name__ == 'OneCycleAdam':
         optimizer.before_iter(cur_iter - 1)
@@ -49,50 +61,56 @@ def training_step(model: paddle.nn.Layer,
             if scaler is not None:
                 with paddle.amp.auto_cast(**amp_cfg):
                     outputs = model(sample)
-                    loss = parse_losses(outputs['loss'])
+                    loss, log_loss = parse_losses(outputs['loss'])
                     scaled_loss = scaler.scale(loss)
                     scaled_loss.backward()
             else:
                 outputs = model(sample)
-                loss = parse_losses(outputs['loss'])
+                loss, log_loss = parse_losses(outputs['loss'])
                 loss.backward()
-        fused_allreduce_gradients(list(model.parameters()), None)
+        if all_fused_tensors is None:
+            fused_allreduce_gradients(list(model.parameters()), None)
+        else:
+            assert group is not None
+            all_reduce_parameters(all_fused_tensors, group)
     else:
         if scaler is not None:
             with paddle.amp.auto_cast(**amp_cfg):
                 outputs = model(sample)
-                loss = parse_losses(outputs['loss'])
+                loss, log_loss = parse_losses(outputs['loss'])
                 scaled_loss = scaler.scale(loss)
                 scaled_loss.backward()
         else:
             outputs = model(sample)
-            loss = parse_losses(outputs['loss'])
+            loss, log_loss = parse_losses(outputs['loss'])
             loss.backward()
 
+    # update params
     if optimizer.__class__.__name__ == 'OneCycleAdam':
         optimizer.after_iter()
     else:
         if scaler is not None:
             scaler.step(optimizer)
             scaler.update()
-            optimizer.clear_grad()
         else:
             optimizer.step()
 
-        model.clear_gradients()
+        optimizer.clear_grad()
+
         if isinstance(optimizer._learning_rate,
                       paddle.optimizer.lr.LRScheduler):
             optimizer._learning_rate.step()
 
-    with paddle.no_grad():
-        if paddle.distributed.is_initialized():
-            loss_clone = loss.clone()
-            paddle.distributed.all_reduce(
-                loss_clone.scale_(1. / paddle.distributed.get_world_size()))
-            outputs['total_loss'] = loss_clone
-        else:
-            outputs['total_loss'] = loss
-    return outputs
+    # reduce loss when distributed training
+    if paddle.distributed.is_initialized():
+        with paddle.no_grad():
+            for loss_name, loss_value in log_loss.items():
+                loss_clone = loss_value.clone()
+                paddle.distributed.all_reduce(
+                    loss_clone.scale_(1. / paddle.distributed.get_world_size()))
+                log_loss[loss_name] = loss_clone.item()
+
+    return log_loss
 
 
 def validation_step(model: paddle.nn.Layer, sample: Sample) -> dict:
@@ -108,5 +126,6 @@ def apply_to_static(support_to_static, model, image_shape=None):
         if image_shape is not None:
             specs = image_shape
         model = to_static(model, input_spec=specs)
-        logger.info("Successfully to apply @to_static with specs: {}".format(specs))
+        logger.info(
+            "Successfully to apply @to_static with specs: {}".format(specs))
     return model

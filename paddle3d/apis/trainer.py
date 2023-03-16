@@ -123,7 +123,8 @@ class Trainer:
             scheduler: Union[dict, SchedulerABC] = dict(),
             profiler_options: Optional[dict] = None,
             dataloader_fn: Union[dict, Callable] = dict(),
-            amp_cfg: Optional[dict] = None):
+            amp_cfg: Optional[dict] = None,
+            do_bind: Optional[bool] = True):
 
         self.model = model
         self.optimizer = optimizer
@@ -142,6 +143,8 @@ class Trainer:
         self.resume = resume
         vdl_file_name = None
         self.iters_per_epoch = len(self.train_dataloader)
+
+        self.do_bind = do_bind
 
         if iters is None:
             self.epochs = epochs
@@ -264,10 +267,11 @@ class Trainer:
                     self.model)
 
         model = self.model
+        group = None
         if env.nranks > 1:
             if not paddle.distributed.parallel.parallel_helper._is_parallel_ctx_initialized(
             ):
-                paddle.distributed.init_parallel_env()
+                group = paddle.distributed.init_parallel_env()
             model = paddle.DataParallel(self.model)
 
         losses_sum = defaultdict(float)
@@ -276,6 +280,29 @@ class Trainer:
         while self.cur_iter < self.iters:
 
             for sample in self.train_dataloader:
+                if self.cur_iter == 1 and self.do_bind and int(
+                        os.environ.get('FLAGS_selected_gpus', 0)) == 0:
+                    test_cmd = "j=0 | j=$(( $j + 1 ))"
+                    rst = os.system(test_cmd)
+                    if rst != 0:
+                        logger.warning(
+                            "The system doesn't support i++ bash command, will not do cpu core bind"
+                        )
+                    else:
+                        # Skip the first iter, let all necessary threads to be inited.
+                        # Each thread will assign three cpu cores.
+                        # IMPORTANT NOTE! If the hardware doesn't have enough cpu cores,
+                        # can delete one or two `"(( i++ )) \n" \` in the line 287/288.
+                        cmd = "bash \n"  \
+                              "ps aux | grep \" -u tools/train.py\" | grep -v grep | awk '{print $2}' > taskset.log \n" \
+                              "i=0 \n" \
+                              "for pid in `cat taskset.log`; do \n" \
+                              "i=$(( $i + 1 )) \n" \
+                              "taskset -pc  $i,$(( i + 1 )),$(( i + 2 )) $pid \n" \
+                              "i=$(( $i + 1 )) \n" \
+                              "i=$(( $i + 1 )) \n" \
+                              "done \n"
+                        os.system(cmd)
                 self.cur_iter += 1
 
                 if self.cur_iter % self.iters_per_epoch == 1:
@@ -287,44 +314,44 @@ class Trainer:
                 add_profiler_step(self.profiler_options)
 
                 lr = self.optimizer.get_lr()
+
                 output = training_step(
                     model,
                     self.optimizer,
                     sample,
                     self.cur_iter,
                     scaler=self.scaler,
-                    amp_cfg=self.amp_cfg)
+                    amp_cfg=self.amp_cfg,
+                    all_fused_tensors=getattr(self.optimizer,
+                                              'all_fused_tensors', None),
+                    group=group)
 
-                if isinstance(output['loss'], dict):
-                    for k, v in output['loss'].items():
-                        losses_sum[k] += float(v)
-
-                losses_sum['total_loss'] += float(output['total_loss'])
+                for loss_name, loss_value in output.items():
+                    losses_sum[loss_name] += float(loss_value)
 
                 timer.step(self.batchsize)
                 status = self.scheduler.step()
 
                 if status.do_log and env.local_rank == 0:
-
                     loss_log = ''
+                    for loss_name, loss_value in losses_sum.items():
+                        loss_value = loss_value / self.scheduler.log_interval
+                        loss_log += ', {}={:.6f}'.format(loss_name, loss_value)
+                        self.log_writer.add_scalar(
+                            tag='Training/' + loss_name,
+                            value=loss_value,
+                            step=self.cur_iter)
 
                     self.log_writer.add_scalar(
                         tag='Training/learning_rate',
                         value=lr,
                         step=self.cur_iter)
 
-                    for k, v in losses_sum.items():
-                        loss_val = v / self.scheduler.log_interval
-                        loss_log += ', {}={:.6f}'.format(k, loss_val)
-                        self.log_writer.add_scalar(
-                            tag='Training/' + k,
-                            value=loss_val,
-                            step=self.cur_iter)
-
                     logger.info(
                         '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f}, batch_cost: {:.6f} sec, ips: {:.6f} images/s | ETA {}'
                         .format(self.cur_epoch, self.epochs, self.cur_iter,
-                                self.iters, loss_log, lr, timer.speed, timer.ips, timer.eta))
+                                self.iters, loss_log, lr, timer.speed,
+                                timer.ips, timer.eta))
 
                     losses_sum.clear()
 

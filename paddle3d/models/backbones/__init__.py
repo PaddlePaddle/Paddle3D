@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .cbnet import *
 from .dla import *
 from .hrnet import *
 from .resnet import *
@@ -19,3 +20,4 @@ from .sac import *
 from .second_backbone import *
 from .vovnet import *
 from .vovnetcp import VoVNetCP
+from .mm_resnet import MMResNet

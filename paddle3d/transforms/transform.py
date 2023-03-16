@@ -688,7 +688,7 @@ class SampleRangeFilter(object):
             dict: Results after filtering, 'gt_bboxes_3d', 'gt_labels_3d' \
                 keys are updated in the Sample.
         """
-        if isinstance(sample['gt_bboxes_3d'], (BBoxes3D)):
+        if isinstance(sample['gt_bboxes_3d'], (BBoxes3D, np.ndarray)):
             bev_range = self.pcd_range[[0, 1, 3, 4]]
         else:
             bev_range = self.pcd_range[[0, 2, 3, 5]]

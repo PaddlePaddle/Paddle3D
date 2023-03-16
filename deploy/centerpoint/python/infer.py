@@ -121,9 +121,9 @@ def init_predictor(model_file,
         elif trt_precision == 2:
             precision_mode = paddle.inference.PrecisionType.Int8
         config.enable_tensorrt_engine(
-            workspace_size=1 << 20,
+            workspace_size=1 << 30,
             max_batch_size=1,
-            min_subgraph_size=30,
+            min_subgraph_size=3,
             precision_mode=precision_mode,
             use_static=trt_use_static,
             use_calib_mode=False)

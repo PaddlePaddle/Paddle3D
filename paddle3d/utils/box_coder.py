@@ -212,3 +212,95 @@ class NMSFreeCoder(object):
             predictions_list.append(
                 self.decode_single(all_cls_scores[i], all_bbox_preds[i]))
         return predictions_list
+
+
+@manager.BBOX_CODERS.add_component
+class DeltaXYZWLHRBBoxCoder(paddle.nn.Layer):
+    """Bbox Coder for 3D boxes.
+    This code is based on https://github.com/ADLab-AutoDrive/BEVFusion/blob/3f992837ad659f050df38d7b0978372425be16ff/mmdet3d/core/bbox/coders/delta_xyzwhlr_bbox_coder.py#L8
+
+    Args:
+        code_size (int): The dimension of boxes to be encoded.
+    """
+
+    def __init__(self, code_size=7):
+        super(DeltaXYZWLHRBBoxCoder, self).__init__()
+        self.code_size = code_size
+
+    @staticmethod
+    def encode(src_boxes, dst_boxes):
+        """Get box regression transformation deltas (dx, dy, dz, dw, dh, dl,
+        dr, dv*) that can be used to transform the `src_boxes` into the
+        `target_boxes`.
+
+        Args:
+            src_boxes (paddle.Tensor): source boxes, e.g., object proposals.
+            dst_boxes (paddle.Tensor): target of the transformation, e.g.,
+                ground-truth boxes.
+
+        Returns:
+            paddle.Tensor: Box transformation deltas.
+        """
+        box_ndim = src_boxes.shape[-1]
+        cas, cgs, cts = [], [], []
+        if box_ndim > 7:
+            xa, ya, za, wa, la, ha, ra, *cas = paddle.split(
+                src_boxes, box_ndim, axis=-1)
+            xg, yg, zg, wg, lg, hg, rg, *cgs = paddle.split(
+                dst_boxes, box_ndim, axis=-1)
+            cts = [g - a for g, a in zip(cgs, cas)]
+        else:
+            xa, ya, za, wa, la, ha, ra = paddle.split(
+                src_boxes, box_ndim, axis=-1)
+            xg, yg, zg, wg, lg, hg, rg = paddle.split(
+                dst_boxes, box_ndim, axis=-1)
+        za = za + ha / 2
+        zg = zg + hg / 2
+        diagonal = paddle.sqrt(la**2 + wa**2)
+        xt = (xg - xa) / diagonal
+        yt = (yg - ya) / diagonal
+        zt = (zg - za) / ha
+        lt = paddle.log(lg / la)
+        wt = paddle.log(wg / wa)
+        ht = paddle.log(hg / ha)
+        rt = rg - ra
+        return paddle.concat([xt, yt, zt, wt, lt, ht, rt, *cts], axis=-1)
+
+    @staticmethod
+    def decode(anchors, deltas):
+        """Apply transformation `deltas` (dx, dy, dz, dw, dh, dl, dr, dv*) to
+        `boxes`.
+
+        Args:
+            anchors (paddle.Tensor): Parameters of anchors with shape (N, 7).
+            deltas (paddle.Tensor): Encoded boxes with shape
+                (N, 7+n) [x, y, z, w, l, h, r, velo*].
+
+        Returns:
+            paddle.Tensor: Decoded boxes.
+        """
+        cas, cts = [], []
+        box_ndim = anchors.shape[-1]
+        if box_ndim > 7:
+            xa, ya, za, wa, la, ha, ra, *cas = paddle.split(
+                anchors, box_ndim, axis=-1)
+            xt, yt, zt, wt, lt, ht, rt, *cts = paddle.split(
+                deltas, box_ndim, axis=-1)
+        else:
+            xa, ya, za, wa, la, ha, ra = paddle.split(
+                anchors, box_ndim, axis=-1)
+            xt, yt, zt, wt, lt, ht, rt = paddle.split(deltas, box_ndim, axis=-1)
+
+        za = za + ha / 2
+        diagonal = paddle.sqrt(la**2 + wa**2)
+        xg = xt * diagonal + xa
+        yg = yt * diagonal + ya
+        zg = zt * ha + za
+
+        lg = paddle.exp(lt) * la
+        wg = paddle.exp(wt) * wa
+        hg = paddle.exp(ht) * ha
+        rg = rt + ra
+        zg = zg - hg / 2
+        cgs = [t + a for t, a in zip(cts, cas)]
+        return paddle.concat([xg, yg, zg, wg, lg, hg, rg, *cgs], axis=-1)

@@ -124,7 +124,8 @@ def parse_args():
         help='Whether to static training.',
         default=False,
         type=bool)
-     # for profiler
+
+    # for profiler
     parser.add_argument(
         '-p',
         '--profiler_options',
@@ -135,15 +136,24 @@ def parse_args():
     )
 
     # add for amp training
-    parser.add_argument('--amp',
-                        action='store_true',
-                        default=False,
-                        help='whether to enable amp training')
-    parser.add_argument('--amp_level',
-                        type=str,
-                        default='O2',
-                        choices=['O1', 'O2'],
-                        help='level of amp training; O2 represent pure fp16')
+    parser.add_argument(
+        '--amp',
+        action='store_true',
+        default=False,
+        help='whether to enable amp training')
+    parser.add_argument(
+        '--amp_level',
+        type=str,
+        default='O2',
+        choices=['O1', 'O2'],
+        help='level of amp training; O2 represent pure fp16')
+
+    parser.add_argument(
+        '--do_bind',
+        dest='do_bind',
+        help='Whether to cpu bind core. '
+        'Only valid when use `python -m paddle.distributed.launch tools.train.py <other args>` to train.',
+        action='store_true')
 
     return parser.parse_args()
 
@@ -166,11 +176,20 @@ def main(args):
     if not os.path.exists(args.cfg):
         raise RuntimeError("Config file `{}` does not exist!".format(args.cfg))
 
+    if not args.do_bind:
+        logger.info("not use cpu bind core")
+    else:
+        if os.environ.get('FLAGS_selected_gpus') is None:
+            args.do_bind = False
+            logger.warning(
+                "Not use paddle.distributed.launch start the training, set do_bind to false."
+            )
+
     cfg = Config(path=args.cfg)
 
     if args.to_static:
         cfg.dic['model']['to_static'] = args.to_static
-    
+
     if args.amp:
         cfg.dic['amp_cfg']['enable'] = True
         cfg.dic['amp_cfg']['level'] = args.amp_level
@@ -224,7 +243,8 @@ def main(args):
             'batch_size': batch_size,
             'num_workers': args.num_workers,
         },
-        'profiler_options': args.profiler_options
+        'profiler_options': args.profiler_options,
+        'do_bind': args.do_bind
     })
 
     trainer = Trainer(**dic)
