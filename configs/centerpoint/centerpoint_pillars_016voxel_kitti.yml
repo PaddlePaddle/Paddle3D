@@ -1,5 +1,13 @@
 batch_size: 4
 epochs: 160
+
+amp_cfg:
+  # only enable backbone and fpn
+  enable: False
+  level: O1
+  scaler:
+    init_loss_scaling: 32.0
+
 train_dataset:
   type: KittiPCDataset
   dataset_root: datasets/KITTI
@@ -142,6 +150,8 @@ model:
     point_cloud_range: [0, -39.68, -3, 69.12, 39.68, 1]
     down_ratio: 2
     voxel_size: [0.16, 0.16, 4]
+  # training model under @to_static
+  to_static: False
 
 export:
   transforms:

@@ -32,6 +32,7 @@ from paddle3d.models.base import BaseMultiViewModel
 from paddle3d.geometries import BBoxes3D
 from paddle3d.sample import Sample, SampleMeta
 from paddle3d.utils import dtype2float32
+from paddle3d.models.backbones.vovnetcp import _OSA_layer
 
 
 class GridMask(nn.Layer):
@@ -144,22 +145,9 @@ class Petr3D(BaseMultiViewModel):
             self.pts_bbox_head.to_static = True
             for transformerlayer in self.pts_bbox_head.transformer.decoder.layers:
                 transformerlayer.use_recompute = False
-            self.backbone.stage2.OSA2_1.use_checkpoint = False
-            self.backbone.stage3.OSA3_1.use_checkpoint = False
-            self.backbone.stage3.OSA3_2.use_checkpoint = False
-            self.backbone.stage3.OSA3_3.use_checkpoint = False
-            self.backbone.stage4.OSA4_1.use_checkpoint = False
-            self.backbone.stage4.OSA4_2.use_checkpoint = False
-            self.backbone.stage4.OSA4_3.use_checkpoint = False
-            self.backbone.stage4.OSA4_4.use_checkpoint = False
-            self.backbone.stage4.OSA4_5.use_checkpoint = False
-            self.backbone.stage4.OSA4_6.use_checkpoint = False
-            self.backbone.stage4.OSA4_7.use_checkpoint = False
-            self.backbone.stage4.OSA4_8.use_checkpoint = False
-            self.backbone.stage4.OSA4_9.use_checkpoint = False
-            self.backbone.stage5.OSA5_1.use_checkpoint = False
-            self.backbone.stage5.OSA5_2.use_checkpoint = False
-            self.backbone.stage5.OSA5_3.use_checkpoint = False
+            for backbonelayer in self.backbone.sublayers():
+                if isinstance(backbonelayer, _OSA_layer):
+                    backbonelayer.use_checkpoint = False
             specs_head = ([
                 InputSpec([1, 12, 256, 20, 50]),
                 InputSpec([1, 12, 256, 10, 25])
@@ -274,7 +262,6 @@ class Petr3D(BaseMultiViewModel):
                         img_feats.append(
                             paddle.transpose(img_feat_nhwc, [0, 3, 1, 2]))
                 else:
-                    # breakpoint()
                     img_feats = self.backbone(img)
 
                     from paddle.amp.auto_cast import _in_amp_guard

@@ -38,10 +38,14 @@ if [ ${MODE} = "lite_train_lite_infer" ];then
         rm -rf ./test_tipc/data/mini_modelnet40
         mkdir -p ./test_tipc/data/mini_modelnet40
         cd ./test_tipc/data/mini_modelnet40 && tar xf ../mini_modelnet40.tar.gz && cd ../../
-    elif [ ${model_name} = "CycleGAN" ]; then
+    elif [ ${model_name} = "petrv2" ]; then
         rm -rf ./data/nuscenes
         wget -nc  -P ./ https://paddle3d.bj.bcebos.com/pretrained/fcos3d_vovnet_imgbackbone-remapped.pdparams --no-check-certificate
         cd ./data/ && unzip nuscenes.zip && cd ../
+    elif [ ${model_name} = "centerpoint" ]; then
+        rm -rf ./datasets/KITTI
+        wget -nc -P ./datasets/ https://paddle3d.bj.bcebos.com/TIPC/dataset/kitti_mini_centerpoint.tar.gz --no-check-certificate
+        cd ./datasets/ && tar -xzf kitti_mini_centerpoint.tar.gz && cd ../ ;;
     else
         echo "Not added into TIPC yet."
     fi
