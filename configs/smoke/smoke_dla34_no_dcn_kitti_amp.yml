@@ -4,6 +4,7 @@ batch_size: 8
 iters: 70000
 
 amp_cfg:
+  use_amp: True
   enable: True
   level: O1
   scaler:

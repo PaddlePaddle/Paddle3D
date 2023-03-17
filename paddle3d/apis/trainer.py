@@ -234,11 +234,12 @@ class Trainer:
         self.scaler = None
         self.amp_cfg = None
 
-        if amp_cfg is not None:
+        if amp_cfg is not None and amp_cfg['use_amp']:
             scaler_cfg_ = dict(init_loss_scaling=2.**15)
             scaler_cfg_.update(**amp_cfg.pop('scaler', dict()))
             self.scaler = paddle.amp.GradScaler(**scaler_cfg_)
 
+            amp_cfg.pop('use_amp', False)
             self.amp_cfg = amp_cfg
 
             amp_cfg_ = copy.deepcopy(amp_cfg)

@@ -2,6 +2,7 @@ batch_size: 4
 epochs: 160
 
 amp_cfg:
+  use_amp: False
   # only enable backbone and fpn
   enable: False
   level: O1

@@ -191,7 +191,7 @@ def main(args):
         cfg.dic['model']['to_static'] = args.to_static
 
     if args.amp:
-        cfg.dic['amp_cfg']['enable'] = True
+        cfg.dic['amp_cfg']['use_amp'] = args.amp
         cfg.dic['amp_cfg']['level'] = args.amp_level
 
     if args.model is not None:
