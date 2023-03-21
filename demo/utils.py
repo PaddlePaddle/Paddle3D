@@ -1,3 +1,17 @@
+# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import cv2
 import numba
@@ -101,9 +115,7 @@ class Calibration(object):
         pts_3d_hom = np.hstack((pts_3d, np.ones((n, 1))))
         return pts_3d_hom
 
-    # ===========================
-    # ------- 3d to 3d ----------
-    # ===========================
+    # 3d to 3d
     def project_velo_to_ref(self, pts_3d_velo):
         pts_3d_velo = self.cart2hom(pts_3d_velo)  # nx4
         return np.dot(pts_3d_velo, np.transpose(self.V2C))
@@ -132,9 +144,7 @@ class Calibration(object):
         pts_3d_ref = self.project_velo_to_ref(pts_3d_velo)
         return self.project_ref_to_rect(pts_3d_ref)
 
-    # ===========================
-    # ------- 3d to 2d ----------
-    # ===========================
+    # 3d to 2d
     def project_rect_to_image(self, pts_3d_rect):
         ''' Input: nx3 points in rect camera coord.
             Output: nx2 points in image2 coord.
@@ -152,9 +162,7 @@ class Calibration(object):
         pts_3d_rect = self.project_velo_to_rect(pts_3d_velo)
         return self.project_rect_to_image(pts_3d_rect)
 
-    # ===========================
-    # ------- 2d to 3d ----------
-    # ===========================
+    # 2d to 3d
     def project_image_to_rect(self, uv_depth):
         ''' Input: nx3 first two channels are uv, 3rd channel
                    is depth in rect camera coord.
@@ -614,8 +622,6 @@ def draw_gt_boxes3d(gt_boxes3d,
                         tube_radius=None,
                         line_width=line_width,
                         figure=fig)
-    # mlab.show(1)
-    # mlab.view(azimuth=180, elevation=70, focalpoint=[ 12.0909996 , -1.04700089, -2.03249991], distance=62.0, figure=fig)
     return
 
 
@@ -623,7 +629,6 @@ def show_lidar_with_boxes(pc_velo, objects, scores, calib):
     ''' Show all LiDAR points.
         Draw 3d box in LiDAR point cloud (in velo coord system) '''
 
-    # print(('All point num: ', pc_velo.shape[0]))
     fig = mlab.figure(
         figure=None,
         bgcolor=(0, 0, 0),
@@ -692,7 +697,6 @@ def show_bev_with_boxes(pc_velo, objects, scores, calib):
 
         bpts = box3d_pts_3d_velo[:4, :2]
         bpts = bpts[:, [1, 0]]
-        # print((int(bpts[0, 0] * 4), int(bpts[0, 1] * 4 + 300)), (int(bpts[1, 0] * 4), int(bpts[1, 1] * 4 + 300)))
 
         cv2.line(bev_im,
                  (int(-bpts[0, 0] * 4 + 300), int(300 - bpts[0, 1] * 4)),
