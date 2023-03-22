@@ -24,7 +24,7 @@ from paddle3d.apis.config import Config
 from paddle3d.apis.trainer import Trainer
 from paddle3d.slim import update_dic, get_qat_config
 from paddle3d.utils.checkpoint import load_pretrained_model
-from paddle3d.utils.logger import logger
+from paddle3d.utils.logger import Logger
 
 
 def parse_args():
@@ -161,6 +161,7 @@ def parse_args():
 def main(args):
     """
     """
+    logger = Logger(output=args.save_dir)
     place = 'gpu' if paddle.is_compiled_with_cuda() else 'cpu'
     paddle.set_device(place)
 

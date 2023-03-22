@@ -25,7 +25,7 @@ import paddle3d.env as env
 from paddle3d.apis.checkpoint import Checkpoint, CheckpointABC
 from paddle3d.apis.pipeline import training_step, validation_step
 from paddle3d.apis.scheduler import Scheduler, SchedulerABC
-from paddle3d.utils.logger import logger
+from paddle3d.utils.logger import Logger, logger
 from paddle3d.utils.shm_utils import _get_shared_memory_size_in_M
 from paddle3d.utils.timer import Timer
 from paddle3d.utils.profiler import add_profiler_step
@@ -184,6 +184,8 @@ class Trainer:
         if self.optimizer.__class__.__name__ == 'OneCycleAdam':
             self.optimizer.before_run(max_iters=self.iters)
 
+        self.logger = Logger(output=checkpoint.get('save_dir'))
+
         self.checkpoint = default_checkpoint_build_fn(
             **checkpoint) if isinstance(checkpoint, dict) else checkpoint
 
@@ -216,12 +218,12 @@ class Trainer:
             self.cur_epoch = self.checkpoint.meta.get('epochs')
             self.scheduler.step(self.cur_iter)
 
-            logger.info(
+            self.logger.info(
                 'Resume model from checkpoint {}, current iter set to {}'.
                 format(self.checkpoint.rootdir, self.cur_iter))
             vdl_file_name = self.checkpoint.meta['vdl_file_name']
         elif resume:
-            logger.warning(
+            self.logger.warning(
                 "Attempt to restore parameters from an empty checkpoint")
 
         if env.local_rank == 0:
@@ -245,7 +247,7 @@ class Trainer:
             amp_cfg_ = copy.deepcopy(amp_cfg)
             amp_cfg_.pop('enable', False)
             self.model.amp_cfg_ = amp_cfg_
-            logger.info(
+            self.logger.info(
                 'Use AMP train, AMP config: {}, Scaler config: {}'.format(
                     amp_cfg_, scaler_cfg_))
 
@@ -286,7 +288,7 @@ class Trainer:
                     test_cmd = "j=0 | j=$(( $j + 1 ))"
                     rst = os.system(test_cmd)
                     if rst != 0:
-                        logger.warning(
+                        self.logger.warning(
                             "The system doesn't support i++ bash command, will not do cpu core bind"
                         )
                     else:
@@ -348,7 +350,7 @@ class Trainer:
                         value=lr,
                         step=self.cur_iter)
 
-                    logger.info(
+                    self.logger.info(
                         '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f}, batch_cost: {:.6f} sec, ips: {:.6f} images/s | ETA {}'
                         .format(self.cur_epoch, self.epochs, self.cur_iter,
                                 self.iters, loss_log, lr, timer.speed,
@@ -383,7 +385,7 @@ class Trainer:
                     self.checkpoint.record('iters', self.cur_iter)
                     self.checkpoint.record('epochs', self.cur_epoch)
 
-        logger.info('Training is complete.')
+        self.logger.info('Training is complete.')
 
         if env.local_rank == 0:
             if self.train_by_epoch:
@@ -423,7 +425,7 @@ class Trainer:
         msg = 'evaluate on validate dataset'
         metric_obj = self.val_dataset.metric
 
-        for idx, sample in logger.enumerate(self.eval_dataloader, msg=msg):
+        for idx, sample in self.logger.enumerate(self.eval_dataloader, msg=msg):
             result = validation_step(self.model, sample)
             metric_obj.update(predictions=result, ground_truths=sample)
 

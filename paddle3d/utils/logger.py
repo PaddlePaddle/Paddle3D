@@ -19,6 +19,7 @@ import sys
 import threading
 import time
 from typing import Iterable
+import os
 
 import colorlog
 
@@ -55,8 +56,9 @@ class Logger(object):
         name(str) : Logger name, default is 'Paddle3D'
     '''
 
-    def __init__(self, name: str = None):
+    def __init__(self, name: str = None, output: str = None):
         name = 'Paddle3D' if not name else name
+        self.output = output
         self.logger = logging.getLogger(name)
 
         for key, conf in log_config.items():
@@ -65,10 +67,20 @@ class Logger(object):
             self.__dict__[key.lower()] = functools.partial(
                 self.__call__, conf['level'])
 
-        self.handler = logging.StreamHandler()
-        self.handler.setFormatter(self.format)
+        if self.output:
+            # make dir if path not exist
+            os.makedirs(
+                os.path.dirname(os.path.join(self.output, "log.txt")),
+                exist_ok=True)
+            self.handler = logging.FileHandler(
+                os.path.join(self.output, "log.txt"), mode='a')
+            self.handler.setFormatter(self.format)
+            self.logger.addHandler(self.handler)
+        else:
+            self.handler = logging.StreamHandler()
+            self.handler.setFormatter(self.format)
+            self.logger.addHandler(self.handler)
 
-        self.logger.addHandler(self.handler)
         self.logger.setLevel(logging.DEBUG)
         self.logger.propagate = False
 

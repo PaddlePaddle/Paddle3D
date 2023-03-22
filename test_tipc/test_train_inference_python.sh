@@ -243,6 +243,7 @@ else
                 set_train_params1=$(func_set_params "${train_param_key1}" "${train_param_value1}")
                 set_use_gpu=$(func_set_params "${train_use_gpu_key}" "${train_use_gpu}")
                 if [ ${#ips} -le 26 ];then
+                    rm -rf ${LOG_PATH}/${trainer}_gpus_${gpu}_autocast_${autocast}
                     save_log="${LOG_PATH}/${trainer}_gpus_${gpu}_autocast_${autocast}"
                     nodes=1
                 else
@@ -250,6 +251,7 @@ else
                     ips_array=(${ips})
                     IFS="|"
                     nodes=${#ips_array[@]}
+                    rm -rf ${LOG_PATH}/${trainer}_gpus_${gpu}_autocast_${autocast}_nodes_${nodes}
                     save_log="${LOG_PATH}/${trainer}_gpus_${gpu}_autocast_${autocast}_nodes_${nodes}"
                 fi
                 set_save_model=$(func_set_params "${save_model_key}" "${save_log}")
@@ -264,8 +266,7 @@ else
                 export FLAGS_cudnn_deterministic=True
                 eval $cmd
                 echo $cmd
-                log_name=${train_model_name/checkpoint.pdparams/.txt}
-                train_log_path=$( echo "${save_log}/${log_name}")
+                train_log_path=$( echo "${save_log}/log.txt")
                 eval "cat ${train_log_path} >> ${save_log}.log"
                 status_check $? "${cmd}" "${status_log}" "${model_name}" "${save_log}.log"
 
