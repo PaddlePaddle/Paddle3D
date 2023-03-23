@@ -184,7 +184,10 @@ class Trainer:
         if self.optimizer.__class__.__name__ == 'OneCycleAdam':
             self.optimizer.before_run(max_iters=self.iters)
 
-        self.logger = Logger(output=checkpoint.get('save_dir'))
+        if checkpoint is not None:
+            self.logger = Logger(output=checkpoint.get('save_dir'))
+        else:
+            self.logger = Logger()
 
         self.checkpoint = default_checkpoint_build_fn(
             **checkpoint) if isinstance(checkpoint, dict) else checkpoint
