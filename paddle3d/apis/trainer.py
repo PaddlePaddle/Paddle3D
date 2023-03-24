@@ -25,9 +25,10 @@ import paddle3d.env as env
 from paddle3d.apis.checkpoint import Checkpoint, CheckpointABC
 from paddle3d.apis.pipeline import training_step, validation_step
 from paddle3d.apis.scheduler import Scheduler, SchedulerABC
-from paddle3d.utils.logger import logger
+from paddle3d.utils.logger import Logger, logger
 from paddle3d.utils.shm_utils import _get_shared_memory_size_in_M
 from paddle3d.utils.timer import Timer
+from paddle3d.utils.profiler import add_profiler_step
 
 
 def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
@@ -120,12 +121,14 @@ class Trainer:
             # TODO: Default parameters should not use mutable objects, there is a risk
             checkpoint: Union[dict, CheckpointABC] = dict(),
             scheduler: Union[dict, SchedulerABC] = dict(),
+            profiler_options: Optional[dict] = None,
             dataloader_fn: Union[dict, Callable] = dict(),
             amp_cfg: Optional[dict] = None,
             do_bind: Optional[bool] = True):
 
         self.model = model
         self.optimizer = optimizer
+        self.batchsize = dataloader_fn['batch_size']
 
         _dataloader_build_fn = default_dataloader_build_fn(
             **dataloader_fn) if isinstance(dataloader_fn,
@@ -136,6 +139,7 @@ class Trainer:
             val_dataset, self.model) if val_dataset else None
         self.val_dataset = val_dataset
 
+        self.profiler_options = profiler_options
         self.resume = resume
         vdl_file_name = None
         self.iters_per_epoch = len(self.train_dataloader)
@@ -180,6 +184,11 @@ class Trainer:
         if self.optimizer.__class__.__name__ == 'OneCycleAdam':
             self.optimizer.before_run(max_iters=self.iters)
 
+        if checkpoint is not None:
+            self.logger = Logger(output=checkpoint.get('save_dir'))
+        else:
+            self.logger = Logger()
+
         self.checkpoint = default_checkpoint_build_fn(
             **checkpoint) if isinstance(checkpoint, dict) else checkpoint
 
@@ -212,12 +221,12 @@ class Trainer:
             self.cur_epoch = self.checkpoint.meta.get('epochs')
             self.scheduler.step(self.cur_iter)
 
-            logger.info(
+            self.logger.info(
                 'Resume model from checkpoint {}, current iter set to {}'.
                 format(self.checkpoint.rootdir, self.cur_iter))
             vdl_file_name = self.checkpoint.meta['vdl_file_name']
         elif resume:
-            logger.warning(
+            self.logger.warning(
                 "Attempt to restore parameters from an empty checkpoint")
 
         if env.local_rank == 0:
@@ -230,17 +239,18 @@ class Trainer:
         self.scaler = None
         self.amp_cfg = None
 
-        if amp_cfg is not None:
+        if amp_cfg is not None and amp_cfg['use_amp']:
             scaler_cfg_ = dict(init_loss_scaling=2.**15)
             scaler_cfg_.update(**amp_cfg.pop('scaler', dict()))
             self.scaler = paddle.amp.GradScaler(**scaler_cfg_)
 
+            amp_cfg.pop('use_amp', False)
             self.amp_cfg = amp_cfg
 
             amp_cfg_ = copy.deepcopy(amp_cfg)
             amp_cfg_.pop('enable', False)
             self.model.amp_cfg_ = amp_cfg_
-            logger.info(
+            self.logger.info(
                 'Use AMP train, AMP config: {}, Scaler config: {}'.format(
                     amp_cfg_, scaler_cfg_))
 
@@ -281,7 +291,7 @@ class Trainer:
                     test_cmd = "j=0 | j=$(( $j + 1 ))"
                     rst = os.system(test_cmd)
                     if rst != 0:
-                        logger.warning(
+                        self.logger.warning(
                             "The system doesn't support i++ bash command, will not do cpu core bind"
                         )
                     else:
@@ -307,6 +317,8 @@ class Trainer:
                 if self.cur_iter > self.iters:
                     break
 
+                add_profiler_step(self.profiler_options)
+
                 lr = self.optimizer.get_lr()
 
                 output = training_step(
@@ -323,7 +335,7 @@ class Trainer:
                 for loss_name, loss_value in output.items():
                     losses_sum[loss_name] += float(loss_value)
 
-                timer.step()
+                timer.step(self.batchsize)
                 status = self.scheduler.step()
 
                 if status.do_log and env.local_rank == 0:
@@ -341,10 +353,11 @@ class Trainer:
                         value=lr,
                         step=self.cur_iter)
 
-                    logger.info(
-                        '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f} | ETA {}'
+                    self.logger.info(
+                        '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f}, batch_cost: {:.6f} sec, ips: {:.6f} images/s | ETA {}'
                         .format(self.cur_epoch, self.epochs, self.cur_iter,
-                                self.iters, loss_log, lr, timer.eta))
+                                self.iters, loss_log, lr, timer.speed,
+                                timer.ips, timer.eta))
 
                     losses_sum.clear()
 
@@ -375,7 +388,7 @@ class Trainer:
                     self.checkpoint.record('iters', self.cur_iter)
                     self.checkpoint.record('epochs', self.cur_epoch)
 
-        logger.info('Training is complete.')
+        self.logger.info('Training is complete.')
 
         if env.local_rank == 0:
             if self.train_by_epoch:
@@ -415,7 +428,7 @@ class Trainer:
         msg = 'evaluate on validate dataset'
         metric_obj = self.val_dataset.metric
 
-        for idx, sample in logger.enumerate(self.eval_dataloader, msg=msg):
+        for idx, sample in self.logger.enumerate(self.eval_dataloader, msg=msg):
             result = validation_step(self.model, sample)
             metric_obj.update(predictions=result, ground_truths=sample)
 
