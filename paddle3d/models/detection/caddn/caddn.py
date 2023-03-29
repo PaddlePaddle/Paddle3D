@@ -25,6 +25,7 @@ from paddle3d.models.base import BaseMonoModel
 from paddle3d.models.layers import ConvBNReLU
 from paddle3d.utils import checkpoint
 from paddle3d.utils.logger import logger
+from paddle3d.utils import dtype2float32
 
 from .bev import BEV
 from .f2v import FrustumToVoxel
@@ -71,7 +72,12 @@ class CADDN(BaseMonoModel):
             data["batch_size"] = b
 
         # ffe
-        image_features = self.backbone_3d(images)
+        if hasattr(self, 'amp_cfg_'):
+            with paddle.amp.auto_cast(**self.amp_cfg_):
+                image_features = self.backbone_3d(images)
+            image_features = dtype2float32(image_features)
+        else:
+            image_features = self.backbone_3d(images)
 
         depth_logits = self.class_head(image_features, data["image_shape"])
         data = self.ffe(image_features[0], depth_logits, data)
@@ -91,9 +97,16 @@ class CADDN(BaseMonoModel):
         data["spatial_features"] = bev_features
 
         # backbone_2d
-        data = self.backbone_2d(data)
-        predictions = self.dense_head(data)
-
+        if hasattr(self, 'amp_cfg_'):
+            with paddle.amp.auto_cast(**self.amp_cfg_):
+#                 print(self.backbone_2d)
+                data = self.backbone_2d(data)
+                predictions = self.dense_head(data)
+            predictions = dtype2float32(predictions)
+        else:
+            data = self.backbone_2d(data)
+#             import pdb; pdb.set_trace()
+            predictions = self.dense_head(data)
         loss = self.get_loss(predictions)
         return loss
 

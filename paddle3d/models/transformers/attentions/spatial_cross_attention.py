@@ -418,6 +418,9 @@ class MSDeformableAttention3D(nn.Layer):
 
         # sampling_locations.stop_gradient = True
         # attention_weights.stop_gradient = True
+        value = value.cast(paddle.float32)
+        sampling_locations = sampling_locations.cast(paddle.float32)
+        attention_weights = attention_weights.cast(paddle.float32)
         output = ms_deform_attn.ms_deform_attn(
             value, sampling_locations, attention_weights, spatial_shapes,
             level_start_index, self.im2col_step)
@@ -627,6 +630,7 @@ class CustomMSDeformableAttention(nn.Layer):
 
         value = value.cast(paddle.float32)
         sampling_locations = sampling_locations.cast(paddle.float32)
+        attention_weights = attention_weights.cast(paddle.float32)
         output = ms_deform_attn.ms_deform_attn(
             value, sampling_locations, attention_weights, spatial_shapes,
             level_start_index, self.im2col_step)
