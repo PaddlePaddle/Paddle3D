@@ -75,11 +75,12 @@ class CADDN(BaseMonoModel):
         if hasattr(self, 'amp_cfg_'):
             with paddle.amp.auto_cast(**self.amp_cfg_):
                 image_features = self.backbone_3d(images)
-            image_features = dtype2float32(image_features)
+                depth_logits = self.class_head(image_features, data["image_shape"])
+            depth_logits = dtype2float32(depth_logits)
         else:
+            depth_logits = self.class_head(image_features, data["image_shape"])
             image_features = self.backbone_3d(images)
 
-        depth_logits = self.class_head(image_features, data["image_shape"])
         data = self.ffe(image_features[0], depth_logits, data)
 
         # frustum_to_voxel
@@ -99,13 +100,11 @@ class CADDN(BaseMonoModel):
         # backbone_2d
         if hasattr(self, 'amp_cfg_'):
             with paddle.amp.auto_cast(**self.amp_cfg_):
-#                 print(self.backbone_2d)
                 data = self.backbone_2d(data)
                 predictions = self.dense_head(data)
             predictions = dtype2float32(predictions)
         else:
             data = self.backbone_2d(data)
-#             import pdb; pdb.set_trace()
             predictions = self.dense_head(data)
         loss = self.get_loss(predictions)
         return loss
