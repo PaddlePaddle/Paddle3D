@@ -1,16 +1,16 @@
-batch_size: 1
+batch_size: 2
 epochs: 24
 amp_cfg:
   use_amp: False
   enable: False
-  level: O2
+  level: O1
   scaler:
      init_loss_scaling: 512.0
 
 train_dataset:
   type: NuscenesMVDataset
   dataset_root: ./datasets/nuscenes
-  ann_file: ./datasets/nuscenes/bevformer_nuscenes_annotation_val.pkl
+  ann_file: ./datasets/nuscenes/bevformer_nuscenes_annotation_train.pkl
   queue_length: 3
   use_valid_flag: True
   mode: train
