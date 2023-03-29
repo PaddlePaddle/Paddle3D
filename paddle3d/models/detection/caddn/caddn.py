@@ -76,10 +76,11 @@ class CADDN(BaseMonoModel):
             with paddle.amp.auto_cast(**self.amp_cfg_):
                 image_features = self.backbone_3d(images)
                 depth_logits = self.class_head(image_features, data["image_shape"])
+            image_features = dtype2float32(image_features
             depth_logits = dtype2float32(depth_logits)
         else:
-            depth_logits = self.class_head(image_features, data["image_shape"])
             image_features = self.backbone_3d(images)
+            depth_logits = self.class_head(image_features, data["image_shape"])
 
         data = self.ffe(image_features[0], depth_logits, data)
 
