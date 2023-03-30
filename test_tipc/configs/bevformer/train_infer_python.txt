@@ -13,7 +13,7 @@ train_infer_img_dir:./datasets/nuscenes
 null:null
 ##
 trainer:norm_train
-norm_train:tools/train.py --config configs/bevformer/bevformer_tiny_r50_fpn_fp16_nuscenes.yml --num_workers 4 --log_interval 1 --seed 123 --save_interval 100
+norm_train:tools/train.py --config configs/bevformer/bevformer_tiny_r50_fpn_fp16_nuscenes.yml --num_workers 20 --log_interval 1 --seed 123 --save_interval 100
 pact_train:null
 fpgm_train:null
 distill_train:null
