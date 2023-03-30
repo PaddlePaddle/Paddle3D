@@ -9,3 +9,4 @@ from .positional_encoding import *
 from .samplers import *
 from .transformer import *
 from .utils import *
+from .bevdet_transformer import *

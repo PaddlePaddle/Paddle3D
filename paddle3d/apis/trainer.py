@@ -25,10 +25,11 @@ import paddle3d.env as env
 from paddle3d.apis.checkpoint import Checkpoint, CheckpointABC
 from paddle3d.apis.pipeline import training_step, validation_step
 from paddle3d.apis.scheduler import Scheduler, SchedulerABC
-from paddle3d.utils.logger import Logger, logger
+from paddle3d.utils.logger import logger
 from paddle3d.utils.shm_utils import _get_shared_memory_size_in_M
 from paddle3d.utils.timer import Timer
 from paddle3d.utils.profiler import add_profiler_step
+from paddle3d.utils.ema import ModelEMA
 
 
 def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
@@ -48,11 +49,10 @@ def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
             # Do eval in single device
             BatchSampler = paddle.io.BatchSampler
 
-        batch_sampler = BatchSampler(
-            dataset,
-            batch_size=batch_size,
-            shuffle=shuffle,
-            drop_last=drop_last)
+        batch_sampler = BatchSampler(dataset,
+                                     batch_size=batch_size,
+                                     shuffle=shuffle,
+                                     drop_last=drop_last)
 
         if hasattr(model, 'collate_fn'):
             collate_fn = model.collate_fn
@@ -70,12 +70,11 @@ def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
                                "disable shared_memory in DataLoader")
                 use_shared_memory = False
 
-        return paddle.io.DataLoader(
-            dataset=dataset,
-            batch_sampler=batch_sampler,
-            collate_fn=collate_fn,
-            use_shared_memory=use_shared_memory,
-            **args)
+        return paddle.io.DataLoader(dataset=dataset,
+                                    batch_sampler=batch_sampler,
+                                    collate_fn=collate_fn,
+                                    use_shared_memory=use_shared_memory,
+                                    **args)
 
     return _generate_loader
 
@@ -124,11 +123,13 @@ class Trainer:
             profiler_options: Optional[dict] = None,
             dataloader_fn: Union[dict, Callable] = dict(),
             amp_cfg: Optional[dict] = None,
-            do_bind: Optional[bool] = True):
+            do_bind: Optional[bool] = True,
+            temporal_start_epoch: Optional[int] = 3,
+            use_ema: Optional[bool] = False,
+            ema_cfg: Optional[dict] = {}):
 
         self.model = model
         self.optimizer = optimizer
-        self.batchsize = dataloader_fn['batch_size']
 
         _dataloader_build_fn = default_dataloader_build_fn(
             **dataloader_fn) if isinstance(dataloader_fn,
@@ -145,6 +146,7 @@ class Trainer:
         self.iters_per_epoch = len(self.train_dataloader)
 
         self.do_bind = do_bind
+        self.use_ema = use_ema
 
         if iters is None:
             self.epochs = epochs
@@ -184,11 +186,6 @@ class Trainer:
         if self.optimizer.__class__.__name__ == 'OneCycleAdam':
             self.optimizer.before_run(max_iters=self.iters)
 
-        if checkpoint is not None:
-            self.logger = Logger(output=checkpoint.get('save_dir'))
-        else:
-            self.logger = Logger()
-
         self.checkpoint = default_checkpoint_build_fn(
             **checkpoint) if isinstance(checkpoint, dict) else checkpoint
 
@@ -214,24 +211,26 @@ class Trainer:
                     'Unable to resume training since the train_by_epoch is inconsistent with that saved in the checkpoint'
                 )
 
-            params_dict, opt_dict = self.checkpoint.get()
+            params_dict, opt_dict = self.checkpoint.get(
+                ema=self.ema
+                if self.use_ema else None)  # TODO consider use ema situation
             self.model.set_dict(params_dict)
             self.optimizer.set_state_dict(opt_dict)
             self.cur_iter = self.checkpoint.meta.get('iters')
             self.cur_epoch = self.checkpoint.meta.get('epochs')
             self.scheduler.step(self.cur_iter)
 
-            self.logger.info(
+            logger.info(
                 'Resume model from checkpoint {}, current iter set to {}'.
                 format(self.checkpoint.rootdir, self.cur_iter))
             vdl_file_name = self.checkpoint.meta['vdl_file_name']
         elif resume:
-            self.logger.warning(
+            logger.warning(
                 "Attempt to restore parameters from an empty checkpoint")
 
         if env.local_rank == 0:
-            self.log_writer = LogWriter(
-                logdir=self.checkpoint.rootdir, file_name=vdl_file_name)
+            self.log_writer = LogWriter(logdir=self.checkpoint.rootdir,
+                                        file_name=vdl_file_name)
             self.checkpoint.record('vdl_file_name',
                                    os.path.basename(self.log_writer.file_name))
             self.checkpoint.record('train_by_epoch', self.train_by_epoch)
@@ -239,20 +238,35 @@ class Trainer:
         self.scaler = None
         self.amp_cfg = None
 
-        if amp_cfg is not None and amp_cfg['use_amp']:
+        if amp_cfg is not None:
             scaler_cfg_ = dict(init_loss_scaling=2.**15)
             scaler_cfg_.update(**amp_cfg.pop('scaler', dict()))
             self.scaler = paddle.amp.GradScaler(**scaler_cfg_)
 
-            amp_cfg.pop('use_amp', False)
             self.amp_cfg = amp_cfg
 
             amp_cfg_ = copy.deepcopy(amp_cfg)
             amp_cfg_.pop('enable', False)
             self.model.amp_cfg_ = amp_cfg_
-            self.logger.info(
+            logger.info(
                 'Use AMP train, AMP config: {}, Scaler config: {}'.format(
                     amp_cfg_, scaler_cfg_))
+
+        self.temporal_start_epoch = temporal_start_epoch
+        self.use_ema = use_ema
+        # training with ema
+        if self.use_ema:
+            ema_decay = ema_cfg.get('ema_decay', 0.9998)
+            ema_decay_type = ema_cfg.get('ema_decay_type', 'threshold')
+            cycle_epoch = ema_cfg.get('cycle_epoch', -1)
+            ema_black_list = ema_cfg.get('ema_black_list', None)
+            ema_filter_no_grad = ema_cfg.get('ema_filter_no_grad', False)
+            self.ema = ModelEMA(self.model,
+                                decay=ema_decay,
+                                ema_decay_type=ema_decay_type,
+                                cycle_epoch=cycle_epoch,
+                                ema_black_list=ema_black_list,
+                                ema_filter_no_grad=ema_filter_no_grad)
 
     def train(self):
         """
@@ -291,7 +305,7 @@ class Trainer:
                     test_cmd = "j=0 | j=$(( $j + 1 ))"
                     rst = os.system(test_cmd)
                     if rst != 0:
-                        self.logger.warning(
+                        logger.warning(
                             "The system doesn't support i++ bash command, will not do cpu core bind"
                         )
                     else:
@@ -321,21 +335,21 @@ class Trainer:
 
                 lr = self.optimizer.get_lr()
 
-                output = training_step(
-                    model,
-                    self.optimizer,
-                    sample,
-                    self.cur_iter,
-                    scaler=self.scaler,
-                    amp_cfg=self.amp_cfg,
-                    all_fused_tensors=getattr(self.optimizer,
-                                              'all_fused_tensors', None),
-                    group=group)
+                output = training_step(model,
+                                       self.optimizer,
+                                       sample,
+                                       self.cur_iter,
+                                       scaler=self.scaler,
+                                       amp_cfg=self.amp_cfg,
+                                       all_fused_tensors=getattr(
+                                           self.optimizer, 'all_fused_tensors',
+                                           None),
+                                       group=group)
 
                 for loss_name, loss_value in output.items():
                     losses_sum[loss_name] += float(loss_value)
 
-                timer.step(self.batchsize)
+                timer.step()
                 status = self.scheduler.step()
 
                 if status.do_log and env.local_rank == 0:
@@ -343,26 +357,32 @@ class Trainer:
                     for loss_name, loss_value in losses_sum.items():
                         loss_value = loss_value / self.scheduler.log_interval
                         loss_log += ', {}={:.6f}'.format(loss_name, loss_value)
-                        self.log_writer.add_scalar(
-                            tag='Training/' + loss_name,
-                            value=loss_value,
-                            step=self.cur_iter)
+                        self.log_writer.add_scalar(tag='Training/' + loss_name,
+                                                   value=loss_value,
+                                                   step=self.cur_iter)
 
-                    self.log_writer.add_scalar(
-                        tag='Training/learning_rate',
-                        value=lr,
-                        step=self.cur_iter)
+                    self.log_writer.add_scalar(tag='Training/learning_rate',
+                                               value=lr,
+                                               step=self.cur_iter)
 
-                    self.logger.info(
-                        '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f}, batch_cost: {:.6f} sec, ips: {:.6f} images/s | ETA {}'
+                    logger.info(
+                        '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f} | ETA {}'
                         .format(self.cur_epoch, self.epochs, self.cur_iter,
-                                self.iters, loss_log, lr, timer.speed,
-                                timer.ips, timer.eta))
+                                self.iters, loss_log, lr, timer.eta))
 
                     losses_sum.clear()
 
+                if self.use_ema:  # update ema_weight at each iter
+                    self.ema.update()
+
                 if status.do_eval and env.local_rank == 0:
                     # TODO: whether to save a checkpoint based on the metric
+                    # if use ema, evaluation should be based on ema weights
+                    # so replace current weights with ema weights
+                    if self.use_ema:
+                        # apply ema weight on model
+                        curr_weight = copy.deepcopy(self.model.state_dict())
+                        self.model.set_dict(self.ema.apply())
                     metrics = self.evaluate()
                     for k, v in metrics.items():
                         if not isinstance(v, paddle.Tensor) or v.numel() != 1:
@@ -373,22 +393,34 @@ class Trainer:
                             value=float(v),
                             step=self.cur_iter)
 
+                    if self.use_ema:
+                        # reset original weight
+                        self.model.set_dict(curr_weight)
+
                 if status.save_checkpoint and env.local_rank == 0:
                     if self.train_by_epoch:
                         tag = 'epoch_{}'.format(self.cur_epoch)
                     else:
                         tag = 'iter_{}'.format(self.cur_iter)
 
-                    self.checkpoint.push(
-                        tag=tag,
-                        params_dict=self.model.state_dict(),
-                        opt_dict=self.optimizer.state_dict(),
-                        verbose=True)
+                    if self.use_ema:
+                        self.checkpoint.push(
+                            tag=tag,
+                            params_dict=self.model.state_dict(),
+                            opt_dict=self.optimizer.state_dict(),
+                            verbose=True,
+                            ema_model=self.ema.apply())
+                    else:
+                        self.checkpoint.push(
+                            tag=tag,
+                            params_dict=self.model.state_dict(),
+                            opt_dict=self.optimizer.state_dict(),
+                            verbose=True)
 
                     self.checkpoint.record('iters', self.cur_iter)
                     self.checkpoint.record('epochs', self.cur_epoch)
 
-        self.logger.info('Training is complete.')
+        logger.info('Training is complete.')
 
         if env.local_rank == 0:
             if self.train_by_epoch:
@@ -397,11 +429,17 @@ class Trainer:
                 tag = 'iter_{}'.format(self.iters)
 
             if not self.checkpoint.have(tag):
-                self.checkpoint.push(
-                    tag=tag,
-                    params_dict=self.model.state_dict(),
-                    opt_dict=self.optimizer.state_dict(),
-                    verbose=True)
+                if self.use_ema:
+                    self.checkpoint.push(tag=tag,
+                                         params_dict=self.model.state_dict(),
+                                         opt_dict=self.optimizer.state_dict(),
+                                         verbose=True,
+                                         ema_model=self.ema.apply())
+                else:
+                    self.checkpoint.push(tag=tag,
+                                         params_dict=self.model.state_dict(),
+                                         opt_dict=self.optimizer.state_dict(),
+                                         verbose=True)
 
             self.checkpoint.record('iters', self.iters)
             self.checkpoint.record('epochs', self.epochs)
@@ -428,7 +466,7 @@ class Trainer:
         msg = 'evaluate on validate dataset'
         metric_obj = self.val_dataset.metric
 
-        for idx, sample in self.logger.enumerate(self.eval_dataloader, msg=msg):
+        for idx, sample in logger.enumerate(self.eval_dataloader, msg=msg):
             result = validation_step(self.model, sample)
             metric_obj.update(predictions=result, ground_truths=sample)
 

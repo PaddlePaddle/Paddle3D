@@ -88,11 +88,24 @@ custom_ops = {
         'version':
         '0.1.0',
         'extra_cuda_cflags': ['-arch=sm_60'],
+    },
+    'bev_pool_v2': {
+        'sources': ['bev_pool_v2/bev_pool.cc', 'bev_pool_v2/bev_pool_cuda.cu'],
+        'version': '0.1.0',
+    },
+    'bev_pool_v2_backward': {
+        'sources': [
+            'bev_pool_v2_backward/bev_pool_bkwd.cc',
+            'bev_pool_v2_backward/bev_pool_cuda_bkwd.cu'
+        ],
+        'version':
+        '0.1.0',
     }
 }
 
 
 class CustomOpNotFoundException(Exception):
+
     def __init__(self, op_name):
         self.op_name = op_name
 
@@ -101,6 +114,7 @@ class CustomOpNotFoundException(Exception):
 
 
 class CustomOperatorPathFinder:
+
     def find_module(self, fullname: str, path: str = None):
         if not fullname.startswith('paddle3d.ops'):
             return None
@@ -109,6 +123,7 @@ class CustomOperatorPathFinder:
 
 
 class CustomOperatorPathLoader:
+
     def load_module(self, fullname: str):
         modulename = fullname.split('.')[-1]
 
@@ -125,6 +140,7 @@ class CustomOperatorPathLoader:
 
 
 class Paddle3dCustomOperatorModule(ModuleType):
+
     def __init__(self, modulename: str, fullname: str):
         self.fullname = fullname
         self.modulename = modulename
@@ -144,8 +160,9 @@ class Paddle3dCustomOperatorModule(ModuleType):
 
             args.pop('version')
             with filelock.FileLock(lockfile):
-                return paddle_jit_load(
-                    name=self.modulename, sources=sources, **args)
+                return paddle_jit_load(name=self.modulename,
+                                       sources=sources,
+                                       **args)
         except:
             logger.error("{} builded fail!".format(self.modulename))
             raise

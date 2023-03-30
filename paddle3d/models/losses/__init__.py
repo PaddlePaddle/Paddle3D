@@ -14,7 +14,7 @@
 
 from .focal_loss import (FastFocalLoss, FocalLoss, MultiFocalLoss,
                          SigmoidFocalClassificationLoss, sigmoid_focal_loss,
-                         WeightedFocalLoss)
+                         WeightedFocalLoss, GaussianFocalLoss)
 from .reg_loss import RegLoss, L1Loss
 from .iou_loss import IOULoss, GIoULoss
 from .smooth_l1_loss import smooth_l1_loss, SmoothL1Loss

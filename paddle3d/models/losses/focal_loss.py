@@ -371,3 +371,69 @@ def py_sigmoid_focal_loss(pred,
     loss = weight_reduce_loss(loss, weight, reduction, avg_factor)
 
     return loss
+
+
+def gaussian_focal_loss(pred,
+                        gaussian_target,
+                        weight=None,
+                        alpha=2.0,
+                        gamma=4.0,
+                        reduction='mean',
+                        avg_factor=None):
+    """`Focal Loss <https://arxiv.org/abs/1708.02002>`_ for targets in gaussian
+    distribution.
+    """
+    eps = 1e-12
+    pos_weights = (gaussian_target == 1)
+    neg_weights = (1 - gaussian_target).pow(gamma)
+    pos_loss = -(pred + eps).log() * (1 - pred).pow(alpha) * pos_weights
+    neg_loss = -(1 - pred + eps).log() * pred.pow(alpha) * neg_weights
+    loss = pos_loss + neg_loss
+
+    return loss
+
+
+@manager.LOSSES.add_component
+class GaussianFocalLoss(nn.Layer):
+    """GaussianFocalLoss is a variant of focal loss.
+
+    More details can be found in the `paper
+    <https://arxiv.org/abs/1808.01244>`_
+    Code is modified from `kp_utils.py
+    <https://github.com/princeton-vl/CornerNet/blob/master/models/py_utils/kp_utils.py#L152>`_  # noqa: E501
+    Please notice that the target in GaussianFocalLoss is a gaussian heatmap,
+    not 0/1 binary target.
+
+    Args:
+        alpha (float): Power of prediction.
+        gamma (float): Power of target for negative samples.
+        reduction (str): Options are "none", "mean" and "sum".
+        loss_weight (float): Loss weight of current loss.
+    """
+
+    def __init__(self, alpha=2.0, gamma=4.0, reduction='mean', loss_weight=1.0):
+        super(GaussianFocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.reduction = reduction
+        self.loss_weight = loss_weight
+
+    def forward(self,
+                pred,
+                target,
+                weight=None,
+                avg_factor=None,
+                reduction_override=None):
+        assert reduction_override in (None, 'none', 'mean', 'sum')
+        reduction = (reduction_override
+                     if reduction_override else self.reduction)
+        loss_reg = self.loss_weight * weight_reduce_loss(gaussian_focal_loss(
+            pred,
+            target,
+            alpha=self.alpha,
+            gamma=self.gamma,
+        ),
+                                                         weight=weight,
+                                                         reduction=reduction,
+                                                         avg_factor=avg_factor)
+        return loss_reg
