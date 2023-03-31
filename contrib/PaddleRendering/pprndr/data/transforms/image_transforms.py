@@ -90,6 +90,7 @@ class LoadImage(TransformABC):
     def __call__(self, sample: Dict) -> Dict:
         """
         """
+        # TODO(will-jl944): Simplify reader picking logic
         if self.backend == "pillow":
             sample["image"] = LoadImage.pillow_reader(sample["image"])
         else:
