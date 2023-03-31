@@ -366,7 +366,10 @@ class HungarianAssigner3D(object):
         # assign all indices to backgrounds first
         assigned_gt_inds[:] = 0
         # assign foregrounds based on matching results
-        assigned_gt_inds[matched_row_inds] = matched_col_inds + 1
-        assigned_labels[matched_row_inds] = gt_labels[matched_col_inds]
+        assigned_gt_inds = paddle.scatter(assigned_gt_inds, matched_row_inds,
+                                          matched_col_inds + 1)
+        assigned_labels = paddle.scatter(
+            assigned_labels, matched_row_inds,
+            paddle.gather(gt_labels, matched_col_inds, axis=0))
         return AssignResult(
             num_gts, assigned_gt_inds, None, labels=assigned_labels)

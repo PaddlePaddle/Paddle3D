@@ -85,22 +85,18 @@ class FastFocalLoss(nn.Layer):
 
         pos_pred_pix = _transpose_and_gather_feat(out, ind)  # B x M x C
 
-        bs_ind = []
-        for i in range(pos_pred_pix.shape[0]):
-            bs_idx = paddle.full(
-                shape=[1, pos_pred_pix.shape[1], 1],
-                fill_value=i,
-                dtype=ind.dtype)
-            bs_ind.append(bs_idx)
-        bs_ind = paddle.concat(bs_ind, axis=0)
-        m_ind = []
-        for i in range(pos_pred_pix.shape[1]):
-            m_idx = paddle.full(
-                shape=[pos_pred_pix.shape[0], 1, 1],
-                fill_value=i,
-                dtype=ind.dtype)
-            m_ind.append(m_idx)
-        m_ind = paddle.concat(m_ind, axis=1)
+        index = paddle.arange(start=0, end=pos_pred_pix.shape[0])
+        index = index.reshape([pos_pred_pix.shape[0], 1])
+        bs_ind = paddle.broadcast_to(
+            index, shape=[pos_pred_pix.shape[0], pos_pred_pix.shape[1]])
+        bs_ind = bs_ind.reshape(
+            [pos_pred_pix.shape[0], pos_pred_pix.shape[1], 1])
+
+        index = paddle.arange(start=0, end=pos_pred_pix.shape[1])
+        m_ind = paddle.broadcast_to(
+            index, shape=[pos_pred_pix.shape[0], pos_pred_pix.shape[1]])
+        m_ind = m_ind.reshape([pos_pred_pix.shape[0], pos_pred_pix.shape[1], 1])
+
         cat = paddle.concat([bs_ind, m_ind, cat.unsqueeze(2)], axis=-1)
         pos_pred = pos_pred_pix.gather_nd(cat)  # B x M
 
@@ -144,9 +140,9 @@ class MultiFocalLoss(nn.Layer):
         input_soft = F.softmax(prediction, axis=1) + self.eps
 
         # create the labels one hot tensor
-        target_one_hot = F.one_hot(
-            target, num_classes=prediction.shape[1]).cast(
-                prediction.dtype) + self.eps
+        target_one_hot = F.one_hot(target,
+                                   num_classes=prediction.shape[1]).cast(
+                                       prediction.dtype) + self.eps
         new_shape = [0, len(target_one_hot.shape) - 1
                      ] + [i for i in range(1,
                                            len(target_one_hot.shape) - 1)]
@@ -249,8 +245,9 @@ def sigmoid_focal_loss(inputs, targets, alpha=-1, gamma=2, reduction="none"):
     inputs = inputs.cast('float32')
     targets = targets.cast('float32')
     p = F.sigmoid(inputs)
-    ce_loss = F.binary_cross_entropy_with_logits(
-        inputs, targets, reduction="none")
+    ce_loss = F.binary_cross_entropy_with_logits(inputs,
+                                                 targets,
+                                                 reduction="none")
     p_t = p * targets + (1 - p) * (1 - targets)
     loss = ce_loss * ((1 - p_t)**gamma)
 
@@ -268,6 +265,7 @@ def sigmoid_focal_loss(inputs, targets, alpha=-1, gamma=2, reduction="none"):
 
 @manager.LOSSES.add_component
 class WeightedFocalLoss(nn.Layer):
+
     def __init__(self,
                  use_sigmoid=True,
                  gamma=2.0,
@@ -354,8 +352,8 @@ def py_sigmoid_focal_loss(pred,
     target = target.astype(pred.dtype)
     pt = (1 - pred_sigmoid) * target + pred_sigmoid * (1 - target)
     focal_weight = (alpha * target + (1 - alpha) * (1 - target)) * pt.pow(gamma)
-    loss = F.binary_cross_entropy_with_logits(
-        pred, target, reduction='none') * focal_weight
+    loss = F.binary_cross_entropy_with_logits(pred, target,
+                                              reduction='none') * focal_weight
     if weight is not None:
         if weight.shape != loss.shape:
             if weight.shape[0] == loss.shape[0]:

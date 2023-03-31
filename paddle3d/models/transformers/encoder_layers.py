@@ -338,9 +338,12 @@ class BEVFormerLayer(nn.Layer):
                     attn_mask=attn_masks[attn_index],
                     key_padding_mask=query_key_padding_mask,
                     reference_points=ref_2d,
-                    spatial_shapes=paddle.to_tensor([[bev_h, bev_w]],
-                                                    dtype=paddle.int64),
-                    level_start_index=paddle.to_tensor([0], dtype=paddle.int64),
+                    spatial_shapes=paddle.concat([
+                        paddle.full([1, 1], bev_h, dtype=paddle.int64),
+                        paddle.full([1, 1], bev_w, dtype=paddle.int64)
+                    ],
+                                                 axis=-1),
+                    level_start_index=paddle.full([1], 0, dtype=paddle.int64),
                     **kwargs)
                 attn_index += 1
                 identity = query

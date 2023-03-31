@@ -40,136 +40,52 @@ from paddle3d.models.losses.focal_loss import FocalLoss, WeightedFocalLoss
 from paddle3d.models.losses.weight_loss import WeightedL1Loss
 
 from .samplers.pseudo_sampler import PseudoSampler
-
-
-def reduce_mean(tensor):
-    """"Obtain the mean of tensor on different GPUs."""
-    if not paddle.distributed.is_initialized():
-        return tensor
-    tensor = tensor.clone()
-    paddle.distributed.all_reduce(
-        tensor.scale_(1. / paddle.distributed.get_world_size()))
-    return tensor
-
-
-def multi_apply(func, *args, **kwargs):
-    """Apply function to a list of arguments.
-    """
-    pfunc = partial(func, **kwargs) if kwargs else func
-    map_results = map(pfunc, *args)
-    return tuple(map(list, zip(*map_results)))
-
-
-def pos2posemb3d(pos, num_pos_feats=128, temperature=10000):
-    scale = 2 * math.pi
-    pos = pos * scale
-    dim_t = paddle.arange(num_pos_feats, dtype='int32')
-    dim_t = temperature**(2 * (dim_t // 2) / num_pos_feats)
-    pos_x = pos[..., 0, None] / dim_t
-    pos_y = pos[..., 1, None] / dim_t
-    pos_z = pos[..., 2, None] / dim_t
-    pos_x = paddle.stack((pos_x[..., 0::2].sin(), pos_x[..., 1::2].cos()),
-                         axis=-1).flatten(-2)
-    pos_y = paddle.stack((pos_y[..., 0::2].sin(), pos_y[..., 1::2].cos()),
-                         axis=-1).flatten(-2)
-    pos_z = paddle.stack((pos_z[..., 0::2].sin(), pos_z[..., 1::2].cos()),
-                         axis=-1).flatten(-2)
-    posemb = paddle.concat((pos_y, pos_x, pos_z), axis=-1)
-    return posemb
-
-
-class SELayer(nn.Layer):
-    def __init__(self, channels, act_layer=nn.ReLU, gate_layer=nn.Sigmoid):
-        super().__init__()
-        self.conv_reduce = nn.Conv2D(channels, channels, 1, bias_attr=True)
-        self.act1 = act_layer()
-        self.conv_expand = nn.Conv2D(channels, channels, 1, bias_attr=True)
-        self.gate = gate_layer()
-
-    def forward(self, x, x_se):
-        x_se = self.conv_reduce(x_se)
-        x_se = self.act1(x_se)
-        x_se = self.conv_expand(x_se)
-        return x * self.gate(x_se)
-
-
-class RegLayer(nn.Layer):
-    def __init__(
-            self,
-            embed_dims=256,
-            shared_reg_fcs=2,
-            group_reg_dims=(2, 1, 3, 2, 2),  # xy, z, size, rot, velo
-            act_layer=nn.ReLU,
-            drop=0.0):
-        super().__init__()
-
-        reg_branch = []
-        for _ in range(shared_reg_fcs):
-            reg_branch.append(nn.Linear(embed_dims, embed_dims))
-            reg_branch.append(act_layer())
-            reg_branch.append(nn.Dropout(drop))
-        self.reg_branch = nn.Sequential(*reg_branch)
-
-        self.task_heads = nn.LayerList()
-        for reg_dim in group_reg_dims:
-            task_head = nn.Sequential(
-                nn.Linear(embed_dims, embed_dims), act_layer(),
-                nn.Linear(embed_dims, reg_dim))
-            self.task_heads.append(task_head)
-
-    def forward(self, x):
-        reg_feat = self.reg_branch(x)
-        outs = []
-        for task_head in self.task_heads:
-            out = task_head(reg_feat.clone())
-            outs.append(out)
-        outs = paddle.concat(outs, -1)
-        return outs
+from .petr_head import reduce_mean, SELayer, RegLayer, multi_apply
 
 
 @manager.HEADS.add_component
-class PETRHead(nn.Layer):
-    """Implements the DETR transformer head.
-    See `paper: End-to-End Object Detection with Transformers
-    <https://arxiv.org/pdf/2005.12872>`_ for details.
+class CAPETemporalDNHead(nn.Layer):
+    """Implements the CAPETemporalDNHead.
     """
 
-    def __init__(
-            self,
-            num_classes,
-            in_channels,
-            num_query=100,
-            num_reg_fcs=2,
-            transformer=None,
-            sync_cls_avg_factor=False,
-            positional_encoding=None,
-            code_weights=None,
-            bbox_coder=None,
-            loss_cls=None,
-            loss_bbox=None,
-            loss_iou=None,
-            assigner=None,
-            with_position=True,
-            with_multiview=False,
-            depth_step=0.8,
-            depth_num=64,
-            LID=False,
-            depth_start=1,
-            position_level=0,
-            position_range=[-65, -65, -8.0, 65, 65, 8.0],
-            group_reg_dims=(2, 1, 3, 2, 2),  # xy, z, size, rot, velo
-            scalar=5,
-            noise_scale=0.4,
-            noise_trans=0.0,
-            dn_weight=1.0,
-            split=0.5,
-            init_cfg=None,
-            normedlinear=False,
-            with_fpe=False,
-            with_time=False,
-            with_multi=False,
-            with_denoise=False,
-            **kwargs):
+    def __init__(self,
+                 num_classes,
+                 in_channels,
+                 num_query=100,
+                 num_reg_fcs=2,
+                 transformer=None,
+                 temporal_fusion_layer=None,
+                 sync_cls_avg_factor=False,
+                 positional_encoding=None,
+                 code_weights=None,
+                 bbox_coder=None,
+                 loss_cls=None,
+                 loss_bbox=None,
+                 loss_iou=None,
+                 assigner=None,
+                 with_position=True,
+                 with_multiview=False,
+                 depth_step=0.8,
+                 depth_num=64,
+                 LID=False,
+                 depth_start=1,
+                 position_level=0,
+                 position_range=[-65, -65, -8.0, 65, 65, 8.0],
+                 group_reg_dims=(2, 1, 3, 2, 2),
+                 scalar=5,
+                 noise_scale=0.4,
+                 noise_trans=0.0,
+                 dn_weight=1.0,
+                 split=0.5,
+                 init_cfg=None,
+                 with_fpe=False,
+                 with_time=False,
+                 with_multi=False,
+                 with_denoise=False,
+                 normedlinear=False,
+                 with_prev_aux_loss=False,
+                 prev_aux_loss_weight=0.1,
+                 **kwargs):
 
         if 'code_size' in kwargs:
             self.code_size = kwargs['code_size']
@@ -196,7 +112,7 @@ class PETRHead(nn.Layer):
         self.num_reg_fcs = num_reg_fcs
 
         self.fp16_enabled = False
-        self.embed_dims = 256
+        self.embed_dims = getattr(transformer.cva_layers[0], 'hidden_dim', 512)
         self.depth_step = depth_step
         self.depth_num = depth_num
         self.position_dim = 3 * self.depth_num
@@ -219,7 +135,7 @@ class PETRHead(nn.Layer):
         self.dn_weight = dn_weight
         self.split = split
         self.with_denoise = with_denoise
-        super(PETRHead, self).__init__()
+        super(CAPETemporalDNHead, self).__init__()
 
         self.num_classes = num_classes
         self.in_channels = in_channels
@@ -239,20 +155,16 @@ class PETRHead(nn.Layer):
 
         self.bbox_coder = bbox_coder
         self.pc_range = self.bbox_coder.point_cloud_range
-        self._init_layers()
         self.transformer = transformer
         self.pd_eps = paddle.to_tensor(np.finfo('float32').eps)
-        self.to_static = False
+        self.with_prev_aux_loss = with_prev_aux_loss
+        if self.with_prev_aux_loss:
+            self.prev_aux_loss_weight = prev_aux_loss_weight
+
+        self._init_layers()
 
     def _init_layers(self):
         """Initialize layers of the transformer head."""
-        if self.with_position:
-            self.input_proj = nn.Conv2D(
-                self.in_channels, self.embed_dims, kernel_size=1)
-        else:
-            self.input_proj = nn.Conv2D(
-                self.in_channels, self.embed_dims, kernel_size=1)
-
         cls_branch = []
         for _ in range(self.num_reg_fcs):
             cls_branch.append(nn.Linear(self.embed_dims, self.embed_dims))
@@ -281,97 +193,44 @@ class PETRHead(nn.Layer):
         self.reg_branches = nn.LayerList(
             [copy.deepcopy(reg_branch) for _ in range(self.num_pred)])
 
-        if self.with_multiview:
-            self.adapt_pos3d = nn.Sequential(
-                nn.Conv2D(
-                    self.embed_dims * 3 // 2,
-                    self.embed_dims * 4,
-                    kernel_size=1,
-                    stride=1,
-                    padding=0),
-                nn.ReLU(),
-                nn.Conv2D(
-                    self.embed_dims * 4,
-                    self.embed_dims,
-                    kernel_size=1,
-                    stride=1,
-                    padding=0),
-            )
-        else:
-            self.adapt_pos3d = nn.Sequential(
-                nn.Conv2D(
-                    self.embed_dims,
-                    self.embed_dims,
-                    kernel_size=1,
-                    stride=1,
-                    padding=0),
-                nn.ReLU(),
-                nn.Conv2D(
-                    self.embed_dims,
-                    self.embed_dims,
-                    kernel_size=1,
-                    stride=1,
-                    padding=0),
-            )
-
-        if self.with_position:
-            self.position_encoder = nn.Sequential(
-                nn.Conv2D(
-                    self.position_dim,
-                    self.embed_dims * 4,
-                    kernel_size=1,
-                    stride=1,
-                    padding=0),
-                nn.ReLU(),
-                nn.Conv2D(
-                    self.embed_dims * 4,
-                    self.embed_dims,
-                    kernel_size=1,
-                    stride=1,
-                    padding=0),
-            )
-
-        self.reference_points = nn.Embedding(self.num_query, 3)
-        self.query_embedding = nn.Sequential(
-            nn.Linear(self.embed_dims * 3 // 2, self.embed_dims),
-            nn.ReLU(),
-            nn.Linear(self.embed_dims, self.embed_dims),
-        )
-        if self.with_fpe:
-            self.fpe = SELayer(self.embed_dims)
-
     def init_weights(self):
         """Initialize weights of the transformer head."""
         # The initialization for transformer is important
-        self.input_proj.apply(param_init.reset_parameters)
         self.cls_branches.apply(param_init.reset_parameters)
         self.reg_branches.apply(param_init.reset_parameters)
-        self.adapt_pos3d.apply(param_init.reset_parameters)
-
-        if self.with_position:
-            self.position_encoder.apply(param_init.reset_parameters)
-
-        if self.with_fpe:
-            self.fpe.apply(param_init.reset_parameters)
 
         self.transformer.init_weights()
-        param_init.uniform_init(self.reference_points.weight, 0, 1)
+        # param_init.uniform_init(self.reference_points.weight, 0, 1)
         if self.loss_cls.use_sigmoid:
             bias_val = param_init.init_bias_by_prob(0.01)
             for m in self.cls_branches:
                 param_init.constant_init(m[-1].bias, value=bias_val)
 
-    def position_embeding(self,
-                          img_feats,
-                          img_metas,
-                          masks=None,
-                          lidar2img=None):
+    def _get_camera_parameters(self, img_metas):
+        extrinsics = []
+        intrinsics = []
+        for img_meta in img_metas:
+            extrinsic = []
+            intrinsic = []
+
+            for i in range(len(img_meta['extrinsics'])):
+                # see the definition in dataset!!!!
+                extrinsic.append(img_meta['extrinsics'][i].T)
+                intrinsic.append(img_meta['intrinsics'][i])
+            extrinsics.append(np.asarray(extrinsic))
+            intrinsics.append(np.asarray(intrinsic))
+
+        extrinsics = np.asarray(extrinsics, dtype=np.float32)
+        # (B, N, 4, 4)
+        extrinsics = paddle.to_tensor(extrinsics)
+        intrinsics = np.asarray(intrinsics, dtype=np.float32)
+        intrinsics = paddle.to_tensor(intrinsics)
+        return extrinsics, intrinsics
+
+    def position_embeding(self, img_feats, img_metas, masks=None):
         eps = 1e-5
         if getattr(self, 'in_export_mode', False):
             pad_h, pad_w = img_metas['image_shape']
-        elif self.to_static:
-            pad_shape = [320, 800, 3]
-            pad_h, pad_w, _ = pad_shape
         else:
             pad_h, pad_w, _ = img_metas[0]['pad_shape'][0]
 
@@ -402,12 +261,7 @@ class PETRHead(nn.Layer):
             coords[..., 2:3],
             paddle.ones_like(coords[..., 2:3]) * eps)
 
-        if getattr(self, 'in_export_mode', False):
-            img2lidars = img_metas['img2lidars']
-        elif self.to_static:
-            img2lidar = paddle.linalg.inv(paddle.stack(lidar2img, 0))
-            img2lidars = img2lidar.unsqueeze(0).cast('float32')
-        else:
+        if not getattr(self, 'in_export_mode', False):
             img2lidars = []
             for img_meta in img_metas:
                 img2lidar = []
@@ -419,6 +273,8 @@ class PETRHead(nn.Layer):
 
             # (B, N, 4, 4)
             img2lidars = paddle.to_tensor(img2lidars).astype(coords.dtype)
+        else:
+            img2lidars = img_metas['img2lidars']
 
         coords = coords.reshape([1, 1, W, H, D, 4]).tile(
             [B, N, 1, 1, 1, 1]).reshape([B, N, W, H, D, 4, 1])
@@ -564,11 +420,7 @@ class PETRHead(nn.Layer):
 
         return padded_reference_points, attn_mask, mask_dict
 
-    def forward(self,
-                mlvl_feats,
-                img_metas=None,
-                lidar2img=None,
-                timestamp=None):
+    def forward(self, mlvl_feats, img_metas):
         """Forward function.
         Args:
             mlvl_feats (tuple[Tensor]): Features from the upstream
@@ -587,102 +439,52 @@ class PETRHead(nn.Layer):
 
         batch_size, num_cams = x.shape[0], x.shape[1]
 
-        if self.to_static:
-            pad_shape = [320, 800, 3]
-            input_img_h, input_img_w, _ = pad_shape
-        else:
-            input_img_h, input_img_w, _ = img_metas[0]['pad_shape'][0]
+        input_img_h, input_img_w, _ = img_metas[0]['pad_shape'][0]
         masks = paddle.ones((batch_size, num_cams, input_img_h, input_img_w))
 
-        if self.to_static:
-            img_shape = [320, 800, 3]
-            for img_id in range(batch_size):
-                for cam_id in range(num_cams):
-                    img_h, img_w, _ = img_shape
-                    masks[img_id, cam_id, :img_h, :img_w] = 0
-        else:
-            for img_id in range(batch_size):
-                for cam_id in range(num_cams):
-                    img_h, img_w, _ = img_metas[img_id]['img_shape'][cam_id]
-                    masks[img_id, cam_id, :img_h, :img_w] = 0
-
-        x = self.input_proj(x.flatten(0, 1))
-        x = x.reshape([batch_size, num_cams, *x.shape[-3:]])
+        for img_id in range(batch_size):
+            for cam_id in range(num_cams):
+                img_h, img_w, _ = img_metas[img_id]['img_shape'][cam_id]
+                masks[img_id, cam_id, :img_h, :img_w] = 0
 
         # interpolate masks to have the same spatial shape with x
-        masks = F.interpolate(masks, size=x.shape[-2:]).cast('bool')
+        masks = F.interpolate(masks, size=x.shape[-2:]).astype('bool')
 
-        if self.with_position:
-            coords_position_embeding, _ = self.position_embeding(
-                mlvl_feats, img_metas, masks, lidar2img=lidar2img)
+        extrinsics, intrinsics = self._get_camera_parameters(img_metas)
 
-            if self.with_fpe:
-                coords_position_embeding = self.fpe(
-                    coords_position_embeding.flatten(0, 1),
-                    x.flatten(0, 1)).reshape(x.shape)
-
-            pos_embed = coords_position_embeding
-
-            if self.with_multiview:
-                sin_embed = self.positional_encoding(masks)
-                sin_embed = self.adapt_pos3d(sin_embed.flatten(0, 1)).reshape(
-                    x.shape)
-                pos_embed = pos_embed + sin_embed
-            else:
-                pos_embeds = []
-                for i in range(num_cams):
-                    xy_embed = self.positional_encoding(masks[:, i, :, :])
-                    pos_embeds.append(xy_embed.unsqueeze(1))
-                sin_embed = paddle.concat(pos_embeds, 1)
-                sin_embed = self.adapt_pos3d(sin_embed.flatten(0, 1)).reshape(
-                    x.shape)
-                pos_embed = pos_embed + sin_embed
-        else:
-            if self.with_multiview:
-                pos_embed = self.positional_encoding(masks)
-                pos_embed = self.adapt_pos3d(pos_embed.flatten(0, 1)).reshape(
-                    x.shape)
-            else:
-                pos_embeds = []
-                for i in range(num_cams):
-                    pos_embed = self.positional_encoding(masks[:, i, :, :])
-                    pos_embeds.append(pos_embed.unsqueeze(1))
-                pos_embed = paddle.concat(pos_embeds, 1)
-
-        reference_points = self.reference_points.weight
-        if self.with_denoise:
-            reference_points, attn_mask, mask_dict = self.prepare_for_dn(
-                batch_size, reference_points, img_metas)
-            query_embeds = self.query_embedding(pos2posemb3d(reference_points))
-            outs_dec, _ = self.transformer(x, masks, query_embeds, pos_embed,
-                                           attn_mask, self.reg_branches)
-        else:
-            mask_dict = None
-            query_embeds = self.query_embedding(pos2posemb3d(reference_points))
-            reference_points = reference_points.unsqueeze(0).tile(
-                [batch_size, 1, 1])
-
-            outs_dec, _ = self.transformer(x, masks, query_embeds, pos_embed,
-                                           self.reg_branches)
-
-            outs_dec = nan_to_num(outs_dec)
+        R = extrinsics[:, :, :3, :3]
+        R_inv = paddle.inverse(R)
+        t = R_inv @ extrinsics[:, :, :3, 3:4]
+        I_inv = paddle.inverse(intrinsics[:, :, :3, :3])
 
         if self.with_time:
             time_stamps = []
-            if self.to_static:
-                time_stamp = timestamp.unsqueeze(0).cast(x.dtype)
-            else:
-                for img_meta in img_metas:
-                    time_stamps.append(np.asarray(img_meta['timestamp']))
-                time_stamp = paddle.to_tensor(time_stamps, dtype=x.dtype)
+            for img_meta in img_metas:
+                time_stamps.append(np.asarray(img_meta['timestamp'][:12]))
 
+            time_stamp = paddle.to_tensor(time_stamps, dtype=x.dtype)
             time_stamp = time_stamp.reshape([batch_size, -1, 6])
 
             mean_time_stamp = (
                 time_stamp[:, 1, :] - time_stamp[:, 0, :]).mean(-1)
 
+        # forward twice
+        mask_dict = None
+        if not self.with_prev_aux_loss:
+            outs_dec, reference_points, mask_dict = self.transformer(
+                x, masks, I_inv, R_inv, t, img_metas, False)
+            outs_dec = nan_to_num(outs_dec)
+        else:
+            outs_dec, prev_out_dec, reference_points, mask_dict = self.transformer(
+                x, masks, I_inv, R_inv, t, img_metas, True)
+            outs_dec = nan_to_num(outs_dec)
+            prev_out_dec = nan_to_num(prev_out_dec)
+
         outputs_classes = []
         outputs_coords = []
+        prev_outputs_classes = []
+        prev_outputs_coords = []
+
         for lvl in range(outs_dec.shape[0]):
             reference = inverse_sigmoid(reference_points.clone())
             assert reference.shape[-1] == 3
@@ -702,6 +504,22 @@ class PETRHead(nn.Layer):
             outputs_coord = tmp
             outputs_classes.append(outputs_class)
             outputs_coords.append(outputs_coord)
+
+            if self.with_prev_aux_loss:
+                prev_outputs_class = self.cls_branches[lvl](prev_out_dec[lvl])
+                prev_tmp = self.reg_branches[lvl](prev_out_dec[lvl])
+
+                prev_tmp[..., 0:2] += reference[..., 0:2]
+                prev_tmp[..., 0:2] = F.sigmoid(prev_tmp[..., 0:2])
+                prev_tmp[..., 4:5] += reference[..., 2:3]
+                prev_tmp[..., 4:5] = F.sigmoid(prev_tmp[..., 4:5])
+                if self.with_time:
+                    prev_tmp[..., 8:] = prev_tmp[
+                        ..., 8:] / mean_time_stamp[:, None, None]
+
+                prev_outputs_coord = prev_tmp
+                prev_outputs_classes.append(prev_outputs_class)
+                prev_outputs_coords.append(prev_outputs_coord)
 
         all_cls_scores = paddle.stack(outputs_classes)
         all_bbox_preds = paddle.stack(outputs_coords)
@@ -739,6 +557,38 @@ class PETRHead(nn.Layer):
                 'enc_bbox_preds': None,
                 'dn_mask_dict': None,
             }
+
+        if self.with_prev_aux_loss:
+            prev_all_cls_scores = paddle.stack(prev_outputs_classes)
+            prev_all_bbox_preds = paddle.stack(prev_outputs_coords)
+
+            prev_all_bbox_preds[..., 0:1] = (
+                prev_all_bbox_preds[..., 0:1] *
+                (self.pc_range[3] - self.pc_range[0]) + self.pc_range[0])
+            prev_all_bbox_preds[..., 1:2] = (
+                prev_all_bbox_preds[..., 1:2] *
+                (self.pc_range[4] - self.pc_range[1]) + self.pc_range[1])
+            prev_all_bbox_preds[..., 4:5] = (
+                prev_all_bbox_preds[..., 4:5] *
+                (self.pc_range[5] - self.pc_range[2]) + self.pc_range[2])
+
+            outs['mean_time_stamp'] = mean_time_stamp
+
+            if mask_dict and mask_dict['pad_size'] > 0:
+                prev_output_known_class = prev_all_cls_scores[:, :, :mask_dict[
+                    'pad_size'], :]
+                prev_output_known_coord = prev_all_bbox_preds[:, :, :mask_dict[
+                    'pad_size'], :]
+                prev_outputs_class = prev_all_cls_scores[:, :, mask_dict[
+                    'pad_size']:, :]
+                prev_outputs_coord = prev_all_bbox_preds[:, :, mask_dict[
+                    'pad_size']:, :]
+                mask_dict['prev_output_known_lbs_bboxes'] = (
+                    prev_output_known_class, prev_output_known_coord)
+                outs['dn_mask_dict'] = mask_dict
+                outs['prev_all_cls_scores'] = prev_outputs_class
+                outs['prev_all_bbox_preds'] = prev_outputs_coord
+
         return outs
 
     def prepare_for_loss(self, mask_dict):
@@ -759,8 +609,29 @@ class PETRHead(nn.Layer):
                 [1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
             output_known_coord = output_known_coord.transpose(
                 [1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
+            if self.with_prev_aux_loss:
+                prev_output_known_class, prev_output_known_coord = mask_dict[
+                    'prev_output_known_lbs_bboxes']
+                prev_output_known_class = prev_output_known_class.transpose(
+                    [1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
+                prev_output_known_coord = prev_output_known_coord.transpose(
+                    [1, 2, 0, 3])[(bid, map_known_indice)].transpose([1, 0, 2])
         num_tgt = known_indice.numel()
-        return known_labels, known_bboxs, output_known_class, output_known_coord, num_tgt
+        if self.with_prev_aux_loss:
+            return known_labels, known_bboxs, output_known_class, output_known_coord, prev_output_known_class, prev_output_known_coord, num_tgt
+        else:
+            return known_labels, known_bboxs, output_known_class, output_known_coord, num_tgt
+
+    def loss_single_with_prev_loss(self,
+                                   cls_scores,
+                                   bbox_preds,
+                                   prev_cls_scores,
+                                   prev_bbox_preds,
+                                   time,
+                                   gt_bboxes_list,
+                                   gt_labels_list,
+                                   gt_bboxes_ignore_list=None):
+        pass
 
     def dn_loss_single(self,
                        cls_scores,
@@ -817,131 +688,6 @@ class PETRHead(nn.Layer):
         loss_bbox = nan_to_num(loss_bbox)
 
         return self.dn_weight * loss_cls, self.dn_weight * loss_bbox
-
-    def export_forward(self, mlvl_feats, img_metas, time_stamp=None):
-        """Forward function.
-        Args:
-            mlvl_feats (tuple[Tensor]): Features from the upstream
-                network, each is a 5D-tensor with shape
-                (B, N, C, H, W).
-        Returns:
-            all_cls_scores (Tensor): Outputs from the classification head, \
-                shape [nb_dec, bs, num_query, cls_out_channels]. Note \
-                cls_out_channels should includes background.
-            all_bbox_preds (Tensor): Sigmoid outputs from the regression \
-                head with normalized coordinate format (cx, cy, w, l, cz, h, theta, vx, vy). \
-                Shape [nb_dec, bs, num_query, 9].
-        """
-
-        x = mlvl_feats[self.position_level]
-
-        batch_size, num_cams = x.shape[0], x.shape[1]
-
-        input_img_h, input_img_w = img_metas['image_shape']
-
-        masks = paddle.zeros([batch_size, num_cams, input_img_h, input_img_w])
-
-        x = self.input_proj(x.flatten(0, 1))
-        x = x.reshape([batch_size, num_cams, *x.shape[-3:]])
-
-        # interpolate masks to have the same spatial shape with x
-        masks = F.interpolate(masks, size=x.shape[-2:]).cast('bool')
-
-        if self.with_position:
-            coords_position_embeding, _ = self.position_embeding(
-                mlvl_feats, img_metas, masks)
-
-            if self.with_fpe:
-                coords_position_embeding = self.fpe(
-                    coords_position_embeding.flatten(0, 1),
-                    x.flatten(0, 1)).reshape(x.shape)
-
-            pos_embed = coords_position_embeding
-
-            if self.with_multiview:
-                sin_embed = self.positional_encoding(masks)
-                sin_embed = self.adapt_pos3d(sin_embed.flatten(0, 1)).reshape(
-                    x.shape)
-                pos_embed = pos_embed + sin_embed
-            else:
-                pos_embeds = []
-                for i in range(num_cams):
-                    xy_embed = self.positional_encoding(masks[:, i, :, :])
-                    pos_embeds.append(xy_embed.unsqueeze(1))
-                sin_embed = paddle.concat(pos_embeds, 1)
-                sin_embed = self.adapt_pos3d(sin_embed.flatten(0, 1)).reshape(
-                    x.shape)
-                pos_embed = pos_embed + sin_embed
-        else:
-            if self.with_multiview:
-                pos_embed = self.positional_encoding(masks)
-                pos_embed = self.adapt_pos3d(pos_embed.flatten(0, 1)).reshape(
-                    x.shape)
-            else:
-                pos_embeds = []
-                for i in range(num_cams):
-                    pos_embed = self.positional_encoding(masks[:, i, :, :])
-                    pos_embeds.append(pos_embed.unsqueeze(1))
-                pos_embed = paddle.concat(pos_embeds, 1)
-
-        reference_points = self.reference_points.weight
-        query_embeds = self.query_embedding(pos2posemb3d(reference_points))
-
-        reference_points = reference_points.unsqueeze(0).tile(
-            [batch_size, 1, 1])
-
-        outs_dec, _ = self.transformer(x, masks, query_embeds, pos_embed,
-                                       self.reg_branches)
-
-        outs_dec = nan_to_num(outs_dec)
-
-        if self.with_time:
-            time_stamp = time_stamp.reshape([batch_size, -1, 6])
-            mean_time_stamp = (
-                time_stamp[:, 1, :] - time_stamp[:, 0, :]).mean(-1)
-
-        outputs_classes = []
-        outputs_coords = []
-        for lvl in range(outs_dec.shape[0]):
-            reference = inverse_sigmoid(reference_points.clone())
-            assert reference.shape[-1] == 3
-            outputs_class = self.cls_branches[lvl](outs_dec[lvl])
-            tmp = self.reg_branches[lvl](outs_dec[lvl])
-
-            tmp[..., 0:2] += reference[..., 0:2]
-
-            tmp[..., 0:2] = F.sigmoid(tmp[..., 0:2])
-            tmp[..., 4:5] += reference[..., 2:3]
-
-            tmp[..., 4:5] = F.sigmoid(tmp[..., 4:5])
-
-            if self.with_time:
-                tmp[..., 8:] = tmp[..., 8:] / mean_time_stamp[:, None, None]
-
-            outputs_coord = tmp
-            outputs_classes.append(outputs_class)
-            outputs_coords.append(outputs_coord)
-
-        all_cls_scores = paddle.stack(outputs_classes)
-        all_bbox_preds = paddle.stack(outputs_coords)
-
-        all_bbox_preds[..., 0:1] = (
-            all_bbox_preds[..., 0:1] * (self.pc_range[3] - self.pc_range[0]) +
-            self.pc_range[0])
-        all_bbox_preds[..., 1:2] = (
-            all_bbox_preds[..., 1:2] * (self.pc_range[4] - self.pc_range[1]) +
-            self.pc_range[1])
-        all_bbox_preds[..., 4:5] = (
-            all_bbox_preds[..., 4:5] * (self.pc_range[5] - self.pc_range[2]) +
-            self.pc_range[2])
-
-        outs = {
-            'all_cls_scores': all_cls_scores,
-            'all_bbox_preds': all_bbox_preds,
-            # 'enc_cls_scores': None,
-            # 'enc_bbox_preds': None,
-        }
-        return outs
 
     def _get_target_single(self,
                            cls_score,
@@ -1111,7 +857,7 @@ class PETRHead(nn.Layer):
         # regression L1 loss
         bbox_preds = bbox_preds.reshape([-1, bbox_preds.shape[-1]])
         normalized_bbox_targets = normalize_bbox(bbox_targets, self.pc_range)
-        # paddle.all
+
         isnotnan = paddle.isfinite(normalized_bbox_targets).all(axis=-1)
         bbox_weights = bbox_weights * self.code_weights
 

@@ -48,7 +48,7 @@ def _get_inverse_affine_matrix(center: List[float],
     # Thus, the inverse is M^-1 = C * RotateScaleShear^-1 * C^-1 * T^-1
 
     def radians(angle):
-        pi = paddle.to_tensor(np.pi)
+        pi = paddle.full([1], np.pi)
         degree = pi / 180. * angle
         return degree
 
@@ -120,8 +120,10 @@ def _gen_affine_grid(
     base_grid[..., 1] = y_grid
     base_grid[..., 2] = 1
 
-    rescaled_theta = theta.transpose([0, 2, 1]) / paddle.to_tensor(
-        [0.5 * w, 0.5 * h], dtype=theta.dtype)
+    tmp_tensor = paddle.to_tensor([0.5 * w, 0.5 * h],
+                                  dtype=theta.dtype,
+                                  place=paddle.CPUPlace())
+    rescaled_theta = theta.transpose([0, 2, 1]) / paddle.to_tensor(tmp_tensor)
     output_grid = base_grid.reshape([1, oh * ow, 3]).bmm(rescaled_theta)
     return output_grid.reshape([1, oh, ow, 2])
 
@@ -185,7 +187,7 @@ def _rotate(img: paddle.Tensor,
     ow, oh = img.shape[-1], img.shape[-2]
     w, h = img.shape[-1], img.shape[-2]
     dtype = img.dtype if paddle.is_floating_point(img) else paddle.float32
-    theta = paddle.to_tensor(matrix, dtype=dtype).reshape([1, 2, 3])
+    theta = paddle.concat(matrix).reshape([1, 2, 3])
     # grid will be generated on the same device as theta and img
     grid = _gen_affine_grid(theta, w=w, h=h, ow=ow, oh=oh)
     # np.save("grid.npy", grid.numpy())

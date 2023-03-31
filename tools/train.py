@@ -24,7 +24,7 @@ from paddle3d.apis.config import Config
 from paddle3d.apis.trainer import Trainer
 from paddle3d.slim import update_dic, get_qat_config
 from paddle3d.utils.checkpoint import load_pretrained_model
-from paddle3d.utils.logger import logger
+from paddle3d.utils.logger import Logger
 
 
 def parse_args():
@@ -119,6 +119,36 @@ def parse_args():
         default=None,
         type=str)
     parser.add_argument(
+        '--to_static',
+        dest='to_static',
+        help='Whether to static training.',
+        default=False,
+        type=bool)
+
+    # for profiler
+    parser.add_argument(
+        '-p',
+        '--profiler_options',
+        type=str,
+        default=None,
+        help=
+        'The option of profiler, which should be in format \"key1=value1;key2=value2;key3=value3\".'
+    )
+
+    # add for amp training
+    parser.add_argument(
+        '--amp',
+        action='store_true',
+        default=False,
+        help='whether to enable amp training')
+    parser.add_argument(
+        '--amp_level',
+        type=str,
+        default='O2',
+        choices=['O1', 'O2'],
+        help='level of amp training; O2 represent pure fp16')
+
+    parser.add_argument(
         '--do_bind',
         dest='do_bind',
         help='Whether to cpu bind core. '
@@ -131,6 +161,7 @@ def parse_args():
 def main(args):
     """
     """
+    logger = Logger(output=args.save_dir)
     place = 'gpu' if paddle.is_compiled_with_cuda() else 'cpu'
     paddle.set_device(place)
 
@@ -156,6 +187,13 @@ def main(args):
             )
 
     cfg = Config(path=args.cfg)
+
+    if args.to_static:
+        cfg.dic['model']['to_static'] = args.to_static
+
+    if args.amp:
+        cfg.dic['amp_cfg']['use_amp'] = args.amp
+        cfg.dic['amp_cfg']['level'] = args.amp_level
 
     if args.model is not None:
         load_pretrained_model(cfg.model, args.model)
@@ -206,6 +244,7 @@ def main(args):
             'batch_size': batch_size,
             'num_workers': args.num_workers,
         },
+        'profiler_options': args.profiler_options,
         'do_bind': args.do_bind
     })
 

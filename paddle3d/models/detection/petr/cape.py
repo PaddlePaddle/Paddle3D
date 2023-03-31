@@ -25,102 +25,24 @@ import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 from PIL import Image
-from paddle.static import InputSpec
 
-from paddle3d.apis import manager, apply_to_static
+from paddle3d.apis import manager
 from paddle3d.models.base import BaseMultiViewModel
 from paddle3d.geometries import BBoxes3D
 from paddle3d.sample import Sample, SampleMeta
 from paddle3d.utils import dtype2float32
-from paddle3d.models.backbones.vovnetcp import _OSA_layer
 
-
-class GridMask(nn.Layer):
-    def __init__(self,
-                 use_h,
-                 use_w,
-                 rotate=1,
-                 offset=False,
-                 ratio=0.5,
-                 mode=0,
-                 prob=1.):
-        super(GridMask, self).__init__()
-        self.use_h = use_h
-        self.use_w = use_w
-        self.rotate = rotate
-        self.offset = offset
-        self.ratio = ratio
-        self.mode = mode
-        self.st_prob = prob
-        self.prob = prob
-
-    def set_prob(self, epoch, max_epoch):
-        self.prob = self.st_prob * epoch / max_epoch  #+ 1.#0.5
-
-    def forward(self, x):
-        if np.random.rand() > self.prob or not self.training:
-            return x
-        n, c, h, w = x.shape
-        x = x.reshape([-1, h, w])
-        hh = int(1.5 * h)
-        ww = int(1.5 * w)
-        d = np.random.randint(2, h)
-        self.l = min(max(int(d * self.ratio + 0.5), 1), d - 1)
-        mask = np.ones((hh, ww), np.float32)
-        st_h = np.random.randint(d)
-        st_w = np.random.randint(d)
-        if self.use_h:
-            for i in range(hh // d):
-                s = d * i + st_h
-                t = min(s + self.l, hh)
-                mask[s:t, :] *= 0
-        if self.use_w:
-            for i in range(ww // d):
-                s = d * i + st_w
-                t = min(s + self.l, ww)
-                mask[:, s:t] *= 0
-
-        r = np.random.randint(self.rotate)
-        mask = Image.fromarray(np.uint8(mask))
-        mask = mask.rotate(r)
-        mask = np.asarray(mask)
-        mask = mask[(hh - h) // 2:(hh - h) // 2 +
-                    h, (ww - w) // 2:(ww - w) // 2 + w]
-
-        mask = paddle.to_tensor(mask).astype('float32')
-        if self.mode == 1:
-            mask = 1 - mask
-        mask = mask.expand_as(x)
-        if self.offset:
-            offset = paddle.to_tensor(
-                2 * (np.random.rand(h, w) - 0.5)).astype('float32')
-            x = x * mask + offset * (1 - mask)
-        else:
-            x = x * mask
-
-        return x.reshape([n, c, h, w])
-
-
-def bbox3d2result(bboxes, scores, labels, attrs=None):
-    """Convert detection results to a list of numpy arrays.
-    """
-    result_dict = dict(
-        boxes_3d=bboxes.cpu(), scores_3d=scores.cpu(), labels_3d=labels.cpu())
-
-    if attrs is not None:
-        result_dict['attrs_3d'] = attrs.cpu()
-
-    return result_dict
+from .petr3d import GridMask, bbox3d2result
 
 
 @manager.MODELS.add_component
-class Petr3D(BaseMultiViewModel):
+class CAPE(BaseMultiViewModel):
     """Petr3D."""
 
     def __init__(self,
                  use_grid_mask=False,
-                 backbone=None,
-                 neck=None,
+                 img_backbone=None,
+                 img_neck=None,
                  pts_bbox_head=None,
                  img_roi_head=None,
                  img_rpn_head=None,
@@ -130,40 +52,15 @@ class Petr3D(BaseMultiViewModel):
                  use_recompute=False,
                  us_ms=False,
                  multi_scale=None,
-                 box_with_velocity: bool = False,
-                 to_static=False):
+                 box_with_velocity: bool = False):
         num_cameras = 12 if pts_bbox_head.with_time else 6
-        super(Petr3D, self).__init__(
+        super(CAPE, self).__init__(
             box_with_velocity=box_with_velocity,
             num_cameras=num_cameras,
             need_timestamp=pts_bbox_head.with_time)
         self.pts_bbox_head = pts_bbox_head
-        self.backbone = backbone
-        self.neck = neck
-        self.to_static = to_static
-        if self.to_static:
-            self.pts_bbox_head.to_static = True
-            for transformerlayer in self.pts_bbox_head.transformer.decoder.layers:
-                transformerlayer.use_recompute = False
-            for backbonelayer in self.backbone.sublayers():
-                if isinstance(backbonelayer, _OSA_layer):
-                    backbonelayer.use_checkpoint = False
-            specs_head = ([
-                InputSpec([1, 12, 256, 20, 50]),
-                InputSpec([1, 12, 256, 10, 25])
-            ], None, [
-                InputSpec([4, 4], dtype=paddle.float64) for i in range(12)
-            ], InputSpec([12]))
-            specs_neck = [[
-                InputSpec([12, 768, 20, 50]),
-                InputSpec([12, 1024, 10, 25])
-            ]]
-            specs_backbone = [InputSpec([12, 3, 320, 800])]
-            apply_to_static(
-                to_static, self.pts_bbox_head, image_shape=specs_head)
-            apply_to_static(
-                to_static, self.backbone, image_shape=specs_backbone)
-            apply_to_static(to_static, self.neck, image_shape=specs_neck)
+        self.img_backbone = img_backbone
+        self.img_neck = img_neck
         self.use_grid_mask = use_grid_mask
         self.use_recompute = use_recompute
         self.us_ms = us_ms
@@ -177,7 +74,7 @@ class Petr3D(BaseMultiViewModel):
         self.init_weight()
 
     def init_weight(self, bias_lr_factor=0.1):
-        for _, param in self.backbone.named_parameters():
+        for _, param in self.img_backbone.named_parameters():
             param.optimize_attr['learning_rate'] = bias_lr_factor
 
         self.pts_bbox_head.init_weights()
@@ -215,13 +112,13 @@ class Petr3D(BaseMultiViewModel):
                         mode='bilinear',
                         align_corners=True)
                     ms_img.append(ms_img)
-                    img_feat = self.backbone(s_img)
+                    img_feat = self.img_backbone(s_img)
                     if isinstance(img_feat, dict):
                         img_feat = list(img_feat.values())
                     img_feats.append(img_feat)
                 if len(self.multi_scale) > 1:
                     for i, scale in enumerate(self.multi_scale):
-                        img_feats[i] = self.neck(img_feats[i])
+                        img_feats[i] = self.img_neck(img_feats[i])
                     if len(self.multi_scale) == 2:
                         img_feats = [
                             paddle.concat((img_feats[1][-2],
@@ -249,28 +146,23 @@ class Petr3D(BaseMultiViewModel):
                                                align_corners=True)), 1)
                         ]
                 else:
-                    img_feats = self.neck(img_feats[-1])
+                    img_feats = self.img_neck(img_feats[-1])
             else:
                 if os.environ.get('FLAGS_opt_layout',
                                   'False').lower() == 'true':
                     img_nhwc = paddle.transpose(img, [0, 2, 3, 1])
                     img_feats = []
-                    img_feats_nhwc = self.backbone(img_nhwc)
+                    img_feats_nhwc = self.img_backbone(img_nhwc)
                     if isinstance(img_feats_nhwc, dict):
                         img_feats_nhwc = list(img_feats_nhwc.values())
                     for img_feat_nhwc in img_feats_nhwc:
                         img_feats.append(
                             paddle.transpose(img_feat_nhwc, [0, 3, 1, 2]))
                 else:
-                    img_feats = self.backbone(img)
-
-                    if hasattr(self, 'amp_cfg_'):
-                        img_feats = dtype2float32(img_feats)
-
+                    img_feats = self.img_backbone(img)
                     if isinstance(img_feats, dict):
                         img_feats = list(img_feats.values())
-                # breakpoint()
-                img_feats = self.neck(img_feats)
+                img_feats = self.img_neck(img_feats)
         else:
             return None
 
@@ -295,15 +187,7 @@ class Petr3D(BaseMultiViewModel):
                           gt_bboxes_ignore=None):
         """
         """
-        if self.to_static:
-            timestamp = paddle.to_tensor(np.asarray(img_metas[0]['timestamp']))
-            outs = self.pts_bbox_head(
-                pts_feats,
-                img_metas=None,
-                lidar2img=img_metas[0]['lidar2img'],
-                timestamp=timestamp)
-        else:
-            outs = self.pts_bbox_head(pts_feats, img_metas=img_metas)
+        outs = self.pts_bbox_head(pts_feats, img_metas)
         loss_inputs = [gt_bboxes_3d, gt_labels_3d, outs]
         losses = self.pts_bbox_head.loss(*loss_inputs)
 
@@ -324,7 +208,7 @@ class Petr3D(BaseMultiViewModel):
                       img_mask=None):
         """
         """
-        self.backbone.train()
+        self.img_backbone.train()
 
         if samples is not None:
             img_metas = samples['meta']
@@ -453,11 +337,11 @@ class Petr3D(BaseMultiViewModel):
     @property
     def save_name(self):
         if self.pts_bbox_head.with_time:
-            return "petrv2_inference"
-        return "petr_inference"
+            return "capet_inference"
+        return "cape_inference"
 
     @property
     def apollo_deploy_name(self):
         if self.pts_bbox_head.with_time:
-            return "PETR_V2"
-        return "PETR_V1"
+            return "CAPET"
+        return "CAPE"

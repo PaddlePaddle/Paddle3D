@@ -23,12 +23,13 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle.static import InputSpec
 
-from paddle3d.apis import manager
+from paddle3d.apis import manager, apply_to_static
 from paddle3d.geometries import BBoxes3D
 from paddle3d.models.base import BaseLidarModel
 from paddle3d.sample import Sample, SampleMeta
 from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
+from paddle3d.utils import dtype2float32
 
 
 class DictObject(Dict):
@@ -51,7 +52,8 @@ class CenterPoint(BaseLidarModel):
                  bbox_head,
                  test_cfg=None,
                  pretrained=None,
-                 box_with_velocity: bool = False):
+                 box_with_velocity: bool = False,
+                 to_static=False):
         super().__init__(
             with_voxelizer=True, box_with_velocity=box_with_velocity)
         self.voxelizer = voxelizer
@@ -64,6 +66,41 @@ class CenterPoint(BaseLidarModel):
         self.sync_bn = True
         if pretrained is not None:
             load_pretrained_model(self, self.pretrained)
+        self.to_static = to_static
+        if self.to_static:
+            specs_voxelizer = [[InputSpec([-1, 4]) for i in range(4)]]
+            apply_to_static(
+                to_static, self.voxelizer, image_shape=specs_voxelizer)
+
+            specs_voxel_encoder = [
+                InputSpec([-1, 100, 4]),
+                InputSpec([-1], dtype=paddle.int32),
+                InputSpec([-1, 4], dtype=paddle.int32)
+            ]
+            apply_to_static(
+                to_static, self.voxel_encoder, image_shape=specs_voxel_encoder)
+
+            specs_middle_encoder = [
+                InputSpec([-1, 64]),
+                InputSpec([-1, 4], dtype=paddle.int32), 4
+            ]
+            apply_to_static(
+                to_static,
+                self.middle_encoder,
+                image_shape=specs_middle_encoder)
+
+            specs_backbone = [InputSpec([4, 64, 496, 432])]
+            apply_to_static(
+                to_static, self.backbone, image_shape=specs_backbone)
+
+            specs_neck = [(InputSpec([4, 64, 496, 432]),
+                           InputSpec([4, 128, 248, 216]),
+                           InputSpec([4, 256, 124, 108]))]
+            apply_to_static(to_static, self.neck, image_shape=specs_neck)
+
+            specs_bbox_head = [InputSpec([4, 384, 248, 216])]
+            apply_to_static(
+                to_static, self.bbox_head, image_shape=specs_bbox_head)
 
     def deploy_preprocess(self, points):
         def true_fn(points):
@@ -105,7 +142,12 @@ class CenterPoint(BaseLidarModel):
         points = samples["data"]
 
         data = dict(points=points, batch_size=batch_size)
-        x = self.extract_feat(data)
+        if hasattr(self, 'amp_cfg_'):
+            with paddle.amp.auto_cast(**self.amp_cfg_):
+                x = self.extract_feat(data)
+            x = dtype2float32(x)
+        else:
+            x = self.extract_feat(data)
         preds, x = self.bbox_head(x)
 
         return self.bbox_head.loss(samples, preds, self.test_cfg)
