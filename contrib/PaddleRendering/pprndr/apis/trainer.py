@@ -341,7 +341,7 @@ class Trainer(object):
             raise RuntimeError('No evaluation dataset specified!')
 
         os.makedirs(save_dir, exist_ok=True)
-        msg = 'evaluate on validation dataset'
+        msg = 'Evaluating on validation dataset...'
 
         for meter in self.val_metric_meters:
             meter.reset()
