@@ -1,0 +1,6 @@
+[submodule "contrib/PaddleRendering/pprndr/cpp_extensions/ffmlp/dependencies/cutlass"]
+	path = contrib/PaddleRendering/pprndr/cpp_extensions/ffmlp/dependencies/cutlass
+	url = https://github.com/NVIDIA/cutlass.git
+[submodule "contrib/PaddleRendering/pprndr/cpp_extensions/ray_marching/dependencies/cuda-samples"]
+	path = contrib/PaddleRendering/pprndr/cpp_extensions/ray_marching/dependencies/cuda-samples
+	url = https://github.com/NVIDIA/cuda-samples.git
