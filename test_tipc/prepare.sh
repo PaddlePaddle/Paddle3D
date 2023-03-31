@@ -40,7 +40,7 @@ if [ ${MODE} = "lite_train_lite_infer" ];then
         mkdir -p ./test_tipc/data/mini_modelnet40
         cd ./test_tipc/data/mini_modelnet40 && tar xf ../mini_modelnet40.tar.gz && cd ../../
     elif [ ${model_name} = "petrv2" ]; then
-    
+
         wget -nc  -P ./ https://paddle3d.bj.bcebos.com/pretrained/fcos3d_vovnet_imgbackbone-remapped.pdparams --no-check-certificate
         rm -rf ./data
         # download data
@@ -49,7 +49,7 @@ if [ ${MODE} = "lite_train_lite_infer" ];then
         python ${BENCHMARK_ROOT}/paddlecloud/file_upload_download.py \
             --remote-path /user/userdata/benchmark/data/Paddle3D/petrv2/ \
             --local-path ./ \
-            --mode download 
+            --mode download
 
         unzip nuscenes.zip && cd ../
     elif [ ${model_name} = "centerpoint" ]; then
