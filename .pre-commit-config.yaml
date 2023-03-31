@@ -8,7 +8,7 @@ repos:
         files: \.py$
 
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: a11d9314b22d8f8c7556443875b731ef05965464
+    rev: v4.4.0
     hooks:
     -   id: check-merge-conflict
     -   id: check-symlinks
@@ -16,12 +16,6 @@ repos:
     -   id: trailing-whitespace
     -   id: detect-private-key
     -   id: check-added-large-files
-
--   repo: https://github.com/pycqa/isort
-    rev: 5.12.0
-    hooks:
-    -   id: isort
-        name: isort (python)
 
 -   repo: local
     hooks:
