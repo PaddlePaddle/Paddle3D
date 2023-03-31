@@ -32,10 +32,12 @@ from paddle3d.sample import Sample, SampleMeta
 from paddle3d.utils import dtype2float32
 from paddle3d.utils.grid import GridMask
 from paddle3d.utils.logger import logger
+from paddle3d.slim.quant import QAT
 
 
 @manager.MODELS.add_component
 class BEVFormer(nn.Layer):
+
     def __init__(self,
                  backbone,
                  neck,
@@ -44,8 +46,13 @@ class BEVFormer(nn.Layer):
                  pretrained=None,
                  video_test_mode=False):
         super(BEVFormer, self).__init__()
-        self.grid_mask = GridMask(
-            True, True, rotate=1, offset=False, ratio=0.5, mode=1, prob=0.7)
+        self.grid_mask = GridMask(True,
+                                  True,
+                                  rotate=1,
+                                  offset=False,
+                                  ratio=0.5,
+                                  mode=1,
+                                  prob=0.7)
         self.use_grid_mask = use_grid_mask
         self.video_test_mode = video_test_mode
         self.prev_frame_info = {
@@ -59,6 +66,20 @@ class BEVFormer(nn.Layer):
         self.pts_bbox_head = pts_bbox_head
         self.pretrained = pretrained
         self.video_test_mode = video_test_mode
+        self._quant = False
+
+    def is_quant_model(self) -> bool:
+        return self._quant
+
+    def build_slim_model(self, slim_config: str):
+        """ Slim the model and update the cfg params
+        """
+        self._quant = True
+
+        logger.info("Build QAT model.")
+        self.qat = QAT(quant_config=slim_config)
+        # slim the model
+        self.qat(self)
 
     def extract_img_feat(self, img, img_metas, len_queue=None):
         """Extract features of images."""
@@ -105,8 +126,9 @@ class BEVFormer(nn.Layer):
     def extract_feat(self, img, img_metas=None, len_queue=None):
         """Extract features from images and points."""
 
-        img_feats = self.extract_img_feat(
-            img=img, img_metas=img_metas, len_queue=len_queue)
+        img_feats = self.extract_img_feat(img=img,
+                                          img_metas=img_metas,
+                                          len_queue=len_queue)
         return img_feats
 
     def obtain_history_bev(self, imgs_queue, img_metas_list):
@@ -118,8 +140,8 @@ class BEVFormer(nn.Layer):
             prev_bev = None
             bs, len_queue, num_cams, C, H, W = imgs_queue.shape
             imgs_queue = imgs_queue.reshape([bs * len_queue, num_cams, C, H, W])
-            img_feats_list = self.extract_feat(
-                img=imgs_queue, len_queue=len_queue)
+            img_feats_list = self.extract_feat(img=imgs_queue,
+                                               len_queue=len_queue)
             for i in range(len_queue):
                 img_metas = [each[i] for each in img_metas_list]
                 if not img_metas[0]['prev_bev_exists']:
@@ -131,8 +153,10 @@ class BEVFormer(nn.Layer):
                     ],
                                             dtype='float32')
                 img_feats = [each_scale[:, i] for each_scale in img_feats_list]
-                prev_bev = self.pts_bbox_head(
-                    img_feats, img_metas, prev_bev, only_bev=True)
+                prev_bev = self.pts_bbox_head(img_feats,
+                                              img_metas,
+                                              prev_bev,
+                                              only_bev=True)
             self.train()
             return prev_bev
 
@@ -142,8 +166,8 @@ class BEVFormer(nn.Layer):
         if self.training:
             if hasattr(self, 'amp_cfg_'):
                 self.pts_bbox_head.amp_cfg_ = self.amp_cfg_
-                with paddle.amp.auto_cast(
-                        **self.amp_cfg_, custom_black_list=['linspace']):
+                with paddle.amp.auto_cast(**self.amp_cfg_,
+                                          custom_black_list=['linspace']):
                     return self.forward_train(samples, **kwargs)
             else:
                 return self.forward_train(samples, **kwargs)
@@ -151,14 +175,14 @@ class BEVFormer(nn.Layer):
             return self.forward_test(samples, **kwargs)
 
     def forward_train(
-            self,
-            samples,
-            gt_labels=None,
-            gt_bboxes=None,
-            proposals=None,
-            gt_bboxes_ignore=None,
-            img_depth=None,
-            img_mask=None,
+        self,
+        samples,
+        gt_labels=None,
+        gt_bboxes=None,
+        proposals=None,
+        gt_bboxes_ignore=None,
+        img_depth=None,
+        img_mask=None,
     ):
 
         img_metas = samples['meta']
@@ -252,8 +276,9 @@ class BEVFormer(nn.Layer):
         """Test function"""
         outs = self.pts_bbox_head(x, img_metas, prev_bev=prev_bev)
 
-        bbox_list = self.pts_bbox_head.get_bboxes(
-            outs, img_metas, rescale=rescale)
+        bbox_list = self.pts_bbox_head.get_bboxes(outs,
+                                                  img_metas,
+                                                  rescale=rescale)
         bbox_results = [
             bbox3d2result(bboxes, scores, labels)
             for bboxes, scores, labels in bbox_list
@@ -266,8 +291,10 @@ class BEVFormer(nn.Layer):
         img_feats = self.extract_feat(img=img, img_metas=img_metas)
 
         bbox_list = [dict() for i in range(len(img_metas))]
-        new_prev_bev, bbox_pts = self.simple_test_pts(
-            img_feats, img_metas, prev_bev, rescale=rescale)
+        new_prev_bev, bbox_pts = self.simple_test_pts(img_feats,
+                                                      img_metas,
+                                                      prev_bev,
+                                                      rescale=rescale)
         for result_dict, pts_bbox in zip(bbox_list, bbox_pts):
             result_dict['pts_bbox'] = pts_bbox
         return new_prev_bev, bbox_list
@@ -306,8 +333,9 @@ class BEVFormer(nn.Layer):
 
     def export_forward(self, img, prev_bev, img_metas):
         img_metas = [img_metas]
-        new_prev_bev, bbox_results = self.simple_test(
-            img_metas, img, prev_bev=prev_bev)
+        new_prev_bev, bbox_results = self.simple_test(img_metas,
+                                                      img,
+                                                      prev_bev=prev_bev)
         return new_prev_bev, bbox_results
 
     def export(self, save_dir: str, **kwargs):
@@ -315,31 +343,39 @@ class BEVFormer(nn.Layer):
         self.export_model = True
         self.pts_bbox_head.transformer.export_model = True
         self.pts_bbox_head.transformer.encoder.export_model = True
-        image_spec = paddle.static.InputSpec(
-            shape=[6, 3, 480, 800], dtype="float32", name='image')
-        pre_bev_spec = paddle.static.InputSpec(
-            shape=[
-                self.pts_bbox_head.bev_w * self.pts_bbox_head.bev_w, 1,
-                self.pts_bbox_head.transformer.embed_dims
-            ],
-            dtype="float32",
-            name='pre_bev')
+        image_spec = paddle.static.InputSpec(shape=[6, 3, 480, 800],
+                                             dtype="float32",
+                                             name='image')
+        pre_bev_spec = paddle.static.InputSpec(shape=[
+            self.pts_bbox_head.bev_w * self.pts_bbox_head.bev_w, 1,
+            self.pts_bbox_head.transformer.embed_dims
+        ],
+                                               dtype="float32",
+                                               name='pre_bev')
         img_metas_spec = {
             "can_bus":
-            paddle.static.InputSpec(
-                shape=[18], dtype="float32", name='can_bus'),
+            paddle.static.InputSpec(shape=[18], dtype="float32",
+                                    name='can_bus'),
             "lidar2img":
-            paddle.static.InputSpec(
-                shape=[-1, -1, 4, 4], dtype="float32", name='lidar2img'),
+            paddle.static.InputSpec(shape=[-1, -1, 4, 4],
+                                    dtype="float32",
+                                    name='lidar2img'),
             "img_shape":
-            paddle.static.InputSpec(
-                shape=[6, 3], dtype="int32", name='img_shape'),
+            paddle.static.InputSpec(shape=[6, 3],
+                                    dtype="int32",
+                                    name='img_shape'),
         }
 
         input_spec = [image_spec, pre_bev_spec, img_metas_spec]
 
         paddle.jit.to_static(self, input_spec=input_spec)
-        paddle.jit.save(self, os.path.join(save_dir, "bevformer_inference"))
+        if self.is_quant_model:
+            self.qat.save_quantized_model(model=self,
+                                          path=os.path.join(
+                                              save_dir, "bevformer_inference"),
+                                          input_spec=input_spec)
+        else:
+            paddle.jit.save(self, os.path.join(save_dir, "bevformer_inference"))
         logger.info("Exported model is saved in {}".format(
             os.path.join(save_dir, "bevformer_inference")))
 
