@@ -41,7 +41,7 @@ c_flags += ['-DPADDLE_WITH_CUDA']
 
 setup(
     name='sh_encoder',
-    version='0.1.0',
+    version='1.0.0',
     ext_modules=[
         CUDAExtension(
             sources=['src/sh_encoder.cc', 'src/sh_encoder.cu'],

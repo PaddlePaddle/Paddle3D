@@ -28,7 +28,7 @@ cpp_extensions = {
     'ffmlp': {
         'sources': ['ffmlp/src/ffmlp.cc', 'ffmlp/src/ffmlp.cu'],
         'version':
-        '0.1.0',
+        '1.0.0',
         'extra_cxx_cflags': ['-O3', '-std=c++14', '-DPADDLE_WITH_CUDA'],
         'extra_cuda_cflags': [
             '-O3',
@@ -56,7 +56,7 @@ cpp_extensions = {
             'grid_encoder/src/grid_encoder.cu'
         ],
         'version':
-        '0.1.0',
+        '1.0.0',
         'extra_cxx_cflags': ['-O3', '-std=c++14', '-DPADDLE_WITH_CUDA'],
         'extra_cuda_cflags': [
             '-O3',
@@ -78,7 +78,7 @@ cpp_extensions = {
         'sources':
         ['sh_encoder/src/sh_encoder.cc', 'sh_encoder/src/sh_encoder.cu'],
         'version':
-        '0.1.0',
+        '1.0.0',
         'extra_cxx_cflags': ['-O3', '-std=c++14', '-DPADDLE_WITH_CUDA'],
         'extra_cuda_cflags': [
             '-O3',
@@ -100,7 +100,7 @@ cpp_extensions = {
             'ray_marching/src/rendering.cu',
         ],
         'version':
-        '0.1.0',
+        '1.0.0',
         'extra_cxx_cflags': ['-O3', '-DPADDLE_WITH_CUDA'],
         'extra_cuda_cflags': ['-O3'],
         'extra_include_paths':
@@ -108,7 +108,7 @@ cpp_extensions = {
     },
     'trunc_exp': {
         'sources': ['trunc_exp/src/trunc_exp.cc', 'trunc_exp/src/trunc_exp.cu'],
-        'version': '0.1.0',
+        'version': '1.0.0',
         'extra_cxx_cflags': ['-DPADDLE_WITH_CUDA'],
     }
 }

@@ -18,12 +18,12 @@ from paddle.utils.cpp_extension import CppExtension, CUDAExtension, setup
 if paddle.device.is_compiled_with_cuda():
     setup(
         name='trunc_exp',
-        version='0.1.0',
+        version='1.0.0',
         ext_modules=CUDAExtension(
             sources=['src/trunc_exp.cc', 'src/trunc_exp.cu']),
         extra_compile_args={'cxx': ['-DPADDLE_WITH_CUDA']})
 else:
     setup(
         name='trunc_exp',
-        version='0.1.0',
+        version='1.0.0',
         ext_modules=CppExtension(sources=['src/trunc_exp.cc']))
