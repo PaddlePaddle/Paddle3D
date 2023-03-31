@@ -117,7 +117,7 @@ quit()
 # Download source codes
 git clone https://github.com/PaddlePaddle/Paddle3D
 # Download submodules
-cd PaddleRendering
+cd contrib/PaddleRendering
 git submodule update --init --recursive
 ```
 
@@ -143,7 +143,7 @@ python -m pip install paddlepaddle-gpu==0.0.0.post102 -f https://www.paddlepaddl
 # Note: If you have downloaded the PaddleRendering source code, you can ignore this step.
 git clone https://github.com/PaddlePaddle/Paddle3D
 # Download submodules
-cd PaddleRendering
+cd contrib/PaddleRendering
 git submodule update --init --recursive
 # Install PaddleRendering dependencies
 pip install -r requirements.txt

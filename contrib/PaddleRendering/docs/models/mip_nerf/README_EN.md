@@ -94,7 +94,7 @@ The training script accepts the following arguments and options:
 
 ### <h3 id="53">Evaluation</h3>
 
-At `Paddle3D/`, execute:
+At `PaddleRendering/`, execute:
 
 ```shell
 export PYTHONPATH='.'

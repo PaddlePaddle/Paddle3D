@@ -90,7 +90,7 @@ python -m paddle.distributed.launch --devices 0,1 \
 
 ### <h3 id="53">评估</h3>
 
-位于`Paddle3D/`目录下，执行：
+位于`PaddleRendering/`目录下，执行：
 
 ```shell
 export PYTHONPATH='.'

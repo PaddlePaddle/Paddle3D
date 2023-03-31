@@ -127,7 +127,7 @@ quit()
 # 下载源码
 git clone https://github.com/PaddlePaddle/Paddle3D
 # 下载子模块
-cd PaddleRendering
+cd contrib/PaddleRendering
 git submodule update --init --recursive
 ```
 
@@ -158,7 +158,7 @@ python -m pip install paddlepaddle-gpu==0.0.0.post102 -f https://www.paddlepaddl
 # 说明：如已下载 PaddleRendering 源码可忽略这一步。
 git clone https://github.com/PaddlePaddle/Paddle3D
 # 下载子模块
-cd PaddleRendering
+cd contrib/PaddleRendering
 git submodule update --init --recursive
 # 安装 PaddleRendering 依赖
 pip install -r requirements.txt
