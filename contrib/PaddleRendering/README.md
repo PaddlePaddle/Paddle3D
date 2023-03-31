@@ -20,4 +20,4 @@
 ## [快速开始](./docs/quickstart.md)
 
 ## License
-PaddleRendering 遵循 [Apache-2.0开源协议](https://github.com/PaddlePaddle/PaddleNLP/blob/develop/ppdiffusers/LICENSE)。
+PaddleRendering 遵循 [Apache-2.0开源协议](../../LICENSE)。
