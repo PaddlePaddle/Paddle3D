@@ -232,6 +232,7 @@ def nan_to_num(x, nan=0.0, posinf=None, neginf=None, name=None):
     posinf_value = paddle.full_like(x, float("+inf"))
     neginf_value = paddle.full_like(x, float("-inf"))
     nan = paddle.full_like(x, nan)
+    x = x.astype("float32")
     assert x.dtype in [paddle.float32, paddle.float64]
     is_float32 = x.dtype == paddle.float32
     if posinf is None:

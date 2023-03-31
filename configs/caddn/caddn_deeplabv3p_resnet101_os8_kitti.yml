@@ -2,6 +2,14 @@ batch_size: 4
 iters: 74240  # 928*80
 sync_bn: true
 
+amp_cfg:
+  use_amp: False
+  # only enable backbone and fpn
+  enable: False
+  level: O1
+  scaler:
+    init_loss_scaling: 32.0
+
 train_dataset:
   type: KittiDepthDataset
   dataset_root: data/kitti
