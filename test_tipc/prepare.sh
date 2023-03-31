@@ -50,7 +50,6 @@ if [ ${MODE} = "lite_train_lite_infer" ];then
             --remote-path /user/userdata/benchmark/data/Paddle3D/petrv2/ \
             --local-path ./ \
             --mode download
-
         unzip nuscenes.zip && cd ../
     elif [ ${model_name} = "centerpoint" ]; then
         rm -rf ./datasets/KITTI
