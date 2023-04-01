@@ -12,13 +12,4 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .encoders import *
-from .fields import *
-from .instant_ngp import *
-from .layers import *
-from .mip_nerf import *
-from .plenoxels import *
-from .nerf import *
-from .ray_samplers import *
-from .ref_nerf import *
-from .renderers import *
+from .nerf import NeRF
