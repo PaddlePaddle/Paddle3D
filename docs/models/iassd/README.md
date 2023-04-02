@@ -14,7 +14,7 @@
 
 ## <h2 id="2">二：简介</h2>
 
-IA-SSD是一个single-stage & point-based的3D点云目标检测器。由于点云数据存在较大的冗余，论文提出了面向检测任务的instance-aware sampling方法来有效的采样出那些具有代表性的点，并引入contextual centroid perception来进一步预测更为精确的物体中心，以此来获得更准确的检测结果。IA-SSD以较小的显存占用和较快的速度在kitti和waymo数据集上取得了具有竞争力的结果。
+IA-SSD是一个single-stage & point-based的3D点云目标检测器。由于点云数据存在较大的冗余，论文提出了面向检测任务的instance-aware sampling方法来有效的采样出那些具有代表性的点，并引入contextual centroid perception来进一步预测更为精确的物体中心，以此来获得更准确的检测结果。IA-SSD以较小的显存占用和较快的速度在kitti和waymo数据集上取得了具有竞争力的结果。后续通过引入基于注意力机制的学习目标，进一步提升了IA-SSD在小目标和罕见类别上的效果。
 
 ## <h2 id="3">三：模型库</h2>
 
@@ -23,7 +23,7 @@ IA-SSD是一个single-stage & point-based的3D点云目标检测器。由于点�
 | 模型 | Car Mod <br> (IoU=0.7) | Ped. Mod<br>(IoU=0.5) | Cyc. Mod<br>(IoU=0.5) | 模型下载 | 配置文件 | 日志 | VDL |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | IA-SSD | 79.13 | 58.51 | 71.32 | [model](https://paddle3d.bj.bcebos.com/models/iassd/iassd_kitti/model.pdparams) | [config](../../../configs/iassd/iassd_kitti.yaml) | [log](https://paddle3d.bj.bcebos.com/models/iassd/iassd_kitti/train.log) | [visualdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=7010b963202fe43cdf67cf714678e411) |
-
+| IA-SSD（attention） | 79.31 | 60.36 | 71.84 | [model](https://paddle3d-models.bj.bcebos.com/model.pdparams) | \ | [log](https://paddle3d-models.bj.bcebos.com/train.log) | [visualdl](https://paddle3d-models.bj.bcebos.com/vdlrecords.1679889250.log) |
 **注意：** KITTI benchmark使用4张V100 GPU训练得出。
 
 
