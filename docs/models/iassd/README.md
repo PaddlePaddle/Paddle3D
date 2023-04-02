@@ -24,6 +24,7 @@ IA-SSD是一个single-stage & point-based的3D点云目标检测器。由于点�
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
 | IA-SSD | 79.13 | 58.51 | 71.32 | [model](https://paddle3d.bj.bcebos.com/models/iassd/iassd_kitti/model.pdparams) | [config](../../../configs/iassd/iassd_kitti.yaml) | [log](https://paddle3d.bj.bcebos.com/models/iassd/iassd_kitti/train.log) | [visualdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=7010b963202fe43cdf67cf714678e411) |
 | IA-SSD（attention） | 79.31 | 60.36 | 71.84 | [model](https://paddle3d-models.bj.bcebos.com/model.pdparams) | \ | [log](https://paddle3d-models.bj.bcebos.com/train.log) | [visualdl](https://paddle3d-models.bj.bcebos.com/vdlrecords.1679889250.log) |
+
 **注意：** KITTI benchmark使用4张V100 GPU训练得出。
 
 
