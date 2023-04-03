@@ -35,8 +35,8 @@ NeRF
 
 |  场景  |  PSNR   |  SSIM  |                                                 模型下载                                                 |                          配置文件                           |
 |:----:|:-------:|:------:|:----------------------------------------------------------------------------------------------------:|:-------------------------------------------------------:|
-| lego | 32.581 | 0.9599 | [model]() | [config](../../../configs/nerf/blender_data.yml) |
-| lego | 34.409 | 0.9703 | [model]() | [efficient_config](../../../configs/nerf/blender_data_efficient.yml) |
+| lego | 32.581 | 0.9599 | [model](https://paddle3d.bj.bcebos.com/render/models/nerf/nerf_blender/model.pdparams) | [config](../../../configs/nerf/blender_data.yml) |
+| lego | 34.409 | 0.9703 | [model](https://paddle3d.bj.bcebos.com/render/models/nerf/nerf_blender_efficient/model.pdparams) | [efficient_config](../../../configs/nerf/blender_data_efficient.yml) |
 
 ## <h2 id="4">训练配置</h2>
 
