@@ -57,3 +57,24 @@ class CustomExponentialDecay(LambdaDecay):
 
         super(CustomExponentialDecay, self).__init__(
             lr_init, lr_lambda=lr_lambda)
+
+
+@manager.LR_SCHEDULERS.add_component
+class ExponentialDecay(LambdaDecay):
+    """Exponential learning rate decay function.
+        Refer to https://github.com/bmild/nerf/blob/18b8aebda6700ed659cb27a0c348b737a5f6ab60/run_nerf.py#L707
+        for details.
+
+        Args:
+            lr_init: The initial learning rate.
+            decay_rate: The decay rate.
+            decay_steps: The decays number of steps.
+    """
+
+    def __init__(self, lr_init, delay_rate, delay_steps):
+        def lr_lambda(step):
+            multiplier = (step / delay_steps
+                          )  # the multiplier is with the initial learning rate
+            return delay_rate**multiplier
+
+        super(ExponentialDecay, self).__init__(lr_init, lr_lambda=lr_lambda)
