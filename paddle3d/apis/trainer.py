@@ -124,7 +124,7 @@ class Trainer:
             profiler_options: Optional[dict] = None,
             dataloader_fn: Union[dict, Callable] = dict(),
             amp_cfg: Optional[dict] = None,
-            do_bind: Optional[bool] = True):
+            do_bind: Optional[bool] = False):
 
         self.model = model
         self.optimizer = optimizer
