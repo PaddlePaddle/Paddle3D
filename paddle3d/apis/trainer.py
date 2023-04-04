@@ -20,6 +20,7 @@ from typing import Callable, Optional, Union
 
 import paddle
 from visualdl import LogWriter
+import numpy as np
 
 import paddle3d.env as env
 from paddle3d.apis.checkpoint import Checkpoint, CheckpointABC
@@ -365,7 +366,12 @@ class Trainer:
                     # TODO: whether to save a checkpoint based on the metric
                     metrics = self.evaluate()
                     for k, v in metrics.items():
-                        if not isinstance(v, paddle.Tensor) or v.numel() != 1:
+                        if isinstance(
+                                v, (paddle.Tensor, np.array)) and v.size != 1:
+                            continue
+                        if isinstance(v, (list, tuple)) and len(v) != 1:
+                            continue
+                        if isinstance(v, str):
                             continue
 
                         self.log_writer.add_scalar(
@@ -409,20 +415,6 @@ class Trainer:
     def evaluate(self) -> float:
         """
         """
-        sync_bn = (getattr(self.model, 'sync_bn', False) and env.nranks > 1)
-        if sync_bn:
-            sparse_conv = False
-            for layer in self.model.sublayers():
-                if 'sparse' in str(type(layer)):
-                    sparse_conv = True
-                    break
-            if sparse_conv:
-                self.model = paddle.sparse.nn.SyncBatchNorm.convert_sync_batchnorm(
-                    self.model)
-            else:
-                self.model = paddle.nn.SyncBatchNorm.convert_sync_batchnorm(
-                    self.model)
-
         if self.val_dataset is None:
             raise RuntimeError('No evaluation dataset specified!')
         msg = 'evaluate on validate dataset'
