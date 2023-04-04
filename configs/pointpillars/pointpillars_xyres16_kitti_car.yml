@@ -3,7 +3,7 @@ iters: 296960   # 160 epochs
 
 train_dataset:
   type: KittiPCDataset
-  dataset_root: datasets/KITTI
+  dataset_root: datasets/KITTI_800
   class_names: [ "Car" ]
   transforms:
     - type: LoadPointCloud
@@ -16,8 +16,8 @@ train_dataset:
       max_num_samples_per_class:
         Car: 15
       ignored_difficulty: [ -1 ]
-      database_anno_path: datasets/KITTI/kitti_train_gt_database/anno_info_train.pkl
-      database_root: datasets/KITTI/
+      database_anno_path: datasets/KITTI_800/kitti_train_gt_database/anno_info_train.pkl
+      database_root: datasets/KITTI_800/
       class_names: [ "Car" ]
     - type: RandomObjectPerturb
       rotation_range: [ -0.15707963267, 0.15707963267 ]
@@ -58,7 +58,7 @@ train_dataset:
 
 val_dataset:
   type: KittiPCDataset
-  dataset_root: datasets/KITTI
+  dataset_root: datasets/KITTI_800
   class_names: [ "Car" ]
   transforms:
     - type: LoadPointCloud
@@ -185,3 +185,7 @@ export:
       voxel_size: [ 0.16, 0.16, 4 ]
       max_points_in_voxel: 32
       max_voxel_num: 16000
+
+amp_cfg:
+  use_amp: False
+  level: O2
