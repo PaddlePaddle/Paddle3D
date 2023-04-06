@@ -34,6 +34,7 @@ if [ ${MODE} = "benchmark_train" ];then
     MODE="lite_train_lite_infer"
 fi
 
+mkdir -p /data/Dataset
 if [ ${MODE} = "lite_train_lite_infer" ];then
     if [ ${model_name} == "PAConv" ]; then
         rm -rf ./test_tipc/data/mini_modelnet40
