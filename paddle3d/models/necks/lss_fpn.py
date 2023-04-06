@@ -112,26 +112,3 @@ class FPN_LSS(nn.Layer):
         if self.extra_upsample:
             x = self.up2(x)
         return x
-
-    # def init_weights(self):
-    #     def _init_weights(m):
-    #         if isinstance(m, (nn.LayerNorm, nn.BatchNorm1D, nn.BatchNorm2D)):
-    #             constant_init(m.weight, value=1.0)
-    #             constant_init(m.bias, value=0.0)
-    #         elif isinstance(m, (nn.Conv1D, nn.Conv2D)):
-    #             reset_parameters(m)
-
-    #     # if self.use_input_conv:
-    #     #     for m in self.input_conv:
-    #     #         _init_weights(m)
-    #     # for m in self.conv:
-    #     #     _init_weights(m)
-    #     # if self.extra_upsample:
-    #     #     for m in self.up2:
-    #     #         _init_weights(m)
-    #     # if self.lateral:
-    #     #     for m in self.lateral_conv:
-    #     #         _init_weights(m)
-
-    #     for m in self.sublayers():
-    #         _init_weights(m)

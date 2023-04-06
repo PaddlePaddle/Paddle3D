@@ -22,7 +22,6 @@ from paddle3d.sample import Sample
 
 
 class TransformABC(abc.ABC):
-
     @abc.abstractmethod
     def __call__(self, sample: Sample):
         """

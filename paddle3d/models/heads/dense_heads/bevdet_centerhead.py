@@ -38,7 +38,6 @@ import paddle.distributed as dist
 
 
 class ConvModule(nn.Layer):
-
     def __init__(self,
                  in_channels,
                  out_channels,
@@ -50,15 +49,16 @@ class ConvModule(nn.Layer):
                  norm_cfg=dict(type='BatchNorm2D', eps=1e-05, momentum=0.1)):
         super(ConvModule, self).__init__()
         # build convolution layer
-        self.conv = build_conv_layer(in_channels,
-                                     out_channels,
-                                     kernel_size,
-                                     stride=stride,
-                                     padding=padding,
-                                     dilation=dilation,
-                                     groups=groups,
-                                     bias=False,
-                                     distribution="norm")
+        self.conv = build_conv_layer(
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=False,
+            distribution="norm")
 
         # build normalization layers
         norm_channels = out_channels
@@ -75,7 +75,6 @@ class ConvModule(nn.Layer):
 
 
 class SeparateHead(nn.Layer):
-
     def __init__(self,
                  in_channels,
                  heads,
@@ -94,21 +93,23 @@ class SeparateHead(nn.Layer):
             c_in = in_channels
             for i in range(num_conv - 1):
                 conv_layers.append(
-                    ConvModule(c_in,
-                               head_conv,
-                               kernel_size=final_kernel,
-                               stride=1,
-                               padding=final_kernel // 2,
-                               norm_cfg=norm_cfg))
+                    ConvModule(
+                        c_in,
+                        head_conv,
+                        kernel_size=final_kernel,
+                        stride=1,
+                        padding=final_kernel // 2,
+                        norm_cfg=norm_cfg))
                 c_in = head_conv
 
             conv_layers.append(
-                build_conv_layer(head_conv,
-                                 classes,
-                                 kernel_size=final_kernel,
-                                 stride=1,
-                                 padding=final_kernel // 2,
-                                 bias=True))
+                build_conv_layer(
+                    head_conv,
+                    classes,
+                    kernel_size=final_kernel,
+                    stride=1,
+                    padding=final_kernel // 2,
+                    bias=True))
             conv_layers = nn.Sequential(*conv_layers)
 
             self.__setattr__(head, conv_layers)
@@ -130,7 +131,6 @@ class SeparateHead(nn.Layer):
 
 @manager.MODELS.add_component
 class CenterHeadMatch(nn.Layer):
-
     def __init__(self,
                  in_channels=[
                      128,
@@ -172,11 +172,12 @@ class CenterHeadMatch(nn.Layer):
         self.task_specific = task_specific
 
         # a shared convolution
-        self.shared_conv = ConvModule(in_channels,
-                                      share_conv_channel,
-                                      kernel_size=3,
-                                      padding=1,
-                                      norm_cfg=norm_cfg)
+        self.shared_conv = ConvModule(
+            in_channels,
+            share_conv_channel,
+            kernel_size=3,
+            padding=1,
+            norm_cfg=norm_cfg)
 
         self.task_heads = nn.LayerList()
 
@@ -184,11 +185,12 @@ class CenterHeadMatch(nn.Layer):
             heads = copy.deepcopy(common_heads)
             heads.update(dict(heatmap=(num_cls, num_hm_conv)))
             self.task_heads.append(
-                SeparateHead(init_bias=init_bias,
-                             final_kernel=3,
-                             in_channels=share_conv_channel,
-                             heads=heads,
-                             num_cls=num_cls))
+                SeparateHead(
+                    init_bias=init_bias,
+                    final_kernel=3,
+                    in_channels=share_conv_channel,
+                    heads=heads,
+                    num_cls=num_cls))
 
         logger.info("Finish CenterHead Initialization")
 
@@ -374,19 +376,17 @@ class CenterHeadMatch(nn.Layer):
                         box_dim = paddle.log(box_dim)
                     if self.with_velocity:
                         vx, vy = task_boxes[idx][k][7:]
-                        anno_box[new_idx] = paddle.concat([
-                            (center - paddle.to_tensor([x, y])).squeeze(), z,
-                            box_dim.cast('float32'),
-                            paddle.sin(rot)[0],
-                            paddle.cos(rot)[0], vx, vy
-                        ])
+                        anno_box[new_idx] = paddle.concat(
+                            [(center - paddle.to_tensor([x, y])).squeeze(), z,
+                             box_dim.cast('float32'),
+                             paddle.sin(rot)[0],
+                             paddle.cos(rot)[0], vx, vy])
                     else:
-                        anno_box[new_idx] = paddle.concat([
-                            (center - paddle.to_tensor([x, y])).squeeze(), z,
-                            box_dim.cast('float32'),
-                            paddle.sin(rot),
-                            paddle.cos(rot)
-                        ])
+                        anno_box[new_idx] = paddle.concat(
+                            [(center - paddle.to_tensor([x, y])).squeeze(), z,
+                             box_dim.cast('float32'),
+                             paddle.sin(rot),
+                             paddle.cos(rot)])
 
             heatmaps.append(heatmap)
             anno_boxes.append(anno_box)
@@ -407,13 +407,14 @@ class CenterHeadMatch(nn.Layer):
             preds_dict['heatmap'] = self._sigmoid(preds_dict['heatmap'])
             num_pos = (heatmaps[task_id] == 1).cast("float32").sum()
 
-            cls_avg_factor = paddle.clip(reduce_mean(
-                paddle.to_tensor(num_pos, heatmaps[task_id].dtype)),
-                                         min=1).item()
+            cls_avg_factor = paddle.clip(
+                reduce_mean(paddle.to_tensor(num_pos, heatmaps[task_id].dtype)),
+                min=1).item()
 
-            loss_heatmap = self.loss_cls(preds_dict['heatmap'],
-                                         heatmaps[task_id],
-                                         avg_factor=cls_avg_factor)
+            loss_heatmap = self.loss_cls(
+                preds_dict['heatmap'],
+                heatmaps[task_id],
+                avg_factor=cls_avg_factor)
 
             target_box = anno_boxes[task_id]
             # reconstruct the anno_box from multiple reg heads
@@ -435,40 +436,37 @@ class CenterHeadMatch(nn.Layer):
             pred = self._gather_feat(pred, ind)
             mask = masks[task_id].unsqueeze(2).expand_as(target_box).cast(
                 "float32")
-            num = paddle.clip(reduce_mean(
-                paddle.to_tensor(num, dtype=target_box.dtype)),
-                              min=1e-4).item()
+            num = paddle.clip(
+                reduce_mean(paddle.to_tensor(num, dtype=target_box.dtype)),
+                min=1e-4).item()
             isnotnan = (~paddle.isnan(target_box)).cast('float32')
             mask *= isnotnan
             code_weights = self.train_cfg['code_weights']
 
-            bbox_weights = mask * paddle.to_tensor(code_weights,
-                                                   dtype=mask.dtype)
+            bbox_weights = mask * paddle.to_tensor(
+                code_weights, dtype=mask.dtype)
             if self.task_specific:
                 name_list = ['xy', 'z', 'whl', 'yaw', 'vel']
                 clip_index = [0, 2, 3, 6, 8, 10]
                 for reg_task_id in range(len(name_list)):
-                    pred_tmp = pred[
-                        ...,
-                        clip_index[reg_task_id]:clip_index[reg_task_id + 1]]
-                    target_box_tmp = target_box[
-                        ...,
-                        clip_index[reg_task_id]:clip_index[reg_task_id + 1]]
+                    pred_tmp = pred[..., clip_index[reg_task_id]:clip_index[
+                        reg_task_id + 1]]
+                    target_box_tmp = target_box[..., clip_index[reg_task_id]:
+                                                clip_index[reg_task_id + 1]]
                     bbox_weights_tmp = bbox_weights[
-                        ...,
-                        clip_index[reg_task_id]:clip_index[reg_task_id + 1]]
-                    loss_bbox_tmp = self.loss_bbox(pred_tmp,
-                                                   target_box_tmp,
-                                                   bbox_weights_tmp,
-                                                   avg_factor=(num + 1e-4))
+                        ..., clip_index[reg_task_id]:clip_index[reg_task_id +
+                                                                1]]
+                    loss_bbox_tmp = self.loss_bbox(
+                        pred_tmp,
+                        target_box_tmp,
+                        bbox_weights_tmp,
+                        avg_factor=(num + 1e-4))
                     loss_dict[f'task{task_id}.loss_%s' %
                               (name_list[reg_task_id])] = loss_bbox_tmp
                 loss_dict[f'task{task_id}.loss_heatmap'] = loss_heatmap
             else:
-                loss_bbox = self.loss_bbox(pred,
-                                           target_box,
-                                           bbox_weights,
-                                           avg_factor=num)
+                loss_bbox = self.loss_bbox(
+                    pred, target_box, bbox_weights, avg_factor=num)
                 loss_dict['loss'] += loss_bbox
                 loss_dict['loss'] += loss_heatmap
 
@@ -645,9 +643,9 @@ class CenterHeadMatch(nn.Layer):
             return prediction_dict
 
         return paddle.static.nn.cond(
-            paddle.logical_not(mask.any()),
-            lambda: box_empty(box_preds, scores, labels, self.box_n_dim),
-            lambda: box_not_empty(box_preds, scores, labels, test_cfg))
+            paddle.logical_not(mask.any()), lambda: box_empty(
+                box_preds, scores, labels, self.box_n_dim), lambda:
+            box_not_empty(box_preds, scores, labels, test_cfg))
 
     def post_processing(self, batch_box_preds, batch_hm, test_cfg,
                         post_center_range, task_id):
@@ -699,14 +697,15 @@ class CenterHeadMatch(nn.Layer):
                 batch_vel = preds_dict['vel']
             else:
                 batch_vel = None
-            temp = self.bbox_coder.decode(batch_heatmap,
-                                          batch_rots,
-                                          batch_rotc,
-                                          batch_hei,
-                                          batch_dim,
-                                          batch_vel,
-                                          reg=batch_reg,
-                                          task_id=task_id)
+            temp = self.bbox_coder.decode(
+                batch_heatmap,
+                batch_rots,
+                batch_rotc,
+                batch_hei,
+                batch_dim,
+                batch_vel,
+                reg=batch_reg,
+                task_id=task_id)
             batch_reg_preds = [box['bboxes'] for box in temp]
             batch_cls_preds = [box['scores'] for box in temp]
             batch_cls_labels = [box['labels'] for box in temp]
@@ -722,19 +721,21 @@ class CenterHeadMatch(nn.Layer):
                     labels = temp[i]['labels']
                     assert boxes3d.shape[0] == scores.shape[0]
                     if boxes3d.shape[0] == 0:
-                        ret = dict(bboxes=paddle.empty_like(boxes3d),
-                                   scores=paddle.empty_like(scores),
-                                   labels=paddle.empty_like(labels))
+                        ret = dict(
+                            bboxes=paddle.empty_like(boxes3d),
+                            scores=paddle.empty_like(scores),
+                            labels=paddle.empty_like(labels))
                         ret_task.append(ret)
                         continue
                     centers = boxes3d[:, :2]
                     boxes = paddle.concat(
                         [centers, scores.reshape((-1, 1))], axis=1)
-                    keep = paddle.to_tensor(_circle_nms(
-                        boxes,
-                        self.test_cfg['min_radius'][task_id],
-                        post_max_size=self.test_cfg['post_max_size']),
-                                            dtype='int64')
+                    keep = paddle.to_tensor(
+                        _circle_nms(
+                            boxes,
+                            self.test_cfg['min_radius'][task_id],
+                            post_max_size=self.test_cfg['post_max_size']),
+                        dtype='int64')
 
                     boxes3d = boxes3d.index_select(keep)
                     scores = scores.index_select(keep)
@@ -789,8 +790,8 @@ class CenterHeadMatch(nn.Layer):
         predictions_dicts = []
         post_center_range = self.test_cfg['post_center_limit_range']
         if len(post_center_range) > 0:
-            post_center_range = paddle.to_tensor(post_center_range,
-                                                 dtype=batch_reg_preds[0].dtype)
+            post_center_range = paddle.to_tensor(
+                post_center_range, dtype=batch_reg_preds[0].dtype)
 
         for i, (box_preds, cls_preds, cls_labels) in enumerate(
                 zip(batch_reg_preds, batch_cls_preds, batch_cls_labels)):
@@ -878,27 +879,29 @@ class CenterHeadMatch(nn.Layer):
                                 post_center_range[:3]).all(1)
                         mask &= (final_box_preds[:, :3] <=
                                  post_center_range[3:]).all(1)
-                        predictions_dict = dict(bboxes=final_box_preds[mask],
-                                                scores=final_scores[mask],
-                                                labels=final_labels[mask])
+                        predictions_dict = dict(
+                            bboxes=final_box_preds[mask],
+                            scores=final_scores[mask],
+                            labels=final_labels[mask])
                     else:
-                        predictions_dict = dict(bboxes=final_box_preds,
-                                                scores=final_scores,
-                                                labels=final_labels)
+                        predictions_dict = dict(
+                            bboxes=final_box_preds,
+                            scores=final_scores,
+                            labels=final_labels)
                 else:
                     dtype = batch_reg_preds[0].dtype
-                    predictions_dict = dict(bboxes=paddle.zeros(
-                        [0, self.bbox_coder.code_size], dtype=dtype),
-                                            scores=paddle.zeros([0],
-                                                                dtype=dtype),
-                                            labels=paddle.zeros([0],
-                                                                dtype='int64'))
+                    predictions_dict = dict(
+                        bboxes=paddle.zeros([0, self.bbox_coder.code_size],
+                                            dtype=dtype),
+                        scores=paddle.zeros([0], dtype=dtype),
+                        labels=paddle.zeros([0], dtype='int64'))
             else:
                 dtype = batch_reg_preds[0].dtype
-                predictions_dict = dict(bboxes=paddle.zeros(
-                    [0, self.bbox_coder.code_size], dtype=dtype),
-                                        scores=paddle.zeros([0], dtype=dtype),
-                                        labels=paddle.zeros([0], dtype='int64'))
+                predictions_dict = dict(
+                    bboxes=paddle.zeros([0, self.bbox_coder.code_size],
+                                        dtype=dtype),
+                    scores=paddle.zeros([0], dtype=dtype),
+                    labels=paddle.zeros([0], dtype='int64'))
             predictions_dicts.append(predictions_dict)
         return predictions_dicts
 
@@ -953,11 +956,12 @@ def nms_bev(boxes, scores, thresh, pre_max_size=None, post_max_size=None):
     boxes[:, 4] = boxes_copy[:, 3]
     boxes[:, 3] = boxes_copy[:, 4]
 
-    keep = rotate_nms_pcdet(boxes[:, :7],
-                            scores,
-                            thresh,
-                            pre_max_size=pre_max_size,
-                            post_max_size=post_max_size)
+    keep = rotate_nms_pcdet(
+        boxes[:, :7],
+        scores,
+        thresh,
+        pre_max_size=pre_max_size,
+        post_max_size=post_max_size)
     keep = order[keep]
     if post_max_size is not None:
         keep = keep[:post_max_size]
@@ -989,14 +993,13 @@ def draw_heatmap_gaussian(heatmap, center, radius, k=1):
     top, bottom = min(y, radius), min(height - y, radius + 1)
 
     masked_heatmap = heatmap[y - top:y + bottom, x - left:x + right]
-    masked_gaussian = paddle.to_tensor(gaussian[radius - top:radius + bottom,
-                                                radius - left:radius + right],
-                                       dtype='float32')
+    masked_gaussian = paddle.to_tensor(
+        gaussian[radius - top:radius + bottom, radius - left:radius + right],
+        dtype='float32')
 
     if min(masked_gaussian.shape) > 0 and min(masked_heatmap.shape) > 0:
-        heatmap[y - top:y + bottom,
-                x - left:x + right] = paddle.maximum(masked_heatmap,
-                                                     masked_gaussian * k)
+        heatmap[y - top:y + bottom, x - left:x + right] = paddle.maximum(
+            masked_heatmap, masked_gaussian * k)
     return heatmap
 
 
@@ -1037,8 +1040,8 @@ def reduce_mean(tensor):
     if not dist.is_initialized():
         return tensor
     tensor = tensor.clone()
-    dist.all_reduce(tensor.scale_(1. / dist.get_world_size()),
-                    op=dist.ReduceOp.SUM)
+    dist.all_reduce(
+        tensor.scale_(1. / dist.get_world_size()), op=dist.ReduceOp.SUM)
     return tensor
 
 
@@ -1082,8 +1085,8 @@ class CenterPointBBoxCoder(object):
         """
         batch, cat, height, width = scores.shape
 
-        topk_scores, topk_inds = paddle.topk(scores.reshape((batch, cat, -1)),
-                                             K)
+        topk_scores, topk_inds = paddle.topk(
+            scores.reshape((batch, cat, -1)), K)
 
         topk_inds = topk_inds % (height * width)
         topk_ys = (topk_inds.cast("float32") / paddle.to_tensor(
@@ -1091,10 +1094,10 @@ class CenterPointBBoxCoder(object):
         topk_xs = (topk_inds % width).cast("int32").cast("float32")
 
         topk_score, topk_ind = paddle.topk(topk_scores.reshape((batch, -1)), K)
-        topk_clses = (topk_ind /
-                      paddle.to_tensor(K, dtype='float32')).cast('int32')
-        topk_inds = self._gather_feat(topk_inds.reshape((batch, -1, 1)),
-                                      topk_ind).reshape((batch, K))
+        topk_clses = (
+            topk_ind / paddle.to_tensor(K, dtype='float32')).cast('int32')
+        topk_inds = self._gather_feat(
+            topk_inds.reshape((batch, -1, 1)), topk_ind).reshape((batch, K))
         topk_ys = self._gather_feat(topk_ys.reshape((batch, -1, 1)),
                                     topk_ind).reshape((batch, K))
         topk_xs = self._gather_feat(topk_xs.reshape((batch, -1, 1)),

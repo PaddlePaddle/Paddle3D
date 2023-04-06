@@ -74,8 +74,8 @@ def get_gt(info):
     gt_labels = list()
     for ann_info in info['ann_infos']:
         # Use ego coordinate.
-        if (map_name_from_general_to_detection[ann_info['category_name']]
-                not in classes
+        if (map_name_from_general_to_detection[
+                ann_info['category_name']] not in classes
                 or ann_info['num_lidar_pts'] + ann_info['num_radar_pts'] <= 0):
             continue
         box = Box(
@@ -111,10 +111,8 @@ def nuscenes_data_prep(root_path, info_prefix, version, max_sweeps=10):
         max_sweeps (int, optional): Number of input consecutive frames.
             Default: 10
     """
-    nuscenes_converter.create_nuscenes_infos(root_path,
-                                             info_prefix,
-                                             version=version,
-                                             max_sweeps=max_sweeps)
+    nuscenes_converter.create_nuscenes_infos(
+        root_path, info_prefix, version=version, max_sweeps=max_sweeps)
 
 
 def add_ann_adj_info(extra_tag):
@@ -152,10 +150,11 @@ if __name__ == '__main__':
     train_version = f'{version}-trainval'
     root_path = './data/nuscenes'
     extra_tag = 'bevdetv2-nuscenes'
-    nuscenes_data_prep(root_path=root_path,
-                       info_prefix=extra_tag,
-                       version=train_version,
-                       max_sweeps=0)
+    nuscenes_data_prep(
+        root_path=root_path,
+        info_prefix=extra_tag,
+        version=train_version,
+        max_sweeps=0)
 
     print('add_ann_infos')
     add_ann_adj_info(extra_tag)

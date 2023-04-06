@@ -114,25 +114,26 @@ class BEVDetNuScenesDataset(Custom3DDataset):
                  ego_cam='CAM_FRONT'):
         self.load_interval = load_interval
         self.use_valid_flag = use_valid_flag
-        super(BEVDetNuScenesDataset,
-              self).__init__(data_root=data_root,
-                             ann_file=ann_file,
-                             pipeline=pipeline,
-                             classes=classes,
-                             modality=modality,
-                             box_type_3d=box_type_3d,
-                             filter_empty_gt=filter_empty_gt,
-                             test_mode=test_mode)
+        super(BEVDetNuScenesDataset, self).__init__(
+            data_root=data_root,
+            ann_file=ann_file,
+            pipeline=pipeline,
+            classes=classes,
+            modality=modality,
+            box_type_3d=box_type_3d,
+            filter_empty_gt=filter_empty_gt,
+            test_mode=test_mode)
         self.with_velocity = with_velocity
         self.eval_version = eval_version
         from nuscenes.eval.detection.config import config_factory
         self.eval_detection_configs = config_factory(self.eval_version)
         if self.modality is None:
-            self.modality = dict(use_camera=False,
-                                 use_lidar=True,
-                                 use_radar=False,
-                                 use_map=False,
-                                 use_external=False)
+            self.modality = dict(
+                use_camera=False,
+                use_lidar=True,
+                use_radar=False,
+                use_map=False,
+                use_external=False)
         self.img_info_prototype = img_info_prototype
         self.multi_adj_frame_id_cfg = multi_adj_frame_id_cfg
         self.ego_cam = ego_cam
@@ -140,8 +141,8 @@ class BEVDetNuScenesDataset(Custom3DDataset):
         # add for compatible with paddle
         self.mode = 'val' if test_mode else 'train'
         self.version = self.VERSION_MAP[self.mode]
-        self.nusc = NuScenesManager.get(version=self.version,
-                                        dataroot=self.data_root)
+        self.nusc = NuScenesManager.get(
+            version=self.version, dataroot=self.data_root)
 
         self.channel = "LIDAR_TOP"
         self.ATTRIBUTE_MAP_REVERSE = {
@@ -151,14 +152,6 @@ class BEVDetNuScenesDataset(Custom3DDataset):
 
     def get_cat_ids(self, idx):
         """Get category distribution of single scene.
-
-        Args:
-            idx (int): Index of the data_info.
-
-        Returns:
-            dict[list]: for each category, if the current scene
-                contains such boxes, store a list containing idx,
-                otherwise, store empty list.
         """
         info = self.data_infos[idx]
         if self.use_valid_flag:
@@ -174,12 +167,6 @@ class BEVDetNuScenesDataset(Custom3DDataset):
 
     def load_annotations(self, ann_file):
         """Load annotations from ann_file.
-
-        Args:
-            ann_file (str): Path of the annotation file.
-
-        Returns:
-            list[dict]: List of annotations sorted by timestamps.
         """
         with open(ann_file, 'rb') as f:
             data = pickle.load(f)  #mmcv.load(ann_file, file_format='pkl')
@@ -191,28 +178,13 @@ class BEVDetNuScenesDataset(Custom3DDataset):
 
     def get_data_info(self, index):
         """Get data info according to the given index.
-
-        Args:
-            index (int): Index of the sample data to get.
-
-        Returns:
-            dict: Data information that will be passed to the data
-                preprocessing pipelines. It includes the following keys:
-
-                - sample_idx (str): Sample index.
-                - pts_filename (str): Filename of point clouds.
-                - sweeps (list[dict]): Infos of sweeps.
-                - timestamp (float): Sample timestamp.
-                - img_filename (str, optional): Image filename.
-                - lidar2img (list[np.ndarray], optional): Transformations
-                    from lidar to different cameras.
-                - ann_info (dict): Annotation info.
         """
         info = self.data_infos[index]
-        input_dict = dict(sample_idx=info['token'],
-                          pts_filename=info['lidar_path'],
-                          sweeps=info['sweeps'],
-                          timestamp=info['timestamp'] / 1000000.0)
+        input_dict = dict(
+            sample_idx=info['token'],
+            pts_filename=info['lidar_path'],
+            sweeps=info['sweeps'],
+            timestamp=info['timestamp'] / 1000000.0)
         if 'ann_infos' in info:
             input_dict['ann_infos'] = info['ann_infos']
         if self.modality['use_camera']:
@@ -260,17 +232,6 @@ class BEVDetNuScenesDataset(Custom3DDataset):
 
     def get_ann_info(self, index):
         """Get annotation info according to the given index.
-
-        Args:
-            index (int): Index of the annotation data to get.
-
-        Returns:
-            dict: Annotation information consists of the following keys:
-
-                - gt_bboxes_3d (:obj:`LiDARInstance3DBoxes`):
-                    3D ground truth bboxes
-                - gt_labels_3d (np.ndarray): Labels of ground truths.
-                - gt_names (list[str]): Class names of ground truths.
         """
         info = self.data_infos[index]
         if self.use_valid_flag:
@@ -291,26 +252,18 @@ class BEVDetNuScenesDataset(Custom3DDataset):
             nan_mask = np.isnan(gt_velocity[:, (0)])
             gt_velocity[nan_mask] = [0.0, 0.0]
             gt_bboxes_3d = np.concatenate([gt_bboxes_3d, gt_velocity], axis=-1)
-        gt_bboxes_3d = BBoxes3D(gt_bboxes_3d,
-                                box_dim=gt_bboxes_3d.shape[-1],
-                                origin=(0.5, 0.5,
-                                        0.5)).convert_to(self.box_mode_3d)
-        anns_results = dict(gt_bboxes_3d=gt_bboxes_3d,
-                            gt_labels_3d=gt_labels_3d,
-                            gt_names=gt_names_3d)
+        gt_bboxes_3d = BBoxes3D(
+            gt_bboxes_3d,
+            box_dim=gt_bboxes_3d.shape[-1],
+            origin=(0.5, 0.5, 0.5)).convert_to(self.box_mode_3d)
+        anns_results = dict(
+            gt_bboxes_3d=gt_bboxes_3d,
+            gt_labels_3d=gt_labels_3d,
+            gt_names=gt_names_3d)
         return anns_results
 
     def _format_bbox(self, results, jsonfile_prefix=None):
         """Convert the results to the standard format.
-
-        Args:
-            results (list[dict]): Testing results of the dataset.
-            jsonfile_prefix (str): The prefix of the output jsonfile.
-                You can specify the output directory/filename by
-                modifying the jsonfile_prefix. Default: None.
-
-        Returns:
-            str: Path of the output json file.
         """
         nusc_annos = {}
         mapped_class_names = self.CLASSES
@@ -384,32 +337,20 @@ class BEVDetNuScenesDataset(Custom3DDataset):
                          metric='bbox',
                          result_name='pts_bbox'):
         """Evaluation for a single model in nuScenes protocol.
-
-        Args:
-            result_path (str): Path of the result file.
-            logger (logging.Logger | str, optional): Logger used for printing
-                related information during evaluation. Default: None.
-            metric (str, optional): Metric name used for evaluation.
-                Default: 'bbox'.
-            result_name (str, optional): Result name in the metric prefix.
-                Default: 'pts_bbox'.
-
-        Returns:
-            dict: Dictionary of evaluation details.
         """
         from nuscenes import NuScenes
         from nuscenes.eval.detection.evaluate import NuScenesEval
         output_dir = osp.join(*osp.split(result_path)[:-1])
-        nusc = NuScenes(version=self.version,
-                        dataroot=self.data_root,
-                        verbose=False)
+        nusc = NuScenes(
+            version=self.version, dataroot=self.data_root, verbose=False)
         eval_set_map = {'v1.0-mini': 'mini_val', 'v1.0-trainval': 'val'}
-        nusc_eval = NuScenesEval(nusc,
-                                 config=self.eval_detection_configs,
-                                 result_path=result_path,
-                                 eval_set=eval_set_map[self.version],
-                                 output_dir=output_dir,
-                                 verbose=False)
+        nusc_eval = NuScenesEval(
+            nusc,
+            config=self.eval_detection_configs,
+            result_path=result_path,
+            eval_set=eval_set_map[self.version],
+            output_dir=output_dir,
+            verbose=False)
         nusc_eval.main(render_curves=False)
         metrics = json.load(
             osp.join(output_dir, 'metrics_summary.json')
@@ -433,18 +374,6 @@ class BEVDetNuScenesDataset(Custom3DDataset):
 
     def format_results(self, results, jsonfile_prefix=None):
         """Format the results to json (standard format for COCO evaluation).
-
-        Args:
-            results (list[dict]): Testing results of the dataset.
-            jsonfile_prefix (str): The prefix of json files. It includes
-                the file path and the prefix of filename, e.g., "a/b/prefix".
-                If not specified, a temp file will be created. Default: None.
-
-        Returns:
-            tuple: Returns (result_files, tmp_dir), where `result_files` is a
-                dict containing the json filepaths, `tmp_dir` is the temporal
-                directory created for saving json files when
-                `jsonfile_prefix` is not specified.
         """
         assert isinstance(results, list), 'results must be a list'
         assert len(results) == len(
@@ -478,25 +407,6 @@ class BEVDetNuScenesDataset(Custom3DDataset):
                  out_dir=None,
                  pipeline=None):
         """Evaluation in nuScenes protocol.
-
-        Args:
-            results (list[dict]): Testing results of the dataset.
-            metric (str | list[str], optional): Metrics to be evaluated.
-                Default: 'bbox'.
-            logger (logging.Logger | str, optional): Logger used for printing
-                related information during evaluation. Default: None.
-            jsonfile_prefix (str, optional): The prefix of json files including
-                the file path and the prefix of filename, e.g., "a/b/prefix".
-                If not specified, a temp file will be created. Default: None.
-            show (bool, optional): Whether to visualize.
-                Default: False.
-            out_dir (str, optional): Path to save the visualization results.
-                Default: None.
-            pipeline (list[dict], optional): raw data loading for showing.
-                Default: None.
-
-        Returns:
-            dict[str, float]: Results of each evaluation metric.
         """
         result_files, tmp_dir = self.format_results(results, jsonfile_prefix)
         if isinstance(result_files, dict):
@@ -516,17 +426,20 @@ class BEVDetNuScenesDataset(Custom3DDataset):
     def _build_default_pipeline(self):
         """Build the default pipeline for this dataset."""
         pipeline = [
-            dict(type='LoadPointsFromFile',
-                 coord_type='LIDAR',
-                 load_dim=5,
-                 use_dim=5,
-                 file_client_args=dict(backend='disk')),
-            dict(type='LoadPointsFromMultiSweeps',
-                 sweeps_num=10,
-                 file_client_args=dict(backend='disk')),
-            dict(type='DefaultFormatBundle3D',
-                 class_names=self.CLASSES,
-                 with_label=False),
+            dict(
+                type='LoadPointsFromFile',
+                coord_type='LIDAR',
+                load_dim=5,
+                use_dim=5,
+                file_client_args=dict(backend='disk')),
+            dict(
+                type='LoadPointsFromMultiSweeps',
+                sweeps_num=10,
+                file_client_args=dict(backend='disk')),
+            dict(
+                type='DefaultFormatBundle3D',
+                class_names=self.CLASSES,
+                with_label=False),
             dict(type='Collect3D', keys=['points'])
         ]
 
@@ -556,9 +469,8 @@ class BEVDetNuScenesDataset(Custom3DDataset):
 
             if sample.velocities is not None:
                 _pad_item = np.zeros([padlen, 2], np.float32)
-                sample.velocities = np.append(sample.velocities,
-                                              _pad_item,
-                                              axis=0)
+                sample.velocities = np.append(
+                    sample.velocities, _pad_item, axis=0)
 
             if sample.attrs is not None:
                 _pad_item = np.ones([padlen], np.int32) * -1
@@ -593,10 +505,11 @@ class BEVDetNuScenesDataset(Custom3DDataset):
 
     @property
     def metric(self):
-        return BevDetNuScenesMetric(data_root=self.data_root,
-                                    ann_file=self.ann_file,
-                                    mode=self.mode,
-                                    classes=self.classes)
+        return BevDetNuScenesMetric(
+            data_root=self.data_root,
+            ann_file=self.ann_file,
+            mode=self.mode,
+            classes=self.classes)
 
     @property
     def name(self) -> str:
@@ -624,12 +537,13 @@ def output_to_nusc_box(detection, with_velocity=True):
             velocity = *box3d.tensor[(i), 7:9], 0.0
         else:
             velocity = 0, 0, 0
-        box = NuScenesBox(box_gravity_center[i],
-                          nus_box_dims[i],
-                          quat,
-                          label=labels[i],
-                          score=scores[i],
-                          velocity=velocity)
+        box = NuScenesBox(
+            box_gravity_center[i],
+            nus_box_dims[i],
+            quat,
+            label=labels[i],
+            score=scores[i],
+            velocity=velocity)
         box_list.append(box)
     return box_list
 
@@ -640,19 +554,6 @@ def lidar_nusc_box_to_global(info,
                              eval_configs,
                              eval_version='detection_cvpr_2019'):
     """Convert the box from ego to global coordinate.
-
-    Args:
-        info (dict): Info for a specific sample data, including the
-            calibration information.
-        boxes (list[:obj:`NuScenesBox`]): List of predicted NuScenesBoxes.
-        classes (list[str]): Mapped classes in the evaluation.
-        eval_configs (object): Evaluation configuration object.
-        eval_version (str, optional): Evaluation version.
-            Default: 'detection_cvpr_2019'
-
-    Returns:
-        list: List of standard NuScenesBoxes in the global
-            coordinate.
     """
     box_list = []
     for box in boxes:
