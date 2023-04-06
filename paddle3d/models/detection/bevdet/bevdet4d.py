@@ -20,7 +20,6 @@ from paddle3d.apis import manager
 
 
 class DictObject(Dict):
-
     def __init__(self, config: Dict):
         for key, value in config.items():
             if isinstance(value, dict):
@@ -91,13 +90,13 @@ class BEVDet4D(nn.Layer):
         _, v, _ = trans[0].shape
 
         # generate grid
-        xs = paddle.linspace(0, w - 1, w, dtype=input.dtype).reshape(
-            (1, w)).expand((h, w))
-        ys = paddle.linspace(0, h - 1, h, dtype=input.dtype).reshape(
-            (h, 1)).expand((h, w))
+        xs = paddle.linspace(
+            0, w - 1, w, dtype=input.dtype).reshape((1, w)).expand((h, w))
+        ys = paddle.linspace(
+            0, h - 1, h, dtype=input.dtype).reshape((h, 1)).expand((h, w))
         grid = paddle.stack((xs, ys, paddle.ones_like(xs)), -1)
-        grid = grid.reshape((1, h, w, 3)).expand((n, h, w, 3)).reshape(
-            (n, h, w, 3, 1))
+        grid = grid.reshape((1, h, w, 3)).expand((n, h, w, 3)).reshape((n, h, w,
+                                                                        3, 1))
 
         # get transformation from current ego frame to adjacent ego frame
         # transformation from current camera frame to current ego frame
@@ -133,9 +132,9 @@ class BEVDet4D(nn.Layer):
         = l02l1 # c02l0==c12l1
         '''
 
-        l02l1 = l02l1.index_select(paddle.to_tensor(
-            [0, 1, 3]), axis=3).index_select(paddle.to_tensor([0, 1, 3]),
-                                             axis=4)
+        l02l1 = l02l1.index_select(
+            paddle.to_tensor([0, 1, 3]), axis=3).index_select(
+                paddle.to_tensor([0, 1, 3]), axis=4)
 
         feat2bev = paddle.zeros((3, 3), dtype=grid.dtype)
         feat2bev[0, 0] = self.img_view_transformer.grid_interval[0]
@@ -143,7 +142,7 @@ class BEVDet4D(nn.Layer):
         feat2bev[0, 2] = self.img_view_transformer.grid_lower_bound[0]
         feat2bev[1, 2] = self.img_view_transformer.grid_lower_bound[1]
         feat2bev[2, 2] = 1
-        feat2bev = feat2bev.reshape((1, 3, 3))  #.view(1, 3, 3)
+        feat2bev = feat2bev.reshape((1, 3, 3))
         tf = paddle.inverse(feat2bev).matmul(l02l1).matmul(feat2bev)
 
         # transform and normalize
@@ -152,9 +151,8 @@ class BEVDet4D(nn.Layer):
                                             dtype=input.dtype)
         grid = grid[:, :, :, :2, 0] / normalize_factor.reshape(
             (1, 1, 1, 2)) * 2.0 - 1.0
-        output = F.grid_sample(input,
-                               grid.cast(input.dtype),
-                               align_corners=True)
+        output = F.grid_sample(
+            input, grid.cast(input.dtype), align_corners=True)
 
         return output
 
@@ -212,8 +210,7 @@ class BEVDet4D(nn.Layer):
                                bda)
         bev_feat_list.append(feat_prev.view(1, (self.num_frame - 1) * C, H, W))
 
-        bev_feat = paddle.concat(bev_feat_list,
-                                 axis=1)  #torch.cat(bev_feat_list, dim=1)
+        bev_feat = paddle.concat(bev_feat_list, axis=1)
         x = self.bev_encoder(bev_feat)
         return [x], depth
 
@@ -318,29 +315,6 @@ class BEVDet4D(nn.Layer):
                       gt_bboxes_ignore=None,
                       **kwargs):
         """Forward training function.
-
-        Args:
-            points (list[torch.Tensor], optional): Points of each sample.
-                Defaults to None.
-            img_metas (list[dict], optional): Meta information of each sample.
-                Defaults to None.
-            gt_bboxes_3d (list[:obj:`BaseInstance3DBoxes`], optional):
-                Ground truth 3D boxes. Defaults to None.
-            gt_labels_3d (list[torch.Tensor], optional): Ground truth labels
-                of 3D boxes. Defaults to None.
-            gt_labels (list[torch.Tensor], optional): Ground truth labels
-                of 2D boxes in images. Defaults to None.
-            gt_bboxes (list[torch.Tensor], optional): Ground truth 2D boxes in
-                images. Defaults to None.
-            img (torch.Tensor optional): Images of each sample with shape
-                (N, C, H, W). Defaults to None.
-            proposals ([list[torch.Tensor], optional): Predicted proposals
-                used for training Fast RCNN. Defaults to None.
-            gt_bboxes_ignore (list[torch.Tensor], optional): Ground truth
-                2D boxes in images to be ignored. Defaults to None.
-
-        Returns:
-            dict: Losses of different branches.
         """
         points = None
         img_metas = samples['meta']
@@ -348,15 +322,12 @@ class BEVDet4D(nn.Layer):
         gt_depth = samples['gt_depth']
         gt_labels_3d = samples['gt_labels_3d']
         gt_bboxes_3d = samples['gt_bboxes_3d']
-        img_feats, pts_feats, depth = self.extract_feat(points,
-                                                        img=img,
-                                                        img_metas=img_metas,
-                                                        **kwargs)
+        img_feats, pts_feats, depth = self.extract_feat(
+            points, img=img, img_metas=img_metas, **kwargs)
         loss_depth = self.img_view_transformer.get_depth_loss(gt_depth, depth)
         losses = dict(loss_depth=loss_depth)
-        losses_pts = self.forward_pts_train(img_feats, gt_bboxes_3d,
-                                            gt_labels_3d, img_metas,
-                                            gt_bboxes_ignore)
+        losses_pts = self.forward_pts_train(
+            img_feats, gt_bboxes_3d, gt_labels_3d, img_metas, gt_bboxes_ignore)
         losses.update(losses_pts)
         return {"loss": losses}
 
@@ -366,21 +337,6 @@ class BEVDet4D(nn.Layer):
                           gt_labels_3d,
                           img_metas,
                           gt_bboxes_ignore=None):
-        """Forward function for point cloud branch.
-
-        Args:
-            pts_feats (list[torch.Tensor]): Features of point cloud branch
-            gt_bboxes_3d (list[:obj:`BaseInstance3DBoxes`]): Ground truth
-                boxes for each sample.
-            gt_labels_3d (list[torch.Tensor]): Ground truth labels for
-                boxes of each sampole
-            img_metas (list[dict]): Meta information of samples.
-            gt_bboxes_ignore (list[torch.Tensor], optional): Ground truth
-                boxes to be ignored. Defaults to None.
-
-        Returns:
-            dict: Losses of each branch.
-        """
         outs = self.pts_bbox_head(pts_feats[0])  # single apply
         loss_inputs = [gt_bboxes_3d, gt_labels_3d, outs[0]]
         losses = self.pts_bbox_head.loss(*loss_inputs)
@@ -395,19 +351,6 @@ class BEVDet4D(nn.Layer):
         return self.forward_test(samples, *args, **kwargs)
 
     def forward_test(self, samples, **kwargs):
-        """
-        Args:
-            points (list[torch.Tensor]): the outer list indicates test-time
-                augmentations and inner torch.Tensor should have a shape NxC,
-                which contains all points in the batch.
-            img_metas (list[list[dict]]): the outer list indicates test-time
-                augs (multiscale, flip, etc.) and the inner list indicates
-                images in a batch
-            img (list[torch.Tensor], optional): the outer
-                list indicates test-time augmentations and inner
-                torch.Tensor should have a shape NxCxHxW, which contains
-                all images in the batch. Defaults to None.
-        """
         points = None
         img_metas = [samples['meta']]
         img_inputs = samples['img_inputs']
@@ -430,10 +373,8 @@ class BEVDet4D(nn.Layer):
         img_metas = samples['meta']
         img = samples['img_inputs']
         """Test function without augmentation."""
-        img_feats, _, _ = self.extract_feat(points,
-                                            img=img,
-                                            img_metas=img_metas,
-                                            **kwargs)
+        img_feats, _, _ = self.extract_feat(
+            points, img=img, img_metas=img_metas, **kwargs)
 
         bbox_list = [dict() for _ in range(len(img_metas))]
         bbox_pts = self.simple_test_pts(img_feats, img_metas, rescale=rescale)
@@ -445,9 +386,8 @@ class BEVDet4D(nn.Layer):
     def simple_test_pts(self, x, img_metas, rescale=False):
         """Test function of point cloud branch."""
         outs = self.pts_bbox_head(x[0])  # single apply
-        bbox_list = self.pts_bbox_head.get_bboxes(outs[0],
-                                                  img_metas,
-                                                  rescale=rescale)
+        bbox_list = self.pts_bbox_head.get_bboxes(
+            outs[0], img_metas, rescale=rescale)
         bbox_results = [
             self.bbox3d2result(bboxes, scores, labels)
             for bboxes, scores, labels in bbox_list
@@ -456,25 +396,11 @@ class BEVDet4D(nn.Layer):
 
     def bbox3d2result(self, bboxes, scores, labels, attrs=None):
         """Convert detection results to a list of numpy arrays.
-
-        Args:
-            bboxes (torch.Tensor): Bounding boxes with shape (N, 5).
-            labels (torch.Tensor): Labels with shape (N, ).
-            scores (torch.Tensor): Scores with shape (N, ).
-            attrs (torch.Tensor, optional): Attributes with shape (N, ).
-                Defaults to None.
-
-        Returns:
-            dict[str, torch.Tensor]: Bounding box results in cpu mode.
-
-                - boxes_3d (torch.Tensor): 3D boxes.
-                - scores (torch.Tensor): Prediction scores.
-                - labels_3d (torch.Tensor): Box labels.
-                - attrs_3d (torch.Tensor, optional): Box attributes.
         """
-        result_dict = dict(boxes_3d=bboxes.numpy(),
-                           scores_3d=scores.numpy(),
-                           labels_3d=labels.numpy())
+        result_dict = dict(
+            boxes_3d=bboxes.numpy(),
+            scores_3d=scores.numpy(),
+            labels_3d=labels.numpy())
 
         if attrs is not None:
             result_dict['attrs_3d'] = attrs
@@ -485,10 +411,8 @@ class BEVDet4D(nn.Layer):
         points = None
         img_metas = [samples['meta']]
         img_inputs = samples['img_inputs']
-        img_feats, _, _ = self.extract_feat(points,
-                                            img=img_inputs[0],
-                                            img_metas=img_metas,
-                                            **kwargs)
+        img_feats, _, _ = self.extract_feat(
+            points, img=img_inputs[0], img_metas=img_metas, **kwargs)
         outs = self.pts_bbox_head(
             img_feats[0])  # single apply in paddle centerhead
         return outs

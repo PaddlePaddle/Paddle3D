@@ -3,10 +3,11 @@ from paddle3d.ops import bev_pool_v2_backward
 from paddle.autograd import PyLayer
 import paddle
 import paddle.nn as nn
-from paddle.vision.models.resnet import BasicBlock
+# from paddle.vision.models.resnet import BasicBlock
 import paddle.nn.functional as F
 from paddle3d.apis import manager
-from paddle3d.models.layers import param_init, reset_parameters
+from paddle3d.models.layers import param_init, reset_parameters, constant_init
+from paddle3d.models.backbones.custom_resnet import BasicBlock
 
 
 class QuickCumsumCuda(PyLayer):
@@ -94,13 +95,13 @@ class LSSViewTransformer(nn.Layer):
     """
 
     def __init__(
-        self,
-        grid_config,
-        input_size,
-        downsample=16,
-        in_channels=512,
-        out_channels=64,
-        accelerate=False,
+            self,
+            grid_config,
+            input_size,
+            downsample=16,
+            in_channels=512,
+            out_channels=64,
+            accelerate=False,
     ):
         super(LSSViewTransformer, self).__init__()
         self.grid_config = grid_config
@@ -109,10 +110,8 @@ class LSSViewTransformer(nn.Layer):
         self.create_frustum(grid_config['depth'], input_size, downsample)
         self.out_channels = out_channels
         self.in_channels = in_channels
-        self.depth_net = nn.Conv2D(in_channels,
-                                   self.D + self.out_channels,
-                                   kernel_size=1,
-                                   padding=0)
+        self.depth_net = nn.Conv2D(
+            in_channels, self.D + self.out_channels, kernel_size=1, padding=0)
         self.accelerate = accelerate
         self.initial_flag = True
 
@@ -131,8 +130,8 @@ class LSSViewTransformer(nn.Layer):
         """
         self.grid_lower_bound = paddle.to_tensor([cfg[0] for cfg in [x, y, z]])
         self.grid_interval = paddle.to_tensor([cfg[2] for cfg in [x, y, z]])
-        self.grid_size = paddle.to_tensor([(cfg[1] - cfg[0]) / cfg[2]
-                                           for cfg in [x, y, z]])
+        self.grid_size = paddle.to_tensor(
+            [(cfg[1] - cfg[0]) / cfg[2] for cfg in [x, y, z]])
 
     def create_frustum(self, depth_cfg, input_size, downsample):
         """Generate the frustum template for each image.
@@ -147,13 +146,16 @@ class LSSViewTransformer(nn.Layer):
         """
         H_in, W_in = input_size
         H_feat, W_feat = H_in // downsample, W_in // downsample
-        d = paddle.arange(*depth_cfg, dtype='float32').reshape(
-            (-1, 1, 1)).expand((-1, H_feat, W_feat))
+        d = paddle.arange(
+            *depth_cfg, dtype='float32').reshape((-1, 1, 1)).expand((-1, H_feat,
+                                                                     W_feat))
         self.D = d.shape[0]
-        x = paddle.linspace(0, W_in - 1, W_feat, dtype='float32').reshape(
-            (1, 1, W_feat)).expand((self.D, H_feat, W_feat))
-        y = paddle.linspace(0, H_in - 1, H_feat, dtype='float32').reshape(
-            (1, H_feat, 1)).expand((self.D, H_feat, W_feat))
+        x = paddle.linspace(
+            0, W_in - 1, W_feat, dtype='float32').reshape(
+                (1, 1, W_feat)).expand((self.D, H_feat, W_feat))
+        y = paddle.linspace(
+            0, H_in - 1, H_feat, dtype='float32').reshape(
+                (1, H_feat, 1)).expand((self.D, H_feat, W_feat))
 
         # D x H x W x 3
         self.frustum = paddle.stack((x, y, d), axis=-1)
@@ -306,8 +308,8 @@ class LSSViewTransformer(nn.Layer):
         coor, ranks_depth, ranks_feat = \
             coor[kept], ranks_depth[kept], ranks_feat[kept]
         # get tensors from the same voxel next to each other
-        ranks_bev = coor[:, 3] * (self.grid_size[2] * self.grid_size[1] *
-                                  self.grid_size[0])
+        ranks_bev = coor[:, 3] * (
+            self.grid_size[2] * self.grid_size[1] * self.grid_size[0])
         ranks_bev += coor[:, 2] * (self.grid_size[1] * self.grid_size[0])
         ranks_bev += coor[:, 1] * self.grid_size[0] + coor[:, 0]
         order = ranks_bev.argsort()
@@ -343,10 +345,9 @@ class LSSViewTransformer(nn.Layer):
             bev_feat_shape = (depth.shape[0], int(self.grid_size[2]),
                               int(self.grid_size[1]), int(self.grid_size[0]),
                               feat.shape[-1])
-            bev_feat = bev_pool_v2_pyop(depth, feat, self.ranks_depth,
-                                        self.ranks_feat, self.ranks_bev,
-                                        bev_feat_shape, self.interval_starts,
-                                        self.interval_lengths)
+            bev_feat = bev_pool_v2_pyop(
+                depth, feat, self.ranks_depth, self.ranks_feat, self.ranks_bev,
+                bev_feat_shape, self.interval_starts, self.interval_lengths)
 
             bev_feat = bev_feat.squeeze(2)
         else:
@@ -387,17 +388,17 @@ class LSSViewTransformer(nn.Layer):
 
 
 class _ASPPModule(nn.Layer):
-
     def __init__(self, inplanes, planes, kernel_size, padding, dilation,
                  BatchNorm):
         super(_ASPPModule, self).__init__()
-        self.atrous_conv = nn.Conv2D(inplanes,
-                                     planes,
-                                     kernel_size=kernel_size,
-                                     stride=1,
-                                     padding=padding,
-                                     dilation=dilation,
-                                     bias_attr=False)
+        self.atrous_conv = nn.Conv2D(
+            inplanes,
+            planes,
+            kernel_size=kernel_size,
+            stride=1,
+            padding=padding,
+            dilation=dilation,
+            bias_attr=False)
         self.bn = BatchNorm(planes)
         self.relu = nn.ReLU()
 
@@ -419,36 +420,39 @@ class _ASPPModule(nn.Layer):
 
 
 class ASPP(nn.Layer):
-
     def __init__(self, inplanes, mid_channels=256, BatchNorm=nn.BatchNorm2D):
         super(ASPP, self).__init__()
 
         dilations = [1, 6, 12, 18]
 
-        self.aspp1 = _ASPPModule(inplanes,
-                                 mid_channels,
-                                 1,
-                                 padding=0,
-                                 dilation=dilations[0],
-                                 BatchNorm=BatchNorm)
-        self.aspp2 = _ASPPModule(inplanes,
-                                 mid_channels,
-                                 3,
-                                 padding=dilations[1],
-                                 dilation=dilations[1],
-                                 BatchNorm=BatchNorm)
-        self.aspp3 = _ASPPModule(inplanes,
-                                 mid_channels,
-                                 3,
-                                 padding=dilations[2],
-                                 dilation=dilations[2],
-                                 BatchNorm=BatchNorm)
-        self.aspp4 = _ASPPModule(inplanes,
-                                 mid_channels,
-                                 3,
-                                 padding=dilations[3],
-                                 dilation=dilations[3],
-                                 BatchNorm=BatchNorm)
+        self.aspp1 = _ASPPModule(
+            inplanes,
+            mid_channels,
+            1,
+            padding=0,
+            dilation=dilations[0],
+            BatchNorm=BatchNorm)
+        self.aspp2 = _ASPPModule(
+            inplanes,
+            mid_channels,
+            3,
+            padding=dilations[1],
+            dilation=dilations[1],
+            BatchNorm=BatchNorm)
+        self.aspp3 = _ASPPModule(
+            inplanes,
+            mid_channels,
+            3,
+            padding=dilations[2],
+            dilation=dilations[2],
+            BatchNorm=BatchNorm)
+        self.aspp4 = _ASPPModule(
+            inplanes,
+            mid_channels,
+            3,
+            padding=dilations[3],
+            dilation=dilations[3],
+            BatchNorm=BatchNorm)
 
         self.global_avg_pool = nn.Sequential(
             nn.AdaptiveAvgPool2D((1, 1)),
@@ -456,10 +460,8 @@ class ASPP(nn.Layer):
             BatchNorm(mid_channels),
             nn.ReLU(),
         )
-        self.conv1 = nn.Conv2D(int(mid_channels * 5),
-                               mid_channels,
-                               1,
-                               bias_attr=False)
+        self.conv1 = nn.Conv2D(
+            int(mid_channels * 5), mid_channels, 1, bias_attr=False)
         self.bn1 = BatchNorm(mid_channels)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(0.5)
@@ -471,10 +473,8 @@ class ASPP(nn.Layer):
         x3 = self.aspp3(x)
         x4 = self.aspp4(x)
         x5 = self.global_avg_pool(x)
-        x5 = F.interpolate(x5,
-                           size=x4.shape[2:],
-                           mode='bilinear',
-                           align_corners=True)
+        x5 = F.interpolate(
+            x5, size=x4.shape[2:], mode='bilinear', align_corners=True)
         x = paddle.concat((x1, x2, x3, x4, x5), axis=1)
 
         x = self.conv1(x)
@@ -493,7 +493,6 @@ class ASPP(nn.Layer):
 
 
 class Mlp(nn.Layer):
-
     def __init__(self,
                  in_features,
                  hidden_features=None,
@@ -517,15 +516,20 @@ class Mlp(nn.Layer):
         x = self.drop2(x)
         return x
 
+    def init_weights(self):
+        for m in self.sublayers():
+            if isinstance(m, nn.Linear):
+                reset_parameters(m)
+
 
 class SELayer(nn.Layer):
-
     def __init__(self, channels, act_layer=nn.ReLU, gate_layer=nn.Sigmoid):
         super().__init__()
         self.conv_reduce = nn.Conv2D(channels, channels, 1, bias_attr=None)
         self.act1 = act_layer()
         self.conv_expand = nn.Conv2D(channels, channels, 1, bias_attr=None)
         self.gate = gate_layer()
+        self.init_weights()
 
     def forward(self, x, x_se):
         x_se = self.conv_reduce(x_se)
@@ -533,31 +537,29 @@ class SELayer(nn.Layer):
         x_se = self.conv_expand(x_se)
         return x * self.gate(x_se)
 
+    def init_weights(self):
+        for m in self.sublayers():
+            if isinstance(m, nn.Conv2D):
+                reset_parameters(m)
+
 
 class DepthNet(nn.Layer):
-
     def __init__(self,
                  in_channels,
                  mid_channels,
                  context_channels,
                  depth_channels,
-                 use_dcn=True,
+                 use_dcn=False,
                  use_aspp=True):
         super(DepthNet, self).__init__()
         self.reduce_conv = nn.Sequential(
-            nn.Conv2D(in_channels,
-                      mid_channels,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1),
+            nn.Conv2D(
+                in_channels, mid_channels, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2D(mid_channels),
             nn.ReLU(),
         )
-        self.context_conv = nn.Conv2D(mid_channels,
-                                      context_channels,
-                                      kernel_size=1,
-                                      stride=1,
-                                      padding=0)
+        self.context_conv = nn.Conv2D(
+            mid_channels, context_channels, kernel_size=1, stride=1, padding=0)
 
         self.bn = nn.BatchNorm1D(27, data_format='NC')
         self.depth_mlp = Mlp(27, mid_channels, mid_channels)
@@ -577,12 +579,14 @@ class DepthNet(nn.Layer):
             raise NotImplementedError
 
         depth_conv_list.append(
-            nn.Conv2D(mid_channels,
-                      depth_channels,
-                      kernel_size=1,
-                      stride=1,
-                      padding=0))
+            nn.Conv2D(
+                mid_channels,
+                depth_channels,
+                kernel_size=1,
+                stride=1,
+                padding=0))
         self.depth_conv = nn.Sequential(*depth_conv_list)
+        self._init_weight()
 
     def forward(self, x, mlp_input):
         mlp_input.stop_gradient = False  # TODO stop gridient problem
@@ -598,10 +602,54 @@ class DepthNet(nn.Layer):
         depth = self.depth_conv(depth)
         return paddle.concat([depth, context], axis=1)
 
+    def _init_weight(self):
+        # def _init_weights(m):
+        #     if isinstance(m, (nn.BatchNorm1D, nn.BatchNorm2D)):
+        #         constant_init(m.weight, value=1.0)
+        #         constant_init(m.bias, value=0.0)
+        #     elif isinstance(m, (nn.Conv1D, nn.Conv2D)):
+        #         reset_parameters(m)
+
+        # for m in self.sublayers():
+        #     _init_weights(m)
+
+        # for m in self.reduce_conv:
+        #     _init_weights(m)
+
+        # for m in self.depth_conv:
+        #     _init_weights(m)
+
+        print('init_depthnet_weight')
+        # for m in self.depth_conv.sublayers():
+        #     if isinstance(m, (ASPP, _ASPPModule)):
+        #         continue
+        #     if isinstance(m, nn.Conv2D):
+        #         param_init.reset_parameters(m.weight)
+        #         #torch.nn.init.kaiming_normal_(m.weight)
+        #     elif isinstance(m, nn.BatchNorm2D):
+        #         #m.weight.data.fill_(1)
+        #         #m.bias.data.zero_()
+        #         param_init.constant_init(m.weight, value = 1)
+        #         param_init.constant_init(m.bias, value = 0)
+        self.depth_conv[0].apply(param_init.init_weight)
+        self.depth_conv[1].apply(param_init.init_weight)
+        self.depth_conv[2].apply(param_init.init_weight)
+        self.depth_conv[-1].apply(param_init.init_weight)
+
+        self.reduce_conv.apply(param_init.init_weight)
+        self.depth_se.apply(param_init.init_weight)
+        self.depth_mlp.apply(param_init.init_weight)
+        # if not self.only_depth:
+        self.context_mlp.apply(param_init.init_weight)
+        self.context_se.apply(param_init.init_weight)
+        self.context_conv.apply(param_init.init_weight)
+        # param_init.reset_parameters(self.depth_conv[-1])
+        param_init.init_weight(self.bn)
+        print('finish init depth weight!')
+
 
 @manager.TRANSFORMERS.add_component
 class LSSViewTransformerBEVDepth(LSSViewTransformer):
-
     def __init__(self, loss_depth_weight=3.0, depthnet_cfg=dict(), **kwargs):
         super(LSSViewTransformerBEVDepth, self).__init__(**kwargs)
         self.loss_depth_weight = loss_depth_weight
@@ -652,21 +700,19 @@ class LSSViewTransformerBEVDepth(LSSViewTransformer):
             gt_depths == 0.0, 1e5 * paddle.ones(
                 (gt_depths.shape), dtype=gt_depths.dtype), gt_depths)
         gt_depths = paddle.min(gt_depths_tmp, axis=-1)
-        gt_depths = gt_depths.reshape(
-            (B * N, H // self.downsample, W // self.downsample))
+        gt_depths = gt_depths.reshape((B * N, H // self.downsample,
+                                       W // self.downsample))
 
-        gt_depths = (
-            gt_depths -
-            (self.grid_config['depth'][0] -
-             self.grid_config['depth'][2])) / self.grid_config['depth'][2]
+        gt_depths = (gt_depths - (
+            self.grid_config['depth'][0] - self.grid_config['depth'][2])
+                     ) / self.grid_config['depth'][2]
 
-        gt_depths = paddle.where((gt_depths < self.D + 1) & (gt_depths >= 0.0),
-                                 gt_depths,
-                                 paddle.zeros(gt_depths.shape,
-                                              dtype=gt_depths.dtype))
-        gt_depths = F.one_hot(gt_depths.cast("int64"),
-                              num_classes=self.D + 1).reshape(
-                                  (-1, self.D + 1))[:, 1:]
+        gt_depths = paddle.where(
+            (gt_depths < self.D + 1) & (gt_depths >= 0.0), gt_depths,
+            paddle.zeros(gt_depths.shape, dtype=gt_depths.dtype))
+        gt_depths = F.one_hot(
+            gt_depths.cast("int64"), num_classes=self.D + 1).reshape(
+                (-1, self.D + 1))[:, 1:]
         return gt_depths.cast("float32")
 
     def get_depth_loss(self, depth_labels, depth_preds):
@@ -696,3 +742,10 @@ class LSSViewTransformerBEVDepth(LSSViewTransformer):
         depth = F.softmax(depth_digit, axis=1)
         ret = self.view_transform(input, depth, tran_feat)
         return ret
+
+
+if __name__ == '__main__':
+    dpnet = DepthNet(128, 128, 128, 10)
+    for m in dpnet.sublayers():
+        print("=" * 100)
+        print(m)
