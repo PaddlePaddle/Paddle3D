@@ -6,7 +6,7 @@ temporal_start_epoch: 3 # for sequentialcontrolhook
 train_dataset:
   type: BEVDetNuScenesDataset
   data_root: data/nuscenes/
-  ann_file: data/nuscenes/bevdetv2_mmdet3d/bevdetv2-nuscenes_infos_train.pkl
+  ann_file: data/nuscenes/bevdetv2-nuscenes_infos_train.pkl
   classes: [
             'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
             'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
@@ -80,7 +80,7 @@ train_dataset:
 val_dataset:
   type: BEVDetNuScenesDataset
   data_root: data/nuscenes/
-  ann_file: data/nuscenes/bevdetv2_mmdet3d/bevdetv2-nuscenes_infos_val.pkl
+  ann_file: data/nuscenes/bevdetv2-nuscenes_infos_val.pkl
   classes: [
             'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
             'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
