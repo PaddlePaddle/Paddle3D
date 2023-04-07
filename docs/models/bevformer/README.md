@@ -120,4 +120,37 @@ python tools/export.py --config configs/bevformer/bevformer_tiny.yml --model ./o
 
 ### <h3 id="82">模型部署</h3>
 
-部署代码开发进行中。
+### Python部署
+
+进入部署代码所在路径
+
+```
+cd deploy/bevformer/python
+```
+
+**注意：目前bevformer仅支持使用GPU进行推理。**
+
+### nuscenes eval推理
+命令参数说明如下：
+
+| 参数 | 说明 |
+| -- | -- |
+| config | 配置文件的所在路径  |
+| batch_size | eval推理的batch_size，默认1 |
+| model | 预训练模型参数所在路径  |
+| num_workers | eval推理的num_workers，默认2  |
+| model_file | 导出模型的结构文件`bevformer.pdmodel`所在路径 |
+| params_file | 导出模型的参数文件`bevformer.pdiparams`所在路径 |
+| use_trt | 是否使用TensorRT进行加速，默认False|
+| trt_precision | 当use_trt设置为1时，模型精度可设置0或1，0表示fp32, 1表示fp16。默认0 |
+| trt_use_static | 当trt_use_static设置为True时，**在首次运行程序的时候会将TensorRT的优化信息进行序列化到磁盘上，下次运行时直接加载优化的序列化信息而不需要重新生成**。默认0 |
+| trt_static_dir | 当trt_use_static设置为1时，保存优化信息的路径 |
+| collect_shape_info | 是否收集模型动态shape信息。默认False。**只需首次运行，后续直接加载生成的shape信息文件即可进行TensorRT加速推理** |
+| dynamic_shape_file | 保存模型动态shape信息的文件路径。 |
+| quant_config | 量化配置文件的所在路径  |
+
+运行以下命令，执行预测：
+
+```
+python infer_evaluate.py --config /path/to/config.yml --model /path/to/model.pdparams --model_file /path/to/bevformer.pdmodel --params_file /path/to/bevformer.pdiparams
+```
