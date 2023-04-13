@@ -26,7 +26,6 @@ import numpy as np
 
 
 class BevDetNuScenesMetric(MetricABC):
-
     def __init__(self,
                  data_root,
                  ann_file,
@@ -58,23 +57,18 @@ class BevDetNuScenesMetric(MetricABC):
         }
         self.modality = modality
         if self.modality is None:
-            self.modality = dict(use_camera=False,
-                                 use_lidar=True,
-                                 use_radar=False,
-                                 use_map=False,
-                                 use_external=False)
+            self.modality = dict(
+                use_camera=False,
+                use_lidar=True,
+                use_radar=False,
+                use_map=False,
+                use_external=False)
         self.data_infos = self.load_annotations(ann_file)
         self.ego_cam = ego_cam
         self.predictions = []
 
     def load_annotations(self, ann_file):
         """Load annotations from ann_file.
-
-        Args:
-            ann_file (str): Path of the annotation file.
-
-        Returns:
-            list[dict]: List of annotations sorted by timestamps.
         """
         with open(ann_file, 'rb') as f:
             data = pickle.load(f)
@@ -86,18 +80,6 @@ class BevDetNuScenesMetric(MetricABC):
 
     def format_results(self, results, jsonfile_prefix=None):
         """Format the results to json (standard format for COCO evaluation).
-
-        Args:
-            results (list[dict]): Testing results of the dataset.
-            jsonfile_prefix (str): The prefix of json files. It includes
-                the file path and the prefix of filename, e.g., "a/b/prefix".
-                If not specified, a temp file will be created. Default: None.
-
-        Returns:
-            tuple: Returns (result_files, tmp_dir), where `result_files` is a
-                dict containing the json filepaths, `tmp_dir` is the temporal
-                directory created for saving json files when
-                `jsonfile_prefix` is not specified.
         """
         assert isinstance(results, list), 'results must be a list'
         if jsonfile_prefix is None:
@@ -120,15 +102,6 @@ class BevDetNuScenesMetric(MetricABC):
 
     def _format_bbox(self, results, jsonfile_prefix=None):
         """Convert the results to the standard format.
-
-        Args:
-            results (list[dict]): Testing results of the dataset.
-            jsonfile_prefix (str): The prefix of the output jsonfile.
-                You can specify the output directory/filename by
-                modifying the jsonfile_prefix. Default: None.
-
-        Returns:
-            str: Path of the output json file.
         """
         nusc_annos = {}
         mapped_class_names = self.CLASSES
@@ -215,18 +188,6 @@ class BevDetNuScenesMetric(MetricABC):
 
     def compute(self, **kwargs) -> dict:
         """Evaluation for a single model in nuScenes protocol.
-
-        Args:
-            result_path (str): Path of the result file.
-            logger (logging.Logger | str, optional): Logger used for printing
-                related information during evaluation. Default: None.
-            metric (str, optional): Metric name used for evaluation.
-                Default: 'bbox'.
-            result_name (str, optional): Result name in the metric prefix.
-                Default: 'pts_bbox'.
-
-        Returns:
-            dict: Dictionary of evaluation details.
         """
 
         # input self.predictions
@@ -234,18 +195,18 @@ class BevDetNuScenesMetric(MetricABC):
         result_path = result_path_dict['pts_bbox']
 
         output_dir = osp.join(*osp.split(result_path)[:-1])
-        nusc = NuScenes(version=self.version,
-                        dataroot=self.data_root,
-                        verbose=False)
+        nusc = NuScenes(
+            version=self.version, dataroot=self.data_root, verbose=False)
         eval_set_map = {
             'v1.0-mini': 'mini_val',
             'v1.0-trainval': 'val',
         }
-        nusc_eval = NuScenesEval(nusc,
-                                 config=self.eval_detection_configs,
-                                 result_path=result_path,
-                                 eval_set=eval_set_map[self.version],
-                                 output_dir=output_dir,
-                                 verbose=False)
+        nusc_eval = NuScenesEval(
+            nusc,
+            config=self.eval_detection_configs,
+            result_path=result_path,
+            eval_set=eval_set_map[self.version],
+            output_dir=output_dir,
+            verbose=False)
 
         nusc_eval.main(render_curves=False)

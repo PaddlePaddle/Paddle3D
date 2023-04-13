@@ -140,9 +140,9 @@ class MultiFocalLoss(nn.Layer):
         input_soft = F.softmax(prediction, axis=1) + self.eps
 
         # create the labels one hot tensor
-        target_one_hot = F.one_hot(target,
-                                   num_classes=prediction.shape[1]).cast(
-                                       prediction.dtype) + self.eps
+        target_one_hot = F.one_hot(
+            target, num_classes=prediction.shape[1]).cast(
+                prediction.dtype) + self.eps
         new_shape = [0, len(target_one_hot.shape) - 1
                      ] + [i for i in range(1,
                                            len(target_one_hot.shape) - 1)]
@@ -245,9 +245,8 @@ def sigmoid_focal_loss(inputs, targets, alpha=-1, gamma=2, reduction="none"):
     inputs = inputs.cast('float32')
     targets = targets.cast('float32')
     p = F.sigmoid(inputs)
-    ce_loss = F.binary_cross_entropy_with_logits(inputs,
-                                                 targets,
-                                                 reduction="none")
+    ce_loss = F.binary_cross_entropy_with_logits(
+        inputs, targets, reduction="none")
     p_t = p * targets + (1 - p) * (1 - targets)
     loss = ce_loss * ((1 - p_t)**gamma)
 
@@ -265,7 +264,6 @@ def sigmoid_focal_loss(inputs, targets, alpha=-1, gamma=2, reduction="none"):
 
 @manager.LOSSES.add_component
 class WeightedFocalLoss(nn.Layer):
-
     def __init__(self,
                  use_sigmoid=True,
                  gamma=2.0,
@@ -352,8 +350,8 @@ def py_sigmoid_focal_loss(pred,
     target = target.astype(pred.dtype)
     pt = (1 - pred_sigmoid) * target + pred_sigmoid * (1 - target)
     focal_weight = (alpha * target + (1 - alpha) * (1 - target)) * pt.pow(gamma)
-    loss = F.binary_cross_entropy_with_logits(pred, target,
-                                              reduction='none') * focal_weight
+    loss = F.binary_cross_entropy_with_logits(
+        pred, target, reduction='none') * focal_weight
     if weight is not None:
         if weight.shape != loss.shape:
             if weight.shape[0] == loss.shape[0]:
@@ -427,13 +425,14 @@ class GaussianFocalLoss(nn.Layer):
         assert reduction_override in (None, 'none', 'mean', 'sum')
         reduction = (reduction_override
                      if reduction_override else self.reduction)
-        loss_reg = self.loss_weight * weight_reduce_loss(gaussian_focal_loss(
-            pred,
-            target,
-            alpha=self.alpha,
-            gamma=self.gamma,
-        ),
-                                                         weight=weight,
-                                                         reduction=reduction,
-                                                         avg_factor=avg_factor)
+        loss_reg = self.loss_weight * weight_reduce_loss(
+            gaussian_focal_loss(
+                pred,
+                target,
+                alpha=self.alpha,
+                gamma=self.gamma,
+            ),
+            weight=weight,
+            reduction=reduction,
+            avg_factor=avg_factor)
         return loss_reg

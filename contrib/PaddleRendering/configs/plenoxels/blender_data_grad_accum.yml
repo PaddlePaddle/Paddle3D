@@ -1,0 +1,69 @@
+iters: 64000
+
+image_batch_size: -1   # sample batch of rays from all images at each iteration
+ray_batch_size: 1000
+image_resampling_interval: -1
+
+amp_cfg:
+  enable: True
+  level: O1
+  scaler:
+    init_loss_scaling: 1024.0
+    incr_every_n_steps: 3000
+
+grad_accum_cfg:
+    accum_steps: 4   # update parameters every 4 iterations
+
+train_metrics:
+  - type: PSNRMeter
+
+val_metrics:
+  - type: PSNRMeter
+  - type: SSIMMeter
+
+train_dataset:
+  type: BlenderDataset
+  dataset_root: data/nerf_synthetic/lego
+  camera_scale_factor: 1.0
+  background_color: white
+  transforms:
+    - type: LoadImage
+    - type: Normalize
+    - type: AlphaBlending
+    - type: LowPass
+      inter_resolution: 512
+  split: train
+
+val_dataset:
+  type: BlenderDataset
+  dataset_root: data/nerf_synthetic/lego
+  camera_scale_factor: 1.0
+  background_color: white
+  transforms:
+    - type: LoadImage
+    - type: Normalize
+    - type: AlphaBlending
+    - type: LowPass
+      inter_resolution: 512
+  split: val
+
+optimizer:
+  type: SGD
+  learning_rate: .25   # 1.0 / ${accum_steps}
+
+model:
+  type: Plenoxels
+  ray_sampler:
+    type: GridIntersectionSampler
+    uniform: 0.5
+    jitter: 0.0
+  field:
+    type: PlenoxelGrid
+    radius: 1.3
+    sh_degree: 2
+    initial_resolution: 256
+  rgb_renderer:
+    type: RGBRenderer
+    background_color: white
+  rgb_loss:
+    type: MSELoss

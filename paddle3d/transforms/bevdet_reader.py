@@ -11,28 +11,6 @@ from paddle3d.sample import Sample
 @manager.TRANSFORMS.add_component
 class LoadPointsFromFile(TransformABC):
     """Load Points From File.
-
-    Load points from file.
-
-    Args:
-        coord_type (str): The type of coordinates of points cloud.
-            Available options includes:
-            - 'LIDAR': Points in LiDAR coordinates.
-            - 'DEPTH': Points in depth coordinates, usually for indoor dataset.
-            - 'CAMERA': Points in camera coordinates.
-        load_dim (int, optional): The dimension of the loaded points.
-            Defaults to 6.
-        use_dim (list[int], optional): Which dimensions of the points to use.
-            Defaults to [0, 1, 2]. For KITTI dataset, set use_dim=4
-            or use_dim=[0, 1, 2, 3] to use the intensity dimension.
-        shift_height (bool, optional): Whether to use shifted height.
-            Defaults to False.
-        use_color (bool, optional): Whether to use color features.
-            Defaults to False.
-        file_client_args (dict, optional): Config dict of file clients,
-            refer to
-            https://github.com/open-mmlab/mmcv/blob/master/mmcv/fileio/file_client.py
-            for more details. Defaults to dict(backend='disk').
     """
 
     def __init__(self,
@@ -55,12 +33,6 @@ class LoadPointsFromFile(TransformABC):
 
     def _load_points(self, pts_filename):
         """Private function to load point clouds data.
-
-        Args:
-            pts_filename (str): Filename of point clouds data.
-
-        Returns:
-            np.ndarray: An array containing point clouds data.
         """
 
         points = np.fromfile(pts_filename, dtype=np.float32)
@@ -68,15 +40,6 @@ class LoadPointsFromFile(TransformABC):
 
     def __call__(self, results):
         """Call function to load points data from file.
-
-        Args:
-            results (dict): Result dict containing point clouds data.
-
-        Returns:
-            dict: The result dict containing the point clouds data.
-                Added key and value are described below.
-
-                - points (:obj:`BasePoints`): Point clouds data.
         """
         pts_filename = results['pts_filename']
         points = self._load_points(pts_filename)
@@ -110,7 +73,6 @@ class LoadPointsFromFile(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class PointToMultiViewDepth(object):
-
     def __init__(self, grid_config, downsample=1):
         self.downsample = downsample
         self.grid_config = grid_config
@@ -219,11 +181,11 @@ class PrepareImageInputs(TransformABC):
     """
 
     def __init__(
-        self,
-        data_config,
-        is_train=False,
-        sequential=False,
-        ego_cam='CAM_FRONT',
+            self,
+            data_config,
+            is_train=False,
+            sequential=False,
+            ego_cam='CAM_FRONT',
     ):
         self.is_train = is_train
         self.data_config = data_config
@@ -271,9 +233,10 @@ class PrepareImageInputs(TransformABC):
         if self.is_train and self.data_config['Ncams'] < len(
                 self.data_config['cams']):
             # np.random.seed(0)
-            cam_names = np.random.choice(self.data_config['cams'],
-                                         self.data_config['Ncams'],
-                                         replace=False)
+            cam_names = np.random.choice(
+                self.data_config['cams'],
+                self.data_config['Ncams'],
+                replace=False)
         else:
             cam_names = self.data_config['cams']
         return cam_names
@@ -377,8 +340,9 @@ class PrepareImageInputs(TransformABC):
         keyego2keysensor = np.linalg.inv(keysensor2keyego)
         keysensor2sweepsensor = np.linalg.inv(
             np.matmul(
-                np.matmul(np.matmul(keyego2keysensor, global2keyego),
-                          sweepego2global), sweepsensor2sweepego))
+                np.matmul(
+                    np.matmul(keyego2keysensor, global2keyego),
+                    sweepego2global), sweepsensor2sweepego))
         return sweepsensor2keyego, keysensor2sweepsensor
 
     def get_inputs(self, results, flip=None, scale=None):
@@ -412,10 +376,8 @@ class PrepareImageInputs(TransformABC):
             rot = sensor2keyego[:3, :3]
             tran = sensor2keyego[:3, 3]
             # image view augmentation (resize, crop, horizontal flip, rotate)
-            img_augs = self.sample_augmentation(H=img.height,
-                                                W=img.width,
-                                                flip=flip,
-                                                scale=scale)
+            img_augs = self.sample_augmentation(
+                H=img.height, W=img.width, flip=flip, scale=scale)
             resize, resize_dims, crop, flip, rotate = img_augs
             img, post_rot2, post_tran2 = \
                 self.img_transform(img, post_rot,
@@ -501,7 +463,6 @@ class PrepareImageInputs(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class LoadAnnotationsBEVDepth(TransformABC):
-
     def __init__(self, bda_aug_conf, classes, is_train=True):
         self.bda_aug_conf = bda_aug_conf
         self.is_train = is_train
@@ -585,7 +546,6 @@ class LoadAnnotationsBEVDepth(TransformABC):
 
 @manager.TRANSFORMS.add_component
 class ConvertToSample(TransformABC):
-
     def __init__(self):
         super(ConvertToSample, self).__init__()
 

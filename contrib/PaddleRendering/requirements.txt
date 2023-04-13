@@ -1,0 +1,10 @@
+colorlog
+filelock
+numpy
+imageio==2.21.1
+opencv-python
+pyyaml
+pillow
+rarfile
+visualdl
+easydict

@@ -125,8 +125,8 @@ class ModelEMA(object):
             model_dict = model.state_dict()
         else:
             model_dict = {k: p() for k, p in self._model_state.items()}
-            assert all([v is not None
-                        for _, v in model_dict.items()]), 'python gc.'
+            assert all(
+                [v is not None for _, v in model_dict.items()]), 'python gc.'
 
         for k, v in self.state_dict.items():
             if k not in self.ema_black_list:

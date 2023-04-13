@@ -23,11 +23,7 @@ class CBGSDataset(BaseDataset):
     """A wrapper of class sampled dataset with ann_file path. Implementation of
     paper `Class-balanced Grouping and Sampling for Point Cloud 3D Object
     Detection <https://arxiv.org/abs/1908.09492.>`_.
-
     Balance the number of scenes under different classes.
-
-    Args:
-        dataset (:obj:`CustomDataset`): The dataset to be class sampled.
     """
 
     def __init__(self, dataset):
@@ -43,12 +39,6 @@ class CBGSDataset(BaseDataset):
 
     def _get_sample_indices(self):
         """Load annotations from ann_file.
-
-        Args:
-            ann_file (str): Path of the annotation file.
-
-        Returns:
-            list[dict]: List of annotations after class sampling.
         """
         class_sample_idxs = {cat_id: [] for cat_id in self.cat2id.values()}
         for idx in range(len(self.dataset)):
@@ -66,16 +56,12 @@ class CBGSDataset(BaseDataset):
         frac = 1.0 / len(self.CLASSES)
         ratios = [frac / v for v in class_distribution.values()]
         for cls_inds, ratio in zip(list(class_sample_idxs.values()), ratios):
-            sample_indices += np.random.choice(cls_inds,
-                                               int(len(cls_inds) *
-                                                   ratio)).tolist()
+            sample_indices += np.random.choice(
+                cls_inds, int(len(cls_inds) * ratio)).tolist()
         return sample_indices
 
     def __getitem__(self, idx):
         """Get item from infos according to the given index.
-
-        Returns:
-            dict: Data dictionary of the corresponding index.
         """
         ori_idx = self.sample_indices[idx]
         return self.dataset[ori_idx]
@@ -83,8 +69,6 @@ class CBGSDataset(BaseDataset):
     def __len__(self):
         """Return the length of data infos.
 
-        Returns:
-            int: Length of data infos.
         """
         return len(self.sample_indices)
 
