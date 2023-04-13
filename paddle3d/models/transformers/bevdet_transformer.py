@@ -1,3 +1,17 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from paddle3d.ops import bev_pool_v2
 from paddle3d.ops import bev_pool_v2_backward
 from paddle.autograd import PyLayer
@@ -6,7 +20,7 @@ import paddle.nn as nn
 from paddle.vision.models.resnet import BasicBlock
 import paddle.nn.functional as F
 from paddle3d.apis import manager
-from paddle3d.models.layers import param_init, reset_parameters
+from paddle3d.models.layers import param_init, reset_parameters, constant_init
 
 
 class QuickCumsumCuda(PyLayer):
@@ -78,29 +92,16 @@ class LSSViewTransformer(nn.Layer):
 
     Please refer to the `paper <https://arxiv.org/abs/2008.05711>`_ and
         `paper <https://arxiv.org/abs/2211.17111>`
-
-    Args:
-        grid_config (dict): Config of grid alone each axis in format of
-            (lower_bound, upper_bound, interval). axis in {x,y,z,depth}.
-        input_size (tuple(int)): Size of input images in format of (height,
-            width).
-        downsample (int): Down sample factor from the input size to the feature
-            size.
-        in_channels (int): Channels of input feature.
-        out_channels (int): Channels of transformed feature.
-        accelerate (bool): Whether the view transformation is conducted with
-            acceleration. Note: the intrinsic and extrinsic of cameras should
-            be constant when 'accelerate' is set true.
     """
 
     def __init__(
-        self,
-        grid_config,
-        input_size,
-        downsample=16,
-        in_channels=512,
-        out_channels=64,
-        accelerate=False,
+            self,
+            grid_config,
+            input_size,
+            downsample=16,
+            in_channels=512,
+            out_channels=64,
+            accelerate=False,
     ):
         super(LSSViewTransformer, self).__init__()
         self.grid_config = grid_config
@@ -109,75 +110,41 @@ class LSSViewTransformer(nn.Layer):
         self.create_frustum(grid_config['depth'], input_size, downsample)
         self.out_channels = out_channels
         self.in_channels = in_channels
-        self.depth_net = nn.Conv2D(in_channels,
-                                   self.D + self.out_channels,
-                                   kernel_size=1,
-                                   padding=0)
+        self.depth_net = nn.Conv2D(
+            in_channels, self.D + self.out_channels, kernel_size=1, padding=0)
         self.accelerate = accelerate
         self.initial_flag = True
 
     def create_grid_infos(self, x, y, z, **kwargs):
         """Generate the grid information including the lower bound, interval,
         and size.
-
-        Args:
-            x (tuple(float)): Config of grid alone x axis in format of
-                (lower_bound, upper_bound, interval).
-            y (tuple(float)): Config of grid alone y axis in format of
-                (lower_bound, upper_bound, interval).
-            z (tuple(float)): Config of grid alone z axis in format of
-                (lower_bound, upper_bound, interval).
-            **kwargs: Container for other potential parameters
         """
         self.grid_lower_bound = paddle.to_tensor([cfg[0] for cfg in [x, y, z]])
         self.grid_interval = paddle.to_tensor([cfg[2] for cfg in [x, y, z]])
-        self.grid_size = paddle.to_tensor([(cfg[1] - cfg[0]) / cfg[2]
-                                           for cfg in [x, y, z]])
+        self.grid_size = paddle.to_tensor(
+            [(cfg[1] - cfg[0]) / cfg[2] for cfg in [x, y, z]])
 
     def create_frustum(self, depth_cfg, input_size, downsample):
         """Generate the frustum template for each image.
-
-        Args:
-            depth_cfg (tuple(float)): Config of grid alone depth axis in format
-                of (lower_bound, upper_bound, interval).
-            input_size (tuple(int)): Size of input images in format of (height,
-                width).
-            downsample (int): Down sample scale factor from the input size to
-                the feature size.
         """
         H_in, W_in = input_size
         H_feat, W_feat = H_in // downsample, W_in // downsample
-        d = paddle.arange(*depth_cfg, dtype='float32').reshape(
-            (-1, 1, 1)).expand((-1, H_feat, W_feat))
+        d = paddle.arange(
+            *depth_cfg, dtype='float32').reshape((-1, 1, 1)).expand((-1, H_feat,
+                                                                     W_feat))
         self.D = d.shape[0]
-        x = paddle.linspace(0, W_in - 1, W_feat, dtype='float32').reshape(
-            (1, 1, W_feat)).expand((self.D, H_feat, W_feat))
-        y = paddle.linspace(0, H_in - 1, H_feat, dtype='float32').reshape(
-            (1, H_feat, 1)).expand((self.D, H_feat, W_feat))
+        x = paddle.linspace(
+            0, W_in - 1, W_feat, dtype='float32').reshape(
+                (1, 1, W_feat)).expand((self.D, H_feat, W_feat))
+        y = paddle.linspace(
+            0, H_in - 1, H_feat, dtype='float32').reshape(
+                (1, H_feat, 1)).expand((self.D, H_feat, W_feat))
 
         # D x H x W x 3
         self.frustum = paddle.stack((x, y, d), axis=-1)
 
     def get_lidar_coor(self, rots, trans, cam2imgs, post_rots, post_trans, bda):
         """Calculate the locations of the frustum points in the lidar
-        coordinate system.
-
-        Args:
-            rots (torch.Tensor): Rotation from camera coordinate system to
-                lidar coordinate system in shape (B, N_cams, 3, 3).
-            trans (torch.Tensor): Translation from camera coordinate system to
-                lidar coordinate system in shape (B, N_cams, 3).
-            cam2imgs (torch.Tensor): Camera intrinsic matrixes in shape
-                (B, N_cams, 3, 3).
-            post_rots (torch.Tensor): Rotation in camera coordinate system in
-                shape (B, N_cams, 3, 3). It is derived from the image view
-                augmentation.
-            post_trans (torch.Tensor): Translation in camera coordinate system
-                derived from image view augmentation in shape (B, N_cams, 3).
-
-        Returns:
-            torch.tensor: Point coordinates in shape
-                (B, N_cams, D, ownsample, 3)
         """
         B, N, _ = trans.shape
 
@@ -224,12 +191,6 @@ class LSSViewTransformer(nn.Layer):
     def init_acceleration_v2(self, coor):
         """Pre-compute the necessary information in acceleration including the
         index of points in the final feature.
-
-        Args:
-            coor (torch.tensor): Coordinate of points in lidar space in shape
-                (B, N_cams, D, H, W, 3).
-            x (torch.tensor): Feature of points in shape
-                (B, N_cams, D, H, W, C).
         """
 
         ranks_bev, ranks_depth, ranks_feat, \
@@ -271,16 +232,6 @@ class LSSViewTransformer(nn.Layer):
 
     def voxel_pooling_prepare_v2(self, coor):
         """Data preparation for voxel pooling.
-
-        Args:
-            coor (torch.tensor): Coordinate of points in the lidar space in
-                shape (B, N, D, H, W, 3).
-
-        Returns:
-            tuple[torch.tensor]: Rank of the voxel that a point is belong to
-                in shape (N_Points); Reserved index of points in the depth
-                space in shape (N_Points). Reserved index of points in the
-                feature space in shape (N_Points).
         """
         B, N, D, H, W, _ = coor.shape
         num_points = B * N * D * H * W
@@ -305,9 +256,8 @@ class LSSViewTransformer(nn.Layer):
             return None, None, None, None, None
         coor, ranks_depth, ranks_feat = \
             coor[kept], ranks_depth[kept], ranks_feat[kept]
-        # get tensors from the same voxel next to each other
-        ranks_bev = coor[:, 3] * (self.grid_size[2] * self.grid_size[1] *
-                                  self.grid_size[0])
+        ranks_bev = coor[:, 3] * (
+            self.grid_size[2] * self.grid_size[1] * self.grid_size[0])
         ranks_bev += coor[:, 2] * (self.grid_size[1] * self.grid_size[0])
         ranks_bev += coor[:, 1] * self.grid_size[0] + coor[:, 0]
         order = ranks_bev.argsort()
@@ -343,10 +293,9 @@ class LSSViewTransformer(nn.Layer):
             bev_feat_shape = (depth.shape[0], int(self.grid_size[2]),
                               int(self.grid_size[1]), int(self.grid_size[0]),
                               feat.shape[-1])
-            bev_feat = bev_pool_v2_pyop(depth, feat, self.ranks_depth,
-                                        self.ranks_feat, self.ranks_bev,
-                                        bev_feat_shape, self.interval_starts,
-                                        self.interval_lengths)
+            bev_feat = bev_pool_v2_pyop(
+                depth, feat, self.ranks_depth, self.ranks_feat, self.ranks_bev,
+                bev_feat_shape, self.interval_starts, self.interval_lengths)
 
             bev_feat = bev_feat.squeeze(2)
         else:
@@ -364,13 +313,6 @@ class LSSViewTransformer(nn.Layer):
 
     def forward(self, input):
         """Transform image-view feature into bird-eye-view feature.
-
-        Args:
-            input (list(torch.tensor)): of (image-view feature, rots, trans,
-                intrins, post_rots, post_trans)
-
-        Returns:
-            torch.tensor: Bird-eye-view feature in shape (B, C, H_BEV, W_BEV)
         """
         x = input[0]
         B, N, C, H, W = x.shape
@@ -387,17 +329,17 @@ class LSSViewTransformer(nn.Layer):
 
 
 class _ASPPModule(nn.Layer):
-
     def __init__(self, inplanes, planes, kernel_size, padding, dilation,
                  BatchNorm):
         super(_ASPPModule, self).__init__()
-        self.atrous_conv = nn.Conv2D(inplanes,
-                                     planes,
-                                     kernel_size=kernel_size,
-                                     stride=1,
-                                     padding=padding,
-                                     dilation=dilation,
-                                     bias_attr=False)
+        self.atrous_conv = nn.Conv2D(
+            inplanes,
+            planes,
+            kernel_size=kernel_size,
+            stride=1,
+            padding=padding,
+            dilation=dilation,
+            bias_attr=False)
         self.bn = BatchNorm(planes)
         self.relu = nn.ReLU()
 
@@ -419,36 +361,39 @@ class _ASPPModule(nn.Layer):
 
 
 class ASPP(nn.Layer):
-
     def __init__(self, inplanes, mid_channels=256, BatchNorm=nn.BatchNorm2D):
         super(ASPP, self).__init__()
 
         dilations = [1, 6, 12, 18]
 
-        self.aspp1 = _ASPPModule(inplanes,
-                                 mid_channels,
-                                 1,
-                                 padding=0,
-                                 dilation=dilations[0],
-                                 BatchNorm=BatchNorm)
-        self.aspp2 = _ASPPModule(inplanes,
-                                 mid_channels,
-                                 3,
-                                 padding=dilations[1],
-                                 dilation=dilations[1],
-                                 BatchNorm=BatchNorm)
-        self.aspp3 = _ASPPModule(inplanes,
-                                 mid_channels,
-                                 3,
-                                 padding=dilations[2],
-                                 dilation=dilations[2],
-                                 BatchNorm=BatchNorm)
-        self.aspp4 = _ASPPModule(inplanes,
-                                 mid_channels,
-                                 3,
-                                 padding=dilations[3],
-                                 dilation=dilations[3],
-                                 BatchNorm=BatchNorm)
+        self.aspp1 = _ASPPModule(
+            inplanes,
+            mid_channels,
+            1,
+            padding=0,
+            dilation=dilations[0],
+            BatchNorm=BatchNorm)
+        self.aspp2 = _ASPPModule(
+            inplanes,
+            mid_channels,
+            3,
+            padding=dilations[1],
+            dilation=dilations[1],
+            BatchNorm=BatchNorm)
+        self.aspp3 = _ASPPModule(
+            inplanes,
+            mid_channels,
+            3,
+            padding=dilations[2],
+            dilation=dilations[2],
+            BatchNorm=BatchNorm)
+        self.aspp4 = _ASPPModule(
+            inplanes,
+            mid_channels,
+            3,
+            padding=dilations[3],
+            dilation=dilations[3],
+            BatchNorm=BatchNorm)
 
         self.global_avg_pool = nn.Sequential(
             nn.AdaptiveAvgPool2D((1, 1)),
@@ -456,10 +401,8 @@ class ASPP(nn.Layer):
             BatchNorm(mid_channels),
             nn.ReLU(),
         )
-        self.conv1 = nn.Conv2D(int(mid_channels * 5),
-                               mid_channels,
-                               1,
-                               bias_attr=False)
+        self.conv1 = nn.Conv2D(
+            int(mid_channels * 5), mid_channels, 1, bias_attr=False)
         self.bn1 = BatchNorm(mid_channels)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(0.5)
@@ -471,10 +414,8 @@ class ASPP(nn.Layer):
         x3 = self.aspp3(x)
         x4 = self.aspp4(x)
         x5 = self.global_avg_pool(x)
-        x5 = F.interpolate(x5,
-                           size=x4.shape[2:],
-                           mode='bilinear',
-                           align_corners=True)
+        x5 = F.interpolate(
+            x5, size=x4.shape[2:], mode='bilinear', align_corners=True)
         x = paddle.concat((x1, x2, x3, x4, x5), axis=1)
 
         x = self.conv1(x)
@@ -493,7 +434,6 @@ class ASPP(nn.Layer):
 
 
 class Mlp(nn.Layer):
-
     def __init__(self,
                  in_features,
                  hidden_features=None,
@@ -517,15 +457,20 @@ class Mlp(nn.Layer):
         x = self.drop2(x)
         return x
 
+    def init_weights(self):
+        for m in self.sublayers():
+            if isinstance(m, nn.Linear):
+                reset_parameters(m)
+
 
 class SELayer(nn.Layer):
-
     def __init__(self, channels, act_layer=nn.ReLU, gate_layer=nn.Sigmoid):
         super().__init__()
         self.conv_reduce = nn.Conv2D(channels, channels, 1, bias_attr=None)
         self.act1 = act_layer()
         self.conv_expand = nn.Conv2D(channels, channels, 1, bias_attr=None)
         self.gate = gate_layer()
+        self.init_weights()
 
     def forward(self, x, x_se):
         x_se = self.conv_reduce(x_se)
@@ -533,31 +478,29 @@ class SELayer(nn.Layer):
         x_se = self.conv_expand(x_se)
         return x * self.gate(x_se)
 
+    def init_weights(self):
+        for m in self.sublayers():
+            if isinstance(m, nn.Conv2D):
+                reset_parameters(m)
+
 
 class DepthNet(nn.Layer):
-
     def __init__(self,
                  in_channels,
                  mid_channels,
                  context_channels,
                  depth_channels,
-                 use_dcn=True,
+                 use_dcn=False,
                  use_aspp=True):
         super(DepthNet, self).__init__()
         self.reduce_conv = nn.Sequential(
-            nn.Conv2D(in_channels,
-                      mid_channels,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1),
+            nn.Conv2D(
+                in_channels, mid_channels, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2D(mid_channels),
             nn.ReLU(),
         )
-        self.context_conv = nn.Conv2D(mid_channels,
-                                      context_channels,
-                                      kernel_size=1,
-                                      stride=1,
-                                      padding=0)
+        self.context_conv = nn.Conv2D(
+            mid_channels, context_channels, kernel_size=1, stride=1, padding=0)
 
         self.bn = nn.BatchNorm1D(27, data_format='NC')
         self.depth_mlp = Mlp(27, mid_channels, mid_channels)
@@ -577,12 +520,14 @@ class DepthNet(nn.Layer):
             raise NotImplementedError
 
         depth_conv_list.append(
-            nn.Conv2D(mid_channels,
-                      depth_channels,
-                      kernel_size=1,
-                      stride=1,
-                      padding=0))
+            nn.Conv2D(
+                mid_channels,
+                depth_channels,
+                kernel_size=1,
+                stride=1,
+                padding=0))
         self.depth_conv = nn.Sequential(*depth_conv_list)
+        self._init_weight()
 
     def forward(self, x, mlp_input):
         mlp_input.stop_gradient = False  # TODO stop gridient problem
@@ -598,10 +543,25 @@ class DepthNet(nn.Layer):
         depth = self.depth_conv(depth)
         return paddle.concat([depth, context], axis=1)
 
+    def _init_weight(self):
+        print('init_depthnet_weight')
+        self.depth_conv[0].apply(param_init.init_weight)
+        self.depth_conv[1].apply(param_init.init_weight)
+        self.depth_conv[2].apply(param_init.init_weight)
+        self.depth_conv[-1].apply(param_init.init_weight)
+
+        self.reduce_conv.apply(param_init.init_weight)
+        self.depth_se.apply(param_init.init_weight)
+        self.depth_mlp.apply(param_init.init_weight)
+        self.context_mlp.apply(param_init.init_weight)
+        self.context_se.apply(param_init.init_weight)
+        self.context_conv.apply(param_init.init_weight)
+        param_init.init_weight(self.bn)
+        print('finish init depth weight!')
+
 
 @manager.TRANSFORMERS.add_component
 class LSSViewTransformerBEVDepth(LSSViewTransformer):
-
     def __init__(self, loss_depth_weight=3.0, depthnet_cfg=dict(), **kwargs):
         super(LSSViewTransformerBEVDepth, self).__init__(**kwargs)
         self.loss_depth_weight = loss_depth_weight
@@ -636,12 +596,6 @@ class LSSViewTransformerBEVDepth(LSSViewTransformer):
         return mlp_input
 
     def get_downsampled_gt_depth(self, gt_depths):
-        """
-        Input:
-            gt_depths: [B, N, H, W]
-        Output:
-            gt_depths: [B*N*h*w, d]
-        """
         B, N, H, W = gt_depths.shape
         gt_depths = gt_depths.reshape(
             (B * N, H // self.downsample, self.downsample, W // self.downsample,
@@ -652,21 +606,19 @@ class LSSViewTransformerBEVDepth(LSSViewTransformer):
             gt_depths == 0.0, 1e5 * paddle.ones(
                 (gt_depths.shape), dtype=gt_depths.dtype), gt_depths)
         gt_depths = paddle.min(gt_depths_tmp, axis=-1)
-        gt_depths = gt_depths.reshape(
-            (B * N, H // self.downsample, W // self.downsample))
+        gt_depths = gt_depths.reshape((B * N, H // self.downsample,
+                                       W // self.downsample))
 
-        gt_depths = (
-            gt_depths -
-            (self.grid_config['depth'][0] -
-             self.grid_config['depth'][2])) / self.grid_config['depth'][2]
+        gt_depths = (gt_depths - (
+            self.grid_config['depth'][0] - self.grid_config['depth'][2])
+                     ) / self.grid_config['depth'][2]
 
-        gt_depths = paddle.where((gt_depths < self.D + 1) & (gt_depths >= 0.0),
-                                 gt_depths,
-                                 paddle.zeros(gt_depths.shape,
-                                              dtype=gt_depths.dtype))
-        gt_depths = F.one_hot(gt_depths.cast("int64"),
-                              num_classes=self.D + 1).reshape(
-                                  (-1, self.D + 1))[:, 1:]
+        gt_depths = paddle.where(
+            (gt_depths < self.D + 1) & (gt_depths >= 0.0), gt_depths,
+            paddle.zeros(gt_depths.shape, dtype=gt_depths.dtype))
+        gt_depths = F.one_hot(
+            gt_depths.cast("int64"), num_classes=self.D + 1).reshape(
+                (-1, self.D + 1))[:, 1:]
         return gt_depths.cast("float32")
 
     def get_depth_loss(self, depth_labels, depth_preds):
@@ -676,7 +628,6 @@ class LSSViewTransformerBEVDepth(LSSViewTransformer):
         fg_mask = paddle.max(depth_labels, axis=1) > 0.0
         depth_labels = depth_labels[fg_mask]
         depth_preds = depth_preds[fg_mask]
-        # with autocast(enabled=False):
         depth_loss = F.binary_cross_entropy(
             depth_preds,
             depth_labels,

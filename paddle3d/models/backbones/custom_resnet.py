@@ -13,21 +13,22 @@
 # limitations under the License.
 
 from paddle.vision.models.resnet import BasicBlock, BottleneckBlock
+import paddle
 from paddle import nn
 from paddle3d.apis import manager
+from paddle3d.models.layers import param_init, reset_parameters, constant_init
 
 
 @manager.BACKBONES.add_component
 class CustomResNet(nn.Layer):
-
     def __init__(
-        self,
-        numC_input,
-        num_layer=[2, 2, 2],
-        num_channels=None,
-        stride=[2, 2, 2],
-        backbone_output_ids=None,
-        block_type='Basic',
+            self,
+            numC_input,
+            num_layer=[2, 2, 2],
+            num_channels=None,
+            stride=[2, 2, 2],
+            backbone_output_ids=None,
+            block_type='Basic',
     ):
         super(CustomResNet, self).__init__()
         # build backbone
@@ -41,12 +42,12 @@ class CustomResNet(nn.Layer):
             curr_numC = numC_input
             for i in range(len(num_layer)):
                 layer = [
-                    BottleneckBlock(curr_numC,
-                                    num_channels[i] // 4,
-                                    stride=stride[i],
-                                    downsample=nn.Conv2D(
-                                        curr_numC, num_channels[i], 3,
-                                        stride[i], 1))
+                    BottleneckBlock(
+                        curr_numC,
+                        num_channels[i] // 4,
+                        stride=stride[i],
+                        downsample=nn.Conv2D(curr_numC, num_channels[i], 3,
+                                             stride[i], 1))
                 ]
                 curr_numC = num_channels[i]
                 layer.extend([
@@ -58,11 +59,12 @@ class CustomResNet(nn.Layer):
             curr_numC = numC_input
             for i in range(len(num_layer)):
                 layer = [
-                    BasicBlock(curr_numC,
-                               num_channels[i],
-                               stride=stride[i],
-                               downsample=nn.Conv2D(curr_numC, num_channels[i],
-                                                    3, stride[i], 1))
+                    BasicBlock(
+                        curr_numC,
+                        num_channels[i],
+                        stride=stride[i],
+                        downsample=nn.Conv2D(curr_numC, num_channels[i], 3,
+                                             stride[i], 1))
                 ]
                 curr_numC = num_channels[i]
                 layer.extend([
@@ -73,6 +75,8 @@ class CustomResNet(nn.Layer):
         else:
             assert False
         self.layers = nn.Sequential(*layers)
+
+        self.layers.apply(param_init.init_weight)
 
     def forward(self, x):
         feats = []
