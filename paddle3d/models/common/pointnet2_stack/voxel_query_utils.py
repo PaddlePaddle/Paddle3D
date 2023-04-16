@@ -35,7 +35,7 @@ def voxel_query(max_range: int, radius: float, nsample: int, xyz: paddle.Tensor,
         new_xyz_batch_cnt: (batch_size), [M1, M2, ...]
         point_indices: (batch_size, Z, Y, X) 4-D tensor recording the point indices of voxels
     Returns:
-        idx: (M1 + M2, nsample) tensor with the indicies of the features that form the query balls
+        idx: (M1 + M2, nsample) tensor with the indices of the features that form the query balls
     """
     z_range, y_range, x_range = max_range
     idx = pointnet2_ops.voxel_query_wrapper(new_xyz, xyz, new_coords, point_indices, \

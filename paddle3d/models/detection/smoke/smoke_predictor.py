@@ -32,12 +32,12 @@ class SMOKEPredictor(nn.Layer):
     def __init__(self,
                  num_classes=3,
                  reg_channels=(1, 2, 3, 2, 2),
-                 num_chanels=256,
+                 num_channels=256,
                  norm_type="gn",
                  in_channels=64):
         super().__init__()
         self.reg_heads = sum(reg_channels)
-        head_conv = num_chanels
+        head_conv = num_channels
         norm_func = nn.BatchNorm2D if norm_type == "bn" else group_norm
 
         self.dim_channel = get_channel_spec(reg_channels, name="dim")

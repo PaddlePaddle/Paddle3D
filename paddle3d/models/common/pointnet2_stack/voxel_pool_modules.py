@@ -100,7 +100,7 @@ class NeighborVoxelSAModuleMSG(nn.Layer):
         :param xyz_batch_cnt: (batch_size), [N1, N2, ...]
         :param new_xyz: (M1 + M2 ..., 3)
         :param new_xyz_batch_cnt: (batch_size), [M1, M2, ...]
-        :param features: (N1 + N2 ..., C) tensor of the descriptors of the the features
+        :param features: (N1 + N2 ..., C) tensor of the descriptors of the features
         :param point_indices: (B, Z, Y, X) tensor of point indices
         :return:
             new_xyz: (M1 + M2 ..., 3) tensor of the new features' xyz
