@@ -13,6 +13,7 @@
 #  limitations under the License.
 
 import copy
+import numpy as np
 import os
 from collections import defaultdict
 from typing import Callable, Dict, List, Optional, Union
@@ -20,21 +21,20 @@ from typing import Callable, Dict, List, Optional, Union
 import cv2
 import paddle
 from visualdl import LogWriter
-
+from paddle.vision.transforms import functional as F
+import trimesh
 import pprndr.utils.env as env
 from pprndr.apis.checkpoint import Checkpoint, CheckpointABC
-from pprndr.apis.pipeline import inference_step, training_step
+from pprndr.apis.pipeline import inference_step, inference_step_with_grad, training_step
 from pprndr.apis.scheduler import Scheduler, SchedulerABC
 from pprndr.data import BaseDataset, DataManager
 from pprndr.metrics import MetricABC, PSNRMeter
 from pprndr.utils.logger import logger
 from pprndr.utils.timer import Timer
 
-
 def default_data_manager_build_fn(**kwargs) -> Callable:
     """
     """
-
     def _build_data_manager(dataset: BaseDataset) -> DataManager:
         args = kwargs.copy()
         image_batch_size = args.pop('image_batch_size', -1)
@@ -293,12 +293,16 @@ class Trainer(object):
 
                 if status.do_eval:
                     # TODO: whether to save a checkpoint based on the metric
+                    eval_ray_batch_size = min(256, self.train_data_manager.ray_batch_size)
                     metrics = self.evaluate(
                         save_dir=os.path.join(self.checkpoint.save_dir,
                                               'iter_{}'.format(self.cur_iter),
                                               'renderings'),
-                        val_ray_batch_size=self.train_data_manager.
-                        ray_batch_size)
+                        val_ray_batch_size=eval_ray_batch_size,
+                        max_eval_num=2,
+                        validate_mesh="neus_style"
+                    )
+
                     for k, v in metrics.items():
                         if not isinstance(v, paddle.Tensor) or v.numel() != 1:
                             continue
@@ -333,8 +337,35 @@ class Trainer(object):
 
             self.checkpoint.record('iters', self.iters)
 
-    @paddle.no_grad()
-    def evaluate(self, save_dir: str, val_ray_batch_size: int = 16384) -> Dict:
+    def validate_mesh_neus(self, 
+                      save_dir: str,
+                      cur_iter: int = None,
+                      world_space: bool = False,
+                      resolution: int = 64,
+                      threshold: float = 0.0):
+
+        bound_min = self.val_dataset.object_bbox_min
+        bound_max = self.val_dataset.object_bbox_max
+        vertices, triangles = self.model.extract_geometry(bound_min, bound_max, 
+                                                          resolution=resolution, threshold=threshold)
+        os.makedirs(os.path.join(save_dir, 'meshes'), exist_ok=True)
+        if world_space:
+            vertices = vertices * self.val_dataset.scale_mats_np[0][0, 0] + \
+                       self.val_dataset.scale_mats_np[0][:3, 3][None]
+
+        mesh = trimesh.Trimesh(vertices, triangles)
+        if not cur_iter is None:
+            mesh_name = '{:0>8d}.ply'.format(cur_iter)
+        else:
+            mesh_name = "mesh.ply"
+        mesh.export(os.path.join(save_dir, 'meshes', mesh_name))
+
+
+    #@paddle.no_grad()
+    def evaluate(self, save_dir: str, 
+                 val_ray_batch_size: int = 16384,
+                 max_eval_num: int = None,
+                 validate_mesh: bool = None) -> Dict:
         """
         """
         if self.eval_data_loader is None:
@@ -347,14 +378,60 @@ class Trainer(object):
             meter.reset()
 
         cameras = self.val_dataset.cameras.cuda()
+        skip_pixels = self.val_dataset.skip_pixels
+        image_coords = cameras.get_image_coords(step=skip_pixels, offset=0).reshape([-1, 2])
+
+        # Only support neus_style for now for generating mesh.
+        if validate_mesh == "neus_style":
+            self.validate_mesh_neus(save_dir, cur_iter = None)
+            print('Mesh generated from sdf.')
+        else:
+            raise NotImplementedError("Invalid method for validate_mesh.")
+
 
         for idx, image_batch in logger.enumerate(
                 self.eval_data_loader, msg=msg):
-            ray_bundle = cameras.generate_rays(
-                camera_ids=image_batch["camera_id"])
 
-            output = inference_step(self.model, ray_bundle, val_ray_batch_size)
+            # For speed up
+            if not max_eval_num is None:
+                if idx + 1 > max_eval_num:
+                    break
+
+            # Select GT pixels from rgb image
+            if self.val_dataset.skip_pixels > 1:
+                new_image_batch = []
+                for single_image in image_batch["image"]:
+                    pixels = paddle.gather_nd(single_image, image_coords.astype("int64"))
+                    im_h = single_image.shape[0] // self.val_dataset.skip_pixels
+                    im_w = single_image.shape[1] // self.val_dataset.skip_pixels
+                    single_image = paddle.reshape(pixels, (im_h, im_w, 3)).unsqueeze(axis=0)
+                    new_image_batch.append(single_image)
+                image_batch["image"] = paddle.concat(new_image_batch, axis=0)
+
+
+            ray_bundle = cameras.generate_rays(                
+                camera_ids=image_batch["camera_id"],
+                image_coords=image_coords, 
+                neus_style = self.val_dataset.neus_style)
+
+            output = inference_step_with_grad(self.model, ray_bundle, val_ray_batch_size)
             output["rgb"] = output["rgb"].reshape(image_batch["image"].shape)
+
+            # Get normals for visualization
+            if "normals" in output.keys():
+                normal_image = output["normals"].detach().cpu().numpy()
+                rot = cameras.c2w_matrices[idx, :3, :3].detach().cpu().numpy()
+                rot = np.linalg.inv(rot)[None, :, :]
+                normal_image = normal_image[..., None]
+                normal_image = np.matmul(rot, normal_image)[:,:,0]
+                H = cameras._image_height[idx]
+                W = cameras._image_width[idx]
+                if not skip_pixels == 1:
+                    H = int(H / skip_pixels)
+                    W = int(W / skip_pixels)
+                normal_image = normal_image.reshape([H, W, 3]) * 128 + 128
+                normal_image = normal_image.clip(0, 255)
+                cv2.imwrite("{}/{}_normal.png".format(save_dir, idx), normal_image)
 
             for meter in self.val_metric_meters:
                 meter.update(
@@ -383,6 +460,8 @@ class Trainer(object):
                         os.path.join(save_dir, "{}.png".format(camera_id)),
                         cv2.cvtColor((image * 255.).astype("uint8").numpy(),
                                      cv2.COLOR_RGB2BGR))
+            del output
+
         if env.nranks > 1:
             results = {
                 meter.name: paddle.distributed.all_reduce(

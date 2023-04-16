@@ -14,17 +14,16 @@
 
 import argparse
 import os
+import sys
 import random
-
 import numpy as np
 import paddle
-
+sys.path.insert(1, "/home/liuxing/workspace/neural_engine/paddle_algorithms/pprndr_for_neus")
 import pprndr.utils.env as pprndr_env
 from pprndr.apis.config import Config
 from pprndr.apis.trainer import Trainer
 from pprndr.utils.checkpoint import load_pretrained_model
 from pprndr.utils.logger import logger
-
 
 def parse_args():
     """

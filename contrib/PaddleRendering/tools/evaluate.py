@@ -45,6 +45,18 @@ def parse_args():
         help='Num workers for data loader',
         type=int,
         default=2)
+    parser.add_argument(
+        '--validate_mesh',
+        dest='validate_mesh',
+        help='Choose a method (from ["neus_style", ]) to generate mesh from the learned field.',
+        type=str,
+        default=None)
+    parser.add_argument(
+        '--max_eval_num',
+        dest='max_eval_num',
+        help='The num of images for evaluation.',
+        type=int,
+        default=None)
 
     return parser.parse_args()
 
@@ -86,10 +98,19 @@ def main(args):
     if args.model is not None:
         load_pretrained_model(cfg.model, args.model)
 
+    max_eval_num = args.max_eval_num
+    validate_mesh = args.validate_mesh
+    if not validate_mesh is None:
+        if not validate_mesh in ["neus_style"]:
+            raise NotImplementedError("Only neus_style is supported for extracting mesh.")   
+
     trainer = Trainer(**dic)
     trainer.evaluate(
         save_dir=os.path.join(os.path.split(args.model)[0], "renderings"),
-        val_ray_batch_size=args.ray_batch_size)
+        val_ray_batch_size=args.ray_batch_size,
+        max_eval_num=max_eval_num,
+        validate_mesh=validate_mesh
+    )
 
 
 if __name__ == '__main__':
