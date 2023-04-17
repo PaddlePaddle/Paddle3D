@@ -119,7 +119,7 @@ def inference_step_with_grad(model: paddle.nn.Layer, ray_bundle: RayBundle,
             if isinstance(v, paddle.Tensor):
                 v = v.cpu()
             outputs_all[k].append(v)
-        def outputs
+        del outputs
 
     outputs = {}
     for k, v in outputs_all.items():

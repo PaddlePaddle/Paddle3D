@@ -17,3 +17,4 @@ from .instant_ngp_field import InstantNGPField
 from .nerf_field import NeRFField
 from .plenoxels_field import PlenoxelGrid
 from .ref_nerf_field import RefNeRFField
+from .neus_fields import NeuSField

@@ -36,12 +36,12 @@ class CameraType(IntEnum):
 @dataclass
 class Cameras:
     c2w_matrices: Union[np.ndarray, paddle.Tensor]
-    fx: Union[np.ndarray, paddle.Tensor, float]
-    fy: Union[np.ndarray, paddle.Tensor, float]
-    cx: Union[np.ndarray, paddle.Tensor, float]
-    cy: Union[np.ndarray, paddle.Tensor, float]
-    image_height: Union[np.ndarray, paddle.Tensor, int]
-    image_width: Union[np.ndarray, paddle.Tensor, int]
+    fx: Union[np.ndarray, paddle.Tensor, float] = None
+    fy: Union[np.ndarray, paddle.Tensor, float] = None
+    cx: Union[np.ndarray, paddle.Tensor, float] = None
+    cy: Union[np.ndarray, paddle.Tensor, float] = None
+    image_height: Union[np.ndarray, paddle.Tensor, int] = None
+    image_width: Union[np.ndarray, paddle.Tensor, int] = None
     centerize_coords: bool = False
     distortion_coeffs: Optional[Union[np.ndarray, paddle.Tensor]] = None
     camera_type: Optional[
@@ -54,12 +54,12 @@ class Cameras:
     def __init__(
             self,
             c2w_matrices: Union[np.ndarray, paddle.Tensor],
-            fx: Union[np.ndarray, paddle.Tensor, float],
-            fy: Union[np.ndarray, paddle.Tensor, float],
-            cx: Union[np.ndarray, paddle.Tensor, float],
-            cy: Union[np.ndarray, paddle.Tensor, float],
-            image_height: Union[np.ndarray, paddle.Tensor, int],
-            image_width: Union[np.ndarray, paddle.Tensor, int],
+            fx: Union[np.ndarray, paddle.Tensor, float]=None,
+            fy: Union[np.ndarray, paddle.Tensor, float]=None,
+            cx: Union[np.ndarray, paddle.Tensor, float]=None,
+            cy: Union[np.ndarray, paddle.Tensor, float]=None,
+            image_height: Union[np.ndarray, paddle.Tensor, int]=None,
+            image_width: Union[np.ndarray, paddle.Tensor, int]=None,
             centerize_coords: bool = False,
             distortion_coeffs: Optional[
                 Union[np.ndarray, paddle.Tensor]] = None,
@@ -83,19 +83,31 @@ class Cameras:
             c2w_matrices, place=self.place)  # (N, 3, 4)
 
         # intrinsics
-        self.fx = paddle.to_tensor(
-            fx, dtype="float32",
-            place=self.place).broadcast_to([self._num_cameras])
-        self.fy = paddle.to_tensor(
-            fy, dtype="float32",
-            place=self.place).broadcast_to([self._num_cameras])
-        self.cx = paddle.to_tensor(
-            cx, dtype="float32",
-            place=self.place).broadcast_to([self._num_cameras])
-        self.cy = paddle.to_tensor(
-            cy, dtype="float32",
-            place=self.place).broadcast_to([self._num_cameras])
-
+        if not intrinsics is None:
+            assert(fx is None)
+            assert(fy is None)
+            assert(cx is None)
+            assert(cy is None)
+            self.fx = intrinsics[:, 0, 0]
+            self.fy = intrinsics[:, 1, 1]
+            self.cx = intrinsics[:, 0, 2]
+            self.cy = intrinsics[:, 1, 2]
+            # Set dist_coeffs to None
+            self.distortion_coeffs = None
+        else:
+            self.fx = paddle.to_tensor(
+                fx, dtype="float32",
+                place=self.place).broadcast_to([self._num_cameras])
+            self.fy = paddle.to_tensor(
+                fy, dtype="float32",
+                place=self.place).broadcast_to([self._num_cameras])
+            self.cx = paddle.to_tensor(
+                cx, dtype="float32",
+                place=self.place).broadcast_to([self._num_cameras])
+            self.cy = paddle.to_tensor(
+                cy, dtype="float32",
+                place=self.place).broadcast_to([self._num_cameras])
+    
         # heights, widths
         self._image_height = paddle.to_tensor(
             image_height, dtype="int64",

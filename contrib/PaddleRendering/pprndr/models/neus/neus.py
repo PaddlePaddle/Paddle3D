@@ -70,14 +70,13 @@ class NeuS(nn.Layer):
             assert(fine_sampling_steps > 0)
             self.num_importance = fine_sampling_steps * fine_ray_sampler.num_samples
         
-    def _forward(self, sample: Tuple[RayBundle, dict], cur_iter: int = None, debug: str = None) -> Dict[str, paddle.Tensor]:
+    def _forward(self, sample: Tuple[RayBundle, dict], cur_iter: int = None) -> Dict[str, paddle.Tensor]:
         if self.training:
             ray_bundle, pixel_batch = sample
         else:
             ray_bundle = sample
 
         # Sampling inside
-
         ray_samples_inside = self.coarse_ray_sampler(ray_bundle)
         num_inside = self.coarse_ray_sampler.num_samples
 
@@ -97,7 +96,6 @@ class NeuS(nn.Layer):
                     mid_sdf = (prev_sdf + next_sdf) * 0.5 # [b, n_samples, 1]
                     
                     inside_alpha = render_alpha_from_sdf(ray_samples_inside, 
-                                                         #signed_distances,
                                                          mid_sdf,
                                                          inv_s = 64 * 2 ** i, # not sure.
                                                          coeff = cos_val,
@@ -105,15 +103,9 @@ class NeuS(nn.Layer):
                     inside_weights = render_weights_from_alpha(inside_alpha)
                     # [NOTE] PDF sampler
                     # [NOTE] Check include_original = False.
-                    ray_samples_inside_new = self.fine_ray_sampler(ray_bundle, 
-                                                                   ray_samples_inside, 
-                                                                   inside_weights,
-                                                                   debug_i = i,   # for debug
-                    )
-
-                    # ------- Ray_samples_inside_new is same as torch's.------------
-
-
+                    ray_samples_inside_new = self.fine_ray_sampler(ray_bundle=ray_bundle, 
+                                                                   ray_samples=ray_samples_inside, 
+                                                                   weights=inside_weights)
                     # Merge inside samples and signed_distances
                     ray_samples_inside, index = ray_samples_inside.merge_samples([ray_samples_inside_new], 
                                                                                  ray_bundle, mode="sort")
