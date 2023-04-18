@@ -13,7 +13,7 @@
 #  limitations under the License.
 
 import math
-
+import numpy as np
 from paddle.optimizer.lr import LambdaDecay
 
 from pprndr.apis import manager

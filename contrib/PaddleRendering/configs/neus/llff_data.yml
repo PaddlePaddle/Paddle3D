@@ -31,6 +31,8 @@ val_dataset:
   skip_pixels: 4
   image_coords_offset: 0
   neus_style: True  # NeuS way to compute directions
+  validate_mesh: "neus_style"
+  max_eval_num: 4
   background_color: null
   transforms:
     - type: LoadImage

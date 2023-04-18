@@ -293,14 +293,14 @@ class Trainer(object):
 
                 if status.do_eval:
                     # TODO: whether to save a checkpoint based on the metric
-                    eval_ray_batch_size = min(256, self.train_data_manager.ray_batch_size)
+                    eval_ray_batch_size = min(256, self.train_data_manager.ray_batch_size)                    
                     metrics = self.evaluate(
                         save_dir=os.path.join(self.checkpoint.save_dir,
                                               'iter_{}'.format(self.cur_iter),
                                               'renderings'),
                         val_ray_batch_size=eval_ray_batch_size,
-                        max_eval_num=2,
-                        validate_mesh="neus_style"
+                        max_eval_num=self.val_dataset.max_eval_num,
+                        validate_mesh=self.val_dataset.validate_mesh
                     )
 
                     for k, v in metrics.items():
@@ -382,12 +382,12 @@ class Trainer(object):
         image_coords = cameras.get_image_coords(step=skip_pixels, offset=0).reshape([-1, 2])
 
         # Only support neus_style for now for generating mesh.
-        if validate_mesh == "neus_style":
-            self.validate_mesh_neus(save_dir, cur_iter = None)
-            print('Mesh generated from sdf.')
-        else:
-            raise NotImplementedError("Invalid method for validate_mesh.")
-
+        if not validate_mesh is None:
+            if validate_mesh == "neus_style":
+                self.validate_mesh_neus(save_dir, cur_iter=None)
+                print('Mesh generated from sdf.')
+            else:
+                raise NotImplementedError("Invalid method for validate_mesh.")
 
         for idx, image_batch in logger.enumerate(
                 self.eval_data_loader, msg=msg):

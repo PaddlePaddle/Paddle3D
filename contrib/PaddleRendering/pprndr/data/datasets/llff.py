@@ -19,7 +19,7 @@ Hi there.
 import json
 import paddle
 from pathlib import Path
-from typing import List, Union
+from typing import List, Union, Optional
 import os
 import sys
 import imageio.v2 as imageio
@@ -59,12 +59,16 @@ class LLFFDataset(BaseDataset):
                  image_coords_offset: float = 0.5,
                  neus_style: bool = False,
                  background_color: Union[str, list, tuple] = None,
+                 max_eval_num: Optional[int] = None,
+                 validate_mesh: Optional[str] = "neus_style",
                  split: str = "train"):
         super(LLFFDataset, self).__init__()
         self.data_dir = dataset_root
         self.centerize_coords = centerize_coords
         self.render_cameras_name = render_cameras_name
         self.object_cameras_name = object_cameras_name
+        self.max_eval_num = max_eval_num
+        self.validate_mesh = validate_mesh
 
         # Used for skipping pixels in cameras.get_image_coords
         self.skip_pixels = skip_pixels
