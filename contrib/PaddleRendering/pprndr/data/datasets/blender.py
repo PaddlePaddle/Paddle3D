@@ -49,13 +49,23 @@ class BlenderDataset(BaseDataset):
                  transforms: List[TransformABC] = None,
                  camera_scale_factor: float = 1.0,
                  background_color: Union[str, list, tuple] = None,
+                 centerize_coords: bool = True,
+                 image_coords_offset: float = 0.5,
+                 neus_style: bool = False,
+                 max_eval_num: int = None,
+                 skip_pixels: int = 1.0,
                  split: str = "train",
                  load_normals: bool = False):
         super(BlenderDataset, self).__init__()
 
         self.dataset_root = Path(dataset_root)
-        self.transforms = Compose(transforms) if transforms else None
+        self.centerize_coords = centerize_coords
+        self.transforms = Compose(transforms) if transforms else None    
         self.camera_scale_factor = float(camera_scale_factor)
+        self.image_coords_offset = image_coords_offset
+        self.neus_style = neus_style
+        self.max_eval_num = max_eval_num
+        self.skip_pixels = skip_pixels
         if background_color is not None:
             self.background_color = np.array(
                 get_color(background_color), dtype=np.float32)
@@ -98,6 +108,7 @@ class BlenderDataset(BaseDataset):
 
         self._cameras = Cameras(
             c2w_matrices=c2w_matrices,
+            centerize_coords=self.centerize_coords,
             fx=focal_length,
             fy=focal_length,
             cx=cx,

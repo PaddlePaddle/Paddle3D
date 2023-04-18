@@ -42,7 +42,7 @@ class Cameras:
     cy: Union[np.ndarray, paddle.Tensor, float] = None
     image_height: Union[np.ndarray, paddle.Tensor, int] = None
     image_width: Union[np.ndarray, paddle.Tensor, int] = None
-    centerize_coords: bool = False
+    centerize_coords: bool = True
     distortion_coeffs: Optional[Union[np.ndarray, paddle.Tensor]] = None
     camera_type: Optional[
         Union[np.ndarray, paddle.Tensor, int, List[CameraType],
@@ -60,7 +60,7 @@ class Cameras:
             cy: Union[np.ndarray, paddle.Tensor, float]=None,
             image_height: Union[np.ndarray, paddle.Tensor, int]=None,
             image_width: Union[np.ndarray, paddle.Tensor, int]=None,
-            centerize_coords: bool = False,
+            centerize_coords: bool = True,
             distortion_coeffs: Optional[
                 Union[np.ndarray, paddle.Tensor]] = None,
             camera_type: Optional[
@@ -72,6 +72,7 @@ class Cameras:
     ):
         self._set_place(place)
 
+        self.centerize_coords = centerize_coords
         if c2w_matrices.ndim == 2:
             c2w_matrices = c2w_matrices.unsqueeze_(0)
             self._num_cameras = 1
@@ -157,6 +158,7 @@ class Cameras:
             image_width=self._image_width,
             distortion_coeffs=self.distortion_coeffs,
             camera_type=self.camera_types,
+            centerize_coords=self.centerize_coords,
             place="cuda")
 
     def __getitem__(self, indices) -> "Cameras":

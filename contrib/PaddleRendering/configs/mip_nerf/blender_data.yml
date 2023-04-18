@@ -13,9 +13,12 @@ val_metrics:
 
 train_dataset:
   type: BlenderDataset
-  dataset_root: data/nerf_synthetic/lego
+  dataset_root: /home/liuxing/workspace/datasets/nerf_synthetic/lego/
   camera_scale_factor: 1.0
+  centerize_coords: False
   background_color: white
+  image_coords_offset: 0.5
+  neus_style: True
   transforms:
     - type: LoadImage
     - type: Normalize
@@ -24,9 +27,14 @@ train_dataset:
 
 val_dataset:
   type: BlenderDataset
-  dataset_root: data/nerf_synthetic/lego
+  dataset_root: /home/liuxing/workspace/datasets/nerf_synthetic/lego/
   camera_scale_factor: 1.0
+  centerize_coords: False
   background_color: white
+  image_coords_offset: 0.5
+  max_eval_num: 4
+  skip_pixels: 4
+  neus_style: True
   transforms:
     - type: LoadImage
     - type: Normalize

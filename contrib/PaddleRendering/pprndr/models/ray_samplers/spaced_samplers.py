@@ -65,7 +65,6 @@ class SpacedSampler(BaseSampler):
                              num_samples: int = None) -> RaySamples:
         num_samples = num_samples or self.num_samples
         assert num_samples is not None, "num_samples must be specified."
-
         num_rays = ray_bundle.num_rays
         bins = paddle.linspace(
             self.spacing_start, self.spacing_end, num_samples + 1).unsqueeze_(0).repeat_interleave(

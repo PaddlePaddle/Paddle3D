@@ -8,8 +8,8 @@ metrics:
 
 train_dataset:
   type: LLFFDataset
-  dataset_root : "/home/liuxing/workspace/datasets/dtu_scan105/"
   centerize_coords: False
+  dataset_root : "/home/liuxing/workspace/datasets/dtu_scan105/"
   render_cameras_name: cameras_sphere.npz
   object_cameras_name: cameras_sphere.npz
   camera_scale_factor: 1.0
@@ -28,22 +28,22 @@ val_dataset:
   render_cameras_name: cameras_sphere.npz
   object_cameras_name: cameras_sphere.npz
   camera_scale_factor: 1.0
-  skip_pixels: 4
   image_coords_offset: 0
+  eval_with_grad: True  # must be set True to enable rendering normal_map in evaluation mode.
+  max_eval_num: 3
+  skip_pixels: 4
   neus_style: True  # NeuS way to compute directions
   validate_mesh: "neus_style"
-  max_eval_num: 4
+  mesh_resolution: 256
+  world_space_for_mesh: False
+  bound_min: [-1.0, -1.0, -1.0]
+  bound_max: [1.0, 1.0, 1.0]
+
   background_color: null
   transforms:
     - type: LoadImage
     - type: Normalize
   split: "val"
-
-export_mesh:
-  dataset_root: "/workspace/paddle-nerf/example_data/dtu_scan105/"
-  object_cameras_name: cameras_sphere.npz
-  extract_mesh_reso: 256
-  threshold: 0.0
 
 optimizer:
   type: Adam

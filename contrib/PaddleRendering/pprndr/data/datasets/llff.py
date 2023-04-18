@@ -56,11 +56,16 @@ class LLFFDataset(BaseDataset):
                  transforms: List[TransformABC] = None,
                  camera_scale_factor: float = 1.0,
                  skip_pixels: int = 1.0,
-                 image_coords_offset: float = 0.5,
-                 neus_style: bool = False,
+                 image_coords_offset: float = 0.0,
+                 neus_style: bool = True,
                  background_color: Union[str, list, tuple] = None,
-                 max_eval_num: Optional[int] = None,
+                 max_eval_num: Optional[int] = 5,
                  validate_mesh: Optional[str] = "neus_style",
+                 mesh_resolution: Optional[str] = 64,
+                 eval_with_grad: Optional[bool] = True,
+                 world_space_for_mesh: Optional[bool] = False,
+                 bound_min: Optional[list] = None,
+                 bound_max: Optional[list] = None,
                  split: str = "train"):
         super(LLFFDataset, self).__init__()
         self.data_dir = dataset_root
@@ -69,6 +74,11 @@ class LLFFDataset(BaseDataset):
         self.object_cameras_name = object_cameras_name
         self.max_eval_num = max_eval_num
         self.validate_mesh = validate_mesh
+        self.mesh_resolution = mesh_resolution
+        self.eval_with_grad = eval_with_grad
+        self.world_space_for_mesh = world_space_for_mesh
+        self.bound_min = bound_min
+        self.bound_max = bound_max
 
         # Used for skipping pixels in cameras.get_image_coords
         self.skip_pixels = skip_pixels
@@ -77,6 +87,7 @@ class LLFFDataset(BaseDataset):
         self.camera_scale_factor = float(camera_scale_factor)
         self.image_coords_offset = float(image_coords_offset)
         self.neus_style = neus_style
+        self.eval_with_grad = eval_with_grad
         if background_color is not None:
             self.background_color = np.array(
                 get_color(background_color), dtype=np.float32)
