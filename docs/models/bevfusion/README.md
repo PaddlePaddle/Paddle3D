@@ -30,9 +30,9 @@ BEVFusion是一种在BEV视角下的多模态融合模型，目前有两个开�
 
 | 模型 | Head | 3DBackbone | 2DBackbone | mAP | NDS | 模型下载 | 配置文件 | 日志 |
 | ---- | ------ | --- | ----| ------- |------- | ---- | ---- | ---- |
-| BEVFusion(C) | PointPillars | - | Dual-Swin-T | 22.7 | 29.5 | [model]() | [config](../../../configs/bevfusion/cam_stream/bevf_pp_4x8_2x_nusc_cam.yaml) | [log]()\|[vdl]() |
-| BEVFusion(L) | PointPillars | PointPillars | - | 34.8 | 49.7 | [model]() | [config](../../../configs/bevfusion/lidar_stream/bevf_pp_4x8_2x_nusc_lidar.yaml) | [log]()\|[vdl]() |
-| BEVFusion(L+C) | PointPillars | PointPillars | Dual-Swin-T | 53.9 | 60.9 | [model]() | [config](../../../configs/bevfusion/bevf_pp_2x8_1x_nusc.yaml) | [log]()\|[vdl]() |
+| BEVFusion (C) | PointPillars | - | Dual-Swin-T | 22.7 | 29.5 | [model](https://paddle3d.bj.bcebos.com/models/bevfusion/camera/model.pdparams) | [config](../../../configs/bevfusion/cam_stream/bevf_pp_4x8_2x_nusc_cam.yaml) | [log](https://paddle3d.bj.bcebos.com/models/bevfusion/camera/train.log)\|[vdl](https://paddle3d.bj.bcebos.com/models/bevfusion/camera/vdlrecords.1675518011.log) |
+| BEVFusion (L) | PointPillars | PointPillars | - | 34.8 | 49.7 | [model](https://paddle3d.bj.bcebos.com/models/bevfusion/lidar/model.pdparams) | [config](../../../configs/bevfusion/lidar_stream/bevf_pp_4x8_2x_nusc_lidar.yaml) | [log](https://paddle3d.bj.bcebos.com/models/bevfusion/lidar/train.log)\|[vdl](https://paddle3d.bj.bcebos.com/models/bevfusion/lidar/vdlrecords.1675690056.log) |
+| BEVFusion (L+C) | PointPillars | PointPillars | Dual-Swin-T | 53.9 | 60.9 | [model](https://paddle3d.bj.bcebos.com/models/bevfusion/fusion/model.pdparams) | [config](../../../configs/bevfusion/bevf_pp_2x8_1x_nusc.yaml) | [log](https://paddle3d.bj.bcebos.com/models/bevfusion/fusion/train.log)\|[vdl](https://paddle3d.bj.bcebos.com/models/bevfusion/fusion/vdlrecords.1673110577.log) |
 
 **注意：nuScenes benchmark使用8张V100 GPU训练得出。**
 
@@ -61,7 +61,7 @@ ln -s /path/to/nuscenes_dataset_root ./data
 mv ./data/nuscenes_dataset_root ./data/nuscenes
 ```
 
-为加速训练过程中Nuscenes数据集的加载和解析，需要事先将Nuscenes数据集里的标注信息存储在`pkl`后缀文件，请下载预先生成好的`pkl`文件
+为加速训练过程中Nuscenes数据集的加载和解析，需要事先将Nuscenes数据集里的标注信息存储在`pkl`后缀文件，请下载预先生成好的`pkl`文件[train_infos.pkl](https://paddle3d.bj.bcebos.com/models/bevfusion/nuscenes_infos_train.pkl)，[val_infos.pkl](https://paddle3d.bj.bcebos.com/models/bevfusion/nuscenes_infos_val.pkl)
 
 
 #### 训练
@@ -77,7 +77,7 @@ BEVFusion采用4阶段的训练方式：
 ##### Step1. 训练camera分支
 下载在nuImage上的预训练权重：
 ```
-wget https://paddledet.bj.bcebos.com/models/pretrained/ResNet50_cos_pretrained.pdparams
+wget https://paddle3d.bj.bcebos.com/models/bevfusion/mask_rcnn_dbswin-t_fpn_3x_nuim_cocopre.pdparams
 ```
 修改配置文件`bevf_pp_4x8_2x_nusc_cam.yaml`中的`load_img_from`为下载的权重路径
 
