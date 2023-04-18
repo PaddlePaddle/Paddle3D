@@ -39,11 +39,11 @@ val_dataset:
     - type: Normalize
   split: "val"
 
-export_mesh:
-  dataset_root: "/workspace/paddle-nerf/example_data/dtu_scan105/"
-  object_cameras_name: cameras_sphere.npz
-  extract_mesh_reso: 256
-  threshold: 0.0
+#export_mesh:
+#  dataset_root: "/workspace/paddle-nerf/example_data/dtu_scan105/"
+#  object_cameras_name: cameras_sphere.npz
+#  extract_mesh_reso: 256
+#  threshold: 0.0
 
 optimizer:
   type: Adam

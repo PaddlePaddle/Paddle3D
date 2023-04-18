@@ -342,10 +342,20 @@ class Trainer(object):
                       cur_iter: int = None,
                       world_space: bool = False,
                       resolution: int = 64,
-                      threshold: float = 0.0):
+                      threshold: float = 0.0,
+                      bound_min = None,
+                      bound_max = None):
 
-        bound_min = self.val_dataset.object_bbox_min
-        bound_max = self.val_dataset.object_bbox_max
+        if bound_min is None:
+            bound_min = self.val_dataset.object_bbox_min
+        elif isinstance(bound_min, list):
+            bound_min = np.asarray(bound_min)
+
+        if bound_max is None:
+            bound_max = self.val_dataset.object_bbox_max
+        elif isinstance(bound_max, list):
+            bound_max = np.asarray(bound_max)
+
         vertices, triangles = self.model.extract_geometry(bound_min, bound_max, 
                                                           resolution=resolution, threshold=threshold)
         os.makedirs(os.path.join(save_dir, 'meshes'), exist_ok=True)
@@ -365,7 +375,11 @@ class Trainer(object):
     def evaluate(self, save_dir: str, 
                  val_ray_batch_size: int = 16384,
                  max_eval_num: int = None,
-                 validate_mesh: bool = None) -> Dict:
+                 validate_mesh: bool = None,
+                 mesh_resolution: int = 64,
+                 world_space_for_mesh: bool = False,
+                 bound_min = None,
+                 bound_max = None) -> Dict:
         """
         """
         if self.eval_data_loader is None:
@@ -384,7 +398,17 @@ class Trainer(object):
         # Only support neus_style for now for generating mesh.
         if not validate_mesh is None:
             if validate_mesh == "neus_style":
-                self.validate_mesh_neus(save_dir, cur_iter=None)
+                if world_space_for_mesh:
+                    print("Use world space for generating mesh, Checking if val_dataset is provided...")
+                    assert(not self.val_dataset is None)
+                    print("Done.")
+                    
+                self.validate_mesh_neus(save_dir, 
+                                        cur_iter=None, 
+                                        world_space=world_space_for_mesh,
+                                        resolution=mesh_resolution,
+                                        bound_min=bound_min, 
+                                        bound_max=bound_max)
                 print('Mesh generated from sdf.')
             else:
                 raise NotImplementedError("Invalid method for validate_mesh.")

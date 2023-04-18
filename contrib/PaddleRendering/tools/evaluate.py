@@ -14,7 +14,8 @@
 
 import argparse
 import os
-
+import sys
+sys.path.insert(1, "/home/liuxing/workspace/Paddle3D/contrib/PaddleRendering/")
 from pprndr.apis.config import Config
 from pprndr.apis.trainer import Trainer
 from pprndr.utils.checkpoint import load_pretrained_model
@@ -57,6 +58,30 @@ def parse_args():
         help='The num of images for evaluation.',
         type=int,
         default=None)
+    parser.add_argument(
+        '--bound_min',
+        dest='bound_min',
+        help='The 3D position from which we start sampling points for extracting mesh',
+        type=int,
+        default=[-1.0, -1.0, -1.0])
+    parser.add_argument(
+        '--bound_max',
+        dest="bound_max",
+        help='The 3D position at which we end sampling points for extracting mesh',
+        type=int,
+        default=[1.0, 1.0, 1.0])
+    parser.add_argument(
+        '--mesh_resolution',
+        dest='mesh_resolution',
+        help='Mesh resolution',
+        type=int,
+        default=256)
+    parser.add_argument(
+        '--world_space_for_mesh',
+        dest='world_space_for_mesh',
+        help='Use wolrd_space for generating mesh. If this is set True, a val_dataset must be provided. Usually set it False.',
+        type=bool,
+        default=False)
 
     return parser.parse_args()
 
@@ -108,8 +133,12 @@ def main(args):
     trainer.evaluate(
         save_dir=os.path.join(os.path.split(args.model)[0], "renderings"),
         val_ray_batch_size=args.ray_batch_size,
-        max_eval_num=max_eval_num,
-        validate_mesh=validate_mesh
+        max_eval_num=max_eval_num,        
+        validate_mesh=validate_mesh,
+        mesh_resolution=args.mesh_resolution,
+        world_space_for_mesh=args.world_space_for_mesh,
+        bound_min=args.bound_min, # used for generating mesh
+        bound_max=args.bound_max  # used for generating mesh
     )
 
 
