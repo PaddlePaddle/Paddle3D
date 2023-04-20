@@ -14,7 +14,6 @@
 
 from collections import defaultdict
 from typing import Dict, Tuple, Union
-
 import paddle
 from paddle.distributed.fleet.utils.hybrid_parallel_util import \
     fused_allreduce_gradients
@@ -22,8 +21,9 @@ from paddle.distributed.fleet.utils.hybrid_parallel_util import \
 from pprndr.cameras import RayBundle
 
 
-def parse_losses(losses: Union[Dict[str, paddle.Tensor], paddle.Tensor]
-                 ) -> paddle.Tensor:
+def parse_losses(
+        losses: Union[Dict[str, paddle.Tensor],
+                      paddle.Tensor]) -> paddle.Tensor:
     if isinstance(losses, paddle.Tensor):
         return losses
     elif isinstance(losses, dict):
@@ -58,9 +58,8 @@ def training_step(model: paddle.nn.Layer,
         else:
             loss.backward()
 
-    if grad_accum_cfg is None or (
-            grad_accum_cfg is not None
-            and cur_iter % grad_accum_cfg['accum_steps'] == 0):
+    if grad_accum_cfg is None or (grad_accum_cfg is not None and cur_iter %
+                                  grad_accum_cfg['accum_steps'] == 0):
         if scaler is not None:
             scaler.step(optimizer)
             scaler.update()
@@ -107,7 +106,7 @@ def inference_step(model: paddle.nn.Layer, ray_bundle: RayBundle,
 
 
 def inference_step_with_grad(model: paddle.nn.Layer, ray_bundle: RayBundle,
-                   ray_batch_size: int) -> dict:
+                             ray_batch_size: int) -> dict:
     outputs_all = defaultdict(list)
 
     model.eval()
