@@ -13,7 +13,7 @@ val_metrics:
 
 train_dataset:
   type: BlenderDataset
-  
+
   dataset_root: /home/liuxing/workspace/datasets/nerf_synthetic/lego/
   camera_scale_factor: 1.0
   background_color: white
