@@ -14,11 +14,11 @@
 
 import argparse
 import os
+import sys
 import random
-
 import numpy as np
 import paddle
-
+sys.path.insert(1, "/home/liuxing/workspace/Paddle3D/contrib/PaddleRendering/")
 import pprndr.utils.env as pprndr_env
 from pprndr.apis.config import Config
 from pprndr.apis.trainer import Trainer
