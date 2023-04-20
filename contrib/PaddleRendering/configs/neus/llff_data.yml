@@ -60,7 +60,7 @@ lr_scheduler:
   learning_rate_alpha: 0.05
   max_steps: 300001
 
-model: 
+model:
   type: NeuS
   fine_sampling_steps: 4
   background_rgb: null
@@ -100,14 +100,14 @@ model:
     type: NeuSField
     scale: 1.0
     variance_init_val: 0.3
-    pos_encoder: 
+    pos_encoder:
       type: NeuSEncoder
       input_dims: 3
       num_freqs: 6
       include_input: True
       log_sampling: True
 
-    view_encoder: 
+    view_encoder:
       type: NeuSEncoder
       input_dims: 3
       num_freqs: 4
@@ -116,7 +116,7 @@ model:
 
     sdf_network:
       type: MLP
-      input_dim: 39 # 
+      input_dim: 39 #
       output_dim: 257
       num_layers: 9
       hidden_dim: 256
@@ -129,9 +129,9 @@ model:
       weight_init: ["geometric_init", 0.5, True] # the last one indicates if num_freqs > 0
       weight_normalization: True
 
-    color_network: 
+    color_network:
       type: MLP
-      input_dim: 289 # pts=3, view_dir(=view + encode(view)=15), normals(=3) + 256 
+      input_dim: 289 # pts=3, view_dir(=view + encode(view)=15), normals(=3) + 256
       output_dim: 3
       num_layers: 5
       hidden_dim: 256
@@ -141,7 +141,7 @@ model:
       output_activation: "sigmoid"
       weight_normalization: True
 
-  global_field: 
+  global_field:
     type: NeRFPPField
     rgb_padding: null
     dir_encoder:
@@ -156,7 +156,7 @@ model:
       input_dims: 4
       num_freqs: 10
       include_input: True
-      log_sampling: True  
+      log_sampling: True
 
     stem_net:
       type: MLP
@@ -185,6 +185,6 @@ model:
       activation: relu
       output_activation: "sigmoid"
 
-  rgb_renderer: 
+  rgb_renderer:
     type: RGBRenderer
     background_color: last_sample
