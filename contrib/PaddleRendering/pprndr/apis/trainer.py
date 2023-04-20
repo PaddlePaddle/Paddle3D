@@ -462,15 +462,6 @@ class Trainer(object):
             meter.reset()
 
         cameras = self.val_dataset.cameras.cuda()
-
-        #--------------------------------------------------
-        #cameras = self.val_dataset.cameras
-        #print('-Check centerize_coords-')
-        #print(self.val_dataset.cameras.centerize_coords)
-        #print(cameras.centerize_coords)
-        #quit()
-        #--------------------------------------------------
-
         skip_pixels = self.val_dataset.skip_pixels
         image_coords = cameras.get_image_coords(step=skip_pixels, offset=0).reshape([-1, 2])
 
@@ -480,7 +471,8 @@ class Trainer(object):
                 if world_space_for_mesh:
                     print("Use world space for generating mesh, Checking if val_dataset is provided...")
                     assert(not self.val_dataset is None)
-                    print("Done.")                
+                    print("Done.")
+
                 self.validate_mesh_neus(save_dir, 
                                         cur_iter=None, 
                                         world_space=world_space_for_mesh,
