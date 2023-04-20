@@ -1,3 +1,4 @@
+# !/usr/bin/env python3
 #  Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License")
@@ -11,10 +12,8 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 from collections import defaultdict
 from typing import Dict, Tuple, Union
-
 import paddle
 from paddle.distributed.fleet.utils.hybrid_parallel_util import \
     fused_allreduce_gradients
@@ -103,4 +102,28 @@ def inference_step(model: paddle.nn.Layer, ray_bundle: RayBundle,
         else:
             outputs[k] = v
 
+    return outputs
+
+
+def inference_step_with_grad(model: paddle.nn.Layer, ray_bundle: RayBundle,
+                             ray_batch_size: int) -> dict:
+    outputs_all = defaultdict(list)
+
+    model.eval()
+    num_rays = len(ray_bundle)
+    for b_id in range(0, num_rays, ray_batch_size):
+        cur_ray_bundle = ray_bundle[b_id:b_id + ray_batch_size]
+        outputs = model(cur_ray_bundle)
+        for k, v in outputs.items():
+            if isinstance(v, paddle.Tensor):
+                v = v.cpu()
+            outputs_all[k].append(v)
+        del outputs
+
+    outputs = {}
+    for k, v in outputs_all.items():
+        if isinstance(v[0], paddle.Tensor):
+            outputs[k] = paddle.concat(v, axis=0)
+        else:
+            outputs[k] = v
     return outputs

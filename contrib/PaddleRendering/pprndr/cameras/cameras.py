@@ -36,37 +36,42 @@ class CameraType(IntEnum):
 @dataclass
 class Cameras:
     c2w_matrices: Union[np.ndarray, paddle.Tensor]
-    fx: Union[np.ndarray, paddle.Tensor, float]
-    fy: Union[np.ndarray, paddle.Tensor, float]
-    cx: Union[np.ndarray, paddle.Tensor, float]
-    cy: Union[np.ndarray, paddle.Tensor, float]
-    image_height: Union[np.ndarray, paddle.Tensor, int]
-    image_width: Union[np.ndarray, paddle.Tensor, int]
+    fx: Union[np.ndarray, paddle.Tensor, float] = None
+    fy: Union[np.ndarray, paddle.Tensor, float] = None
+    cx: Union[np.ndarray, paddle.Tensor, float] = None
+    cy: Union[np.ndarray, paddle.Tensor, float] = None
+    image_height: Union[np.ndarray, paddle.Tensor, int] = None
+    image_width: Union[np.ndarray, paddle.Tensor, int] = None
+    centerize_coords: bool = True
     distortion_coeffs: Optional[Union[np.ndarray, paddle.Tensor]] = None
     camera_type: Optional[
         Union[np.ndarray, paddle.Tensor, int, List[CameraType],
               CameraType]] = CameraType.PERSPECTIVE
     place: Optional[Union[str, paddle.CPUPlace, paddle.CUDAPlace, paddle.
                           CUDAPinnedPlace]] = "cpu"
+    intrinsics: Union[np.ndarray, paddle.Tensor] = None
 
     def __init__(
             self,
             c2w_matrices: Union[np.ndarray, paddle.Tensor],
-            fx: Union[np.ndarray, paddle.Tensor, float],
-            fy: Union[np.ndarray, paddle.Tensor, float],
-            cx: Union[np.ndarray, paddle.Tensor, float],
-            cy: Union[np.ndarray, paddle.Tensor, float],
-            image_height: Union[np.ndarray, paddle.Tensor, int],
-            image_width: Union[np.ndarray, paddle.Tensor, int],
+            fx: Union[np.ndarray, paddle.Tensor, float] = None,
+            fy: Union[np.ndarray, paddle.Tensor, float] = None,
+            cx: Union[np.ndarray, paddle.Tensor, float] = None,
+            cy: Union[np.ndarray, paddle.Tensor, float] = None,
+            image_height: Union[np.ndarray, paddle.Tensor, int] = None,
+            image_width: Union[np.ndarray, paddle.Tensor, int] = None,
+            centerize_coords: bool = True,
             distortion_coeffs: Optional[
                 Union[np.ndarray, paddle.Tensor]] = None,
             camera_type: Optional[
                 Union[np.ndarray, paddle.Tensor, int, List[CameraType],
                       CameraType]] = CameraType.PERSPECTIVE,
             place: Optional[Union[str, paddle.CPUPlace, paddle.
-                                  CUDAPlace, paddle.CUDAPinnedPlace]] = "cpu"):
+                                  CUDAPlace, paddle.CUDAPinnedPlace]] = "cpu",
+            intrinsics: Union[np.ndarray, paddle.Tensor] = None):
         self._set_place(place)
 
+        self.centerize_coords = centerize_coords
         if c2w_matrices.ndim == 2:
             c2w_matrices = c2w_matrices.unsqueeze_(0)
             self._num_cameras = 1
@@ -78,18 +83,30 @@ class Cameras:
             c2w_matrices, place=self.place)  # (N, 3, 4)
 
         # intrinsics
-        self.fx = paddle.to_tensor(
-            fx, dtype="float32",
-            place=self.place).broadcast_to([self._num_cameras])
-        self.fy = paddle.to_tensor(
-            fy, dtype="float32",
-            place=self.place).broadcast_to([self._num_cameras])
-        self.cx = paddle.to_tensor(
-            cx, dtype="float32",
-            place=self.place).broadcast_to([self._num_cameras])
-        self.cy = paddle.to_tensor(
-            cy, dtype="float32",
-            place=self.place).broadcast_to([self._num_cameras])
+        if not intrinsics is None:
+            assert (fx is None)
+            assert (fy is None)
+            assert (cx is None)
+            assert (cy is None)
+            self.fx = intrinsics[:, 0, 0]
+            self.fy = intrinsics[:, 1, 1]
+            self.cx = intrinsics[:, 0, 2]
+            self.cy = intrinsics[:, 1, 2]
+            # Set dist_coeffs to None
+            self.distortion_coeffs = None
+        else:
+            self.fx = paddle.to_tensor(
+                fx, dtype="float32",
+                place=self.place).broadcast_to([self._num_cameras])
+            self.fy = paddle.to_tensor(
+                fy, dtype="float32",
+                place=self.place).broadcast_to([self._num_cameras])
+            self.cx = paddle.to_tensor(
+                cx, dtype="float32",
+                place=self.place).broadcast_to([self._num_cameras])
+            self.cy = paddle.to_tensor(
+                cy, dtype="float32",
+                place=self.place).broadcast_to([self._num_cameras])
 
         # heights, widths
         self._image_height = paddle.to_tensor(
@@ -140,6 +157,7 @@ class Cameras:
             image_width=self._image_width,
             distortion_coeffs=self.distortion_coeffs,
             camera_type=self.camera_types,
+            centerize_coords=self.centerize_coords,
             place="cuda")
 
     def __getitem__(self, indices) -> "Cameras":
@@ -158,7 +176,8 @@ class Cameras:
     def __len__(self):
         return self._num_cameras
 
-    def get_image_coords(self, offset: float = .5) -> paddle.Tensor:
+    def get_image_coords(self, offset: float = .5,
+                         step: int = 1) -> paddle.Tensor:
         """
         Generate coordinates on image.
 
@@ -170,17 +189,17 @@ class Cameras:
         """
 
         row, col = paddle.meshgrid(
-            paddle.arange(self._image_height[0]),
-            paddle.arange(self._image_width[0]))
+            paddle.arange(self._image_height[0], step=step),
+            paddle.arange(self._image_width[0], step=step))
         image_coords = paddle.stack([row, col],
                                     axis=-1).astype("float32") + offset
 
         return image_coords
 
-    def generate_rays(
-            self,
-            image_coords: Optional[paddle.Tensor] = None,
-            camera_ids: Union[paddle.Tensor, int, None] = None) -> RayBundle:
+    def generate_rays(self,
+                      image_coords: Optional[paddle.Tensor] = None,
+                      camera_ids: Union[paddle.Tensor, int, None] = None,
+                      neus_style: bool = False) -> RayBundle:
         """
         Generate rays from camera specified by camera_ids.
 
@@ -226,11 +245,16 @@ class Cameras:
         v = image_coords[:, 0]
         u = image_coords[:, 1]
 
-        x_coords = (u - cx) / fx  # (N,)
-        y_coords = -(v - cy) / fy  # (N,)
-
-        x_offsets = (u - cx + 1.) / fx  # (N,)
-        y_offsets = -(v - cy + 1.) / fy  # (N,)
+        if self.centerize_coords:
+            x_coords = (u - cx) / fx  # (N,)
+            y_coords = -(v - cy) / fy  # (N,)
+            x_offsets = (u - cx + 1.) / fx  # (N,)
+            y_offsets = -(v - cy + 1.) / fy  # (N,)
+        else:
+            x_coords = u
+            y_coords = v
+            x_offsets = u + 1
+            y_offsets = v + 1
 
         coord_stack = paddle.stack([
             paddle.stack([x_coords, y_coords], axis=-1),
@@ -267,13 +291,13 @@ class Cameras:
         c2w_matrices = paddle.index_select(
             self.c2w_matrices, camera_ids, axis=0)
         rotation = c2w_matrices[:, :3, :3]  # (N, 3, 3)
+
         directions_stack = paddle.sum(
             directions_stack.unsqueeze(-2) * rotation, axis=-1)
         directions_stack = F.normalize(directions_stack, p=2, axis=-1)
 
-        origins = c2w_matrices[..., :3, 3]  # (N, 3)
+        # [Todo] confirm the following. Not sure why this is fine.
         directions = directions_stack[0]  # (N, 3)
-
         dx = paddle.sqrt(
             paddle.sum(
                 (directions - directions_stack[1])**2, axis=-1,
@@ -283,6 +307,35 @@ class Cameras:
                 (directions - directions_stack[2])**2, axis=-1,
                 keepdim=True))  # (N, 1)
         pixel_area = dx * dy  # (N, 1)
+
+        # NeuS way to compute directions.
+        if neus_style:
+            # Recover intrinsics
+            intrinsic = np.zeros((fx.shape[0], 3, 3))
+            intrinsic[:, 0, 0] = fx
+            intrinsic[:, 0, 2] = cx
+            intrinsic[:, 1, 1] = fy
+            intrinsic[:, 1, 2] = cy
+            intrinsic[:, 2, 2] = 1
+
+            # Invert intrinsic matrices
+            intrinsic_inv = paddle.to_tensor(np.linalg.inv(intrinsic)).astype(
+                paddle.float32)
+
+            # Pixel in homogeneous
+            one_pad = paddle.ones_like(coord_stack[0])[:, 0][:, None]
+            p = paddle.concat((coord_stack[0], one_pad),
+                              axis=-1).astype(paddle.float32)
+
+            # Projection to camera plane & normalization
+            p = paddle.matmul(intrinsic_inv, p[:, :, None])
+
+            p = p / paddle.linalg.norm(p, p=2, axis=-2, keepdim=True)
+            directions = paddle.matmul(rotation, p).squeeze(axis=-1)
+        # -----------------------------------
+
+        # Get origins
+        origins = c2w_matrices[..., :3, 3]  # (N, 3)
 
         return RayBundle(
             origins=origins,

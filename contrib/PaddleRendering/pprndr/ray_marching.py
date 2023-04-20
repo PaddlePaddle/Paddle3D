@@ -13,21 +13,35 @@
 #  limitations under the License.
 
 from typing import Any, Callable, Tuple
-
+from pprndr.cameras.rays import Frustums, RayBundle, RaySamples
+import sys
+import numpy as np
 import paddle
-
+import paddle.nn as nn
 try:
     import ray_marching_lib
 except ModuleNotFoundError:
     from pprndr.cpp_extensions import ray_marching_lib
 from pprndr.geometries import ContractionType
+from paddle.nn import functional as F
 
 __all__ = [
-    "near_far_from_aabb", "grid_query", "contract", "contract_inv",
-    "transmittance_from_alpha", "unpack_info", "ray_marching",
+    "near_far_from_aabb", "near_far_from_sphere", "grid_query", "contract",
+    "contract_inv", "transmittance_from_alpha", "unpack_info", "ray_marching",
     "pdf_ray_marching", "render_visibility", "pack_info",
-    "render_weight_from_density", "accumulate_along_rays"
+    "render_weight_from_density", "accumulate_along_rays",
+    "render_alpha_from_densities", "render_alpha_from_sdf"
 ]
+
+
+@paddle.no_grad()
+def near_far_from_sphere(rays_o, rays_d):
+    a = paddle.sum(rays_d**2, axis=-1, keepdim=True)
+    b = 2.0 * paddle.sum(rays_o * rays_d, axis=-1, keepdim=True)
+    mid = 0.5 * (-b) / a
+    near = mid - 1.0
+    far = mid + 1.0
+    return near, far
 
 
 @paddle.no_grad()
@@ -105,6 +119,7 @@ def ray_marching(origins: paddle.Tensor,
                  nears: paddle.Tensor = None,
                  fars: paddle.tensor = None,
                  scene_aabb: paddle.Tensor = None,
+                 compute_near_far_from_sphere: bool = False,
                  occupancy_grid: Any = None,
                  sigma_fn: Callable = None,
                  alpha_fn: Callable = None,
@@ -153,9 +168,13 @@ def ray_marching(origins: paddle.Tensor,
     if nears is None or fars is None:
         if scene_aabb is not None:
             nears, fars = near_far_from_aabb(origins, directions, scene_aabb)
+        elif compute_near_far_from_sphere is not None:
+            assert (scene_aabb is None)
+            nears, fars = near_far_from_sphere(origins, directions, scene_aabb)
         else:
             nears = paddle.zeros_like(origins[:, 0]).unsqueeze_(-1)
             fars = paddle.full_like(origins[:, 0], 1e10).unsqueeze_(-1)
+
     if min_near is not None:
         nears = paddle.clip(nears, min=min_near)
     if max_far is not None:
@@ -321,3 +340,104 @@ def accumulate_along_rays(values: paddle.Tensor,
                                            [0, n_rays - len(outputs), 0, 0])
 
     return outputs
+
+
+def get_anneal_coeff(ray_samples: RaySamples = None,
+                     gradients: paddle.Tensor = None,
+                     cur_iter: int = None,
+                     anneal_end: float = 0.0) -> float:
+    dirs = ray_samples.frustums.directions
+    true_cos = (dirs * gradients).sum(-1, keepdim=True)
+    if anneal_end == 0.0:
+        cos_anneal_ratio = 1.0
+    else:
+        assert (cur_iter is not None)
+        cos_anneal_ratio = np.min([1.0, cur_iter / anneal_end])
+
+    iter_cos = -(F.relu(-true_cos * 0.5 + 0.5) * (1.0 - cos_anneal_ratio) + \
+                 F.relu(-true_cos) * cos_anneal_ratio)
+    return iter_cos
+
+
+def get_cosine_coeff(ray_samples: RaySamples = None,
+                     signed_distance: paddle.Tensor = None,
+                     radius_filter: float = None) -> paddle.Tensor:
+    # Not sure why the filtering is needed.
+    # They are from the origianl implementation (renderer.py, ll: 137 - 139)
+    if not radius_filter is None:
+        inside_pts = ray_samples.frustums.bin_points
+        radius = paddle.linalg.norm(inside_pts, p=2, axis=-1, keepdim=True)
+        inside_sphere = (radius[:, :-1] < 1.0) | (radius[:, 1:] < 1.0)
+
+    batch_size, n_samples_plus1, _ = ray_samples.frustums.bin_points.shape
+    signed_distance = signed_distance.reshape((batch_size, n_samples_plus1))
+    prev_sdf = signed_distance[:, :-1]  # [b, n_samples]
+    next_sdf = signed_distance[:, 1:]  # [b, n_samples]
+    prev_z_vals = ray_samples.frustums.starts  # [b, n_samples]
+    next_z_vals = ray_samples.frustums.ends  # [b, n_samples]
+    mid_sdf = (prev_sdf + next_sdf) * 0.5
+    cos_val = (next_sdf - prev_sdf) / (
+        next_z_vals - prev_z_vals + 1e-5).squeeze(axis=-1)  # [b, n_samples]
+    prev_cos_val = paddle.concat(
+        [paddle.zeros([batch_size, 1]), cos_val[:, :-1]],
+        axis=-1)  # [b, n_samples]
+    cos_val = paddle.stack([prev_cos_val, cos_val], axis=-1)
+    cos_val = paddle.min(cos_val, axis=-1, keepdim=True)
+    cos_val = cos_val.clip(-1e3, 0.0)
+
+    if not radius_filter is None:
+        cos_val = cos_val * inside_sphere
+    return cos_val
+
+
+def render_alpha_from_sdf(ray_samples,
+                          signed_distances,
+                          inv_s,
+                          coeff=1.0,
+                          clip_alpha=True):
+    # Note: coeff limits sdf interval
+    batch_size, n_vals, _ = signed_distances.shape  # [B, n_sdfs, 1]
+    dists = ray_samples.frustums.ends - ray_samples.frustums.starts
+
+    #prev_sdf = signed_distances[:, :-1, :] # [b, n_samples]
+    #next_sdf = signed_distances[:, 1:, :] # [b, n_samples]
+    #mid_sdf = (prev_sdf + next_sdf) * 0.5 # [b, n_samples, 1]
+
+    #    estimated_next_sdf = mid_sdf + coeff * dists * 0.5
+    #    estimated_prev_sdf = mid_sdf - coeff * dists * 0.5
+
+    estimated_next_sdf = signed_distances + coeff * dists * 0.5
+    estimated_prev_sdf = signed_distances - coeff * dists * 0.5
+
+    prev_cdf = nn.Sigmoid()(estimated_prev_sdf * inv_s)
+    next_cdf = nn.Sigmoid()(estimated_next_sdf * inv_s)
+    p = prev_cdf - next_cdf
+    c = prev_cdf
+
+    #alpha = ((p + 1e-5) / (c + 1e-5)).reshape((batch_size, n_samples))
+    alpha = ((p + 1e-5) / (c + 1e-5))
+    if clip_alpha:
+        alpha = alpha.clip(0.0, 1.0)
+
+    return alpha
+
+
+def render_alpha_from_densities(ray_samples: RaySamples = None,
+                                densities: paddle.Tensor = None
+                                ) -> paddle.Tensor:
+    ends = ray_samples.frustums.ends
+    starts = ray_samples.frustums.starts
+    intervals = ends - starts
+    directions = paddle.unsqueeze(ray_samples.frustums.directions, axis=-2)
+    deltas = intervals * paddle.linalg.norm(directions, axis=-1)
+    density_deltas = densities * deltas
+    alpha = 1 - paddle.exp(-density_deltas)
+    return alpha
+
+
+def render_weights_from_alpha(alpha):
+    batch_size = alpha.shape[0]
+    weights = alpha * paddle.cumprod(
+        paddle.concat([paddle.ones([batch_size, 1, 1]), 1. - alpha + 1e-7], 1),
+        1)[:, :-1, :]
+    return weights

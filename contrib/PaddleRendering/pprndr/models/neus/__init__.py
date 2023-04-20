@@ -1,4 +1,7 @@
-#  Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+"""
+hi
+"""
+#  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License")
 #  you may not use this file except in compliance with the License.
@@ -12,9 +15,4 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .base import BaseField
-from .instant_ngp_field import InstantNGPField
-from .nerf_field import NeRFField
-from .plenoxels_field import PlenoxelGrid
-from .ref_nerf_field import RefNeRFField
-from .neus_fields import NeuSField
+from .neus import NeuS
