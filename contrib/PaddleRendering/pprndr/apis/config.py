@@ -1,3 +1,4 @@
+# !/usr/bin/env python3
 # Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -83,13 +84,12 @@ class Config(object):
         else:
             raise RuntimeError('Config file should in yaml format!')
 
-        self.update(
-            learning_rate=learning_rate,
-            image_batch_size=image_batch_size,
-            ray_batch_size=ray_batch_size,
-            image_resampling_interval=image_resampling_interval,
-            use_adaptive_ray_batch_size=use_adaptive_ray_batch_size,
-            iters=iters)
+        self.update(learning_rate=learning_rate,
+                    image_batch_size=image_batch_size,
+                    ray_batch_size=ray_batch_size,
+                    image_resampling_interval=image_resampling_interval,
+                    use_adaptive_ray_batch_size=use_adaptive_ray_batch_size,
+                    iters=iters)
 
     def _update_dic(self, dic: Dict, base_dic: Dict):
         """Update config from dic based base_dic
@@ -301,8 +301,8 @@ class Config(object):
             if recursive:
                 params = {}
                 for key, val in dic.items():
-                    params[key] = self._load_object(
-                        obj=val, recursive=recursive)
+                    params[key] = self._load_object(obj=val,
+                                                    recursive=recursive)
             else:
                 params = dic
 

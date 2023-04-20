@@ -1,3 +1,4 @@
+# !/usr/bin/env python3
 #  Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License")
@@ -36,6 +37,7 @@ from pprndr.utils.timer import Timer
 def default_data_manager_build_fn(**kwargs) -> Callable:
     """
     """
+
     def _build_data_manager(dataset: BaseDataset) -> DataManager:
         args = kwargs.copy()
         image_batch_size = args.pop('image_batch_size', -1)
@@ -88,6 +90,7 @@ def default_scheduler_build_fn(**kwargs) -> Scheduler:
 class Trainer(object):
     """
     """
+
     def __init__(self,
                  model: paddle.nn.Layer,
                  optimizer: paddle.optimizer.Optimizer,
@@ -568,7 +571,8 @@ class Trainer(object):
 
         if env.nranks > 1:
             results = {
-                meter.name: paddle.distributed.all_reduce(
+                meter.name:
+                paddle.distributed.all_reduce(
                     meter.accumulate(verbose=env.local_rank == 0) / env.nranks)
                 for meter in self.val_metric_meters
             }

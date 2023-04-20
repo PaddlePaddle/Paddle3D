@@ -1,3 +1,4 @@
+# !/usr/bin/env python3
 #  Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License")
@@ -118,8 +119,9 @@ class ComponentManager:
             # Take the internal name of the component as its key
             self._components_dict[component_name] = component
 
-    def add_component(self, components: Union[Callable, Iterable[Callable]]
-                      ) -> Union[Callable, Iterable[Callable]]:
+    def add_component(
+        self, components: Union[Callable, Iterable[Callable]]
+    ) -> Union[Callable, Iterable[Callable]]:
         """
         Add component(s) into the corresponding manager.
         Args:
