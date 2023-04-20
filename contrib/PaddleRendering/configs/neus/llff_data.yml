@@ -1,0 +1,190 @@
+iters: 300000
+image_batch_size: 1
+ray_batch_size: 512
+image_resampling_interval: -1
+
+metrics:
+  type: PSNRMeter
+
+train_dataset:
+  type: LLFFDataset
+  centerize_coords: False
+  dataset_root : "/home/liuxing/workspace/datasets/dtu_scan105/"
+  render_cameras_name: cameras_sphere.npz
+  object_cameras_name: cameras_sphere.npz
+  camera_scale_factor: 1.0
+  image_coords_offset: 0
+  neus_style: True  # NeuS way to compute directions
+  background_color: null
+  transforms:
+    - type: LoadImage
+    - type: Normalize
+  split: "train"
+
+val_dataset:
+  type: LLFFDataset
+  centerize_coords: False
+  dataset_root: "/home/liuxing/workspace/datasets/dtu_scan105/"
+  render_cameras_name: cameras_sphere.npz
+  object_cameras_name: cameras_sphere.npz
+  camera_scale_factor: 1.0
+  image_coords_offset: 0
+  eval_with_grad: True  # must be set True to enable rendering normal_map in evaluation mode.
+  max_eval_num: 3
+  skip_pixels: 4
+  neus_style: True  # NeuS way to compute directions
+  validate_mesh: "neus_style"
+  mesh_resolution: 256
+  world_space_for_mesh: False
+  bound_min: [-1.0, -1.0, -1.0]
+  bound_max: [1.0, 1.0, 1.0]
+
+  background_color: null
+  transforms:
+    - type: LoadImage
+    - type: Normalize
+  split: "val"
+
+optimizer:
+  type: Adam
+  beta1: .9
+  beta2: .999
+  epsilon: 1.0e-8
+  weight_decay: 0.0
+  multi_precision: False
+
+lr_scheduler:
+  type: NeuSLRDecay
+  lr_init: 0.0005
+  warm_up_end: 5000
+  learning_rate_alpha: 0.05
+  max_steps: 300001
+
+model:
+  type: NeuS
+  fine_sampling_steps: 4
+  background_rgb: null
+  loss_weight_color: 1.0
+  loss_weight_idr: 0.1
+  loss_weight_mask: 0.0
+  anneal_end: 50000
+
+  coarse_ray_sampler:
+    type: UniformSampler
+    num_samples: 64
+    aabb: null
+    compute_near_far_from_sphere: True
+    spacing_start: 0.0
+    spacing_end: 1.0
+    stratified: True
+    unified_jittering: True
+
+  fine_ray_sampler:
+    type: PDFSampler
+    num_samples: 16
+    stratified: False
+    unified_jittering: True
+    include_original: False
+    histogram_padding: .01
+
+  outside_ray_sampler:
+    type: NeuSOutsideSampler
+    num_samples: 32
+    spacing_start: 1e-3
+    spacing_end: 1.0
+    stratified: True
+    unified_jittering: True
+    inside_interval_len: 0.0078125   # 1.0 / 128 (note, 128 is # of inside samples)
+
+  inside_field:
+    type: NeuSField
+    scale: 1.0
+    variance_init_val: 0.3
+    pos_encoder:
+      type: NeuSEncoder
+      input_dims: 3
+      num_freqs: 6
+      include_input: True
+      log_sampling: True
+
+    view_encoder:
+      type: NeuSEncoder
+      input_dims: 3
+      num_freqs: 4
+      include_input: True
+      log_sampling: True
+
+    sdf_network:
+      type: MLP
+      input_dim: 39 #
+      output_dim: 257
+      num_layers: 9
+      hidden_dim: 256
+      skip_layers: [4]
+      skip_connection_way: "concat_in"   # concat_in, concat_out
+      skip_connection_scale: 1.4142135   # np.sqrt(2)
+      with_bias: True # to be set to 0
+      activation: ["softplus", 100, 20]
+      output_activation: "none"
+      weight_init: ["geometric_init", 0.5, True] # the last one indicates if num_freqs > 0
+      weight_normalization: True
+
+    color_network:
+      type: MLP
+      input_dim: 289 # pts=3, view_dir(=view + encode(view)=15), normals(=3) + 256
+      output_dim: 3
+      num_layers: 5
+      hidden_dim: 256
+      skip_layers: null
+      with_bias: True
+      activation: "relu"
+      output_activation: "sigmoid"
+      weight_normalization: True
+
+  global_field:
+    type: NeRFPPField
+    rgb_padding: null
+    dir_encoder:
+      type: NeuSEncoder
+      input_dims: 3
+      num_freqs: 4
+      include_input: True
+      log_sampling: True
+
+    pos_encoder:
+      type: NeuSEncoder
+      input_dims: 4
+      num_freqs: 10
+      include_input: True
+      log_sampling: True
+
+    stem_net:
+      type: MLP
+      input_dim: 84
+      output_dim: 256
+      num_layers: 8
+      hidden_dim: 256
+      skip_layers: [5]
+      activation: "relu"
+      output_activation: "relu"
+      weight_normalization: False
+
+    density_head: # Called alpha_linear though.
+      type: MLP
+      input_dim: 256
+      output_dim: 1
+      num_layers: 1
+      output_activation: "none"
+
+    color_head:
+      type: MLP
+      input_dim: 283
+      output_dim: 3
+      hidden_dim: 128
+      num_layers: 2
+      activation: relu
+      output_activation: "sigmoid"
+
+  rgb_renderer:
+    type: RGBRenderer
+    background_color: last_sample
