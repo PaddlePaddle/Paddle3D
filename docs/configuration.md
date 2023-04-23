@@ -89,7 +89,7 @@ model:
     type: SMOKEPredictor
     num_classes: 3
     reg_channels: [1, 2, 3, 2, 2]
-    num_chanels: 256
+    num_channels: 256
     norm_type: "gn"
     in_channels: 64
   depth_ref: [28.01, 16.32]

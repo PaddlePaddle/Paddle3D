@@ -798,7 +798,7 @@ class PETRHead(nn.Layer):
         cls_avg_factor = max(cls_avg_factor, 1)
         loss_cls = self.loss_cls(cls_scores, known_labels.astype('int64'),
                                  label_weights) / (cls_avg_factor + self.pd_eps)
-        # Compute the average number of gt boxes accross all gpus, for
+        # Compute the average number of gt boxes across all gpus, for
         # normalization purposes
         num_total_pos = paddle.to_tensor([num_total_pos], dtype=loss_cls.dtype)
         num_total_pos = paddle.clip(reduce_mean(num_total_pos), min=1).item()
@@ -1103,7 +1103,7 @@ class PETRHead(nn.Layer):
         loss_cls = self.loss_cls(cls_scores, labels,
                                  label_weights) / (cls_avg_factor + self.pd_eps)
 
-        # Compute the average number of gt boxes accross all gpus, for
+        # Compute the average number of gt boxes across all gpus, for
         # normalization purposes
         num_total_pos = paddle.to_tensor([num_total_pos], dtype=loss_cls.dtype)
         num_total_pos = paddle.clip(reduce_mean(num_total_pos), min=1).item()
