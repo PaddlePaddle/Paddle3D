@@ -210,21 +210,37 @@ class PerceptionTransformer(nn.Layer):
         '''
         if prev_bev is not None:
             if self.rotate_prev_bev:
-                for i in range(bs):
-                    valid_prev_bev = prev_bev[:, i].cast('bool').any().cast(
+                if not getattr(self, 'export_model', False):
+                    for i in range(bs):
+                        valid_prev_bev = prev_bev[:, i].cast('bool').any().cast(
+                            'int32')
+                        rotation_angle = kwargs['img_metas'][i]['can_bus'][-1]
+                        tmp_prev_bev = prev_bev[:, i].reshape(
+                            [bev_h, bev_w, -1]).transpose([2, 0, 1])
+                        tmp_prev_bev = rotate(
+                            tmp_prev_bev,
+                            rotation_angle,
+                            center=self.rotate_center)
+                        tmp_prev_bev = tmp_prev_bev.transpose(
+                            [1, 2, 0]).reshape([bev_h * bev_w, 1, -1])
+                        prev_bev_new = tmp_prev_bev[:,
+                                                    0] * valid_prev_bev + prev_bev[:, i] * (
+                                                        1 - valid_prev_bev)
+                        prev_bev = prev_bev_new.unsqueeze(1)
+                else:
+                    valid_prev_bev = prev_bev[:, 0].cast('bool').any().cast(
                         'int32')
-                    rotation_angle = kwargs['img_metas'][i]['can_bus'][-1]
-                    tmp_prev_bev = prev_bev[:, i].reshape(
+                    rotation_angle = kwargs['img_metas'][0]['can_bus'][-1]
+                    tmp_prev_bev = prev_bev[:, 0].reshape(
                         [bev_h, bev_w, -1]).transpose([2, 0, 1])
                     tmp_prev_bev = rotate(
                         tmp_prev_bev, rotation_angle, center=self.rotate_center)
-                    # #np.save('tmp_prev_bev.npy', tmp_prev_bev.numpy())
                     tmp_prev_bev = tmp_prev_bev.transpose([1, 2, 0]).reshape(
                         [bev_h * bev_w, 1, -1])
-                    prev_bev[:,
-                             i] = tmp_prev_bev[:,
-                                               0] * valid_prev_bev + prev_bev[:, i] * (
-                                                   1 - valid_prev_bev)
+                    prev_bev_new = tmp_prev_bev[:,
+                                                0] * valid_prev_bev + prev_bev[:, 0] * (
+                                                    1 - valid_prev_bev)
+                    prev_bev = prev_bev_new.unsqueeze(1)
 
         # add can bus signals
         # can_bus = paddle.to_tensor(
