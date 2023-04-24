@@ -16,6 +16,7 @@ from typing import Callable, List, Union
 
 import paddle
 import paddle.nn as nn
+import paddle.nn.functional as F
 
 from pprndr.apis import manager
 from pprndr.geometries import ContractionType
@@ -60,6 +61,7 @@ class OccupancyGrid(nn.Layer):
         self.warmup_steps = int(warmup_steps)
         self.occupancy_thresh = occupancy_thresh
         self.ema_decay = ema_decay
+        self.num_dim = num_dim
 
     @property
     def binary(self):
@@ -124,6 +126,39 @@ class OccupancyGrid(nn.Layer):
                 self.ema_decay, occ))
         self._binary = self.occupancies > paddle.clip(
             self.occupancies.mean(), max=self.occupancy_thresh)
+
+    @paddle.no_grad()
+    def upsample(self, resolution: int):
+        binary = self._binary.reshape(self.resolution).unsqueeze(axis=[0, 1])
+        occupancies = self.occupancies.reshape(
+            self.resolution).unsqueeze(axis=[0, 1])
+
+        binary = F.interpolate(
+            binary.astype('float32'),
+            size=(resolution, resolution, resolution),
+            mode='trilinear',
+            align_corners=True,
+            data_format='NCDHW')
+        self.register_buffer(
+            "_binary", binary.flatten().astype('bool'), persistable=True)
+
+        occupancies = F.interpolate(
+            occupancies,
+            size=(resolution, resolution, resolution),
+            mode='trilinear',
+            align_corners=True,
+            data_format='NCDHW')
+        self.register_buffer(
+            "occupancies", occupancies.flatten(), persistable=True)
+
+        self.resolution = paddle.to_tensor(
+            [resolution] * self.num_dim, dtype="int32")
+        self.num_voxels = int(self.resolution.prod().item())
+
+        self.grid_coords = paddle.stack(
+            paddle.meshgrid([paddle.arange(res) for res in self.resolution]),
+            axis=-1).astype("float32").reshape([self.num_voxels, -1])
+        self.grid_indices = paddle.arange(self.num_voxels)
 
     def forward(self, *inputs, **kwargs):
         pass

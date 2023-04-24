@@ -254,6 +254,10 @@ class Config(object):
         return self.dic.get('grad_accum_cfg', None)
 
     @property
+    def reinit_optim_config(self) -> Union[Dict, None]:
+        return self.dic.get('reinit_optim_cfg', None)
+
+    @property
     def train_metric_meters(self) -> Union[List[MetricABC], None]:
         metrics_cfg = self.dic.get('train_metrics', None)
         if metrics_cfg is None:
@@ -337,7 +341,8 @@ class Config(object):
             'use_adaptive_ray_batch_size': self.use_adaptive_ray_batch_size,
             'image_resampling_interval': self.image_resampling_interval,
             'amp_cfg': self.amp_config,
-            'grad_accum_cfg': self.grad_accum_config
+            'grad_accum_cfg': self.grad_accum_config,
+            'reinit_optim_cfg': self.reinit_optim_config
         })
 
         return dic
