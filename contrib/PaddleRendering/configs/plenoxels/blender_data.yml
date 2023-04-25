@@ -1,7 +1,8 @@
 iters: 16000
 
 image_batch_size: -1   # sample batch of rays from all images at each iteration
-ray_batch_size: 1000
+ray_batch_size: 4000
+eval_pixel_stride: 1
 image_resampling_interval: -1
 
 amp_cfg:
@@ -20,12 +21,10 @@ val_metrics:
 
 train_dataset:
   type: BlenderDataset
-  dataset_root: /home/liuxing/workspace/datasets/nerf_synthetic/lego/
+  dataset_root: data/nerf_synthetic/lego/
   camera_scale_factor: 1.0
   background_color: white
   image_coords_offset: 0.5
-  neus_style: False  # Which style to compute directions for rays' generation.
-  skip_pixels: 1.0
   transforms:
     - type: LoadImage
     - type: Normalize
@@ -36,12 +35,10 @@ train_dataset:
 
 val_dataset:
   type: BlenderDataset
-  dataset_root: /home/liuxing/workspace/datasets/nerf_synthetic/lego
+  dataset_root: data/nerf_synthetic/lego
   camera_scale_factor: 1.0
   background_color: white
   image_coords_offset: 0.5
-  neus_style: False  # Which style to compute directions for rays' generation.
-  skip_pixels: 1.0
   transforms:
     - type: LoadImage
     - type: Normalize

@@ -35,9 +35,6 @@ from pprndr.utils.timer import Timer
 
 
 def default_data_manager_build_fn(**kwargs) -> Callable:
-    """
-    """
-
     def _build_data_manager(dataset: BaseDataset) -> DataManager:
         args = kwargs.copy()
         image_batch_size = args.pop('image_batch_size', -1)
@@ -95,6 +92,7 @@ class Trainer(object):
                  model: paddle.nn.Layer,
                  optimizer: paddle.optimizer.Optimizer,
                  iters: Optional[int] = None,
+                 eval_pixel_stride: Optional[int] = 1,
                  train_dataset: Optional[BaseDataset] = None,
                  val_dataset: Optional[BaseDataset] = None,
                  train_metric_meters: Optional[List[MetricABC]] = None,
@@ -108,6 +106,7 @@ class Trainer(object):
 
         self.model = model
         self.optimizer = optimizer
+        self.eval_pixel_stride = eval_pixel_stride
 
         if train_dataset is not None:
             data_manager_fn = data_manager_fn or {}
@@ -295,46 +294,36 @@ class Trainer(object):
 
                 if status.do_eval:
                     # TODO: whether to save a checkpoint based on the metric
-                    eval_ray_batch_size = min(
-                        256, self.train_data_manager.ray_batch_size)
-                    if hasattr(self.val_dataset, "max_eval_num"):
-                        max_eval_num = self.val_dataset.max_eval_num
-                    else:
-                        max_eval_num = None
+                    eval_ray_batch_size = self.train_data_manager.ray_batch_size
 
-                    if hasattr(self.val_dataset, "validate_mesh"):
-                        if not self.val_dataset.validate_mesh in ["neus_style"]:
-                            raise NotImplementedError(
-                                "Only neus_style is supported for extracting mesh."
-                            )
-                        validate_mesh = self.val_dataset.validate_mesh
-                    else:
-                        validate_mesh = None
+                    max_eval_num = getattr(self.val_dataset, "max_eval_num",
+                                           None)
+                    eval_with_grad = getattr(self.val_dataset, "eval_with_grad",
+                                             False)
+                    if eval_with_grad:
+                        eval_ray_batch_size = min(
+                            256, self.train_data_manager.ray_batch_size)
 
-                    if hasattr(self.val_dataset, "eval_with_grad"):
-                        eval_with_grad = self.val_dataset.eval_with_grad
-                    else:
-                        eval_with_grad = False
+                    validate_mesh = getattr(self.val_dataset, "validate_mesh",
+                                            None)
+                    if validate_mesh is not None and validate_mesh not in [
+                            "neus_style"
+                    ]:
+                        raise NotImplementedError(
+                            "Only neus_style is supported for extracting mesh.")
 
-                    if hasattr(self.val_dataset, "mesh_resolution"):
-                        mesh_resolution = self.val_dataset.mesh_resolution
+                    if validate_mesh is not None:
+                        mesh_resolution = getattr(self.val_dataset,
+                                                  "mesh_resolution", 64)
+                        world_space_for_mesh = getattr(
+                            self.val_dataset, "world_space_for_mesh", False)
+                        bound_min = getattr(self.val_dataset, "bound_min", None)
+                        bound_max = getattr(self.val_dataset, "bound_max", None)
                     else:
-                        mesh_resolution = 64  # Can be ignored when validate_mesh is disabled.
-
-                    if hasattr(self.val_dataset, "world_space_for_mesh"):
-                        world_space_for_mesh = self.val_dataset.world_space_for_mesh
-                    else:
-                        world_space_for_mesh = False  # Can be ignored when validate_mesh is disabled.
-
-                    if hasattr(self.val_dataset, "bound_min"):
-                        bound_min = self.val_dataset.bound_min
-                    else:
-                        bound_min = None  # Can be ignored when validate_mesh is disabled.
-
-                    if hasattr(self.val_dataset, "bound_max"):
-                        bound_max = self.val_dataset.bound_max
-                    else:
-                        bound_max = None  # Can be ignored when validate_mesh is disabled.
+                        mesh_resolution = None
+                        world_space_for_mesh = None
+                        bound_min = None
+                        bound_max = None
 
                     metrics = self.evaluate(
                         save_dir=os.path.join(self.checkpoint.save_dir,
@@ -344,6 +333,7 @@ class Trainer(object):
                         max_eval_num=max_eval_num,
                         validate_mesh=validate_mesh,
                         mesh_resolution=mesh_resolution,
+                        pixel_stride=self.eval_pixel_stride,
                         world_space_for_mesh=world_space_for_mesh,
                         bound_min=bound_min,
                         bound_max=bound_max,
@@ -420,7 +410,7 @@ class Trainer(object):
     def extract_mesh(self,
                      save_dir: str,
                      val_ray_batch_size: int = 16384,
-                     validate_mesh: bool = None,
+                     validate_mesh: str = None,
                      mesh_resolution: int = 64,
                      world_space_for_mesh: bool = False,
                      bound_min=None,
@@ -429,14 +419,14 @@ class Trainer(object):
         """
         os.makedirs(save_dir, exist_ok=True)
 
-        # Only support neus_style for now for generating mesh.
+        # Only support neus_style for now for generating meshs.
         if validate_mesh == "neus_style":
             if world_space_for_mesh:
-                print(
+                logger.info(
                     "Use world space for generating mesh, Checking if val_dataset is provided..."
                 )
                 assert (not self.val_dataset is None)
-                print("Done.")
+                logger.info("Done.")
 
             self.validate_mesh_neus(
                 save_dir,
@@ -445,7 +435,7 @@ class Trainer(object):
                 resolution=mesh_resolution,
                 bound_min=bound_min,
                 bound_max=bound_max)
-            print('Mesh generated from sdf.')
+            logger.info('Mesh generated from sdf.')
         else:
             raise NotImplementedError("Invalid method for validate_mesh.")
 
@@ -454,8 +444,9 @@ class Trainer(object):
                  save_dir: str,
                  val_ray_batch_size: int = 16384,
                  max_eval_num: int = None,
-                 validate_mesh: bool = None,
+                 validate_mesh: str = None,
                  mesh_resolution: int = 64,
+                 pixel_stride: int = 1,
                  world_space_for_mesh: bool = False,
                  bound_min=None,
                  bound_max=None,
@@ -472,19 +463,18 @@ class Trainer(object):
             meter.reset()
 
         cameras = self.val_dataset.cameras.cuda()
-        skip_pixels = self.val_dataset.skip_pixels
         image_coords = cameras.get_image_coords(
-            step=skip_pixels, offset=0).reshape([-1, 2])
+            step=pixel_stride, offset=0).reshape([-1, 2])
 
         # Only support neus_style for now for generating mesh.
         if not validate_mesh is None:
             if validate_mesh == "neus_style":
                 if world_space_for_mesh:
-                    print(
+                    logger.info(
                         "Use world space for generating mesh, Checking if val_dataset is provided..."
                     )
                     assert (not self.val_dataset is None)
-                    print("Done.")
+                    logger.info("Done.")
 
                 self.validate_mesh_neus(
                     save_dir,
@@ -493,7 +483,7 @@ class Trainer(object):
                     resolution=mesh_resolution,
                     bound_min=bound_min,
                     bound_max=bound_max)
-                print('Mesh generated from sdf.')
+                logger.info('Mesh generated from sdf.')
             else:
                 raise NotImplementedError("Invalid method for validate_mesh.")
 
@@ -501,27 +491,24 @@ class Trainer(object):
                 self.eval_data_loader, msg=msg):
 
             # For speed up
-            if not max_eval_num is None:
+            if max_eval_num is not None:
                 if idx + 1 > max_eval_num:
                     break
 
             # Select GT pixels from rgb image
-            if self.val_dataset.skip_pixels > 1:
+            if pixel_stride > 1:
                 new_image_batch = []
                 for single_image in image_batch["image"]:
                     pixels = paddle.gather_nd(single_image,
                                               image_coords.astype("int64"))
-                    im_h = single_image.shape[0] // self.val_dataset.skip_pixels
-                    im_w = single_image.shape[1] // self.val_dataset.skip_pixels
-                    single_image = paddle.reshape(
-                        pixels, (im_h, im_w, 3)).unsqueeze(axis=0)
+                    im_h = single_image.shape[0] // pixel_stride
+                    im_w = single_image.shape[1] // pixel_stride
+                    single_image = paddle.reshape(pixels, (im_h, im_w, -1))
                     new_image_batch.append(single_image)
-                image_batch["image"] = paddle.concat(new_image_batch, axis=0)
+                image_batch["image"] = paddle.stack(new_image_batch, axis=0)
 
             ray_bundle = cameras.generate_rays(
-                camera_ids=image_batch["camera_id"],
-                image_coords=image_coords,
-                neus_style=self.val_dataset.neus_style)
+                camera_ids=image_batch["camera_id"], image_coords=image_coords)
 
             if eval_with_grad:
                 output = inference_step_with_grad(self.model, ray_bundle,
@@ -532,19 +519,20 @@ class Trainer(object):
             output["rgb"] = output["rgb"].reshape(image_batch["image"].shape)
 
             # Get normals for visualization
-            if "normals" in output.keys():
-                normal_image = output["normals"].detach().cpu().numpy()
-                rot = cameras.c2w_matrices[idx, :3, :3].detach().cpu().numpy()
-                rot = np.linalg.inv(rot)[None, :, :]
+            if "normals" in output:
+                normal_image = output["normals"]
+                rot = cameras.c2w_matrices[idx, :3, :3]
+                rot = paddle.linalg.inv(rot)[None, :, :]
                 normal_image = normal_image[..., None]
-                normal_image = np.matmul(rot, normal_image)[:, :, 0]
+                normal_image = paddle.matmul(rot, normal_image)[:, :, 0]
                 H = cameras._image_height[idx]
                 W = cameras._image_width[idx]
-                if not skip_pixels == 1:
-                    H = int(H / skip_pixels)
-                    W = int(W / skip_pixels)
+                if pixel_stride != 1:
+                    H = int(H / pixel_stride)
+                    W = int(W / pixel_stride)
                 normal_image = normal_image.reshape([H, W, 3]) * 128 + 128
                 normal_image = normal_image.clip(0, 255)
+                normal_image = normal_image.numpy()
                 cv2.imwrite("{}/{}_normal.png".format(save_dir, idx),
                             normal_image)
 

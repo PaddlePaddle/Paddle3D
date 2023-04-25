@@ -26,7 +26,7 @@ try:
 except ModuleNotFoundError:
     from pprndr.cpp_extensions import ffmlp
 
-__all__ = ['FFMLP', 'MLP']
+__all__ = ['FFMLP', 'MLP', 'Softplus']
 
 TCNN_ACTIVATION = {
     "relu": 0,
@@ -54,6 +54,14 @@ PADDLE_ACTIVATION = {
     "none":
     None
 }
+
+
+class Softplus(nn.Layer):
+    def __init__(self, beta: float = 100, threshold: float = 20):
+        self.act_layer = nn.Softplus(beta, threshold)
+
+    def forward(self, x):
+        return self.act_layer(x)
 
 
 class GeometricInit(object):
@@ -239,7 +247,7 @@ class MLP(nn.Layer):
                  skip_connection_way: str = "concat_out",
                  skip_connection_scale: float = None,
                  with_bias: bool = True,
-                 activation: Union[str, List] = "relu",
+                 activation: Union[str, nn.Layer] = "relu",
                  output_activation: str = "none",
                  weight_init: list = None,
                  weight_normalization: bool = False):
@@ -280,24 +288,17 @@ class MLP(nn.Layer):
 
         if isinstance(activation, str):
             self.activation = PADDLE_ACTIVATION[activation.lower()]
-        elif isinstance(activation, list):
-            func_name = activation[0]
-            func_params = activation[1:]
-            if func_name == "softplus":
-                beta = float(func_params[0])
-                thre = float(func_params[1])
-                self.activation = PADDLE_ACTIVATION[func_name.lower()](beta,
-                                                                       thre)
-
+        elif isinstance(activation, nn.Layer):
+            self.activation = activation
         else:
             raise NotImplementedError(
-                "activation should be either str or list.")
+                "activation should be either str or nn.Layer.")
 
         self.output_activation = PADDLE_ACTIVATION[output_activation.lower()]
         self.layers = self._populate_layers()
 
         # Weight init_fn.
-        if not weight_init is None:
+        if weight_init is not None:
             init_fn_name = weight_init[0].lower()
             self.weight_init_fn = PADDLE_INITIALIZATION[init_fn_name](
                 weight_init[1:])
@@ -307,7 +308,6 @@ class MLP(nn.Layer):
                     self.layers, self.skip_layers,
                     [self.input_dim] + self.hidden_dim)
             else:
-                #raise NotImplementedError()
                 pass
 
         # Weight normlaization

@@ -31,8 +31,7 @@ class NeuSEncoder(nn.Layer):
                  input_dims: int = 3,
                  num_freqs: int = 10,
                  include_input: bool = True,
-                 log_sampling: bool = True,
-                 periodic_fns=[paddle.sin, paddle.cos]):
+                 log_sampling: bool = True):
         super(NeuSEncoder, self).__init__()
 
         self.num_freqs = float(num_freqs)  # i.e., multires
@@ -40,7 +39,7 @@ class NeuSEncoder(nn.Layer):
         self.input_dims = input_dims
         self.include_input = include_input
         self.log_sampling = log_sampling
-        self.periodic_fns = periodic_fns
+        self.periodic_fns = [paddle.sin, paddle.cos]
 
         self.out_dim = None  # computed in creat_embedding_fn
         self.embedding_fns = self.creat_embedding_fn()

@@ -1,15 +1,20 @@
 iters: 300000
 image_batch_size: 1
 ray_batch_size: 512
+eval_pixel_stride: 1
 image_resampling_interval: -1
 
-metrics:
-  type: PSNRMeter
+train_metrics:
+  - type: PSNRMeter
+
+val_metrics:
+  - type: PSNRMeter
+  - type: SSIMMeter
 
 train_dataset:
   type: LLFFDataset
   centerize_coords: False
-  dataset_root : "/home/liuxing/workspace/datasets/dtu_scan105/"
+  dataset_root : "data/dtu_scan105/"
   render_cameras_name: cameras_sphere.npz
   object_cameras_name: cameras_sphere.npz
   camera_scale_factor: 1.0
@@ -24,14 +29,13 @@ train_dataset:
 val_dataset:
   type: LLFFDataset
   centerize_coords: False
-  dataset_root: "/home/liuxing/workspace/datasets/dtu_scan105/"
+  dataset_root: "data/dtu_scan105/"
   render_cameras_name: cameras_sphere.npz
   object_cameras_name: cameras_sphere.npz
   camera_scale_factor: 1.0
   image_coords_offset: 0
   eval_with_grad: True  # must be set True to enable rendering normal_map in evaluation mode.
   max_eval_num: 3
-  skip_pixels: 4
   neus_style: True  # NeuS way to compute directions
   validate_mesh: "neus_style"
   mesh_resolution: 256

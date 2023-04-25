@@ -12,18 +12,20 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Any, Callable, Tuple
-from pprndr.cameras.rays import Frustums, RayBundle, RaySamples
 import sys
+from typing import Any, Callable, Tuple
+
 import numpy as np
 import paddle
 import paddle.nn as nn
+from paddle.nn import functional as F
+
 try:
     import ray_marching_lib
 except ModuleNotFoundError:
     from pprndr.cpp_extensions import ray_marching_lib
+from pprndr.cameras.rays import Frustums, RayBundle, RaySamples
 from pprndr.geometries import ContractionType
-from paddle.nn import functional as F
 
 __all__ = [
     "near_far_from_aabb", "near_far_from_sphere", "grid_query", "contract",
@@ -362,8 +364,6 @@ def get_anneal_coeff(ray_samples: RaySamples = None,
 def get_cosine_coeff(ray_samples: RaySamples = None,
                      signed_distance: paddle.Tensor = None,
                      radius_filter: float = None) -> paddle.Tensor:
-    # Not sure why the filtering is needed.
-    # They are from the origianl implementation (renderer.py, ll: 137 - 139)
     if not radius_filter is None:
         inside_pts = ray_samples.frustums.bin_points
         radius = paddle.linalg.norm(inside_pts, p=2, axis=-1, keepdim=True)
@@ -398,23 +398,14 @@ def render_alpha_from_sdf(ray_samples,
     # Note: coeff limits sdf interval
     batch_size, n_vals, _ = signed_distances.shape  # [B, n_sdfs, 1]
     dists = ray_samples.frustums.ends - ray_samples.frustums.starts
-
-    #prev_sdf = signed_distances[:, :-1, :] # [b, n_samples]
-    #next_sdf = signed_distances[:, 1:, :] # [b, n_samples]
-    #mid_sdf = (prev_sdf + next_sdf) * 0.5 # [b, n_samples, 1]
-
-    #    estimated_next_sdf = mid_sdf + coeff * dists * 0.5
-    #    estimated_prev_sdf = mid_sdf - coeff * dists * 0.5
-
     estimated_next_sdf = signed_distances + coeff * dists * 0.5
     estimated_prev_sdf = signed_distances - coeff * dists * 0.5
 
-    prev_cdf = nn.Sigmoid()(estimated_prev_sdf * inv_s)
-    next_cdf = nn.Sigmoid()(estimated_next_sdf * inv_s)
+    prev_cdf = F.sigmoid(estimated_prev_sdf * inv_s)
+    next_cdf = F.sigmoid(estimated_next_sdf * inv_s)
     p = prev_cdf - next_cdf
     c = prev_cdf
 
-    #alpha = ((p + 1e-5) / (c + 1e-5)).reshape((batch_size, n_samples))
     alpha = ((p + 1e-5) / (c + 1e-5))
     if clip_alpha:
         alpha = alpha.clip(0.0, 1.0)
