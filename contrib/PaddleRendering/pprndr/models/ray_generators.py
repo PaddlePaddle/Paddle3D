@@ -21,14 +21,10 @@ __all__ = ["RayGenerator"]
 
 
 class RayGenerator(nn.Layer):
-    def __init__(self,
-                 cameras: Cameras,
-                 offset: float = 0.5,
-                 neus_style: bool = False):
+    def __init__(self, cameras: Cameras, offset: float = 0.5):
         super(RayGenerator, self).__init__()
 
         self.cameras = cameras
-        self.neus_style = neus_style
         image_coords = cameras.get_image_coords(offset=offset)
         self.register_buffer("image_coords", image_coords)
 
@@ -42,8 +38,6 @@ class RayGenerator(nn.Layer):
         image_coords = paddle.gather_nd(self.image_coords, pixel_indices)
 
         ray_bundle = self.cameras.generate_rays(
-            camera_ids=camera_ids,
-            image_coords=image_coords,
-            neus_style=self.neus_style)
+            camera_ids=camera_ids, image_coords=image_coords)
 
         return ray_bundle

@@ -16,16 +16,17 @@ Hi there.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import json
-import paddle
-from pathlib import Path
-from typing import List, Union, Optional
 import os
 import sys
+
+from pathlib import Path
+from typing import List, Union, Optional
 import imageio.v2 as imageio
 import numpy as np
 import cv2
 from glob import glob
+import json
+
 from pprndr.apis import manager
 from pprndr.cameras import Cameras, CameraType
 from pprndr.data.datasets.base import BaseDataset
@@ -47,19 +48,15 @@ class LLFFDataset(BaseDataset):
         split (str, optional): Which split to use. Defaults to "train".
     """
 
-    #scene_bound = SceneBox(
-    #    aabb=np.array([[-1.5, -1.5, -1.5], [1.5, 1.5, 1.5]], dtype=np.float32))
-
     def __init__(self,
                  dataset_root: str,
                  render_cameras_name,
                  object_cameras_name,
-                 centerize_coords,
                  transforms: List[TransformABC] = None,
                  camera_scale_factor: float = 1.0,
+                 camera_axis_convention: str = "OpenCV",
                  skip_pixels: int = 1.0,
                  image_coords_offset: float = 0.0,
-                 neus_style: bool = True,
                  background_color: Union[str, list, tuple] = None,
                  max_eval_num: Optional[int] = 5,
                  validate_mesh: Optional[str] = "neus_style",
@@ -71,7 +68,7 @@ class LLFFDataset(BaseDataset):
                  split: str = "train"):
         super(LLFFDataset, self).__init__()
         self.data_dir = dataset_root
-        self.centerize_coords = centerize_coords
+        self.camera_axis_convention = camera_axis_convention
         self.render_cameras_name = render_cameras_name
         self.object_cameras_name = object_cameras_name
         self.max_eval_num = max_eval_num
@@ -88,7 +85,6 @@ class LLFFDataset(BaseDataset):
         self.transforms = Compose(transforms) if transforms else None
         self.camera_scale_factor = float(camera_scale_factor)
         self.image_coords_offset = float(image_coords_offset)
-        self.neus_style = neus_style
         self.eval_with_grad = eval_with_grad
         if background_color is not None:
             self.background_color = np.array(
@@ -126,7 +122,6 @@ class LLFFDataset(BaseDataset):
         pose = np.eye(4, dtype=np.float32)
         pose[:3, :3] = R.transpose()
         pose[:3, 3] = (t[:3] / t[3])[:, 0]
-
         return intrinsics, pose
 
     def _parse(self):
@@ -149,13 +144,6 @@ class LLFFDataset(BaseDataset):
             self.masks_lis = sorted(
                 glob(os.path.join(self.data_dir, 'mask/*.jpg')))
 
-        # Load image
-        #self.images_np = np.stack([cv.imread(im_name) for im_name in self.image_paths]) / 256.0
-        # Load masks
-        #self.masks_np = np.stack([cv.imread(im_name) for im_name in self.masks_lis]) / 256.0
-        #self.images = paddle.to_tensor(self.images_np.astype(np.float32)).cpu()  # [n_images, H, W, 3]
-        #self.masks  = paddle.to_tensor(self.masks_np.astype(np.float32)).cpu()   # [n_images, H, W, 3]
-
         # Load poses.
         # world_mat is a projection matrix from world to image
         world_mats_np = [
@@ -177,14 +165,14 @@ class LLFFDataset(BaseDataset):
             P = world_mat @ scale_mat
             P = P[:3, :4]
             intrinsics, pose = self.load_K_Rt_from_P(None, P)
-            intrinsics_all.append(paddle.to_tensor(intrinsics, dtype='float32'))
-            pose_all.append(paddle.to_tensor(pose, dtype='float32'))
+            intrinsics_all.append(intrinsics)
+            pose_all.append(pose)
 
-        intrinsics_all = paddle.stack(intrinsics_all)
-        intrinsics_all_inv = paddle.inverse(intrinsics_all)  # [n_images, 4, 4]
+        intrinsics_all = np.stack(intrinsics_all)
+        intrinsics_all_inv = np.linalg.inv(intrinsics_all)  # [n_images, 4, 4]
 
         focal_length = intrinsics_all[0][0, 0]
-        c2w_matrices = paddle.stack(pose_all)[:, :3, :]  # [n_images, 4, 4]
+        c2w_matrices = np.stack(pose_all)[:, :3, :]  # [n_images, 4, 4]
         c2w_matrices[..., 3] *= self.camera_scale_factor
 
         tmp_img = cv2.imread(self.image_paths[0])
@@ -211,7 +199,7 @@ class LLFFDataset(BaseDataset):
 
         self._cameras = Cameras(
             c2w_matrices=c2w_matrices,
-            centerize_coords=self.centerize_coords,
+            axis_convention=self.camera_axis_convention,
             intrinsics=intrinsics_all,
             image_height=image_height,
             image_width=image_width,

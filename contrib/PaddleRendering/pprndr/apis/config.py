@@ -165,6 +165,10 @@ class Config(object):
         return self.dic.get('ray_batch_size', 1)
 
     @property
+    def eval_pixel_stride(self) -> int:
+        return self.dic.get('eval_pixel_stride', 1)
+
+    @property
     def use_adaptive_ray_batch_size(self) -> bool:
         return self.dic.get('use_adaptive_ray_batch_size', False)
 
@@ -334,6 +338,7 @@ class Config(object):
             'train_metric_meters': self.train_metric_meters,
             'val_metric_meters': self.val_metric_meters,
             'image_batch_size': self.image_batch_size,
+            'eval_pixel_stride': self.eval_pixel_stride,
             'ray_batch_size': self.ray_batch_size,
             'use_adaptive_ray_batch_size': self.use_adaptive_ray_batch_size,
             'image_resampling_interval': self.image_resampling_interval,

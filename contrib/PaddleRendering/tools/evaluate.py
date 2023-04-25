@@ -84,43 +84,28 @@ def main(args):
     if args.model is not None:
         load_pretrained_model(cfg.model, args.model)
 
-    if hasattr(dic["val_dataset"], "max_eval_num"):
-        max_eval_num = dic["val_dataset"].max_eval_num
-    else:
-        max_eval_num = None
+    eval_pixel_stride = dic.get("eval_pixel_stride", 1)
 
-    if hasattr(dic["val_dataset"], "validate_mesh"):
-        if not dic["val_dataset"].validate_mesh in ["neus_style"]:
-            raise NotImplementedError(
-                "Only neus_style is supported for extracting mesh.")
-        validate_mesh = dic["val_dataset"].validate_mesh
-    else:
-        validate_mesh = None
+    max_eval_num = getattr(dic["val_dataset"], "max_eval_num", None)
 
-    if hasattr(dic["val_dataset"], "mesh_resolution"):
-        mesh_resolution = dic["val_dataset"].mesh_resolution
-    else:
-        mesh_resolution = 64
+    eval_with_grad = getattr(dic["val_dataset"], "eval_with_grad", False)
 
-    if hasattr(dic["val_dataset"], "world_space_for_mesh"):
-        world_space_for_mesh = dic["val_dataset"].world_space_for_mesh
-    else:
-        world_space_for_mesh = False
+    validate_mesh = getattr(dic["val_dataset"], "validate_mesh", None)
+    if validate_mesh is not None and validate_mesh not in ["neus_style"]:
+        raise NotImplementedError(
+            "Only neus_style is supported for extracting mesh.")
 
-    if hasattr(dic["val_dataset"], "bound_min"):
-        bound_min = dic["val_dataset"].bound_min
+    if validate_mesh is not None:
+        mesh_resolution = getattr(dic["val_dataset"], "mesh_resolution", 64)
+        world_space_for_mesh = getattr(dic["val_dataset"],
+                                       "world_space_for_mesh", False)
+        bound_min = getattr(dic["val_dataset"], "bound_min", None)
+        bound_max = getattr(dic["val_dataset"], "bound_max", None)
     else:
+        mesh_resolution = None
+        world_space_for_mesh = None
         bound_min = None
-
-    if hasattr(dic["val_dataset"], "bound_max"):
-        bound_max = dic["val_dataset"].bound_max
-    else:
         bound_max = None
-
-    if hasattr(dic["val_dataset"], "eval_with_grad"):
-        eval_with_grad = dic["val_dataset"].eval_with_grad
-    else:
-        eval_with_grad = False
 
     trainer = Trainer(**dic)
     trainer.evaluate(
@@ -129,6 +114,7 @@ def main(args):
         max_eval_num=max_eval_num,
         validate_mesh=validate_mesh,
         mesh_resolution=mesh_resolution,
+        pixel_stride=eval_pixel_stride,
         world_space_for_mesh=world_space_for_mesh,
         bound_min=bound_min,  # used for generating mesh
         bound_max=bound_max,  # used for generating mesh

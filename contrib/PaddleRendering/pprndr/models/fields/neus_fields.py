@@ -69,92 +69,6 @@ class NeRFPPField(BaseField):
                                         stem_net.output_dim)
         self.color_head = color_head
 
-        # load torch nerf network weight
-        if load_torch_data:
-            import torch
-            torch_weights = torch.load(
-                "/workspace/neural_engine/algorithms/NeuS-main/exp/dtu_scan105/womask_sphere/checkpoints/ckpt_300000.pth",
-                map_location=torch.device('cpu'))
-
-            # Assign weights to nerf_network
-            nerf_weights = torch_weights["nerf"]
-            for layer_name in nerf_weights.keys():
-                if layer_name.split(
-                        '.')[0] == "pts_linears":  # coresponds to self.stem_net
-                    layer_id = int(layer_name.split('.')[1])
-
-                    # Assign bias
-                    if layer_name.split('.')[-1] == "bias":
-                        bias_ = nerf_weights[layer_name].numpy()
-                        nn.initializer.Assign(bias_)(
-                            self.stem_net.layers[layer_id].bias)
-
-                    # Assign weight
-                    if layer_name.split('.')[-1] == "weight":
-                        weight_ = nerf_weights[layer_name].numpy().squeeze(
-                        ).transpose()
-                        nn.initializer.Assign(weight_)(
-                            self.stem_net.layers[layer_id].weight)
-
-                elif layer_name.split(
-                        '.'
-                )[0] == "views_linears":  # coresponds to self.color_head.layers[0]
-                    # Assign bias
-                    if layer_name.split('.')[-1] == "bias":
-                        bias_ = nerf_weights[layer_name].numpy()
-                        nn.initializer.Assign(bias_)(
-                            self.color_head.layers[0].bias)
-                    # Assign weight
-                    if layer_name.split('.')[-1] == "weight":
-                        weight_ = nerf_weights[layer_name].numpy().squeeze(
-                        ).transpose()
-                        nn.initializer.Assign(weight_)(
-                            self.color_head.layers[0].weight)
-
-                elif layer_name.split(
-                        '.'
-                )[0] == "feature_linear":  # coresponds to self.feature_linear
-                    # Assign bias
-                    if layer_name.split('.')[-1] == "bias":
-                        bias_ = nerf_weights[layer_name].numpy()
-                        nn.initializer.Assign(bias_)(self.feature_linear.bias)
-                    # Assign weight
-                    if layer_name.split('.')[-1] == "weight":
-                        weight_ = nerf_weights[layer_name].numpy().squeeze(
-                        ).transpose()
-                        nn.initializer.Assign(weight_)(
-                            self.feature_linear.weight)
-
-                elif layer_name.split('.')[
-                        0] == "alpha_linear":  # coresponds to self.density_head
-                    # Assign bias
-                    if layer_name.split('.')[-1] == "bias":
-                        bias_ = nerf_weights[layer_name].numpy()
-                        nn.initializer.Assign(bias_)(
-                            self.density_head.layers[0].bias)
-                    # Assign weight
-                    if layer_name.split('.')[-1] == "weight":
-                        weight_ = nerf_weights[layer_name].numpy().transpose()
-                        nn.initializer.Assign(weight_)(
-                            self.density_head.layers[0].weight)
-
-                elif layer_name.split(
-                        '.'
-                )[0] == "rgb_linear":  # coresponds to self.color_head.layers[0]
-                    # Assign bias
-                    if layer_name.split('.')[-1] == "bias":
-                        bias_ = nerf_weights[layer_name].numpy()
-                        nn.initializer.Assign(bias_)(
-                            self.color_head.layers[1].bias)
-                    # Assign weight
-                    if layer_name.split('.')[-1] == "weight":
-                        weight_ = nerf_weights[layer_name].numpy().squeeze(
-                        ).transpose()
-                        nn.initializer.Assign(weight_)(
-                            self.color_head.layers[1].weight)
-                else:
-                    raise Exception("Wrong torch weights.")
-
     def get_densities(self,
                       ray_samples: RaySamples = None,
                       which_pts: str = "mid_points"):
@@ -344,9 +258,6 @@ class NeuSField(BaseField):
             assert (which_pts == "bin_points")
             pts = ray_samples.frustums.bin_points
 
-        #dirs = ray_samples.frustums.directions[:, None, :].expand(pts.shape)
-        #pts = pts.reshape((-1, 3))
-        #dirs = dirs.reshape((-1, 3))
         dirs = ray_samples.frustums.directions
 
         # Encode view_dirs
@@ -391,5 +302,4 @@ class SingleVarianceNetwork(nn.Layer):
         self.add_parameter('variance', variance)
 
     def forward(self, x):
-        #print('variance', self.variance)
         return paddle.ones([len(x), 1]) * paddle.exp(self.variance * 10.0)

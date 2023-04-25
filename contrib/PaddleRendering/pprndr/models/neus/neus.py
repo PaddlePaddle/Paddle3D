@@ -1,4 +1,3 @@
-# !/usr/bin/env python3
 #  Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License")
@@ -12,13 +11,16 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+
 from typing import Dict, Tuple, Union
+
 import paddle
 import paddle.nn.functional as F
 import paddle.nn as nn
 import numpy as np
 import time
 import mcubes
+
 from pprndr.apis import manager
 from pprndr.cameras.rays import RayBundle
 from pprndr.models.fields import BaseField
@@ -29,6 +31,7 @@ from pprndr.ray_marching import render_weights_from_alpha
 from pprndr.ray_marching import render_alpha_from_sdf
 from pprndr.ray_marching import get_anneal_coeff
 from pprndr.ray_marching import get_cosine_coeff
+from pprndr.utils.logger import logger
 
 __all__ = ["NeuS"]
 
@@ -103,8 +106,6 @@ class NeuS(nn.Layer):
                         coeff=cos_val,
                         clip_alpha=False)
                     inside_weights = render_weights_from_alpha(inside_alpha)
-                    # [NOTE] PDF sampler
-                    # [NOTE] Check include_original = False.
                     ray_samples_inside_new = self.fine_ray_sampler(
                         ray_bundle=ray_bundle,
                         ray_samples=ray_samples_inside,
@@ -113,7 +114,7 @@ class NeuS(nn.Layer):
                     ray_samples_inside, index = ray_samples_inside.merge_samples(
                         [ray_samples_inside_new], ray_bundle, mode="sort")
 
-                    if not i + 1 == self.fine_sampling_steps:
+                    if i + 1 != self.fine_sampling_steps:
                         new_signed_distances, _ = self.inside_field.get_sdf_output(
                             ray_samples_inside_new, which_pts="bin_points")
 
@@ -122,13 +123,14 @@ class NeuS(nn.Layer):
                         num_inside_for_step_i = ray_samples_inside.frustums.bin_points.shape[
                             1]
 
-                        xx = paddle.expand(
+                        batch_id = paddle.expand(
                             paddle.arange(batch_size)[:, None],
                             shape=[batch_size, num_inside_for_step_i])
-                        xx = xx.reshape([-1])
+
+                        batch_id = batch_id.reshape([-1])
                         index = index.reshape([-1])
                         signed_distances = signed_distances[(
-                            xx, index)].reshape(
+                            batch_id, index)].reshape(
                                 [batch_size, num_inside_for_step_i, 1])
 
         num_outside = self.outside_ray_sampler.num_samples
@@ -234,8 +236,6 @@ class NeuS(nn.Layer):
                 mask_loss=mask_loss)
 
         num_samples_all = num_inside
-        #        if self.num_importance > 0:
-        #            num_samples_all += self.num_importance
 
         if not num_outside is None:
             num_samples_all += num_outside
@@ -278,15 +278,13 @@ class NeuS(nn.Layer):
                                             axis=-1)
                         pts = pts.unsqueeze(axis=0)
                         val = -self.inside_field.get_sdf_from_pts(pts)
-                        val = val.reshape((len(xs), len(ys),
-                                           len(zs))).detach().cpu().numpy()
-                        t2 = time.time()
+                        val = val.reshape((len(xs), len(ys), len(zs))).numpy()
                         u[xi * N:xi * N + len(xs), yi * N:yi * N +
                           len(ys), zi * N:zi * N + len(zs)] = val
         return u
 
     def extract_geometry(self, bound_min, bound_max, resolution, threshold):
-        print('threshold: {}'.format(threshold))
+        logger.info('threshold: {}'.format(threshold))
         u = self.extract_fields(bound_min, bound_max, resolution)
         vertices, triangles = mcubes.marching_cubes(u, threshold)
         b_max_np = bound_max

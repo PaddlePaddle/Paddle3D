@@ -1,7 +1,8 @@
 iters: 200000
 
 image_batch_size: -1   # sample batch of rays from all images at each iteration
-ray_batch_size: 512
+ray_batch_size: 1024
+eval_pixel_stride: 1
 image_resampling_interval: -1
 
 train_metrics:
@@ -14,7 +15,8 @@ val_metrics:
 train_dataset:
   type: BlenderDataset
 
-  dataset_root: /home/liuxing/workspace/datasets/nerf_synthetic/lego/
+#  dataset_root: data/nerf_synthetic/lego/
+  dataset_root: /home/liuxing/workspace/datasets/nerf_synthetic/lego/  # Debug
   camera_scale_factor: 1.0
   background_color: white
   transforms:
@@ -25,7 +27,8 @@ train_dataset:
 
 val_dataset:
   type: BlenderDataset
-  dataset_root: /home/liuxing/workspace/datasets/nerf_synthetic/lego/
+#  dataset_root: data/nerf_synthetic/lego/
+  dataset_root: /home/liuxing/workspace/datasets/nerf_synthetic/lego/  # Debug
   camera_scale_factor: 1.0
   background_color: white
   transforms:
