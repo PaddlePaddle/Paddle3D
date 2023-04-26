@@ -49,7 +49,7 @@ def bin_depths(depth_map, mode, depth_min, depth_max, num_bins, target=False):
         raise NotImplementedError
 
     if target:
-        # Remove indicies outside of bounds
+        # Remove indices outside of bounds
         mask = (indices < 0) | (indices >
                                 num_bins) | (~paddle.isfinite(indices))
         indices[mask] = num_bins

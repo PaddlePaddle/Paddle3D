@@ -172,6 +172,9 @@ class Paddle3dCustomOperatorModule(ModuleType):
             return super().__getattr__(attr)
 
         module = self._load_module()
+        if not hasattr(module, attr):
+            raise ImportError("cannot import name '{}' from '{}' ({})".format(
+                attr, self.modulename, module.__file__))
         return getattr(module, attr)
 
 

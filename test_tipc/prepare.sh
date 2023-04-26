@@ -43,14 +43,10 @@ if [ ${MODE} = "lite_train_lite_infer" ];then
 
         wget -nc  -P ./ https://paddle3d.bj.bcebos.com/pretrained/fcos3d_vovnet_imgbackbone-remapped.pdparams --no-check-certificate
         rm -rf ./data
-        # download data
-        # cd Paddle3D
         mkdir data && cd data
-        python ${BENCHMARK_ROOT}/paddlecloud/file_upload_download.py \
-            --remote-path /user/userdata/benchmark/data/Paddle3D/petrv2/ \
-            --local-path ./ \
-            --mode download
-        unzip nuscenes.zip && cd ../
+        # 数据集比较大,在benchmark侧统一挂载
+        cp ${BENCHMARK_ROOT}/models_data_cfs/model_benchmark/petrv2/nuscenes.zip ./
+        unzip -q nuscenes.zip && cd ../
     elif [ ${model_name} = "centerpoint" ]; then
         rm -rf ./datasets/KITTI
         wget -nc -P ./datasets/ https://paddle3d.bj.bcebos.com/TIPC/dataset/kitti_mini_centerpoint.tar.gz --no-check-certificate
