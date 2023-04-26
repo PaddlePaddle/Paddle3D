@@ -13,8 +13,10 @@ val_metrics:
 
 train_dataset:
   type: LLFFDataset
+
   #dataset_root : "data/dtu_scan105/"
   dataset_root : "/home/liuxing/workspace/datasets/dtu_scan105/"
+
   render_cameras_name: cameras_sphere.npz
   object_cameras_name: cameras_sphere.npz
   camera_scale_factor: 1.0
@@ -28,8 +30,10 @@ train_dataset:
 
 val_dataset:
   type: LLFFDataset
+
   #dataset_root: "data/dtu_scan105/"
   dataset_root : "/home/liuxing/workspace/datasets/dtu_scan105/"
+
   render_cameras_name: cameras_sphere.npz
   object_cameras_name: cameras_sphere.npz
   camera_scale_factor: 1.0
@@ -37,7 +41,7 @@ val_dataset:
   image_coords_offset: 0
   eval_with_grad: True  # must be set True to enable rendering normal_map in evaluation mode.
   max_eval_num: 3
-  validate_mesh: neus_style
+  validate_mesh: "neus_style"
   mesh_resolution: 256
   world_space_for_mesh: False
   bound_min: [-1.0, -1.0, -1.0]
