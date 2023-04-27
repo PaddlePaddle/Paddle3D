@@ -18,14 +18,14 @@ Hi there.
 
 import os
 import sys
+import json
+from typing import List, Union, Optional
 
 from pathlib import Path
-from typing import List, Union, Optional
 import imageio.v2 as imageio
-import numpy as np
 import cv2
 from glob import glob
-import json
+import numpy as np
 
 from pprndr.apis import manager
 from pprndr.cameras import Cameras, CameraType
@@ -62,6 +62,7 @@ class LLFFDataset(BaseDataset):
                  validate_mesh: Optional[str] = "neus_style",
                  mesh_resolution: Optional[str] = 64,
                  eval_with_grad: Optional[bool] = True,
+                 eval_to_cpu: Optional[bool] = False,
                  world_space_for_mesh: Optional[bool] = False,
                  bound_min: Optional[list] = None,
                  bound_max: Optional[list] = None,
@@ -75,6 +76,7 @@ class LLFFDataset(BaseDataset):
         self.validate_mesh = validate_mesh
         self.mesh_resolution = mesh_resolution
         self.eval_with_grad = eval_with_grad
+        self.eval_to_cpu = eval_to_cpu
         self.world_space_for_mesh = world_space_for_mesh
         self.bound_min = bound_min
         self.bound_max = bound_max

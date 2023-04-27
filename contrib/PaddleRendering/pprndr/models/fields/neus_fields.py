@@ -27,89 +27,37 @@ try:
 except ModuleNotFoundError:
     from pprndr.cpp_extensions import trunc_exp
 
-from pprndr.models.fields import BaseField
+from pprndr.models.fields import BaseField, NeRFField
 
 __all__ = ["NeuSField", "NeRFPPField"]
 
 
 @manager.FIELDS.add_component
-class NeRFPPField(BaseField):
+class NeRFPPField(NeRFField):
     """
     NeRF++ Field according to the paper.
     """
 
-    def __init__(self,
-                 pos_encoder: nn.Layer,
-                 dir_encoder: nn.Layer,
-                 stem_net: nn.Layer,
-                 density_head: nn.Layer,
-                 color_head: nn.Layer,
-                 density_noise: float = None,
-                 density_bias: float = None,
-                 rgb_padding: float = None,
-                 load_torch_data: bool = False):
-        super(NeRFPPField, self).__init__()
-
-        # Noise
-        self.density_noise = density_noise
-        self.density_bias = density_bias
-
-        # Padding
-        self.rgb_padding = rgb_padding
-
-        # Encoder
-        self.pos_encoder = pos_encoder
-        self.dir_encoder = dir_encoder
-
-        # Networks
-        self.stem_net = stem_net
-        self.density_head = density_head
-
-        self.feature_linear = nn.Linear(stem_net.output_dim,
-                                        stem_net.output_dim)
-        self.color_head = color_head
-
-    def get_densities(self,
-                      ray_samples: RaySamples = None,
-                      which_pts: str = "mid_points"):
-        # Get inputs
-        if which_pts == "mid_points":
-            pts = ray_samples.frustums.positions
-        else:
-            assert (which_pts == "bin_points")
-            pts = ray_samples.frustums.bin_points
-
-        dis_to_center = paddle.linalg.norm(
-            pts, p=2, axis=-1, keepdim=True).clip(1.0, 1e10)
-        pts = paddle.concat([pts / dis_to_center, 1.0 / dis_to_center], axis=-1)
-        pts_embeddings = self.pos_encoder(pts)
-
-        embeddings = self.stem_net(pts_embeddings)
-        raw_density = self.density_head(embeddings)
-
-        if self.density_bias is not None:
-            raw_density + paddle.randn(
-                raw_density.shape, dtype=raw_density.dtype) * self.density_noise
-        if self.density_bias is not None:
-            raw_density += self.density_bias
-
-        density = F.softplus(raw_density)
-        return density, embeddings
-
-    def get_colors(self,
-                   ray_samples: RaySamples = None,
-                   embeddings: paddle.Tensor = None,
-                   which_pts: str = "mid_points"):
-        if embeddings is None:
-            densities, embeddings = self.get_densities(ray_samples, which_pts)
-        dir_embeddings = self.dir_encoder(ray_samples.frustums.directions)
-
-        features = self.feature_linear(embeddings)
-        features = paddle.concat([features, dir_embeddings], axis=-1)
-        colors = self.color_head(features)
-        if self.rgb_padding is not None:
-            colors = colors * (1. + 2. * self.rgb_padding) - self.rgb_padding
-        return colors
+    def __init__(
+            self,
+            dir_encoder: nn.Layer,
+            pos_encoder: nn.Layer,
+            stem_net: nn.Layer,
+            density_head: nn.Layer,
+            color_head: nn.Layer,
+            density_noise: float = None,
+            density_bias: float = None,
+            rgb_padding: float = None,
+    ):
+        super(NeRFPPField, self).__init__(
+            dir_encoder=dir_encoder,
+            pos_encoder=pos_encoder,
+            stem_net=stem_net,
+            density_head=density_head,
+            color_head=color_head,
+            density_noise=density_noise,
+            density_bias=density_bias,
+            rgb_padding=rgb_padding)
 
 
 @manager.FIELDS.add_component
@@ -303,3 +251,83 @@ class SingleVarianceNetwork(nn.Layer):
 
     def forward(self, x):
         return paddle.ones([len(x), 1]) * paddle.exp(self.variance * 10.0)
+
+
+#@manager.FIELDS.add_component
+#class NeRFPPField(BaseField):
+#    """
+#    NeRF++ Field according to the paper.
+#    """
+#
+#    def __init__(self,
+#                 pos_encoder: nn.Layer,
+#                 dir_encoder: nn.Layer,
+#                 stem_net: nn.Layer,
+#                 density_head: nn.Layer,
+#                 color_head: nn.Layer,
+#                 density_noise: float = None,
+#                 density_bias: float = None,
+#                 rgb_padding: float = None,
+#                 load_torch_data: bool = False):
+#        super(NeRFPPField, self).__init__()
+#
+#        # Noise
+#        self.density_noise = density_noise
+#        self.density_bias = density_bias
+#
+#        # Padding
+#        self.rgb_padding = rgb_padding
+#
+#        # Encoder
+#        self.pos_encoder = pos_encoder
+#        self.dir_encoder = dir_encoder
+#
+#        # Networks
+#        self.stem_net = stem_net
+#        self.density_head = density_head
+#
+#        self.feature_linear = nn.Linear(stem_net.output_dim,
+#                                        stem_net.output_dim)
+#        self.color_head = color_head
+#
+#    def get_densities(self,
+#                      ray_samples: RaySamples = None,
+#                      which_pts: str = "mid_points"):
+#        # Get inputs
+#        if which_pts == "mid_points":
+#            pts = ray_samples.frustums.positions
+#        else:
+#            assert (which_pts == "bin_points")
+#            pts = ray_samples.frustums.bin_points
+#
+#        dis_to_center = paddle.linalg.norm(
+#            pts, p=2, axis=-1, keepdim=True).clip(1.0, 1e10)
+#        pts = paddle.concat([pts / dis_to_center, 1.0 / dis_to_center], axis=-1)
+#        pts_embeddings = self.pos_encoder(pts)
+#
+#        embeddings = self.stem_net(pts_embeddings)
+#        raw_density = self.density_head(embeddings)
+#
+#        if self.density_bias is not None:
+#            raw_density + paddle.randn(
+#                raw_density.shape, dtype=raw_density.dtype) * self.density_noise
+#        if self.density_bias is not None:
+#            raw_density += self.density_bias
+#
+#        density = F.softplus(raw_density)
+#        return density, embeddings
+#
+#    def get_colors(self,
+#                   ray_samples: RaySamples = None,
+#                   embeddings: paddle.Tensor = None,
+#                   which_pts: str = "mid_points"):
+#        if embeddings is None:
+#            densities, embeddings = self.get_densities(ray_samples, which_pts)
+#        dir_embeddings = self.dir_encoder(ray_samples.frustums.directions)
+#
+#        features = self.feature_linear(embeddings)
+#        features = paddle.concat([features, dir_embeddings], axis=-1)
+#        colors = self.color_head(features)
+#        if self.rgb_padding is not None:
+#            colors = colors * (1. + 2. * self.rgb_padding) - self.rgb_padding
+#        return colors

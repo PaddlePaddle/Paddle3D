@@ -26,7 +26,7 @@ from paddle.vision.transforms import functional as F
 import trimesh
 import pprndr.utils.env as env
 from pprndr.apis.checkpoint import Checkpoint, CheckpointABC
-from pprndr.apis.pipeline import inference_step, inference_step_with_grad, training_step
+from pprndr.apis.pipeline import inference_step, training_step
 from pprndr.apis.scheduler import Scheduler, SchedulerABC
 from pprndr.data import BaseDataset, DataManager
 from pprndr.metrics import MetricABC, PSNRMeter
@@ -300,6 +300,10 @@ class Trainer(object):
                                            None)
                     eval_with_grad = getattr(self.val_dataset, "eval_with_grad",
                                              False)
+
+                    eval_to_cpu = getattr(self.val_dataset, "eval_to_cpu",
+                                          False)
+
                     if eval_with_grad:
                         eval_ray_batch_size = min(
                             256, self.train_data_manager.ray_batch_size)
@@ -337,7 +341,8 @@ class Trainer(object):
                         world_space_for_mesh=world_space_for_mesh,
                         bound_min=bound_min,
                         bound_max=bound_max,
-                        eval_with_grad=eval_with_grad)
+                        eval_with_grad=eval_with_grad,
+                        eval_to_cpu=eval_to_cpu)
 
                     for k, v in metrics.items():
                         if not isinstance(v, paddle.Tensor) or v.numel() != 1:
@@ -450,7 +455,8 @@ class Trainer(object):
                  world_space_for_mesh: bool = False,
                  bound_min=None,
                  bound_max=None,
-                 eval_with_grad: bool = False) -> Dict:
+                 eval_with_grad: bool = False,
+                 eval_to_cpu: bool = False) -> Dict:
         """
         """
         if self.eval_data_loader is None:
@@ -510,12 +516,27 @@ class Trainer(object):
             ray_bundle = cameras.generate_rays(
                 camera_ids=image_batch["camera_id"], image_coords=image_coords)
 
+            #            if eval_with_grad:
+            #                output = inference_step_with_grad(self.model, ray_bundle,
+            #                                                  val_ray_batch_size)
+            #            else:
+            #                output = inference_step(self.model, ray_bundle,
+            #                                        val_ray_batch_size)
+
             if eval_with_grad:
-                output = inference_step_with_grad(self.model, ray_bundle,
-                                                  val_ray_batch_size)
+                output = inference_step(
+                    self.model,
+                    ray_bundle,
+                    val_ray_batch_size,
+                    to_cpu=eval_to_cpu)
             else:
-                output = inference_step(self.model, ray_bundle,
-                                        val_ray_batch_size)
+                with paddle.no_grad():
+                    output = inference_step(
+                        self.model,
+                        ray_bundle,
+                        val_ray_batch_size,
+                        to_cpu=eval_to_cpu)
+
             output["rgb"] = output["rgb"].reshape(image_batch["image"].shape)
 
             # Get normals for visualization

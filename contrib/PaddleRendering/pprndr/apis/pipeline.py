@@ -83,9 +83,10 @@ def training_step(model: paddle.nn.Layer,
     return outputs
 
 
-@paddle.no_grad()
-def inference_step(model: paddle.nn.Layer, ray_bundle: RayBundle,
-                   ray_batch_size: int) -> dict:
+def inference_step(model: paddle.nn.Layer,
+                   ray_bundle: RayBundle,
+                   ray_batch_size: int,
+                   to_cpu: bool = False) -> dict:
     outputs_all = defaultdict(list)
 
     model.eval()
@@ -94,29 +95,7 @@ def inference_step(model: paddle.nn.Layer, ray_bundle: RayBundle,
         cur_ray_bundle = ray_bundle[b_id:b_id + ray_batch_size]
         outputs = model(cur_ray_bundle)
         for k, v in outputs.items():
-            outputs_all[k].append(v)
-
-    outputs = {}
-    for k, v in outputs_all.items():
-        if isinstance(v[0], paddle.Tensor):
-            outputs[k] = paddle.concat(v, axis=0)
-        else:
-            outputs[k] = v
-
-    return outputs
-
-
-def inference_step_with_grad(model: paddle.nn.Layer, ray_bundle: RayBundle,
-                             ray_batch_size: int) -> dict:
-    outputs_all = defaultdict(list)
-
-    model.eval()
-    num_rays = len(ray_bundle)
-    for b_id in range(0, num_rays, ray_batch_size):
-        cur_ray_bundle = ray_bundle[b_id:b_id + ray_batch_size]
-        outputs = model(cur_ray_bundle)
-        for k, v in outputs.items():
-            if isinstance(v, paddle.Tensor):
+            if isinstance(v, paddle.Tensor) and to_cpu:
                 v = v.cpu()
             outputs_all[k].append(v)
         del outputs
@@ -127,4 +106,5 @@ def inference_step_with_grad(model: paddle.nn.Layer, ray_bundle: RayBundle,
             outputs[k] = paddle.concat(v, axis=0)
         else:
             outputs[k] = v
+
     return outputs

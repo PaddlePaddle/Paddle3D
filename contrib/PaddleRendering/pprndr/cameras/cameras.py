@@ -23,6 +23,7 @@ import paddle.nn.functional as F
 
 from pprndr.cameras.camera_functionals import radial_n_tangential_undistort
 from pprndr.cameras.rays import RayBundle
+from pprndr.utils.logger import logger
 
 __all__ = ["CameraType", "Cameras"]
 
@@ -221,7 +222,7 @@ class Cameras:
             raise ValueError("Axis convention out of scope.")
         else:
             if self.axis_convention == target:
-                print("Axis convertion is not needed.")
+                logger.info("Axis convertion is not needed.")
                 R_axis = paddle.to_tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1]],
                                           dtype=paddle.float32)
                 return R_axis

@@ -64,13 +64,33 @@ class NeRFField(BaseField):
         self.rgb_padding = rgb_padding
         self.use_integrated_encoding = use_integrated_encoding
 
-    def get_density(self, ray_samples: Union[RaySamples, paddle.Tensor]
-                    ) -> Tuple[paddle.Tensor, paddle.Tensor]:
+    def get_density(
+            self,
+            ray_samples: Union[RaySamples, paddle.Tensor],
+            which_pts: str = "mid_points",
+            manipulate_pts: str = None) -> Tuple[paddle.Tensor, paddle.Tensor]:
         if isinstance(ray_samples, RaySamples):
             if self.use_integrated_encoding:
+                assert (which_pts == "mid_points")
                 pos_inputs = ray_samples.frustums.gaussians
             else:
-                pos_inputs = ray_samples.frustums.positions
+                if which_pts == "mid_points":
+                    pos_inputs = ray_samples.frustums.positions
+                elif which_pts == "bin_points":
+                    pos_inputs = ray_samples.frustums.bin_points
+                else:
+                    raise ValueError(
+                        'which_pts should be either "mid_points" or "bin_points".'
+                    )
+            if manipulate_pts is not None:
+                assert (manipulate_pts in ["nerf_pp_outside_warp"])
+                if manipulate_pts == "nerf_pp_outside_warp":
+                    assert (self.pos_encoder.input_dims == 4)
+                    dis_to_center = paddle.linalg.norm(
+                        pos_inputs, p=2, axis=-1, keepdim=True).clip(1.0, 1e10)
+                    pos_inputs = paddle.concat(
+                        [pos_inputs / dis_to_center, 1.0 / dis_to_center],
+                        axis=-1)
         else:
             pos_inputs = ray_samples
         pos_embeddings = self.pos_encoder(pos_inputs)

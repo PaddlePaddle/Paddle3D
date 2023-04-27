@@ -142,11 +142,14 @@ class NeuS(nn.Layer):
             ray_samples = ray_samples_inside.merge_samples(
                 [ray_samples_outside], mode="force_concat")
 
-            #-- When use NeuS' implementation for global_field
-            global_densities, embeddings = self.global_field.get_densities(
-                ray_samples, which_pts="mid_points")
-            global_colors = self.global_field.get_colors(
-                ray_samples, embeddings, which_pts="mid_points")
+            # Compute densities and colors in the global field
+            global_densities, embeddings = self.global_field.get_density(
+                ray_samples,
+                which_pts="mid_points",
+                manipulate_pts="nerf_pp_outside_warp")
+            global_colors = self.global_field.get_outputs(
+                ray_samples, embeddings)
+
             global_alphas = render_alpha_from_densities(
                 ray_samples=ray_samples, densities=global_densities)
         else:
@@ -187,9 +190,9 @@ class NeuS(nn.Layer):
             alphas = paddle.concat([alphas, global_alphas[:, num_inside:, :]],
                                    axis=1)
             colors = inside_colors * inside_sphere + \
-                    global_colors[:, :num_inside, :] * (1.0 - inside_sphere)
-            colors = paddle.concat([colors, global_colors[:, num_inside:, :]],
-                                   axis=1)
+                    global_colors["rgb"][:, :num_inside, :] * (1.0 - inside_sphere)
+            colors = paddle.concat(
+                [colors, global_colors["rgb"][:, num_inside:, :]], axis=1)
         else:
             alphas = inside_alphas
             colors = inside_colors
