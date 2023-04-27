@@ -107,7 +107,7 @@ def main(args):
         load_pretrained_model(cfg.model, args.model)
 
     validate_mesh = args.validate_mesh
-    if not validate_mesh is None:
+    if validate_mesh is not None:
         if not validate_mesh in ["neus_style"]:
             raise NotImplementedError(
                 "Only neus_style is supported for extracting mesh.")

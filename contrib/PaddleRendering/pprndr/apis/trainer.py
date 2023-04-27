@@ -1,4 +1,3 @@
-# !/usr/bin/env python3
 #  Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License")
@@ -405,7 +404,7 @@ class Trainer(object):
                        self.val_dataset.scale_mats_np[0][:3, 3][None]
 
         mesh = trimesh.Trimesh(vertices, triangles)
-        if not cur_iter is None:
+        if cur_iter is not None:
             mesh_name = '{:0>8d}.ply'.format(cur_iter)
         else:
             mesh_name = "mesh.ply"
@@ -473,7 +472,7 @@ class Trainer(object):
             step=pixel_stride, offset=0).reshape([-1, 2])
 
         # Only support neus_style for now for generating mesh.
-        if not validate_mesh is None:
+        if validate_mesh is not None:
             if validate_mesh == "neus_style":
                 if world_space_for_mesh:
                     logger.info(

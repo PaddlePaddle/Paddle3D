@@ -364,7 +364,7 @@ def get_anneal_coeff(ray_samples: RaySamples = None,
 def get_cosine_coeff(ray_samples: RaySamples = None,
                      signed_distance: paddle.Tensor = None,
                      radius_filter: float = None) -> paddle.Tensor:
-    if not radius_filter is None:
+    if radius_filter is not None:
         inside_pts = ray_samples.frustums.bin_points
         radius = paddle.linalg.norm(inside_pts, p=2, axis=-1, keepdim=True)
         inside_sphere = (radius[:, :-1] < 1.0) | (radius[:, 1:] < 1.0)
@@ -385,7 +385,7 @@ def get_cosine_coeff(ray_samples: RaySamples = None,
     cos_val = paddle.min(cos_val, axis=-1, keepdim=True)
     cos_val = cos_val.clip(-1e3, 0.0)
 
-    if not radius_filter is None:
+    if radius_filter is not None:
         cos_val = cos_val * inside_sphere
     return cos_val
 

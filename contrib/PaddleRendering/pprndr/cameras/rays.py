@@ -139,7 +139,7 @@ class RaySamples:
             bins = self.spacing_bins[:, :-1].squeeze(-1)
 
             for i, sample in enumerate(sample_list):
-                if not i == len(sample_list) - 1:
+                if i != len(sample_list) - 1:
                     bins = paddle.concat(
                         [bins, sample.spacing_bins[:, :-1].squeeze(-1)],
                         axis=-1)

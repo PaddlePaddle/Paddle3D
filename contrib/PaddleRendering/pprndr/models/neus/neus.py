@@ -180,7 +180,7 @@ class NeuS(nn.Layer):
             ray_samples_inside)
 
         # Get the final alpha and color.
-        if not global_alphas is None:
+        if global_alphas is not None:
             assert (not global_colors is None)
             alphas = inside_alphas * inside_sphere + global_alphas[:, :
                                                                    num_inside, :] * (
@@ -207,7 +207,7 @@ class NeuS(nn.Layer):
             colors, weights, return_visibility=self.training)
 
         weights_sum = weights.squeeze(axis=-1).sum(axis=-1, keepdim=True)
-        if not self.background_rgb is None:
+        if self.background_rgb is not None:
             rgbs = rgbs + self.background_rgb * (1 - weights_sum)
 
         outputs = dict(rgb=rgbs)
@@ -240,7 +240,7 @@ class NeuS(nn.Layer):
 
         num_samples_all = num_inside
 
-        if not num_outside is None:
+        if num_outside is not None:
             num_samples_all += num_outside
 
         outputs["num_samples_per_batch"] = num_samples_all

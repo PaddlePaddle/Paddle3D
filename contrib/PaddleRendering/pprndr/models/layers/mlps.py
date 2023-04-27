@@ -102,7 +102,7 @@ class GeometricInit(object):
             _weight = np.random.normal(
                 np.sqrt(np.pi) / np.sqrt(dim), 0.0001, _weight.shape)
             nn.initializer.Assign(_weight)(layer.weight)
-            if not layer.bias is None:
+            if layer.bias is not None:
                 # Init bias
                 _bias = layer.bias.numpy()
                 _bias[...] = -self.bias
@@ -117,7 +117,7 @@ class GeometricInit(object):
             _weight[3:, :] = 0.0
 
             nn.initializer.Assign(_weight)(layer.weight)
-            if not layer.bias is None:
+            if layer.bias is not None:
                 # Init bias
                 _bias = layer.bias.numpy()
                 _bias[...] = 0
@@ -133,7 +133,7 @@ class GeometricInit(object):
                                        _weight.shape)
             _weight[-embed_dim:] = 0.0
             nn.initializer.Assign(_weight)(layer.weight)
-            if not layer.bias is None:
+            if layer.bias is not None:
                 # Init bias
                 _bias = layer.bias.numpy()
                 _bias[...] = 0.0
@@ -143,7 +143,7 @@ class GeometricInit(object):
             _weight = np.random.normal(0.0,
                                        np.sqrt(2) / np.sqrt(dim), _weight.shape)
             nn.initializer.Assign(_weight)(layer.weight)
-            if not layer.bias is None:
+            if layer.bias is not None:
                 # Init bias
                 _bias = layer.bias.numpy()
                 _bias[...] = 0.0
@@ -311,7 +311,7 @@ class MLP(nn.Layer):
                 pass
 
         # Weight normlaization
-        if not weight_normalization is None:
+        if weight_normalization is not None:
             if weight_normalization:
                 for layer in self.layers:
                     nn.utils.weight_norm(layer, dim=1)
@@ -359,7 +359,7 @@ class MLP(nn.Layer):
         for i, layer in enumerate(self.layers[:-1]):
             if i in self.skip_layers:
                 x = paddle.concat([x, residual], axis=-1)
-                if not self.skip_scale is None:
+                if self.skip_scale is not None:
                     x = x / self.skip_scale
             x = layer(x)
             if self.activation is not None:
