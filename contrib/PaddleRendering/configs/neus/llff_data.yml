@@ -13,10 +13,7 @@ val_metrics:
 
 train_dataset:
   type: LLFFDataset
-
-  #dataset_root : "data/dtu_scan105/"
-  dataset_root : "/home/liuxing/workspace/datasets/dtu_scan105/"
-
+  dataset_root : "data/dtu_scan105/"
   render_cameras_name: cameras_sphere.npz
   object_cameras_name: cameras_sphere.npz
   camera_scale_factor: 1.0
@@ -30,10 +27,7 @@ train_dataset:
 
 val_dataset:
   type: LLFFDataset
-
-  #dataset_root: "data/dtu_scan105/"
-  dataset_root : "/home/liuxing/workspace/datasets/dtu_scan105/"
-
+  dataset_root: "data/dtu_scan105/"
   render_cameras_name: cameras_sphere.npz
   object_cameras_name: cameras_sphere.npz
   camera_scale_factor: 1.0

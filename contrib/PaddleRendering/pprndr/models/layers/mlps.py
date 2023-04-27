@@ -50,7 +50,7 @@ PADDLE_ACTIVATION = {
     "squareplus":
     lambda x: .5 * (10. * x + paddle.sqrt(paddle.square(10. * x) + 4.)) / 10.,
     "softplus":
-    F.Softplus,
+    F.softplus,
     "none":
     None
 }

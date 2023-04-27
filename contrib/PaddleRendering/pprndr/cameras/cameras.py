@@ -50,7 +50,6 @@ class Cameras:
               CameraType]] = CameraType.PERSPECTIVE
     place: Optional[Union[str, paddle.CPUPlace, paddle.CUDAPlace, paddle.
                           CUDAPinnedPlace]] = "cpu"
-    intrinsics: Union[np.ndarray, paddle.Tensor] = None
 
     def __init__(
             self,
@@ -68,8 +67,7 @@ class Cameras:
                 Union[np.ndarray, paddle.Tensor, int, List[CameraType],
                       CameraType]] = CameraType.PERSPECTIVE,
             place: Optional[Union[str, paddle.CPUPlace, paddle.
-                                  CUDAPlace, paddle.CUDAPinnedPlace]] = "cpu",
-            intrinsics: Union[np.ndarray, paddle.Tensor] = None):
+                                  CUDAPlace, paddle.CUDAPinnedPlace]] = "cpu"):
         self._set_place(place)
 
         self.axis_convention = axis_convention
@@ -84,49 +82,18 @@ class Cameras:
             c2w_matrices, place=self.place)  # (N, 3, 4)
 
         # intrinsics
-        if intrinsics is not None:
-            assert (fx is None)
-            assert (fy is None)
-            assert (cx is None)
-            assert (cy is None)
-
-            if intrinsics.ndim < 2:
-                raise ValueError(
-                    ">intrinsics< is not in the right shape, intrinsics.ndim should be no less than 2."
-                )
-            else:
-                if intrinsics.ndim == 2:
-                    intrinsics = intrinsics[None, :, :]
-
-                if intrinsics.shape[0] == 1:
-                    intrinsics = paddle.tile(intrinsics[None, :, :],
-                                             (self._num_cameras, 1, 1))
-                else:
-                    assert (intrinsics.shape[0] == self._num_cameras)
-
-            self.fx = intrinsics[:, 0, 0]
-            self.fy = intrinsics[:, 1, 1]
-            self.cx = intrinsics[:, 0, 2]
-            self.cy = intrinsics[:, 1, 2]
-            # Set dist_coeffs to None
-            self.distortion_coeffs = None
-        else:
-            if fx is None or fy is None or cx is None or cy is None:
-                raise ValueError(
-                    'Specify either "fx" and "fy" and "cx" and "cy", or "intrinsics" for Caremas.'
-                )
-            self.fx = paddle.to_tensor(
-                fx, dtype="float32",
-                place=self.place).broadcast_to([self._num_cameras])
-            self.fy = paddle.to_tensor(
-                fy, dtype="float32",
-                place=self.place).broadcast_to([self._num_cameras])
-            self.cx = paddle.to_tensor(
-                cx, dtype="float32",
-                place=self.place).broadcast_to([self._num_cameras])
-            self.cy = paddle.to_tensor(
-                cy, dtype="float32",
-                place=self.place).broadcast_to([self._num_cameras])
+        self.fx = paddle.to_tensor(
+            fx, dtype="float32",
+            place=self.place).broadcast_to([self._num_cameras])
+        self.fy = paddle.to_tensor(
+            fy, dtype="float32",
+            place=self.place).broadcast_to([self._num_cameras])
+        self.cx = paddle.to_tensor(
+            cx, dtype="float32",
+            place=self.place).broadcast_to([self._num_cameras])
+        self.cy = paddle.to_tensor(
+            cy, dtype="float32",
+            place=self.place).broadcast_to([self._num_cameras])
 
         # heights, widths
         self._image_height = paddle.to_tensor(

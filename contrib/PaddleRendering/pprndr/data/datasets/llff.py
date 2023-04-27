@@ -167,9 +167,11 @@ class LLFFDataset(BaseDataset):
             pose_all.append(pose)
 
         intrinsics_all = np.stack(intrinsics_all)
-        intrinsics_all_inv = np.linalg.inv(intrinsics_all)  # [n_images, 4, 4]
+        fx = intrinsics_all[:, 0, 0]
+        fy = intrinsics_all[:, 1, 1]
+        cx = intrinsics_all[:, 0, 2]
+        cy = intrinsics_all[:, 1, 2]
 
-        focal_length = intrinsics_all[0][0, 0]
         c2w_matrices = np.stack(pose_all)[:, :3, :]  # [n_images, 4, 4]
         c2w_matrices[..., 3] *= self.camera_scale_factor
 
@@ -197,8 +199,11 @@ class LLFFDataset(BaseDataset):
 
         self._cameras = Cameras(
             c2w_matrices=c2w_matrices,
+            fx=fx,
+            fy=fy,
+            cx=cx,
+            cy=cy,
             axis_convention=self.camera_axis_convention,
-            intrinsics=intrinsics_all,
             image_height=image_height,
             image_width=image_width,
             camera_type=CameraType.PERSPECTIVE)
