@@ -49,7 +49,6 @@ class BlenderDataset(BaseDataset):
                  transforms: List[TransformABC] = None,
                  camera_scale_factor: float = 1.0,
                  background_color: Union[str, list, tuple] = None,
-                 centerize_coords: bool = True,
                  image_coords_offset: float = 0.5,
                  neus_style: bool = False,
                  max_eval_num: int = None,
@@ -59,7 +58,6 @@ class BlenderDataset(BaseDataset):
         super(BlenderDataset, self).__init__()
 
         self.dataset_root = Path(dataset_root)
-        self.centerize_coords = centerize_coords
         self.transforms = Compose(transforms) if transforms else None
         self.camera_scale_factor = float(camera_scale_factor)
         self.image_coords_offset = image_coords_offset
@@ -108,7 +106,6 @@ class BlenderDataset(BaseDataset):
 
         self._cameras = Cameras(
             c2w_matrices=c2w_matrices,
-            centerize_coords=self.centerize_coords,
             fx=focal_length,
             fy=focal_length,
             cx=cx,
