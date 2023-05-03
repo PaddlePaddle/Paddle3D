@@ -15,7 +15,6 @@
 import argparse
 import os
 import sys
-sys.path.insert(1, "/home/liuxing/workspace/Paddle3D/contrib/PaddleRendering/")
 from pprndr.apis.config import Config
 from pprndr.apis.trainer import Trainer
 from pprndr.utils.checkpoint import load_pretrained_model
@@ -85,11 +84,11 @@ def main(args):
         load_pretrained_model(cfg.model, args.model)
 
     eval_pixel_stride = dic.get("eval_pixel_stride", 1)
-
     max_eval_num = getattr(dic["val_dataset"], "max_eval_num", None)
-
     eval_with_grad = getattr(dic["val_dataset"], "eval_with_grad", False)
     eval_to_cpu = getattr(dic["val_dataset"], "eval_to_cpu", False)
+    image_coords_offset = getattr(dict["val_dataset"], "image_coords_offset",
+                                  0.5)
 
     validate_mesh = getattr(dic["val_dataset"], "validate_mesh", None)
     if validate_mesh is not None and validate_mesh not in ["neus_style"]:
@@ -119,6 +118,7 @@ def main(args):
         world_space_for_mesh=world_space_for_mesh,
         bound_min=bound_min,  # used for generating mesh
         bound_max=bound_max,  # used for generating mesh
+        image_coords_offset=image_coords_offset,
         eval_with_grad=eval_with_grad,
         eval_to_cpu=eval_to_cpu)
 

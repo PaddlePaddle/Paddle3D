@@ -37,12 +37,12 @@ class CameraType(IntEnum):
 @dataclass
 class Cameras:
     c2w_matrices: Union[np.ndarray, paddle.Tensor]
-    fx: Union[np.ndarray, paddle.Tensor, float] = None
-    fy: Union[np.ndarray, paddle.Tensor, float] = None
-    cx: Union[np.ndarray, paddle.Tensor, float] = None
-    cy: Union[np.ndarray, paddle.Tensor, float] = None
-    image_height: Union[np.ndarray, paddle.Tensor, int] = None
-    image_width: Union[np.ndarray, paddle.Tensor, int] = None
+    fx: Union[np.ndarray, paddle.Tensor, float]
+    fy: Union[np.ndarray, paddle.Tensor, float]
+    cx: Union[np.ndarray, paddle.Tensor, float]
+    cy: Union[np.ndarray, paddle.Tensor, float]
+    image_height: Union[np.ndarray, paddle.Tensor, int]
+    image_width: Union[np.ndarray, paddle.Tensor, int]
     axis_convention: str = "OpenGL"
     distortion_coeffs: Optional[Union[np.ndarray, paddle.Tensor]] = None
     camera_type: Optional[
@@ -54,12 +54,12 @@ class Cameras:
     def __init__(
             self,
             c2w_matrices: Union[np.ndarray, paddle.Tensor],
-            fx: Union[np.ndarray, paddle.Tensor, float] = None,
-            fy: Union[np.ndarray, paddle.Tensor, float] = None,
-            cx: Union[np.ndarray, paddle.Tensor, float] = None,
-            cy: Union[np.ndarray, paddle.Tensor, float] = None,
-            image_height: Union[np.ndarray, paddle.Tensor, int] = None,
-            image_width: Union[np.ndarray, paddle.Tensor, int] = None,
+            fx: Union[np.ndarray, paddle.Tensor, float],
+            fy: Union[np.ndarray, paddle.Tensor, float],
+            cx: Union[np.ndarray, paddle.Tensor, float],
+            cy: Union[np.ndarray, paddle.Tensor, float],
+            image_height: Union[np.ndarray, paddle.Tensor, int],
+            image_width: Union[np.ndarray, paddle.Tensor, int],
             axis_convention: Optional[str] = "OpenGL",
             distortion_coeffs: Optional[
                 Union[np.ndarray, paddle.Tensor]] = None,

@@ -178,7 +178,7 @@ class RaySamples:
                     axis=-2)
                 pixel_area = paddle.concat(
                     [pixel_area, sample.frustums.pixel_area], axis=-2)
-                #camera_ids = paddle.concat([camera_ids, sample.camera_ids], axis=-1)
+
                 camera_ids = paddle.concat([camera_ids, sample.camera_ids],
                                            axis=-2)
                 sample_euclidean_bins = paddle.concat(
@@ -186,11 +186,6 @@ class RaySamples:
                     axis=1)
                 euclidean_bins = paddle.concat(
                     [euclidean_bins, sample_euclidean_bins], axis=1)
-
-            #sample_pad = euclidean_bins[:, -1:, :] + sample_dist
-            #euclidean_bins = paddle.concat([euclidean_bins, sample_pad], axis=1)
-            #origins=self.origins.unsqueeze(-2).repeat_interleave(
-            #    n_smaples_per_ray, axis=-2),
 
             starts = euclidean_bins[:, :-1, :]
             ends = euclidean_bins[:, 1:, :]

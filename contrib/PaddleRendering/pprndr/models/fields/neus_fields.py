@@ -65,14 +65,9 @@ class NeuSField(BaseField):
     SDF and a rendring net
     """
 
-    def __init__(self,
-                 pos_encoder: nn.Layer,
-                 view_encoder: nn.Layer,
-                 sdf_network: nn.Layer,
-                 color_network: nn.Layer,
-                 variance_init_val: float,
-                 scale: float,
-                 load_torch_data: bool = False):
+    def __init__(self, pos_encoder: nn.Layer, view_encoder: nn.Layer,
+                 sdf_network: nn.Layer, color_network: nn.Layer,
+                 variance_init_val: float, scale: float):
         super(NeuSField, self).__init__()
 
         self.scale = scale
@@ -85,64 +80,6 @@ class NeuSField(BaseField):
         self.sdf_network = sdf_network
         self.color_network = color_network
         self.deviation_network = SingleVarianceNetwork(variance_init_val)
-
-        # load torch sdf network weight
-        if load_torch_data:
-            import torch
-            torch_weights = torch.load(
-                "/workspace/neural_engine/algorithms/NeuS-main/exp/dtu_scan105/womask_sphere/checkpoints/ckpt_300000.pth",
-                map_location=torch.device('cpu'))
-
-            # Assign weights to sdf_network
-            sdf_weights = torch_weights["sdf_network_fine"]
-            for layer_name in sdf_weights.keys():
-                layer_id = int(layer_name.split('.')[0].split('lin')[-1])
-
-                # Assign bias
-                if layer_name.split('.')[-1] == "bias":
-                    bias_ = sdf_weights[layer_name].numpy()
-                    nn.initializer.Assign(bias_)(
-                        self.sdf_network.layers[layer_id].bias)
-
-                # Assign weight_g
-                if layer_name.split('.')[-1] == "weight_g":
-                    weight_g_ = sdf_weights[layer_name].numpy().squeeze()
-                    nn.initializer.Assign(weight_g_)(
-                        self.sdf_network.layers[layer_id].weight_g)
-
-                # Assign weight_v
-                if layer_name.split('.')[-1] == "weight_v":
-                    weight_v_ = sdf_weights[layer_name].numpy().transpose()
-                    nn.initializer.Assign(weight_v_)(
-                        self.sdf_network.layers[layer_id].weight_v)
-
-            # Assign weights to variance_network
-            var_weights = torch_weights["variance_network_fine"]
-            var_weight_ = var_weights["variance"].unsqueeze(0).numpy()
-            nn.initializer.Assign(var_weight_)(self.deviation_network.variance)
-
-            # Assign weights to color_network
-            color_weights = torch_weights["color_network_fine"]
-            for layer_name in color_weights.keys():
-                layer_id = int(layer_name.split('.')[0].split('lin')[-1])
-
-                # Assign bias
-                if layer_name.split('.')[-1] == "bias":
-                    bias_ = color_weights[layer_name].numpy()
-                    nn.initializer.Assign(bias_)(
-                        self.color_network.layers[layer_id].bias)
-
-                # Assign weight_g
-                if layer_name.split('.')[-1] == "weight_g":
-                    weight_g_ = color_weights[layer_name].numpy().squeeze()
-                    nn.initializer.Assign(weight_g_)(
-                        self.color_network.layers[layer_id].weight_g)
-
-                # Assign weight_v
-                if layer_name.split('.')[-1] == "weight_v":
-                    weight_v_ = color_weights[layer_name].numpy().transpose()
-                    nn.initializer.Assign(weight_v_)(
-                        self.color_network.layers[layer_id].weight_v)
 
     def get_sdf_from_pts(self, pts: paddle.Tensor):
         # pts : (1, N, 3)
@@ -240,7 +177,7 @@ class NeuSField(BaseField):
 
 
 class SingleVarianceNetwork(nn.Layer):
-    def __init__(self, init_val, load_torch_data: bool = True):
+    def __init__(self, init_val):
         super(SingleVarianceNetwork, self).__init__()
         variance = self.create_parameter(
             shape=[1],
@@ -250,83 +187,3 @@ class SingleVarianceNetwork(nn.Layer):
 
     def forward(self, x):
         return paddle.ones([len(x), 1]) * paddle.exp(self.variance * 10.0)
-
-
-#@manager.FIELDS.add_component
-#class NeRFPPField(BaseField):
-#    """
-#    NeRF++ Field according to the paper.
-#    """
-#
-#    def __init__(self,
-#                 pos_encoder: nn.Layer,
-#                 dir_encoder: nn.Layer,
-#                 stem_net: nn.Layer,
-#                 density_head: nn.Layer,
-#                 color_head: nn.Layer,
-#                 density_noise: float = None,
-#                 density_bias: float = None,
-#                 rgb_padding: float = None,
-#                 load_torch_data: bool = False):
-#        super(NeRFPPField, self).__init__()
-#
-#        # Noise
-#        self.density_noise = density_noise
-#        self.density_bias = density_bias
-#
-#        # Padding
-#        self.rgb_padding = rgb_padding
-#
-#        # Encoder
-#        self.pos_encoder = pos_encoder
-#        self.dir_encoder = dir_encoder
-#
-#        # Networks
-#        self.stem_net = stem_net
-#        self.density_head = density_head
-#
-#        self.feature_linear = nn.Linear(stem_net.output_dim,
-#                                        stem_net.output_dim)
-#        self.color_head = color_head
-#
-#    def get_densities(self,
-#                      ray_samples: RaySamples = None,
-#                      which_pts: str = "mid_points"):
-#        # Get inputs
-#        if which_pts == "mid_points":
-#            pts = ray_samples.frustums.positions
-#        else:
-#            assert (which_pts == "bin_points")
-#            pts = ray_samples.frustums.bin_points
-#
-#        dis_to_center = paddle.linalg.norm(
-#            pts, p=2, axis=-1, keepdim=True).clip(1.0, 1e10)
-#        pts = paddle.concat([pts / dis_to_center, 1.0 / dis_to_center], axis=-1)
-#        pts_embeddings = self.pos_encoder(pts)
-#
-#        embeddings = self.stem_net(pts_embeddings)
-#        raw_density = self.density_head(embeddings)
-#
-#        if self.density_bias is not None:
-#            raw_density + paddle.randn(
-#                raw_density.shape, dtype=raw_density.dtype) * self.density_noise
-#        if self.density_bias is not None:
-#            raw_density += self.density_bias
-#
-#        density = F.softplus(raw_density)
-#        return density, embeddings
-#
-#    def get_colors(self,
-#                   ray_samples: RaySamples = None,
-#                   embeddings: paddle.Tensor = None,
-#                   which_pts: str = "mid_points"):
-#        if embeddings is None:
-#            densities, embeddings = self.get_densities(ray_samples, which_pts)
-#        dir_embeddings = self.dir_encoder(ray_samples.frustums.directions)
-#
-#        features = self.feature_linear(embeddings)
-#        features = paddle.concat([features, dir_embeddings], axis=-1)
-#        colors = self.color_head(features)
-#        if self.rgb_padding is not None:
-#            colors = colors * (1. + 2. * self.rgb_padding) - self.rgb_padding
-#        return colors

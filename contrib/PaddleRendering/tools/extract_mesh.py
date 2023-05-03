@@ -15,15 +15,12 @@
 import argparse
 import os
 import sys
-sys.path.insert(1, "/home/liuxing/workspace/Paddle3D/contrib/PaddleRendering/")
 from pprndr.apis.config import Config
 from pprndr.apis.trainer import Trainer
 from pprndr.utils.checkpoint import load_pretrained_model
 
 
 def parse_args():
-    """
-    """
     parser = argparse.ArgumentParser(description='Model evaluation')
     # params of training
     parser.add_argument(

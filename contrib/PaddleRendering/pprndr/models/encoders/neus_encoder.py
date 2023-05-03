@@ -75,5 +75,4 @@ class NeuSEncoder(nn.Layer):
             output.append(embed_fn(x))
 
         output = paddle.concat(output, axis=-1)
-        #return output, self.output_dim
         return output

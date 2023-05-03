@@ -51,7 +51,6 @@ class LLFFDataset(BaseDataset):
                  transforms: List[TransformABC] = None,
                  camera_scale_factor: float = 1.0,
                  camera_axis_convention: str = "OpenCV",
-                 skip_pixels: int = 1.0,
                  image_coords_offset: float = 0.0,
                  background_color: Union[str, list, tuple] = None,
                  max_eval_num: Optional[int] = 5,
@@ -76,9 +75,6 @@ class LLFFDataset(BaseDataset):
         self.world_space_for_mesh = world_space_for_mesh
         self.bound_min = bound_min
         self.bound_max = bound_max
-
-        # Used for skipping pixels in cameras.get_image_coords
-        self.skip_pixels = skip_pixels
 
         self.transforms = Compose(transforms) if transforms else None
         self.camera_scale_factor = float(camera_scale_factor)

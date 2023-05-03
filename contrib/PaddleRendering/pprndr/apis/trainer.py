@@ -302,6 +302,8 @@ class Trainer(object):
 
                     eval_to_cpu = getattr(self.val_dataset, "eval_to_cpu",
                                           False)
+                    image_coords_offset = getattr(self.val_dataset,
+                                                  "image_coords_offset", 0.5)
 
                     if eval_with_grad:
                         eval_ray_batch_size = min(
@@ -340,6 +342,7 @@ class Trainer(object):
                         world_space_for_mesh=world_space_for_mesh,
                         bound_min=bound_min,
                         bound_max=bound_max,
+                        image_coords_offset=image_coords_offset,
                         eval_with_grad=eval_with_grad,
                         eval_to_cpu=eval_to_cpu)
 
@@ -443,7 +446,6 @@ class Trainer(object):
         else:
             raise NotImplementedError("Invalid method for validate_mesh.")
 
-    #@paddle.no_grad()
     def evaluate(self,
                  save_dir: str,
                  val_ray_batch_size: int = 16384,
@@ -454,6 +456,7 @@ class Trainer(object):
                  world_space_for_mesh: bool = False,
                  bound_min=None,
                  bound_max=None,
+                 image_coords_offset: float = 0.5,
                  eval_with_grad: bool = False,
                  eval_to_cpu: bool = False) -> Dict:
         """
@@ -469,7 +472,7 @@ class Trainer(object):
 
         cameras = self.val_dataset.cameras.cuda()
         image_coords = cameras.get_image_coords(
-            step=pixel_stride, offset=0).reshape([-1, 2])
+            step=pixel_stride, offset=image_coords_offset).reshape([-1, 2])
 
         # Only support neus_style for now for generating mesh.
         if validate_mesh is not None:
@@ -514,13 +517,6 @@ class Trainer(object):
 
             ray_bundle = cameras.generate_rays(
                 camera_ids=image_batch["camera_id"], image_coords=image_coords)
-
-            #            if eval_with_grad:
-            #                output = inference_step_with_grad(self.model, ray_bundle,
-            #                                                  val_ray_batch_size)
-            #            else:
-            #                output = inference_step(self.model, ray_bundle,
-            #                                        val_ray_batch_size)
 
             if eval_with_grad:
                 output = inference_step(

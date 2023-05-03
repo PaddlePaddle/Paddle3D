@@ -26,7 +26,7 @@ try:
 except ModuleNotFoundError:
     from pprndr.cpp_extensions import ffmlp
 
-__all__ = ['FFMLP', 'MLP', 'Softplus']
+__all__ = ['FFMLP', 'MLP']
 
 TCNN_ACTIVATION = {
     "relu": 0,
@@ -54,14 +54,6 @@ PADDLE_ACTIVATION = {
     "none":
     None
 }
-
-
-class Softplus(nn.Layer):
-    def __init__(self, beta: float = 100, threshold: float = 20):
-        self.act_layer = nn.Softplus(beta, threshold)
-
-    def forward(self, x):
-        return self.act_layer(x)
 
 
 class GeometricInit(object):
