@@ -101,7 +101,8 @@ class Trainer(object):
                  scheduler: Union[dict, SchedulerABC] = None,
                  data_manager_fn: Union[dict, Callable] = None,
                  amp_cfg: Optional[dict] = None,
-                 grad_accum_cfg: Optional[dict] = None):
+                 grad_accum_cfg: Optional[dict] = None,
+                 reinit_optim_cfg: Optional[dict] = None):
 
         self.model = model
         self.optimizer = optimizer
@@ -198,6 +199,7 @@ class Trainer(object):
             self.scaler = None
 
         self.grad_accum_cfg = grad_accum_cfg
+        self.reinit_optim_cfg = reinit_optim_cfg
 
     def train(self):
         """
@@ -365,6 +367,12 @@ class Trainer(object):
                         verbose=True)
 
                     self.checkpoint.record('iters', self.cur_iter)
+
+                if self.reinit_optim_cfg is not None:
+                    if self.cur_iter in self.reinit_optim_cfg['upsamp_list']:
+                        model.update_to_step(self.cur_iter)
+                        self.optimizer = model.reinitialize_optimizer(
+                            self.reinit_optim_cfg, model.parameters())
 
         logger.info('Training is complete.')
 

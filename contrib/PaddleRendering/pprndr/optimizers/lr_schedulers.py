@@ -14,11 +14,15 @@
 
 import math
 import numpy as np
+import paddle
 from paddle.optimizer.lr import LambdaDecay
 
 from pprndr.apis import manager
 
-__all__ = ["CustomExponentialDecay", "NeuSLRDecay"]
+__all__ = [
+    "CustomExponentialDecay", "ExponentialDecay", "FixationExponentialDecay",
+    "NeuSLRDecay"
+]
 
 
 @manager.LR_SCHEDULERS.add_component
@@ -101,3 +105,25 @@ class ExponentialDecay(LambdaDecay):
             return delay_rate**multiplier
 
         super(ExponentialDecay, self).__init__(lr_init, lr_lambda=lr_lambda)
+
+
+@manager.LR_SCHEDULERS.add_component
+class FixationExponentialDecay(paddle.optimizer.lr.ExponentialDecay):
+    """Exponential learning rate decay function.
+        Refer to https://github.com/apchenstu/TensoRF/blob/4ec894dc1341a2201fe13ae428631b58458f105d/train.py#L146
+        for details.
+
+        Args:
+            learning_rate: The initial learning rate.
+            decay_rate: The decay rate.
+            total_steps: The number of all train steps.
+    """
+
+    def __init__(self, learning_rate, delay_rate, total_steps):
+        def get_gamma():
+            multiplier = (1 / total_steps
+                          )  # the multiplier is with the initial learning rate
+            return delay_rate**multiplier
+
+        super(FixationExponentialDecay, self).__init__(
+            learning_rate, gamma=get_gamma())

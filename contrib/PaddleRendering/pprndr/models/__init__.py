@@ -19,6 +19,7 @@ from .layers import *
 from .mip_nerf import *
 from .plenoxels import *
 from .nerf import *
+from .tensorf import *
 from .ray_samplers import *
 from .ref_nerf import *
 from .renderers import *
