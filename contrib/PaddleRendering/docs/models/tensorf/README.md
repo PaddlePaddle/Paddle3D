@@ -33,8 +33,8 @@
 
 |  场景  |  PSNR   |  SSIM  |                                                 模型下载                                                 |                          配置文件                           |
 |:----:|:-------:|:------:|:----------------------------------------------------------------------------------------------------:|:-------------------------------------------------------:|
-| lego | 35.960 | 0.9794 | [model]() | [config](../../../configs/tensorf/blender_data_vm.yml) |
-| lego | 34.877 | 0.9735 | [model]() | [sh_config](../../../configs/tensorf/blender_data_vm_sh.yml) |
+| lego | 35.960 | 0.9794 | [model](https://paddle3d.bj.bcebos.com/render/models/tensorf/tensorf_blender/model.pdparams) | [config](../../../configs/tensorf/blender_data_vm.yml) |
+| lego | 34.877 | 0.9735 | [model](https://paddle3d.bj.bcebos.com/render/models/tensorf/tensorf_sh_blender/model.pdparams) | [sh_config](../../../configs/tensorf/blender_data_vm_sh.yml) |
 
 ## <h2 id="4">训练配置</h2>
 
