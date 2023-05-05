@@ -129,6 +129,8 @@ class NeuSOutsideSampler(BaseSampler):
         self.spacing_start = spacing_start
         self.spacing_end = spacing_end
         self.stratified = stratified
+        self.aabb = aabb
+        self.compute_near_far_from_sphere = compute_near_far_from_sphere
         self.unified_jittering = unified_jittering
         self.inside_interval_len = inside_interval_len
         super(NeuSOutsideSampler, self).__init__(num_samples=num_samples)

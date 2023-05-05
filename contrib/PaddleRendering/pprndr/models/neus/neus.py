@@ -135,8 +135,6 @@ class NeuS(nn.Layer):
 
         num_outside = self.outside_ray_sampler.num_samples
         if num_outside > 0:
-            # Check if ray_bundle.fars was set in coarse_ray_sampling.
-            assert (ray_bundle.fars is not None)
             ray_samples_outside = self.outside_ray_sampler(
                 ray_bundle)  # Sampling outside
             ray_samples = ray_samples_inside.merge_samples(
