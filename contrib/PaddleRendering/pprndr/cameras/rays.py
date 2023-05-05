@@ -219,10 +219,6 @@ class RayBundle:
     """Pixel areas at a distance 1 from ray origins. Shape: [num_rays, 1]."""
     camera_ids: paddle.Tensor
     """Camera ids for each ray. Shape: [num_rays, 1]."""
-    nears: paddle.Tensor = None
-    """Distance to near clipping planes for each ray. Shape: [num_rays, 1]."""
-    fars: paddle.Tensor = None
-    """Distance to far clipping planes for each ray. Shape: [num_rays, 1]."""
 
     @property
     def num_rays(self):
@@ -236,9 +232,7 @@ class RayBundle:
             origins=self.origins[indices],
             directions=self.directions[indices],
             pixel_area=self.pixel_area[indices],
-            camera_ids=self.camera_ids[indices],
-            nears=self.nears[indices] if self.nears is not None else None,
-            fars=self.fars[indices] if self.fars is not None else None)
+            camera_ids=self.camera_ids[indices])
 
     def generate_ray_samples(self,
                              euclidean_bins: paddle.Tensor,

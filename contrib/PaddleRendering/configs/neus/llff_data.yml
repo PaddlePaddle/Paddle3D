@@ -13,7 +13,7 @@ val_metrics:
 
 train_dataset:
   type: LLFFDataset
-  dataset_root : "data/dtu_scan105/"
+  dataset_root : data/dtu_scan105
   render_cameras_name: cameras_sphere.npz
   object_cameras_name: cameras_sphere.npz
   camera_scale_factor: 1.0
@@ -27,7 +27,7 @@ train_dataset:
 
 val_dataset:
   type: LLFFDataset
-  dataset_root: "data/dtu_scan105/"
+  dataset_root: data/dtu_scan105
   render_cameras_name: cameras_sphere.npz
   object_cameras_name: cameras_sphere.npz
   camera_scale_factor: 1.0
@@ -95,6 +95,8 @@ model:
     num_samples: 32
     spacing_start: 1e-3
     spacing_end: 1.0
+    aabb: null
+    compute_near_far_from_sphere: true
     stratified: True
     unified_jittering: True
     inside_interval_len: 0.0078125   # 1.0 / 128 (note, 128 is # of inside samples)

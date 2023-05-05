@@ -21,7 +21,7 @@ val_metrics:
 
 train_dataset:
   type: BlenderDataset
-  dataset_root: data/nerf_synthetic/lego/
+  dataset_root: data/nerf_synthetic/lego
   camera_scale_factor: 1.0
   background_color: white
   image_coords_offset: 0.5

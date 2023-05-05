@@ -85,24 +85,22 @@ class SpacedSampler(BaseSampler):
             bin_lowers = paddle.concat([bins[:, :1], bin_centers], axis=-1)
             bins = bin_lowers + (bin_uppers - bin_lowers) * noises
 
-        if ray_bundle.nears is None or ray_bundle.fars is None:
-            if self.aabb is not None:
-                assert (not self.compute_near_far_from_sphere)
-                ray_bundle.nears, ray_bundle.fars = near_far_from_aabb(
-                    ray_bundle.origins, ray_bundle.directions, self.aabb)
+        if self.aabb is not None:
+            assert (not self.compute_near_far_from_sphere)
+            nears, fars = near_far_from_aabb(ray_bundle.origins,
+                                             ray_bundle.directions, self.aabb)
 
-            elif self.compute_near_far_from_sphere:
-                assert (self.aabb is None)
-                ray_bundle.nears, ray_bundle.fars = near_far_from_sphere(
-                    ray_bundle.origins, ray_bundle.directions)
-            else:
-                ray_bundle.nears = paddle.zeros_like(
-                    ray_bundle.origins[:, 0]).unsqueeze_(-1)
-                ray_bundle.fars = paddle.full_like(ray_bundle.origins[:, 0],
-                                                   1e10).unsqueeze_(-1)
+        elif self.compute_near_far_from_sphere:
+            assert (self.aabb is None)
+            nears, fars = near_far_from_sphere(ray_bundle.origins,
+                                               ray_bundle.directions)
+        else:
+            nears = paddle.zeros_like(ray_bundle.origins[:, 0]).unsqueeze_(-1)
+            fars = paddle.full_like(ray_bundle.origins[:, 0],
+                                    1e10).unsqueeze_(-1)
 
-        s_nears = self.spacing_fn(ray_bundle.nears)
-        s_fars = self.spacing_fn(ray_bundle.fars)
+        s_nears = self.spacing_fn(nears)
+        s_fars = self.spacing_fn(fars)
         spacing2euclidean_fn = lambda s: self.spacing_fn_inv((s_fars - s_nears)
                                                              * s + s_nears)
 
@@ -123,6 +121,8 @@ class NeuSOutsideSampler(BaseSampler):
                  num_samples: int = None,
                  spacing_start: float = 1e-3,
                  spacing_end: float = 1.0,
+                 aabb: Union[paddle.Tensor, Tuple, List] = None,
+                 compute_near_far_from_sphere: bool = True,
                  stratified: bool = True,
                  unified_jittering: bool = False,
                  inside_interval_len: float = 1.0 / 128):
@@ -154,7 +154,21 @@ class NeuSOutsideSampler(BaseSampler):
             bin_lowers = paddle.concat([bins[..., :1], bin_centers], axis=-1)
             bins = bin_lowers + (bin_uppers - bin_lowers) * noises
 
-        fars = ray_bundle.fars
+        # Compute fars for calculating euclidean_bins
+        if self.aabb is not None:
+            assert (not self.compute_near_far_from_sphere)
+            nears, fars = near_far_from_aabb(ray_bundle.origins,
+                                             ray_bundle.directions, self.aabb)
+
+        elif self.compute_near_far_from_sphere:
+            assert (self.aabb is None)
+            nears, fars = near_far_from_sphere(ray_bundle.origins,
+                                               ray_bundle.directions)
+        else:
+            nears = paddle.zeros_like(ray_bundle.origins[:, 0]).unsqueeze_(-1)
+            fars = paddle.full_like(ray_bundle.origins[:, 0],
+                                    1e10).unsqueeze_(-1)
+
         assert (fars is not None)
         bins = bins[:, :-1]  # [num_rays, num_samples]
         euclidean_bins = fars / paddle.flip(
