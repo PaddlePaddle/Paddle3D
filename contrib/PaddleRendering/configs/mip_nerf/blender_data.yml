@@ -30,7 +30,6 @@ val_dataset:
   camera_scale_factor: 1.0
   background_color: white
   image_coords_offset: 0.5
-  max_eval_num: 4
   transforms:
     - type: LoadImage
     - type: Normalize
