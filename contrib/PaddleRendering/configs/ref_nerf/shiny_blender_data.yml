@@ -3,7 +3,7 @@ iters: 1000000
 image_batch_size: -1   # sample batch of rays from all images at each iteration
 ray_batch_size: 1024
 image_resampling_interval: -1
-eval_pixel_stride: 4
+eval_pixel_stride: 1
 use_adaptive_ray_batch_size: False
 
 train_metrics:

@@ -1,7 +1,7 @@
 iters: 300000
 image_batch_size: 1
 ray_batch_size: 256
-eval_pixel_stride: 4
+eval_pixel_stride: 1
 image_resampling_interval: -1
 
 train_metrics:
