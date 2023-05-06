@@ -8,3 +8,5 @@ pillow
 rarfile
 visualdl
 easydict
+mcubes
+trimesh

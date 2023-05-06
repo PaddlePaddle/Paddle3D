@@ -25,12 +25,8 @@ from pprndr.apis import manager
 from pprndr.cameras.rays import RayBundle
 from pprndr.models.fields import BaseField
 from pprndr.models.ray_samplers import BaseSampler
-from pprndr.ray_marching import render_weight_from_density
-from pprndr.ray_marching import render_alpha_from_densities
-from pprndr.ray_marching import render_weights_from_alpha
-from pprndr.ray_marching import render_alpha_from_sdf
-from pprndr.ray_marching import get_anneal_coeff
-from pprndr.ray_marching import get_cosine_coeff
+from pprndr.ray_marching import render_alpha_from_densities, render_weights_from_alpha, render_alpha_from_sdf, \
+    get_anneal_coeff, get_cosine_coeff
 from pprndr.utils.logger import logger
 
 __all__ = ["NeuS"]
@@ -69,8 +65,8 @@ class NeuS(nn.Layer):
         if fine_ray_sampler is None or fine_sampling_steps == 0:
             self.num_importance = 0
         else:
-            assert (not fine_ray_sampler is None)
-            assert (fine_sampling_steps > 0)
+            assert fine_ray_sampler is not None
+            assert fine_sampling_steps > 0
             self.num_importance = fine_sampling_steps * fine_ray_sampler.num_samples
 
     def _forward(self, sample: Tuple[RayBundle, dict],
@@ -95,14 +91,18 @@ class NeuS(nn.Layer):
                     cos_val = get_cosine_coeff(
                         ray_samples_inside, signed_distances, radius_filter=1.0)
                     # Use middle sdf
-                    prev_sdf = signed_distances[:, :-1, :]
-                    next_sdf = signed_distances[:, 1:, :]
+                    if signed_distances.ndim == 3:
+                        prev_sdf = signed_distances[:, :-1, :]
+                        next_sdf = signed_distances[:, 1:, :]
+                    else:
+                        prev_sdf = signed_distances[::2, :]
+                        next_sdf = signed_distances[1::2, :]
                     mid_sdf = (prev_sdf + next_sdf) * 0.5  # [b, n_samples, 1]
 
                     inside_alpha = render_alpha_from_sdf(
                         ray_samples_inside,
                         mid_sdf,
-                        inv_s=64 * 2**i,  # not sure.
+                        inv_s=64 * 2**i,
                         coeff=cos_val,
                         clip_alpha=False)
                     inside_weights = render_weights_from_alpha(inside_alpha)
@@ -119,7 +119,7 @@ class NeuS(nn.Layer):
                             ray_samples_inside_new, which_pts="bin_points")
 
                         signed_distances = paddle.concat(
-                            [signed_distances, new_signed_distances], axis=1)
+                            [signed_distances, new_signed_distances], axis=-2)
                         num_inside_for_step_i = ray_samples_inside.frustums.bin_points.shape[
                             1]
 
@@ -151,6 +151,7 @@ class NeuS(nn.Layer):
             global_alphas = render_alpha_from_densities(
                 ray_samples=ray_samples, densities=global_densities)
         else:
+            global_colors = None
             global_alphas = None
 
         # Get inside field (SDF + RenderNet) outputs.
@@ -179,7 +180,7 @@ class NeuS(nn.Layer):
 
         # Get the final alpha and color.
         if global_alphas is not None:
-            assert (not global_colors is None)
+            assert global_colors is not None
             alphas = inside_alphas * inside_sphere + global_alphas[:, :
                                                                    num_inside, :] * (
                                                                        1.0 -
@@ -188,7 +189,7 @@ class NeuS(nn.Layer):
             alphas = paddle.concat([alphas, global_alphas[:, num_inside:, :]],
                                    axis=1)
             colors = inside_colors * inside_sphere + \
-                    global_colors["rgb"][:, :num_inside, :] * (1.0 - inside_sphere)
+                     global_colors["rgb"][:, :num_inside, :] * (1.0 - inside_sphere)
             colors = paddle.concat(
                 [colors, global_colors["rgb"][:, num_inside:, :]], axis=1)
         else:
@@ -197,8 +198,9 @@ class NeuS(nn.Layer):
 
         # Compute weights from alpha
         alphas = alphas.squeeze(-1)
-        weights = alphas * paddle.cumprod(paddle.concat([paddle.ones([batch_size, 1]), \
-                                                        1. - alphas + 1e-7], -1), -1)[:, :-1]
+        weights = alphas * paddle.cumprod(
+            paddle.concat([paddle.ones([batch_size, 1]), 1. - alphas + 1e-7],
+                          -1), -1)[:, :-1]
         weights = weights.unsqueeze(axis=-1)
 
         rgbs, visibility_mask = self.rgb_renderer(
