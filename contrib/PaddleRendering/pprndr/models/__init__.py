@@ -23,3 +23,4 @@ from .tensorf import *
 from .ray_samplers import *
 from .ref_nerf import *
 from .renderers import *
+from .neus import *

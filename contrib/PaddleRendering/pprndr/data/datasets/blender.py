@@ -49,6 +49,8 @@ class BlenderDataset(BaseDataset):
                  transforms: List[TransformABC] = None,
                  camera_scale_factor: float = 1.0,
                  background_color: Union[str, list, tuple] = None,
+                 image_coords_offset: float = 0.5,
+                 max_eval_num: int = None,
                  split: str = "train",
                  load_normals: bool = False):
         super(BlenderDataset, self).__init__()
@@ -56,6 +58,8 @@ class BlenderDataset(BaseDataset):
         self.dataset_root = Path(dataset_root)
         self.transforms = Compose(transforms) if transforms else None
         self.camera_scale_factor = float(camera_scale_factor)
+        self.image_coords_offset = image_coords_offset
+        self.max_eval_num = max_eval_num
         if background_color is not None:
             self.background_color = np.array(
                 get_color(background_color), dtype=np.float32)

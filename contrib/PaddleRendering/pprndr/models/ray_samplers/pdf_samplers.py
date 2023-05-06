@@ -112,6 +112,8 @@ class PDFSampler(BaseSampler):
         cdf_g1 = paddle.take_along_axis(cdf, above, axis=-1)
         bins_g1 = paddle.take_along_axis(existing_bins, above, axis=-1)
 
+        # if "paddle.nan_to_num" not working fine, replace the following with the this:
+        #   > t = paddle.clip((u - cdf_g0) / (cdf_g1 - cdf_g0 + 1e-13), 0, 1)
         t = paddle.clip(
             paddle.nan_to_num((u - cdf_g0) / (cdf_g1 - cdf_g0), nan=0.0), 0, 1)
         bins = bins_g0 + t * (bins_g1 - bins_g0)

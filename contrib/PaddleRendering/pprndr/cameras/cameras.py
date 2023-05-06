@@ -23,6 +23,7 @@ import paddle.nn.functional as F
 
 from pprndr.cameras.camera_functionals import radial_n_tangential_undistort
 from pprndr.cameras.rays import RayBundle
+from pprndr.utils.logger import logger
 
 __all__ = ["CameraType", "Cameras"]
 
@@ -42,6 +43,7 @@ class Cameras:
     cy: Union[np.ndarray, paddle.Tensor, float]
     image_height: Union[np.ndarray, paddle.Tensor, int]
     image_width: Union[np.ndarray, paddle.Tensor, int]
+    axis_convention: str = "OpenGL"
     distortion_coeffs: Optional[Union[np.ndarray, paddle.Tensor]] = None
     camera_type: Optional[
         Union[np.ndarray, paddle.Tensor, int, List[CameraType],
@@ -58,6 +60,7 @@ class Cameras:
             cy: Union[np.ndarray, paddle.Tensor, float],
             image_height: Union[np.ndarray, paddle.Tensor, int],
             image_width: Union[np.ndarray, paddle.Tensor, int],
+            axis_convention: Optional[str] = "OpenGL",
             distortion_coeffs: Optional[
                 Union[np.ndarray, paddle.Tensor]] = None,
             camera_type: Optional[
@@ -67,6 +70,7 @@ class Cameras:
                                   CUDAPlace, paddle.CUDAPinnedPlace]] = "cpu"):
         self._set_place(place)
 
+        self.axis_convention = axis_convention
         if c2w_matrices.ndim == 2:
             c2w_matrices = c2w_matrices.unsqueeze_(0)
             self._num_cameras = 1
@@ -140,6 +144,7 @@ class Cameras:
             image_width=self._image_width,
             distortion_coeffs=self.distortion_coeffs,
             camera_type=self.camera_types,
+            axis_convention=self.axis_convention,
             place="cuda")
 
     def __getitem__(self, indices) -> "Cameras":
@@ -158,7 +163,8 @@ class Cameras:
     def __len__(self):
         return self._num_cameras
 
-    def get_image_coords(self, offset: float = .5) -> paddle.Tensor:
+    def get_image_coords(self, offset: float = .5,
+                         step: int = 1) -> paddle.Tensor:
         """
         Generate coordinates on image.
 
@@ -170,12 +176,32 @@ class Cameras:
         """
 
         row, col = paddle.meshgrid(
-            paddle.arange(self._image_height[0]),
-            paddle.arange(self._image_width[0]))
+            paddle.arange(self._image_height[0], step=step),
+            paddle.arange(self._image_width[0], step=step))
         image_coords = paddle.stack([row, col],
                                     axis=-1).astype("float32") + offset
 
         return image_coords
+
+    def convert_axis(self, target: str):
+        if self.axis_convention not in ["OpenCV", "OpenGL"
+                                        ] or target not in ["OpenGL"]:
+            raise ValueError("Axis convention out of scope.")
+        else:
+            if self.axis_convention == target:
+                logger.info("Axis convertion is not needed.")
+                R_axis = paddle.to_tensor([[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                                          dtype=paddle.float32)
+                return R_axis
+            else:
+                if self.axis_convention == "OpenCV" and target == "OpenGL":
+                    R_axis = paddle.to_tensor(
+                        [[1, 0, 0], [0, -1, 0], [0, 0, -1]],
+                        dtype=paddle.float32)
+                    return R_axis
+                else:
+                    raise NotImplementedError(
+                        "The specified axis convertion is not implemented.")
 
     def generate_rays(
             self,
@@ -225,10 +251,8 @@ class Cameras:
 
         v = image_coords[:, 0]
         u = image_coords[:, 1]
-
         x_coords = (u - cx) / fx  # (N,)
         y_coords = -(v - cy) / fy  # (N,)
-
         x_offsets = (u - cx + 1.) / fx  # (N,)
         y_offsets = -(v - cy + 1.) / fy  # (N,)
 
@@ -266,14 +290,22 @@ class Cameras:
 
         c2w_matrices = paddle.index_select(
             self.c2w_matrices, camera_ids, axis=0)
+
         rotation = c2w_matrices[:, :3, :3]  # (N, 3, 3)
+
+        if self.axis_convention != "OpenGL":
+            trans_mat = self.convert_axis(target="OpenGL")
+            trans_mat = paddle.tile(trans_mat[None, :, :],
+                                    (rotation.shape[0], 1, 1))
+            # Convert rotation into OpenGL concention
+            rotation = paddle.matmul(rotation, trans_mat)
+
         directions_stack = paddle.sum(
             directions_stack.unsqueeze(-2) * rotation, axis=-1)
+
         directions_stack = F.normalize(directions_stack, p=2, axis=-1)
 
-        origins = c2w_matrices[..., :3, 3]  # (N, 3)
         directions = directions_stack[0]  # (N, 3)
-
         dx = paddle.sqrt(
             paddle.sum(
                 (directions - directions_stack[1])**2, axis=-1,
@@ -283,6 +315,9 @@ class Cameras:
                 (directions - directions_stack[2])**2, axis=-1,
                 keepdim=True))  # (N, 1)
         pixel_area = dx * dy  # (N, 1)
+
+        # Get origins
+        origins = c2w_matrices[..., :3, 3]  # (N, 3)
 
         return RayBundle(
             origins=origins,

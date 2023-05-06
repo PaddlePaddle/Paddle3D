@@ -15,3 +15,4 @@
 from .base import BaseDataset
 from .blender import BlenderDataset
 from .instant_ngp import InstantNGPDataset
+from .llff import LLFFDataset

@@ -13,15 +13,39 @@
 #  limitations under the License.
 
 import math
-
+import numpy as np
 import paddle
 from paddle.optimizer.lr import LambdaDecay
 
 from pprndr.apis import manager
 
 __all__ = [
-    "CustomExponentialDecay", "ExponentialDecay", "FixationExponentialDecay"
+    "CustomExponentialDecay", "ExponentialDecay", "FixationExponentialDecay",
+    "NeuSLRDecay"
 ]
+
+
+@manager.LR_SCHEDULERS.add_component
+class NeuSLRDecay(LambdaDecay):
+    """
+    Will be added layer.
+    """
+
+    def __init__(self, lr_init, warm_up_end, learning_rate_alpha, max_steps):
+        def lr_lambda(step):
+            """
+            Lambda fun. for decay
+            """
+            if step < warm_up_end:
+                learning_factor = step / warm_up_end
+            else:
+                alpha = learning_rate_alpha
+                progress = (step - warm_up_end) / (max_steps - warm_up_end)
+                learning_factor = (np.cos(np.pi * progress) + 1.0) * 0.5 * \
+                                  (1 - alpha) + alpha
+            return learning_factor
+
+        super(NeuSLRDecay, self).__init__(lr_init, lr_lambda=lr_lambda)
 
 
 @manager.LR_SCHEDULERS.add_component
