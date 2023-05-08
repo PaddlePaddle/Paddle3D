@@ -8,5 +8,5 @@ pillow
 rarfile
 visualdl
 easydict
-mcubes
-trimesh
+PyMCubes==0.1.2
+trimesh==3.9.8
