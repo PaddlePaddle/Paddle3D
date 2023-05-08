@@ -53,10 +53,8 @@ class LLFFDataset(BaseDataset):
                  camera_axis_convention: str = "OpenCV",
                  image_coords_offset: float = 0.0,
                  background_color: Union[str, list, tuple] = None,
-                 max_eval_num: Optional[int] = 5,
                  validate_mesh: Optional[str] = "neus_style",
                  mesh_resolution: Optional[str] = 64,
-                 eval_with_grad: Optional[bool] = True,
                  eval_to_cpu: Optional[bool] = False,
                  world_space_for_mesh: Optional[bool] = False,
                  bound_min: Optional[list] = None,
@@ -67,10 +65,8 @@ class LLFFDataset(BaseDataset):
         self.camera_axis_convention = camera_axis_convention
         self.render_cameras_name = render_cameras_name
         self.object_cameras_name = object_cameras_name
-        self.max_eval_num = max_eval_num
         self.validate_mesh = validate_mesh
         self.mesh_resolution = mesh_resolution
-        self.eval_with_grad = eval_with_grad
         self.eval_to_cpu = eval_to_cpu
         self.world_space_for_mesh = world_space_for_mesh
         self.bound_min = bound_min
@@ -79,7 +75,6 @@ class LLFFDataset(BaseDataset):
         self.transforms = Compose(transforms) if transforms else None
         self.camera_scale_factor = float(camera_scale_factor)
         self.image_coords_offset = float(image_coords_offset)
-        self.eval_with_grad = eval_with_grad
         if background_color is not None:
             self.background_color = np.array(
                 get_color(background_color), dtype=np.float32)
@@ -144,7 +139,6 @@ class LLFFDataset(BaseDataset):
             camera_dict['world_mat_%d' % idx].astype(np.float32)
             for idx in range(self.n_images)
         ]
-        scale_mats_np = []
 
         # scale_mat: used for coordinate normalization, we assume the scene to render is inside a unit sphere at origin.
         scale_mats_np = [

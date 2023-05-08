@@ -20,14 +20,14 @@ import paddle.nn.functional as F
 
 from pprndr.apis import manager
 from pprndr.cameras.rays import RaySamples
-from pprndr.models.fields import BaseField
+from pprndr.models.fields import BaseDensityField
 from pprndr.models.encoders import SHEncoder, TensorCPEncoder, TensorVMEncoder, TriplaneEncoder
 
 __all__ = ['TensoRFField']
 
 
 @manager.FIELDS.add_component
-class TensoRFField(BaseField):
+class TensoRFField(BaseDensityField):
     """
     TensoRF Field. Reference: https://arxiv.org/abs/2003.08934
 

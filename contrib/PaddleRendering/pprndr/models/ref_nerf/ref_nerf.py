@@ -20,7 +20,7 @@ import paddle.nn.functional as F
 
 from pprndr.apis import manager
 from pprndr.cameras.rays import RayBundle
-from pprndr.models.fields import BaseField
+from pprndr.models.fields import BaseDensityField
 from pprndr.models.ray_samplers import BaseSampler
 from pprndr.ray_marching import render_weight_from_density
 
@@ -33,7 +33,7 @@ class RefNeRF(nn.Layer):
             self,
             coarse_ray_sampler: BaseSampler,
             fine_ray_sampler: BaseSampler,
-            field: BaseField,
+            field: BaseDensityField,
             rgb_renderer: nn.Layer,
             coarse_rgb_loss: nn.Layer = nn.MSELoss(),
             fine_rgb_loss: nn.Layer = nn.MSELoss(),
