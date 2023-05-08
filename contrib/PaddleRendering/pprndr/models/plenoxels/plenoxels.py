@@ -19,7 +19,7 @@ import paddle.nn as nn
 
 from pprndr.apis import manager
 from pprndr.cameras.rays import RayBundle
-from pprndr.models.fields import BaseField
+from pprndr.models.fields import BaseDensityField
 from pprndr.models.ray_samplers import GridIntersectionSampler
 from pprndr.ray_marching import render_weight_from_density
 
@@ -30,7 +30,7 @@ __all__ = ["Plenoxels"]
 class Plenoxels(nn.Layer):
     def __init__(self,
                  ray_sampler: GridIntersectionSampler,
-                 field: BaseField,
+                 field: BaseDensityField,
                  rgb_renderer: nn.Layer,
                  rgb_loss: nn.Layer = nn.MSELoss()):
         super(Plenoxels, self).__init__()

@@ -401,7 +401,6 @@ def render_alpha_from_sdf(ray_samples,
                           coeff=1.0,
                           clip_alpha=True):
     # Note: coeff limits sdf interval
-    batch_size, n_vals, _ = signed_distances.shape  # [B, n_sdfs, 1]
     dists = ray_samples.frustums.ends - ray_samples.frustums.starts
     estimated_next_sdf = signed_distances + coeff * dists * 0.5
     estimated_prev_sdf = signed_distances - coeff * dists * 0.5

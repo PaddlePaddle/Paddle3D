@@ -12,9 +12,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from .base import BaseField
+from .base import BaseDensityField, BaseSDFField
 from .instant_ngp_field import InstantNGPField
-from .nerf_field import NeRFField
+from .nerf_field import NeRFField, NeRFPPField
 from .plenoxels_field import PlenoxelGrid
 from .ref_nerf_field import RefNeRFField
 from .neus_fields import NeuSField

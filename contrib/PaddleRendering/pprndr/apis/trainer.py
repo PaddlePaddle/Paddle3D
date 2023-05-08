@@ -297,19 +297,10 @@ class Trainer(object):
                     # TODO: whether to save a checkpoint based on the metric
                     eval_ray_batch_size = self.train_data_manager.ray_batch_size
 
-                    max_eval_num = getattr(self.val_dataset, "max_eval_num",
-                                           None)
-                    eval_with_grad = getattr(self.val_dataset, "eval_with_grad",
-                                             False)
-
                     eval_to_cpu = getattr(self.val_dataset, "eval_to_cpu",
                                           False)
                     image_coords_offset = getattr(self.val_dataset,
                                                   "image_coords_offset", 0.5)
-
-                    if eval_with_grad:
-                        eval_ray_batch_size = min(
-                            256, self.train_data_manager.ray_batch_size)
 
                     validate_mesh = getattr(self.val_dataset, "validate_mesh",
                                             None)
@@ -337,7 +328,6 @@ class Trainer(object):
                                               'iter_{}'.format(self.cur_iter),
                                               'renderings'),
                         val_ray_batch_size=eval_ray_batch_size,
-                        max_eval_num=max_eval_num,
                         validate_mesh=validate_mesh,
                         mesh_resolution=mesh_resolution,
                         pixel_stride=self.eval_pixel_stride,
@@ -345,7 +335,6 @@ class Trainer(object):
                         bound_min=bound_min,
                         bound_max=bound_max,
                         image_coords_offset=image_coords_offset,
-                        eval_with_grad=eval_with_grad,
                         eval_to_cpu=eval_to_cpu)
 
                     for k, v in metrics.items():
@@ -424,23 +413,22 @@ class Trainer(object):
     @paddle.no_grad()
     def extract_mesh(self,
                      save_dir: str,
-                     val_ray_batch_size: int = 16384,
                      validate_mesh: str = None,
                      mesh_resolution: int = 64,
                      world_space_for_mesh: bool = False,
                      bound_min=None,
-                     bound_max=None) -> Dict:
+                     bound_max=None) -> None:
         """
         """
         os.makedirs(save_dir, exist_ok=True)
 
-        # Only support neus_style for now for generating meshs.
+        # Only support neus_style for now for generating meshes.
         if validate_mesh == "neus_style":
             if world_space_for_mesh:
                 logger.info(
                     "Use world space for generating mesh, Checking if val_dataset is provided..."
                 )
-                assert (not self.val_dataset is None)
+                assert self.val_dataset is not None
                 logger.info("Done.")
 
             self.validate_mesh_neus(
@@ -457,7 +445,6 @@ class Trainer(object):
     def evaluate(self,
                  save_dir: str,
                  val_ray_batch_size: int = 16384,
-                 max_eval_num: int = None,
                  validate_mesh: str = None,
                  mesh_resolution: int = 64,
                  pixel_stride: int = 1,
@@ -465,7 +452,6 @@ class Trainer(object):
                  bound_min=None,
                  bound_max=None,
                  image_coords_offset: float = 0.5,
-                 eval_with_grad: bool = False,
                  eval_to_cpu: bool = False) -> Dict:
         """
         """
@@ -506,39 +492,16 @@ class Trainer(object):
         for idx, image_batch in logger.enumerate(
                 self.eval_data_loader, msg=msg):
 
-            # For speed up
-            if max_eval_num is not None:
-                if idx + 1 > max_eval_num:
-                    break
-
             # Select GT pixels from rgb image
             if pixel_stride > 1:
-                new_image_batch = []
-                for single_image in image_batch["image"]:
-                    pixels = paddle.gather_nd(single_image,
-                                              image_coords.astype("int64"))
-                    im_h = single_image.shape[0] // pixel_stride
-                    im_w = single_image.shape[1] // pixel_stride
-                    single_image = paddle.reshape(pixels, (im_h, im_w, -1))
-                    new_image_batch.append(single_image)
-                image_batch["image"] = paddle.stack(new_image_batch, axis=0)
+                image_batch["image"] = image_batch[
+                    "image"][:, ::pixel_stride, ::pixel_stride, :]
 
             ray_bundle = cameras.generate_rays(
                 camera_ids=image_batch["camera_id"], image_coords=image_coords)
 
-            if eval_with_grad:
-                output = inference_step(
-                    self.model,
-                    ray_bundle,
-                    val_ray_batch_size,
-                    to_cpu=eval_to_cpu)
-            else:
-                with paddle.no_grad():
-                    output = inference_step(
-                        self.model,
-                        ray_bundle,
-                        val_ray_batch_size,
-                        to_cpu=eval_to_cpu)
+            output = inference_step(
+                self.model, ray_bundle, val_ray_batch_size, to_cpu=eval_to_cpu)
 
             output["rgb"] = output["rgb"].reshape(image_batch["image"].shape)
 

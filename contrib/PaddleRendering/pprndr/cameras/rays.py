@@ -58,6 +58,8 @@ class Frustums(object):
 
     @property
     def bin_points(self) -> paddle.Tensor:
+        # TODO: [Warning] If bin_points is passed to networks,
+        #  note that there is a mismatch between the shapes of bin_points and shape of directions.
         if self.origins.ndim == 3:
             origins = paddle.concat([self.origins, self.origins[:, -1:, :]],
                                     axis=-2)

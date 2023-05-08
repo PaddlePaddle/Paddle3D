@@ -27,13 +27,13 @@ except ModuleNotFoundError:
     from pprndr.cpp_extensions import sh_encoder
 
 from pprndr.geometries import ContractionType
-from pprndr.models.fields import BaseField
+from pprndr.models.fields import BaseDensityField
 
 __all__ = ["PlenoxelGrid"]
 
 
 @manager.FIELDS.add_component
-class PlenoxelGrid(BaseField):
+class PlenoxelGrid(BaseDensityField):
     def __init__(self,
                  radius: float = 1.3,
                  sh_degree: int = 2,
