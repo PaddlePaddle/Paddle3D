@@ -12,7 +12,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple
 
 import paddle
 import paddle.nn.functional as F
@@ -230,13 +230,10 @@ class NeuS(nn.Layer):
             mask_loss = F.binary_cross_entropy(
                 weights_sum.clip(1e-3, 1.0 - 1e-3), ones)
 
-            combined_loss = rgb_loss * self.loss_weight_color + \
-                            eikonal_loss * self.loss_weight_idr + \
-                            mask_loss * self.loss_weight_mask
             outputs["loss"] = dict(
-                rgb_loss=rgb_loss,
-                eikonal_loss=eikonal_loss,
-                mask_loss=mask_loss)
+                rgb_loss=self.loss_weight_color * rgb_loss,
+                eikonal_loss=self.loss_weight_idr * eikonal_loss,
+                mask_loss=self.loss_weight_mask * mask_loss)
 
         num_samples_all = num_inside
 
@@ -246,7 +243,7 @@ class NeuS(nn.Layer):
         outputs["num_samples_per_batch"] = num_samples_all
         normals = gradients * weights[:, :num_inside, :] * inside_sphere
 
-        normals = paddle.sum(normals, axis=1).cpu()
+        normals = paddle.sum(normals, axis=1)
         outputs["normals"] = normals
 
         return outputs
