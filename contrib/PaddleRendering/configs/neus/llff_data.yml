@@ -134,7 +134,10 @@ model:
         beta: 100
         threshold: 20
       output_activation: "none"
-      weight_init: ["geometric_init", 0.5, True] # the last one indicates if num_freqs > 0
+      weight_init:
+        type: GeometricInit
+        bias: 0.5
+        multi_res: True
       weight_normalization: True
 
     color_network:
