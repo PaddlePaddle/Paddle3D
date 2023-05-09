@@ -1,0 +1,134 @@
+iters: 1000000
+
+image_batch_size: -1   # sample batch of rays from all images at each iteration
+ray_batch_size: 1024
+image_resampling_interval: -1
+eval_pixel_stride: 1
+use_adaptive_ray_batch_size: False
+
+train_metrics:
+  - type: PSNRMeter
+
+val_metrics:
+  - type: PSNRMeter
+  - type: SSIMMeter
+
+train_dataset:
+  type: BlenderDataset
+  dataset_root: data/refnerf/ball
+  camera_scale_factor: 1.0
+  background_color: white
+  transforms:
+    - type: LoadImage
+    - type: Normalize
+    - type: AlphaBlending
+  split: train
+
+val_dataset:
+  type: BlenderDataset
+  dataset_root: data/refnerf/ball
+  camera_scale_factor: 1.0
+  background_color: white
+  transforms:
+    - type: LoadImage
+    - type: Normalize
+    - type: AlphaBlending
+  split: val
+
+optimizer:
+  type: Adam
+  beta1: .9
+  beta2: .999
+  epsilon: 1.0e-8
+  grad_clip:
+    type: ClipGradByGlobalNorm
+    clip_norm: .001
+
+lr_scheduler:
+  type: CustomExponentialDecay
+  lr_init: 0.0005
+  lr_final: 0.000005
+  max_steps: 1000000
+  lr_delay_steps: 2500
+  lr_delay_mult: 0.01
+
+
+model:
+  type: RefNeRF
+  coarse_ray_sampler:
+    type: UniformSampler
+    num_samples: 128
+    aabb: [-1.3, -1.3, -1.3, 1.3, 1.3, 1.3]
+  fine_ray_sampler:
+    type: PDFSampler
+    num_samples: 128
+    include_original: False
+    weights_blur: True
+  field:
+    type: RefNeRFField
+    dir_encoder:
+      type: IntegDirEncoder
+      deg_view: 5
+    pos_encoder:
+      type: NeRFEncoder
+      min_freq: 0.
+      max_freq: 16.
+      num_freqs: 16
+      use_radian: False
+      include_identity: False
+    stem_net:
+      type: MLP
+      input_dim: 96
+      hidden_dim: 256
+      output_dim: 256
+      num_layers: 8
+      skip_layers: [4]
+      activation: relu
+      output_activation: relu
+    density_head:
+      type: MLP
+      input_dim: 256
+      output_dim: 1
+      num_layers: 1
+    view_net:
+      type: MLP
+      input_dim: 201
+      hidden_dim: 256
+      output_dim: 256
+      num_layers: 8
+      skip_layers: [4]
+      activation: relu
+      output_activation: relu
+    rgb_head:
+      type: MLP
+      input_dim: 256
+      output_dim: 3
+      num_layers: 1
+    normal_head:
+      type: MLP
+      input_dim: 256
+      output_dim: 3
+      num_layers: 1
+    rgb_diffuse_layer:
+      type: MLP
+      input_dim: 256
+      output_dim: 3
+      num_layers: 1
+    tint_layer:
+      type: MLP
+      input_dim: 256
+      output_dim: 3
+      num_layers: 1
+      output_activation: sigmoid
+    roughness_layer:
+      type: MLP
+      input_dim: 256
+      output_dim: 1
+      num_layers: 1
+    density_bias: -1.0
+    roughness_bias: -1.0
+    rgb_padding: 0.001
+    use_integrated_encoding: True
+  rgb_renderer:
+    type: RGBRenderer
+    background_color: white

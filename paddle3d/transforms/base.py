@@ -47,7 +47,10 @@ class Compose(TransformABC):
         if sample.modality == 'image' and sample.meta.channel_order == 'hwc':
             sample.data = sample.data.transpose((2, 0, 1))
             sample.meta.channel_order = "chw"
-        elif sample.modality == 'multiview':
-            sample.img = np.stack(
-                [img.transpose(2, 0, 1) for img in sample.img], axis=0)
+
+        elif sample.modality == 'multimodal' or sample.modality == 'multiview':
+            if 'img' in sample.keys():
+                sample.img = np.stack(
+                    [img.transpose(2, 0, 1) for img in sample.img], axis=0)
+
         return sample

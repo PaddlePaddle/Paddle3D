@@ -1,13 +1,6 @@
 batch_size: 1
 epochs: 24
 
-amp_cfg:
-  # only enable backbone and fpn
-  enable: False
-  level: O1
-  scaler:
-    init_loss_scaling: 512.0
-
 train_dataset:
   type: NuscenesMVDataset
   dataset_root: data/nuscenes/
@@ -55,7 +48,7 @@ train_dataset:
       training: True
     - type: NormalizeMultiviewImage
       mean: [103.530, 116.280, 123.675]
-      std: [57.375, 57.120, 58.395]
+      std: [57.375, 57.12, 58.395]
     - type: PadMultiViewImage
       size_divisor: 32
     - type: SampleFilerByKey
@@ -93,7 +86,7 @@ val_dataset:
       training: False
     - type: NormalizeMultiviewImage
       mean: [103.530, 116.280, 123.675]
-      std: [57.375, 57.120, 58.395]
+      std: [57.375, 57.12, 58.395]
     - type: PadMultiViewImage
       size_divisor: 32
     - type: SampleFilerByKey
@@ -123,59 +116,58 @@ lr_scheduler:
   end_lr: 0.0002
 
 model:
-  type: Petr3D
+  type: CAPE
   use_recompute: True
   use_grid_mask: True
-  backbone:
-    type: VoVNetCP ###use checkpoint to save memory
+  img_backbone:
+    # use recompute to save memory
+    type: VoVNetCP
     spec_name: V-99-eSE
     norm_eval: True
     frozen_stages: -1
     input_ch: 3
     out_features: ('stage4','stage5',)
-  neck:
-    type: CPFPN  ###remove unused parameters
+  img_neck:
+    # remove unused parameters
+    type: CPFPN
     in_channels: [768, 1024]
     out_channels: 256
     num_outs: 2
   pts_bbox_head:
-    type: PETRHead
+    type: CAPETemporalDNHead
     num_classes: 10
     in_channels: 256
     num_query: 900
-    LID: true
-    with_multiview: true
-    with_position: true
-    with_fpe: true
-    with_time: true
-    with_multi: true
     position_range: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
     code_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     normedlinear: False
+    dn_weight: 1.0
+    split: 0.75
+    with_time: True
+    with_prev_aux_loss: True
+    prev_aux_loss_weight: 0.1
     transformer:
-      type: PETRTransformer
-      decoder_embed_dims: 256
-      decoder:
-        type: PETRTransformerDecoder
-        return_intermediate: True
-        num_layers: 6
-        transformerlayers:
-          type: PETRTransformerDecoderLayer
-          attns:
-            - type: MultiHeadAttention
-              embed_dims: 256
-              num_heads: 8
-              attn_drop: 0.1
-              drop_prob: 0.1
-            - type: PETRMultiheadAttention
-              embed_dims: 256
-              num_heads: 8
-              attn_drop: 0.1
-              drop_prob: 0.1
-              batch_first: True
-          feedforward_channels: 2048
-          ffn_dropout: 0.1
-          operation_order: ['self_attn', 'norm', 'cross_attn', 'norm', 'ffn', 'norm']
+      type: CAPETransformer
+      num_cameras: 6
+      num_layers: 6
+      feat_dim: 256
+      feat_stride: 32
+      image_height: 320
+      image_width: 800
+      bound: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
+      with_fpe: True
+      depth_start: 1
+      depth_num: 64
+      att_layer:
+          type: 'CrossViewAttention'
+          hidden_dim: 512
+          num_queries: 900
+          qkv_bias: True
+          heads: 8
+          dim_head: 64
+          conditional: True
+      scalar: 10, ##noise groups
+      noise_scale: 1.0
     positional_encoding:
       type: SinePositionalEncoding3D
       num_feats: 128

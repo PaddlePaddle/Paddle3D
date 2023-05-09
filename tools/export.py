@@ -85,7 +85,7 @@ def generate_apollo_deploy_file(cfg, save_dir: str):
     with open(yml_file, 'w') as file:
         # Save the content one by one to ensure the content order of the output file
         file.write('# base information\n')
-        yaml.dump({'name': model.__class__.__name__}, file)
+        yaml.dump({'name': model.apollo_deploy_name}, file)
         yaml.dump({'date': datetime.date.today()}, file)
         yaml.dump({'task_type': '3d_detection'}, file)
         yaml.dump({'sensor_type': model.sensor}, file)

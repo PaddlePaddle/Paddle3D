@@ -1,6 +1,7 @@
 batch_size: 2
 epochs: 24
 amp_cfg:
+  use_amp: True
   enable: False
   level: O1
   scaler:

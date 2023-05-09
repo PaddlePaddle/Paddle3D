@@ -172,8 +172,21 @@ class BEVFormer(nn.Layer):
         img = img[:, -1, ...]
 
         prev_img_metas = copy.deepcopy(img_metas)
+        for i in range(prev_img.shape[1]):
+            for each in prev_img_metas:
+                each[i]['can_bus'] = paddle.to_tensor(each[i]['can_bus'])
+                each[i]['lidar2img'] = [
+                    paddle.to_tensor(ee) for ee in each[i]['lidar2img']
+                ]
+
         prev_bev = self.obtain_history_bev(prev_img, prev_img_metas)
 
+        for each in img_metas:
+            each[len_queue - 1]['can_bus'] = paddle.to_tensor(
+                each[len_queue - 1]['can_bus'])
+            each[len_queue - 1]['lidar2img'] = [
+                paddle.to_tensor(ee) for ee in each[len_queue - 1]['lidar2img']
+            ]
         img_metas = [each[len_queue - 1] for each in img_metas]
         if not img_metas[0]['prev_bev_exists']:
             prev_bev = None

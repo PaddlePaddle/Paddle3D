@@ -14,3 +14,4 @@
 
 from .petr3d import Petr3D
 from .petr3d_seg import Petr3D_seg
+from .cape import CAPE

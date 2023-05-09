@@ -102,6 +102,10 @@ class Base3DModel(abc.ABC, nn.Layer):
         return self.__class__.__name__.lower()
 
     @property
+    def apollo_deploy_name(self):
+        return self.__class__.__name__
+
+    @property
     def is_quant_model(self) -> bool:
         return self._quant
 

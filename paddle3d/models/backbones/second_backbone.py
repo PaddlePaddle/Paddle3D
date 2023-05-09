@@ -25,6 +25,7 @@ from paddle import ParamAttr
 from paddle.nn.initializer import Constant, Normal, Uniform
 
 from paddle3d.apis import manager
+from paddle3d.models.layers.param_init import constant_init, reset_parameters
 from paddle3d.models.voxel_encoders.pillar_encoder import build_norm_layer
 
 __all__ = ['SecondBackbone', 'build_conv_layer']
@@ -117,3 +118,13 @@ class SecondBackbone(nn.Layer):
             x = self.blocks[i](x)
             outs.append(x)
         return tuple(outs)
+
+    def init_weights(self, pretrained=None):
+        def _init_weights(m):
+            if isinstance(m, (nn.Conv1D, nn.Conv2D)):
+                reset_parameters(m)
+            elif isinstance(m, (nn.BatchNorm1D, nn.BatchNorm2D)):
+                constant_init(m.weight, value=1)
+                constant_init(m.bias, value=0)
+
+        self.apply(_init_weights)

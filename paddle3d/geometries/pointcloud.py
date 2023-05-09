@@ -77,7 +77,7 @@ class PointCloud(_Structure):
         """
         if axis not in [0, 1]:
             raise ValueError(
-                "Flip axis should be 0 or 1, but recieved is {}".format(axis))
+                "Flip axis should be 0 or 1, but received is {}".format(axis))
         if axis == 0:  # flip along x-axis
             self[:, 1] = -self[:, 1]
         elif axis == 1:  # flip along y-axis

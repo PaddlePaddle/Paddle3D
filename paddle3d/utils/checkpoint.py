@@ -27,7 +27,8 @@ from paddle3d.utils.xarfile import unarchive_with_progress
 
 def load_pretrained_model_from_url(model: paddle.nn.Layer,
                                    url: str,
-                                   overwrite: bool = False):
+                                   overwrite: bool = False,
+                                   verbose: bool = True):
     """
     """
     pretrained_model = unquote(url)
@@ -58,18 +59,22 @@ def load_pretrained_model_from_url(model: paddle.nn.Layer,
 
         #TODO: unzip the file if it is a compress one
 
-    load_pretrained_model_from_path(model, savepath)
+    load_pretrained_model_from_path(model, savepath, verbose=verbose)
 
 
-def load_pretrained_model_from_path(model: paddle.nn.Layer, path: str):
+def load_pretrained_model_from_path(model: paddle.nn.Layer,
+                                    path: str,
+                                    verbose: bool = True):
     """
     """
     para_state_dict = paddle.load(path)
-    load_pretrained_model_from_state_dict(model, para_state_dict)
+    load_pretrained_model_from_state_dict(
+        model, para_state_dict, verbose=verbose)
 
 
 def load_pretrained_model_from_state_dict(model: paddle.nn.Layer,
-                                          state_dict: dict):
+                                          state_dict: dict,
+                                          verbose: bool = True):
     """
     """
     model_state_dict = model.state_dict()
@@ -77,11 +82,13 @@ def load_pretrained_model_from_state_dict(model: paddle.nn.Layer,
     num_params_loaded = 0
     for k in keys:
         if k not in state_dict:
-            logger.warning("{} is not in pretrained model".format(k))
+            if verbose:
+                logger.warning("{} is not in pretrained model".format(k))
         elif list(state_dict[k].shape) != list(model_state_dict[k].shape):
-            logger.warning(
-                "[SKIP] Shape of pretrained params {} doesn't match.(Pretrained: {}, Actual: {})"
-                .format(k, state_dict[k].shape, model_state_dict[k].shape))
+            if verbose:
+                logger.warning(
+                    "[SKIP] Shape of pretrained params {} doesn't match.(Pretrained: {}, Actual: {})"
+                    .format(k, state_dict[k].shape, model_state_dict[k].shape))
         else:
             model_state_dict[k] = state_dict[k]
             num_params_loaded += 1
@@ -92,16 +99,20 @@ def load_pretrained_model_from_state_dict(model: paddle.nn.Layer,
 
 
 def load_pretrained_model(model: paddle.nn.Layer,
-                          pretrained_model: Union[dict, str]):
+                          pretrained_model: Union[dict, str],
+                          verbose: bool = True):
     """
     """
     if isinstance(pretrained_model, dict):
-        load_pretrained_model_from_state_dict(model, pretrained_model)
+        load_pretrained_model_from_state_dict(
+            model, pretrained_model, verbose=verbose)
     elif isinstance(pretrained_model, str):
         if urlparse(pretrained_model).netloc:
-            load_pretrained_model_from_url(model, pretrained_model)
+            load_pretrained_model_from_url(
+                model, pretrained_model, verbose=verbose)
         elif os.path.exists(pretrained_model):
-            load_pretrained_model_from_path(model, pretrained_model)
+            load_pretrained_model_from_path(
+                model, pretrained_model, verbose=verbose)
         else:
             raise ValueError(
                 '{} is neither a valid path nor a valid URL.'.format(

@@ -1,0 +1,112 @@
+iters: 30000
+
+image_batch_size: -1   # sample batch of rays from all images at each iteration
+ray_batch_size: 4096
+image_resampling_interval: -1
+
+train_metrics:
+  - type: PSNRMeter
+
+val_metrics:
+  - type: PSNRMeter
+  - type: SSIMMeter
+
+train_dataset:
+  type: BlenderDataset
+  dataset_root: data/nerf_synthetic/lego
+  camera_scale_factor: 1.0
+  background_color: white
+  transforms:
+    - type: LoadImage
+    - type: Normalize
+    - type: AlphaBlending
+  split: train
+
+val_dataset:
+  type: BlenderDataset
+  dataset_root: data/nerf_synthetic/lego
+  camera_scale_factor: 1.0
+  background_color: white
+  transforms:
+    - type: LoadImage
+    - type: Normalize
+    - type: AlphaBlending
+  split: val
+
+optimizer:
+  type: Adam
+  beta1: .9
+  beta2: .99
+  epsilon: 1.0e-8
+
+lr_scheduler:
+  type: FixationExponentialDecay
+  learning_rate: 0.001
+  delay_rate: 0.1
+  total_steps: 30000
+
+reinit_optim_cfg:
+  upsamp_list: [2000, 3000, 4000, 5500, 7000]
+  optimizer:
+    type: Adam
+    beta1: .9
+    beta2: .99
+    epsilon: 1.0e-8
+  lr_scheduler:
+    type: FixationExponentialDecay
+    learning_rate: 0.001
+    delay_rate: 0.1
+    total_steps: 30000
+
+model:
+  type: TensoRF
+  coarse_ray_sampler:
+    type: VolumetricSampler
+    occupancy_grid:
+      type: OccupancyGrid
+      resolution: 128
+      contraction_type: 0
+      aabb: [ -1.3, -1.3, -1.3, 1.3, 1.3, 1.3 ]
+    grid_update_interval: 16
+    step_size: .005
+  fine_ray_sampler:
+    type: EfficientPDFSampler
+    num_samples: 128
+  field:
+    type: TensoRFField
+    aabb: [-1.3, -1.3, -1.3, 1.3, 1.3, 1.3]
+    fea_encoder:
+      type: NeRFEncoder
+      min_freq: 0.
+      max_freq: 2.
+      num_freqs: 2
+      input_dim: 27
+      include_identity: False
+    dir_encoder:
+      type: NeRFEncoder
+      min_freq: 0.
+      max_freq: 2.
+      num_freqs: 2
+      include_identity: False
+    density_encoder:
+      type: TensorVMEncoder
+      resolution: 128
+      num_components: 16
+    color_encoder:
+      type: TensorVMEncoder
+      resolution: 128
+      num_components: 48
+    color_head:
+      type: MLP
+      input_dim: 150
+      output_dim: 3
+      hidden_dim: 128
+      num_layers: 3
+      activation: relu
+      output_activation: sigmoid
+    use_sh: True
+  rgb_renderer:
+    type: RGBRenderer
+    background_color: white
+  accumulation_renderer:
+    type: AccumulationRenderer

@@ -216,7 +216,7 @@ std::shared_ptr<paddle_infer::Predictor> create_predictor(
     } else if (trt_precision == 1) {
       precision = paddle_infer::PrecisionType::kHalf;
     } else {
-      LOG(ERROR) << "Tensorrt type can only support 0 or 1, but recieved is"
+      LOG(ERROR) << "Tensorrt type can only support 0 or 1, but received is"
                  << trt_precision << "\n";
       return nullptr;
     }
@@ -224,7 +224,7 @@ std::shared_ptr<paddle_infer::Predictor> create_predictor(
                                 false);
 
     if (dynamic_shape_file == "") {
-      LOG(ERROR) << "dynamic_shape_file should be set, but recieved is "
+      LOG(ERROR) << "dynamic_shape_file should be set, but received is "
                  << dynamic_shape_file << "\n";
       return nullptr;
     }
@@ -236,7 +236,7 @@ std::shared_ptr<paddle_infer::Predictor> create_predictor(
 
     if (trt_use_static) {
       if (trt_static_dir == "") {
-        LOG(ERROR) << "trt_static_dir should be set, but recieved is "
+        LOG(ERROR) << "trt_static_dir should be set, but received is "
                    << trt_static_dir << "\n";
         return nullptr;
       }

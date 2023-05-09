@@ -1,0 +1,109 @@
+iters: 20000
+
+image_batch_size: -1   # sample batch of rays from all images at each iteration
+ray_batch_size: 256
+image_resampling_interval: -1
+eval_pixel_stride: 1
+use_adaptive_ray_batch_size: True
+
+amp_cfg:
+  enable: True
+  level: O1
+  scaler:
+    init_loss_scaling: 1024.0
+    incr_every_n_steps: 3000
+
+train_metrics:
+  - type: PSNRMeter
+
+val_metrics:
+  - type: PSNRMeter
+  - type: SSIMMeter
+
+train_dataset:
+  type: BlenderDataset
+  dataset_root: data/nerf_synthetic/lego
+  camera_scale_factor: 1.0
+  background_color: white
+  transforms:
+    - type: LoadImage
+    - type: Normalize
+    - type: AlphaBlending
+  split: train
+
+val_dataset:
+  type: BlenderDataset
+  dataset_root: data/nerf_synthetic/lego
+  camera_scale_factor: 1.0
+  background_color: white
+  transforms:
+    - type: LoadImage
+    - type: Normalize
+    - type: AlphaBlending
+  split: val
+
+optimizer:
+  type: Adam
+  beta1: .9
+  beta2: .999
+  epsilon: 1.0e-15
+  weight_decay: 1.0e-6
+  multi_precision: True
+
+lr_scheduler:
+  type: LinearWarmup
+  learning_rate:
+    type: MultiStepDecay
+    learning_rate: 0.01
+    milestones: [8000, 13000, 16000]
+    gamma: .33
+  warmup_steps: 2000
+  start_lr: .001
+  end_lr: .01
+
+aabb: &aabb [-1.3, -1.3, -1.3, 1.3, 1.3, 1.3]
+model:
+  type: InstantNGP
+  ray_sampler:
+    type: VolumetricSampler
+    occupancy_grid:
+      type: OccupancyGrid
+      resolution: 128
+      contraction_type: 0
+      aabb: *aabb
+    grid_update_interval: 16
+    step_size: .005
+  field:
+    type: InstantNGPField
+    dir_encoder:
+      type: SHEncoder
+      input_dim: 3
+      degree: 3
+    pos_encoder:
+      type: GridEncoder
+      input_dim: 3
+      num_levels: 16
+      level_dim: 2
+      per_level_scale: 1.4472692012786865
+      base_resolution: 16
+      log2_hashmap_size: 19
+    density_net:
+      type: FFMLP
+      input_dim: 32
+      output_dim: 16
+      hidden_dim: 64
+      num_layers: 3
+    color_net:
+      type: FFMLP
+      input_dim: 32
+      output_dim: 3
+      hidden_dim: 64
+      num_layers: 4
+      output_activation: sigmoid
+    aabb: *aabb
+    contraction_type: 0
+  rgb_renderer:
+    type: RGBRenderer
+    background_color: white
+  rgb_loss:
+    type: SmoothL1Loss

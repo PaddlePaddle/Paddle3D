@@ -1,0 +1,103 @@
+iters: 100000
+
+image_batch_size: -1   # sample batch of rays from all images at each iteration
+ray_batch_size: 1024
+eval_pixel_stride: 1
+image_resampling_interval: -1
+
+train_metrics:
+  - type: PSNRMeter
+
+val_metrics:
+  - type: PSNRMeter
+  - type: SSIMMeter
+
+train_dataset:
+  type: BlenderDataset
+  dataset_root: data/nerf_synthetic/lego
+  camera_scale_factor: 1.0
+  background_color: white
+  image_coords_offset: 0.5
+  transforms:
+    - type: LoadImage
+    - type: Normalize
+    - type: AlphaBlending
+  split: train
+
+val_dataset:
+  type: BlenderDataset
+  dataset_root: data/nerf_synthetic/lego
+  camera_scale_factor: 1.0
+  background_color: white
+  image_coords_offset: 0.5
+  transforms:
+    - type: LoadImage
+    - type: Normalize
+    - type: AlphaBlending
+  split: val
+
+optimizer:
+  type: Adam
+  beta1: .9
+  beta2: .999
+  epsilon: 1.0e-8
+
+lr_scheduler:
+  type: CustomExponentialDecay
+  lr_init: 0.001
+  lr_final: 0.00001
+  max_steps: 100000
+  lr_delay_steps: 500
+  lr_delay_mult: 0.01
+
+model:
+  type: MipNeRF
+  coarse_ray_sampler:
+    type: UniformSampler
+    num_samples: 128
+    aabb: [-1.3, -1.3, -1.3, 1.3, 1.3, 1.3]
+  fine_ray_sampler:
+    type: PDFSampler
+    num_samples: 128
+  field:
+    type: NeRFField
+    dir_encoder:
+      type: NeRFEncoder
+      min_freq: 0.
+      max_freq: 4.
+      num_freqs: 4
+      include_identity: True
+    pos_encoder:
+      type: NeRFEncoder
+      min_freq: 0.
+      max_freq: 16.
+      num_freqs: 16
+      include_identity: True
+    stem_net:
+      type: MLP
+      input_dim: 99
+      hidden_dim: 256
+      output_dim: 256
+      num_layers: 8
+      skip_layers: [4]
+      activation: relu
+      output_activation: relu
+    density_head:
+      type: MLP
+      input_dim: 256
+      output_dim: 1
+      num_layers: 1
+    color_head:
+      type: MLP
+      input_dim: 283
+      output_dim: 3
+      hidden_dim: 128
+      num_layers: 2
+      activation: relu
+      output_activation: sigmoid
+    density_bias: -1.0
+    rgb_padding: 0.001
+    use_integrated_encoding: True
+  rgb_renderer:
+    type: RGBRenderer
+    background_color: white

@@ -37,7 +37,7 @@ class CheckpointABC(abc.ABC):
         """
 
     @abc.abstractmethod
-    def get(self, tag: Optional[str] = None) -> Tuple[dict, dict]:
+    def get(self, tag: Optional[str] = None, **kwargs) -> Tuple[dict, dict]:
         """
         """
 
@@ -111,7 +111,8 @@ class Checkpoint(CheckpointABC):
         """
         return tag in self.meta.queue
 
-    def get(self, tag: Optional[str] = None) -> Tuple[dict, dict]:
+    def get(self, tag: Optional[str] = None, ema=None,
+            step=0) -> Tuple[dict, dict]:
         """
         """
         if tag is None:
@@ -124,14 +125,23 @@ class Checkpoint(CheckpointABC):
                 'There is no model parameter corresponding to the specified tag  {{{}}} in checkpoint.'
                 .format(tag))
 
+        ema_state_dict = None
+        if ema is not None:
+            ema_dict_path = os.path.join(self.rootdir, tag,
+                                         'model_ema.pdparams')
+            if os.path.exists(ema_dict_path):
+                ema_state_dict = paddle.load(ema_dict_path)
+
         params_path = os.path.join(self.rootdir, tag, 'model.pdparams')
         opt_path = os.path.join(self.rootdir, tag, 'model.pdopt')
-
         params = paddle.load(params_path)
         if os.path.exists(opt_path):
             opt = paddle.load(opt_path)
         else:
             opt = {}
+
+        if ema_state_dict is not None:
+            ema.resume(ema_state_dict, step=step)
 
         return params, opt
 
@@ -140,11 +150,13 @@ class Checkpoint(CheckpointABC):
              opt_dict: dict = None,
              tag: Optional[str] = None,
              enqueue: bool = True,
-             verbose: bool = False) -> str:
+             verbose: bool = False,
+             ema_model=None) -> str:
         """
         """
         tag = str(self._meta.counter) if tag is None else tag
         dirname = os.path.join(self.rootdir, tag)
+
         params_path = os.path.join(dirname, 'model.pdparams')
 
         if enqueue:
@@ -162,6 +174,13 @@ class Checkpoint(CheckpointABC):
 
         os.makedirs(dirname, exist_ok=True)
         paddle.save(params_dict, params_path)
+
+        if ema_model is not None:
+            assert isinstance(ema_model,
+                              dict), ("ema_model is not a instance of dict, "
+                                      "please call model.state_dict() to get.")
+            ema_params_path = os.path.join(dirname, 'model_ema.pdparams')
+            paddle.save(ema_model, ema_params_path)
 
         if opt_dict is not None:
             opt_path = os.path.join(dirname, 'model.pdopt')

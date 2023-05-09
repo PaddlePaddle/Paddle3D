@@ -66,7 +66,7 @@ class VoxelRCNN(nn.Layer):
             batch_dict['data'])
         batch_dict["voxel_coords"] = coordinates
         points_pad = []
-        if not getattr(self, "export_model", False):
+        if not getattr(self, "in_export_mode", False):
             for bs_idx, point in enumerate(batch_dict['data']):
                 point_dim = point.shape[-1]
                 point = point.reshape([1, -1, point_dim])
@@ -101,7 +101,7 @@ class VoxelRCNN(nn.Layer):
             return loss
         else:
             pred_dicts = self.post_processing(batch_dict)
-            if not getattr(self, "export_model", False):
+            if not getattr(self, "in_export_mode", False):
                 preds = self._parse_results_to_sample(pred_dicts, batch_dict)
                 return {'preds': preds}
             else:
@@ -207,7 +207,7 @@ class VoxelRCNN(nn.Layer):
                     nms_config=self.post_process_cfg["nms_config"],
                     score_thresh=self.post_process_cfg["score_thresh"])
 
-            if not getattr(self, "export_model", False):
+            if not getattr(self, "in_export_mode", False):
                 record_dict = {
                     'box3d_lidar': final_boxes,
                     'scores': final_scores,
@@ -250,9 +250,9 @@ class VoxelRCNN(nn.Layer):
         return new_results
 
     def export(self, save_dir: str, **kwargs):
-        self.export_model = True
-        self.voxelizer.export_model = True
-        self.middle_encoder.export_model = True
+        self.in_export_mode = True
+        self.voxelizer.in_export_mode = True
+        self.middle_encoder.in_export_mode = True
         save_path = os.path.join(save_dir, 'voxel_rcnn')
         points_shape = [-1, self.voxel_encoder.in_channels]
 

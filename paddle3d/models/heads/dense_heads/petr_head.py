@@ -242,6 +242,7 @@ class PETRHead(nn.Layer):
         self._init_layers()
         self.transformer = transformer
         self.pd_eps = paddle.to_tensor(np.finfo('float32').eps)
+        self.to_static = False
 
     def _init_layers(self):
         """Initialize layers of the transformer head."""
@@ -360,10 +361,17 @@ class PETRHead(nn.Layer):
             for m in self.cls_branches:
                 param_init.constant_init(m[-1].bias, value=bias_val)
 
-    def position_embeding(self, img_feats, img_metas, masks=None):
+    def position_embeding(self,
+                          img_feats,
+                          img_metas,
+                          masks=None,
+                          lidar2img=None):
         eps = 1e-5
         if getattr(self, 'in_export_mode', False):
             pad_h, pad_w = img_metas['image_shape']
+        elif self.to_static:
+            pad_shape = [320, 800, 3]
+            pad_h, pad_w, _ = pad_shape
         else:
             pad_h, pad_w, _ = img_metas[0]['pad_shape'][0]
 
@@ -394,7 +402,12 @@ class PETRHead(nn.Layer):
             coords[..., 2:3],
             paddle.ones_like(coords[..., 2:3]) * eps)
 
-        if not getattr(self, 'in_export_mode', False):
+        if getattr(self, 'in_export_mode', False):
+            img2lidars = img_metas['img2lidars']
+        elif self.to_static:
+            img2lidar = paddle.linalg.inv(paddle.stack(lidar2img, 0))
+            img2lidars = img2lidar.unsqueeze(0).cast('float32')
+        else:
             img2lidars = []
             for img_meta in img_metas:
                 img2lidar = []
@@ -406,8 +419,6 @@ class PETRHead(nn.Layer):
 
             # (B, N, 4, 4)
             img2lidars = paddle.to_tensor(img2lidars).astype(coords.dtype)
-        else:
-            img2lidars = img_metas['img2lidars']
 
         coords = coords.reshape([1, 1, W, H, D, 4]).tile(
             [B, N, 1, 1, 1, 1]).reshape([B, N, W, H, D, 4, 1])
@@ -553,7 +564,11 @@ class PETRHead(nn.Layer):
 
         return padded_reference_points, attn_mask, mask_dict
 
-    def forward(self, mlvl_feats, img_metas):
+    def forward(self,
+                mlvl_feats,
+                img_metas=None,
+                lidar2img=None,
+                timestamp=None):
         """Forward function.
         Args:
             mlvl_feats (tuple[Tensor]): Features from the upstream
@@ -572,13 +587,24 @@ class PETRHead(nn.Layer):
 
         batch_size, num_cams = x.shape[0], x.shape[1]
 
-        input_img_h, input_img_w, _ = img_metas[0]['pad_shape'][0]
+        if self.to_static:
+            pad_shape = [320, 800, 3]
+            input_img_h, input_img_w, _ = pad_shape
+        else:
+            input_img_h, input_img_w, _ = img_metas[0]['pad_shape'][0]
         masks = paddle.ones((batch_size, num_cams, input_img_h, input_img_w))
 
-        for img_id in range(batch_size):
-            for cam_id in range(num_cams):
-                img_h, img_w, _ = img_metas[img_id]['img_shape'][cam_id]
-                masks[img_id, cam_id, :img_h, :img_w] = 0
+        if self.to_static:
+            img_shape = [320, 800, 3]
+            for img_id in range(batch_size):
+                for cam_id in range(num_cams):
+                    img_h, img_w, _ = img_shape
+                    masks[img_id, cam_id, :img_h, :img_w] = 0
+        else:
+            for img_id in range(batch_size):
+                for cam_id in range(num_cams):
+                    img_h, img_w, _ = img_metas[img_id]['img_shape'][cam_id]
+                    masks[img_id, cam_id, :img_h, :img_w] = 0
 
         x = self.input_proj(x.flatten(0, 1))
         x = x.reshape([batch_size, num_cams, *x.shape[-3:]])
@@ -588,7 +614,7 @@ class PETRHead(nn.Layer):
 
         if self.with_position:
             coords_position_embeding, _ = self.position_embeding(
-                mlvl_feats, img_metas, masks)
+                mlvl_feats, img_metas, masks, lidar2img=lidar2img)
 
             if self.with_fpe:
                 coords_position_embeding = self.fpe(
@@ -643,10 +669,13 @@ class PETRHead(nn.Layer):
 
         if self.with_time:
             time_stamps = []
-            for img_meta in img_metas:
-                time_stamps.append(np.asarray(img_meta['timestamp']))
+            if self.to_static:
+                time_stamp = timestamp.unsqueeze(0).cast(x.dtype)
+            else:
+                for img_meta in img_metas:
+                    time_stamps.append(np.asarray(img_meta['timestamp']))
+                time_stamp = paddle.to_tensor(time_stamps, dtype=x.dtype)
 
-            time_stamp = paddle.to_tensor(time_stamps, dtype=x.dtype)
             time_stamp = time_stamp.reshape([batch_size, -1, 6])
 
             mean_time_stamp = (
@@ -769,7 +798,7 @@ class PETRHead(nn.Layer):
         cls_avg_factor = max(cls_avg_factor, 1)
         loss_cls = self.loss_cls(cls_scores, known_labels.astype('int64'),
                                  label_weights) / (cls_avg_factor + self.pd_eps)
-        # Compute the average number of gt boxes accross all gpus, for
+        # Compute the average number of gt boxes across all gpus, for
         # normalization purposes
         num_total_pos = paddle.to_tensor([num_total_pos], dtype=loss_cls.dtype)
         num_total_pos = paddle.clip(reduce_mean(num_total_pos), min=1).item()
@@ -1074,7 +1103,7 @@ class PETRHead(nn.Layer):
         loss_cls = self.loss_cls(cls_scores, labels,
                                  label_weights) / (cls_avg_factor + self.pd_eps)
 
-        # Compute the average number of gt boxes accross all gpus, for
+        # Compute the average number of gt boxes across all gpus, for
         # normalization purposes
         num_total_pos = paddle.to_tensor([num_total_pos], dtype=loss_cls.dtype)
         num_total_pos = paddle.clip(reduce_mean(num_total_pos), min=1).item()

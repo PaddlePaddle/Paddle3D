@@ -1,0 +1,179 @@
+batch_size: 1
+epochs: 24
+
+amp_cfg:
+  use_amp: True
+  # only enable backbone and fpn
+  enable: False
+  level: O1
+  scaler:
+    init_loss_scaling: 512.0
+
+train_dataset:
+  type: NuscenesMVDataset
+  dataset_root: data/nuscenes/
+  ann_file: data/nuscenes/petr_nuscenes_annotation_train.pkl
+  mode: train
+  class_names: [
+            'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
+            'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
+        ]
+  transforms:
+    - type: LoadMultiViewImageFromFiles
+      to_float32: True
+    - type: LoadAnnotations3D
+      with_bbox_3d: True
+      with_label_3d: True
+    - type: SampleRangeFilter
+      point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+    - type: SampleNameFilter
+      classes: [
+            'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
+            'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
+        ]
+    - type: ResizeCropFlipImage
+      sample_aug_cfg:
+        resize_lim: [0.47, 0.625]
+        final_dim: [320, 800]
+        bot_pct_lim: [0.0, 0.0]
+        rot_lim: [0.0, 0.0]
+        H: 900
+        W: 1600
+        rand_flip: True
+      training: True
+    - type: GlobalRotScaleTransImage
+      rot_range: [-0.3925, 0.3925]
+      translation_std: [0, 0, 0]
+      scale_ratio_range: [0.95, 1.05]
+      reverse_angle: True
+      training: True
+    - type: NormalizeMultiviewImage
+      mean: [103.530, 116.280, 123.675]
+      std: [57.375, 57.120, 58.395]
+    - type: PadMultiViewImage
+      size_divisor: 32
+    - type: SampleFilerByKey
+      keys: ['gt_bboxes_3d', 'gt_labels_3d', 'img']
+
+val_dataset:
+  type: NuscenesMVDataset
+  dataset_root: data/nuscenes/
+  ann_file: data/nuscenes/petr_nuscenes_annotation_val.pkl
+  mode: val
+  class_names: ['car', 'truck', 'construction_vehicle', 'bus', 'trailer',
+                    'barrier', 'motorcycle', 'bicycle', 'pedestrian',
+                    'traffic_cone']
+  transforms:
+    - type: LoadMultiViewImageFromFiles
+      to_float32: True
+    - type: ResizeCropFlipImage
+      sample_aug_cfg:
+          resize_lim: [0.47, 0.625]
+          final_dim: [320, 800]
+          bot_pct_lim: [0.0, 0.0]
+          rot_lim: [0.0, 0.0]
+          H: 900
+          W: 1600
+          rand_flip: True
+      training: False
+    - type: NormalizeMultiviewImage
+      mean: [103.530, 116.280, 123.675]
+      std: [57.375, 57.120, 58.395]
+    - type: PadMultiViewImage
+      size_divisor: 32
+    - type: SampleFilerByKey
+      keys: ['img']
+
+model:
+  fused_linear: True
+  type: Petr3D
+  use_recompute: True
+  use_grid_mask: True
+  backbone:
+    # use recompute to save memory
+    type: VoVNetCP
+    spec_name: V-99-eSE
+    norm_eval: True
+    frozen_stages: -1
+    input_ch: 3
+    out_features: ('stage4','stage5',)
+  neck:
+    # remove unused parameters
+    type: CPFPN
+    in_channels: [768, 1024]
+    out_channels: 256
+    num_outs: 2
+  pts_bbox_head:
+    type: PETRHead
+    num_classes: 10
+    in_channels: 256
+    num_query: 900
+    LID: true
+    with_multiview: true
+    position_range: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
+    normedlinear: False
+    transformer:
+      type: PETRTransformer
+      decoder_embed_dims: 256
+      decoder:
+        type: PETRTransformerDecoder
+        return_intermediate: True
+        num_layers: 6
+        transformerlayers:
+          type: PETRTransformerDecoderLayer
+          attns:
+            - type: MultiHeadAttention
+              embed_dims: 256
+              num_heads: 8
+              attn_drop: 0.1
+              drop_prob: 0.1
+            - type: PETRMultiheadAttention
+              embed_dims: 256
+              num_heads: 8
+              attn_drop: 0.1
+              drop_prob: 0.1
+              batch_first: True
+          feedforward_channels: 2048
+          ffn_dropout: 0.1
+          operation_order: ['self_attn', 'norm', 'cross_attn', 'norm', 'ffn', 'norm']
+    positional_encoding:
+      type: SinePositionalEncoding3D
+      num_feats: 128
+      normalize: True
+    bbox_coder:
+      type: NMSFreeCoder
+      post_center_range: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
+      point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+      max_num: 300
+      voxel_size: [0.2, 0.2, 8]
+      num_classes: 10
+    loss_cls:
+      type: WeightedFocalLoss
+      gamma: 2.0
+      alpha: 0.25
+      loss_weight: 2.0
+      reduction: sum
+    loss_bbox:
+      type: WeightedL1Loss
+      loss_weight: 0.25
+      reduction: sum
+
+
+optimizer:
+  type: AdamW
+  weight_decay: 0.01
+  tensor_fusion: True
+  grad_clip:
+    type: ClipGradByGlobalNorm
+    clip_norm: 35
+
+lr_scheduler:
+  type: LinearWarmup
+  learning_rate:
+    type: CosineAnnealingDecay
+    learning_rate: 0.0002
+    T_max: 84408 # 3517 * 24e
+    eta_min: 0.0000002
+  warmup_steps: 500
+  start_lr: 0.0
+  end_lr: 0.0002
