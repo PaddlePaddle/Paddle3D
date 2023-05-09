@@ -1,0 +1,26 @@
+slim_type: QAT
+
+quant_config:
+  weight_quantize_type: channel_wise_abs_max
+  activation_preprocess_type: PACT
+  activation_quantize_type: moving_average_abs_max
+  weight_bits: 8
+  activation_bits: 8
+  dtype: int8
+  window_size: 10000
+  moving_rate: 0.9
+  quantizable_layer_type: ['Conv2D', 'Linear']
+
+finetune_config:
+  epochs: 5
+  batch_size: 2
+  lr_scheduler:
+    type: LinearWarmup
+    learning_rate:
+      type: CosineAnnealingDecayByEpoch
+      learning_rate: 0.00002
+      T_max: 5
+      eta_min: 0.0000002
+    warmup_steps: 500
+    start_lr: 0.000006666666
+    end_lr: 0.00002
