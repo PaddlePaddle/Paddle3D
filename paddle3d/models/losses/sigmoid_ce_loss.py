@@ -22,7 +22,6 @@ import numpy as np
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-
 from paddle3d.apis import manager
 
 

@@ -38,7 +38,6 @@ from paddle3d.models.layers import param_init
 from paddle3d.models.layers.layer_libs import NormedLinear, inverse_sigmoid
 from paddle3d.models.losses.focal_loss import FocalLoss, WeightedFocalLoss
 from paddle3d.models.losses.weight_loss import WeightedL1Loss
-
 from .samplers.pseudo_sampler import PseudoSampler
 from .petr_head import reduce_mean, multi_apply, pos2posemb3d, SELayer, RegLayer
 

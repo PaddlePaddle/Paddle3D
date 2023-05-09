@@ -15,7 +15,6 @@
 import os
 from pathlib import Path
 from typing import List, Union
-
 import cv2
 import paddle
 import numpy as np
@@ -134,12 +133,11 @@ class LoadPointCloud(TransformABC):
             data_sweep_list = [
                 data,
             ]
-            for i in np.random.choice(len(sample.sweeps),
-                                      len(sample.sweeps),
-                                      replace=False):
+            for i in np.random.choice(
+                    len(sample.sweeps), len(sample.sweeps), replace=False):
                 sweep = sample.sweeps[i]
-                sweep_data = np.fromfile(sweep.path,
-                                         np.float32).reshape(-1, self.dim)
+                sweep_data = np.fromfile(sweep.path, np.float32).reshape(
+                    -1, self.dim)
                 if self.use_dim:
                     sweep_data = sweep_data[:, self.use_dim]
                 sweep_data = sweep_data.T
@@ -180,8 +178,8 @@ class RemoveCameraInvisiblePointsKITTI(TransformABC):
         calibs = sample.calibs
         C, Rinv, T = kitti_utils.projection_matrix_decomposition(calibs[2])
 
-        im_path = (Path(sample.path).parents[1] / "image_2" /
-                   Path(sample.path).stem).with_suffix(".png")
+        im_path = (Path(sample.path).parents[1] / "image_2" / Path(
+            sample.path).stem).with_suffix(".png")
 
         if os.path.exists(im_path):
             im_shape = cv2.imread(str(im_path)).shape[:2]
@@ -219,8 +217,8 @@ class RemoveCameraInvisiblePointsKITTIV2(TransformABC):
         self.V2C = calibs[5]
         self.P2 = calibs[2]
 
-        im_path = (Path(sample.path).parents[1] / "image_2" /
-                   Path(sample.path).stem).with_suffix(".png")
+        im_path = (Path(sample.path).parents[1] / "image_2" / Path(
+            sample.path).stem).with_suffix(".png")
 
         if os.path.exists(im_path):
             im_shape = cv2.imread(str(im_path)).shape[:2]
@@ -235,10 +233,10 @@ class RemoveCameraInvisiblePointsKITTIV2(TransformABC):
 
         # rect to img
         pts_img, pts_rect_depth = self.rect_to_img(pts_rect)
-        val_flag_1 = np.logical_and(pts_img[:, 0] >= 0, pts_img[:, 0]
-                                    < im_shape[1])
-        val_flag_2 = np.logical_and(pts_img[:, 1] >= 0, pts_img[:, 1]
-                                    < im_shape[0])
+        val_flag_1 = np.logical_and(pts_img[:, 0] >= 0,
+                                    pts_img[:, 0] < im_shape[1])
+        val_flag_2 = np.logical_and(pts_img[:, 1] >= 0,
+                                    pts_img[:, 1] < im_shape[0])
         val_flag_merge = np.logical_and(val_flag_1, val_flag_2)
         pts_valid_flag = np.logical_and(val_flag_merge, pts_rect_depth >= 0)
 
@@ -303,8 +301,8 @@ class LoadSemanticKITTIRange(TransformABC):
 
         # get projections in image coords
         proj_x = 0.5 * (yaw / np.pi + 1.0)  # in [0.0, 1.0]
-        proj_y = 1.0 - (pitch +
-                        abs(self.lower_inclination)) / self.fov  # in [0.0, 1.0]
+        proj_y = 1.0 - (
+            pitch + abs(self.lower_inclination)) / self.fov  # in [0.0, 1.0]
 
         # scale to image size using angular resolution
         proj_x *= self.proj_W  # in [0.0, W]
@@ -369,8 +367,8 @@ class LoadSemanticKITTIRange(TransformABC):
 
         if sample.labels is not None:
             # load labels
-            raw_label = np.fromfile(sample.labels, dtype=np.uint32).reshape(
-                (-1))
+            raw_label = np.fromfile(
+                sample.labels, dtype=np.uint32).reshape((-1))
             # only fill in attribute if the right size
             if raw_label.shape[0] == points.shape[0]:
                 sem_label = raw_label & 0xFFFF  # semantic label in lower half
@@ -504,11 +502,10 @@ class LoadMultiViewImageFromFiles(TransformABC):
         # sample['scale_factor'] = 1.0
         num_channels = 1 if len(img.shape) < 3 else img.shape[2]
 
-        sample['img_norm_cfg'] = dict(mean=np.zeros(num_channels,
-                                                    dtype=np.float32),
-                                      std=np.ones(num_channels,
-                                                  dtype=np.float32),
-                                      to_rgb=False)
+        sample['img_norm_cfg'] = dict(
+            mean=np.zeros(num_channels, dtype=np.float32),
+            std=np.ones(num_channels, dtype=np.float32),
+            to_rgb=False)
         sample['img_fields'] = ['img']
 
         if self.project_pts_to_img_depth:
@@ -539,12 +536,12 @@ class LoadAnnotations3D(TransformABC):
     """
 
     def __init__(
-        self,
-        with_bbox_3d=True,
-        with_label_3d=True,
-        with_attr_label=False,
-        with_mask_3d=False,
-        with_seg_3d=False,
+            self,
+            with_bbox_3d=True,
+            with_label_3d=True,
+            with_attr_label=False,
+            with_mask_3d=False,
+            with_seg_3d=False,
     ):
         self.with_bbox_3d = with_bbox_3d
         self.with_label_3d = with_label_3d
@@ -599,19 +596,19 @@ class LoadMultiViewImageFromMultiSweepsFiles(object):
     """
 
     def __init__(
-        self,
-        sweeps_num=5,
-        to_float32=False,
-        pad_empty_sweeps=False,
-        sweep_range=[3, 27],
-        sweeps_id=None,
-        imread_flag=-1,  #'unchanged'
-        sensors=[
-            'CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_FRONT_LEFT', 'CAM_BACK',
-            'CAM_BACK_LEFT', 'CAM_BACK_RIGHT'
-        ],
-        test_mode=True,
-        prob=1.0,
+            self,
+            sweeps_num=5,
+            to_float32=False,
+            pad_empty_sweeps=False,
+            sweep_range=[3, 27],
+            sweeps_id=None,
+            imread_flag=-1,  #'unchanged'
+            sensors=[
+                'CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_FRONT_LEFT', 'CAM_BACK',
+                'CAM_BACK_LEFT', 'CAM_BACK_RIGHT'
+            ],
+            test_mode=True,
+            prob=1.0,
     ):
 
         self.sweeps_num = sweeps_num
@@ -643,17 +640,17 @@ class LoadMultiViewImageFromMultiSweepsFiles(object):
         if self.pad_empty_sweeps and len(sample['sweeps']) == 0:
             for i in range(self.sweeps_num):
                 sweep_imgs_list.extend(imgs)
-                mean_time = (self.sweep_range[0] +
-                             self.sweep_range[1]) / 2.0 * 0.083
+                mean_time = (
+                    self.sweep_range[0] + self.sweep_range[1]) / 2.0 * 0.083
                 timestamp_imgs_list.extend(
                     [time + mean_time for time in img_timestamp])
                 for j in range(nums):
                     sample['filename'].append(sample['filename'][j])
                     sample['lidar2img'].append(np.copy(sample['lidar2img'][j]))
-                    sample['intrinsics'].append(np.copy(
-                        sample['intrinsics'][j]))
-                    sample['extrinsics'].append(np.copy(
-                        sample['extrinsics'][j]))
+                    sample['intrinsics'].append(
+                        np.copy(sample['intrinsics'][j]))
+                    sample['extrinsics'].append(
+                        np.copy(sample['extrinsics'][j]))
         else:
             if self.sweeps_id:
                 choices = self.sweeps_id
@@ -674,9 +671,8 @@ class LoadMultiViewImageFromMultiSweepsFiles(object):
                     else:
                         sweep_range = list(
                             range(self.sweep_range[0], self.sweep_range[1]))
-                    choices = np.random.choice(sweep_range,
-                                               self.sweeps_num,
-                                               replace=False)
+                    choices = np.random.choice(
+                        sweep_range, self.sweeps_num, replace=False)
                 else:
                     choices = [
                         int((self.sweep_range[0] + self.sweep_range[1]) / 2) - 1
@@ -717,7 +713,6 @@ class LoadMultiViewImageFromMultiSweepsFiles(object):
 
 @manager.TRANSFORMS.add_component
 class LoadMapsFromFiles(object):
-
     def __init__(self, k=None):
         self.k = k
 
@@ -728,10 +723,8 @@ class LoadMapsFromFiles(object):
 
         maps = map_mask.transpose((2, 0, 1))
         sample['gt_map'] = maps
-        maps = rearrange(maps,
-                         'c (h h1) (w w2) -> (h w) c h1 w2 ',
-                         h1=16,
-                         w2=16)
+        maps = rearrange(
+            maps, 'c (h h1) (w w2) -> (h w) c h1 w2 ', h1=16, w2=16)
         maps = maps.reshape(256, 3 * 256)
         sample['map_shape'] = maps.shape
         sample['maps'] = maps

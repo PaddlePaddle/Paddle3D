@@ -27,7 +27,6 @@ from PIL import Image
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-
 from paddle3d.apis import manager
 from paddle3d.models.base import BaseMultiViewModel
 from paddle3d.geometries import BBoxes3D

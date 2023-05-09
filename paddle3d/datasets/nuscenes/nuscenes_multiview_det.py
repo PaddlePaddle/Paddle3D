@@ -22,8 +22,8 @@ from collections.abc import Mapping, Sequence
 from functools import reduce
 from pathlib import Path
 from typing import List, Optional, Union
-
 import numpy as np
+
 import paddle
 from nuscenes.eval.common.utils import Quaternion, quaternion_yaw
 from nuscenes.utils import splits as nuscenes_split
@@ -156,13 +156,13 @@ class NuscenesMVDataset(NuscenesDetDataset):
         dst = np.array([0.5, 0.5, 0], dtype=gt_bboxes_3d.dtype)
         src = np.array(origin, dtype=gt_bboxes_3d.dtype)
         gt_bboxes_3d[:, :3] += gt_bboxes_3d[:, 3:6] * (dst - src)
-        gt_bboxes_3d = BBoxes3D(gt_bboxes_3d,
-                                coordmode=2,
-                                origin=[0.5, 0.5, 0.5])
+        gt_bboxes_3d = BBoxes3D(
+            gt_bboxes_3d, coordmode=2, origin=[0.5, 0.5, 0.5])
 
-        anns_results = dict(gt_bboxes_3d=gt_bboxes_3d,
-                            gt_labels_3d=gt_labels_3d,
-                            gt_names=gt_names_3d)
+        anns_results = dict(
+            gt_bboxes_3d=gt_bboxes_3d,
+            gt_labels_3d=gt_labels_3d,
+            gt_names=gt_names_3d)
         return anns_results
 
     def get_data_info(self, index):
@@ -235,11 +235,12 @@ class NuscenesMVDataset(NuscenesDetDataset):
                 lidar2img_rts.append(lidar2img_rt)
 
             sample.update(
-                dict(img_timestamp=img_timestamp,
-                     img_filename=image_paths,
-                     lidar2img=lidar2img_rts,
-                     intrinsics=intrinsics,
-                     extrinsics=extrinsics))
+                dict(
+                    img_timestamp=img_timestamp,
+                    img_filename=image_paths,
+                    lidar2img=lidar2img_rts,
+                    intrinsics=intrinsics,
+                    extrinsics=extrinsics))
 
         if 'train' in self.mode:
             annos = self.get_ann_info(index)
@@ -386,8 +387,8 @@ class NuscenesMVDataset(NuscenesDetDataset):
                 self.data_infos = pickle.load(open(train_ann_cache_file, 'rb'))
                 return
 
-        self.nusc = NuScenesManager.get(version=self.version,
-                                        dataroot=self.dataset_root)
+        self.nusc = NuScenesManager.get(
+            version=self.version, dataroot=self.dataset_root)
 
         if self.version == 'v1.0-trainval':
             train_scenes = nuscenes_split.train
@@ -474,10 +475,10 @@ class NuscenesMVDataset(NuscenesDetDataset):
         # Homogeneous transform of current sample from ego car coordinate to sensor coordinate
         curr_sample_cs = self.nusc.get("calibrated_sensor",
                                        sample_data["calibrated_sensor_token"])
-        curr_sensor_from_car = transform_matrix(curr_sample_cs["translation"],
-                                                Quaternion(
-                                                    curr_sample_cs["rotation"]),
-                                                inverse=True)
+        curr_sensor_from_car = transform_matrix(
+            curr_sample_cs["translation"],
+            Quaternion(curr_sample_cs["rotation"]),
+            inverse=True)
         # Homogeneous transformation matrix of current sample from global coordinate to ego car coordinate
         curr_sample_pose = self.nusc.get("ego_pose",
                                          sample_data["ego_pose_token"])
@@ -546,8 +547,8 @@ class NuscenesMVDataset(NuscenesDetDataset):
     @property
     def metric(self):
         if not hasattr(self, 'nusc'):
-            self.nusc = NuScenesManager.get(version=self.version,
-                                            dataroot=self.dataset_root)
+            self.nusc = NuScenesManager.get(
+                version=self.version, dataroot=self.dataset_root)
         return super().metric
 
     def collate_fn(self, batch: List):
@@ -784,8 +785,8 @@ def obtain_sensor2top(nusc,
     e2g_r_s_mat = Quaternion(e2g_r_s).rotation_matrix
     R = (l2e_r_s_mat.T @ e2g_r_s_mat.T) @ (
         np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
-    T = (l2e_t_s @ e2g_r_s_mat.T +
-         e2g_t_s) @ (np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
+    T = (l2e_t_s @ e2g_r_s_mat.T + e2g_t_s) @ (
+        np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T)
     T -= e2g_t @ (np.linalg.inv(e2g_r_mat).T @ np.linalg.inv(l2e_r_mat).T
                   ) + l2e_t @ np.linalg.inv(l2e_r_mat).T
     sweep['sensor2lidar_rotation'] = R.T  # points @ R.T + T
@@ -911,11 +912,12 @@ class NuscenesMVSegDataset(NuscenesMVDataset):
                 lidar2img_rts.append(lidar2img_rt)
 
             sample.update(
-                dict(img_timestamp=img_timestamp,
-                     img_filename=image_paths,
-                     lidar2img=lidar2img_rts,
-                     intrinsics=intrinsics,
-                     extrinsics=extrinsics))
+                dict(
+                    img_timestamp=img_timestamp,
+                    img_filename=image_paths,
+                    lidar2img=lidar2img_rts,
+                    intrinsics=intrinsics,
+                    extrinsics=extrinsics))
 
         if self.mode == 'train':
             annos = self.get_ann_info(index)
@@ -940,8 +942,9 @@ class NuscenesMVSegDataset(NuscenesMVDataset):
 
     @property
     def metric(self):
-        return NuScenesSegMetric(class_names=self.class_names,
-                                 data_infos=self.data_infos,
-                                 modality=self.modality,
-                                 version=self.version,
-                                 dataset_root=self.dataset_root)
+        return NuScenesSegMetric(
+            class_names=self.class_names,
+            data_infos=self.data_infos,
+            modality=self.modality,
+            version=self.version,
+            dataset_root=self.dataset_root)
