@@ -24,3 +24,4 @@ from .pv_rcnn import *
 from .smoke import *
 from .dd3d import *
 from .voxel_rcnn import *
+from .bevdet import *

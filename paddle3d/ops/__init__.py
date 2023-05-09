@@ -88,6 +88,18 @@ custom_ops = {
         'version':
         '0.1.0',
         'extra_cuda_cflags': ['-arch=sm_60'],
+    },
+    'bev_pool_v2': {
+        'sources': ['bev_pool_v2/bev_pool.cc', 'bev_pool_v2/bev_pool_cuda.cu'],
+        'version': '0.1.0',
+    },
+    'bev_pool_v2_backward': {
+        'sources': [
+            'bev_pool_v2_backward/bev_pool_bkwd.cc',
+            'bev_pool_v2_backward/bev_pool_cuda_bkwd.cu'
+        ],
+        'version':
+        '0.1.0',
     }
 }
 

@@ -18,3 +18,5 @@ from .cp_fpn import CPFPN
 from .fpnc import *
 from .second_fpn import *
 from .fpn import *
+from .custom_fpn import CustomFPN
+from .lss_fpn import FPN_LSS
