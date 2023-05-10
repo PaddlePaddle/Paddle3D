@@ -12,12 +12,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Dict, Tuple, Union
+from typing import Dict
 
+import numpy as np
 import paddle
 import paddle.nn as nn
-import paddle.nn.functional as F
-import numpy as np
+
 from pprndr.apis import manager
 from pprndr.cameras.rays import RaySamples
 
@@ -104,7 +104,6 @@ class NeuSField(BaseSDFField):
             ray_samples: RaySamples,
     ) -> paddle.Tensor:
         pts = ray_samples.frustums.positions
-        batch_size, n_samples, _ = pts.shape
         pts_norm = paddle.linalg.norm(pts, p=2, axis=-1, keepdim=True)
         inside_sphere = (pts_norm < 1.0).astype('float32').detach()
         relax_inside_sphere = (pts_norm < 1.2).astype('float32').detach()
