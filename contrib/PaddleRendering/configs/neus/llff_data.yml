@@ -55,11 +55,15 @@ optimizer:
   multi_precision: False
 
 lr_scheduler:
-  type: NeuSLRDecay
-  lr_init: 0.0005
-  warm_up_end: 5000
-  learning_rate_alpha: 0.05
-  max_steps: 300001
+  type: LinearWarmup
+  learning_rate:
+    type: CosineAnnealingDecay
+    learning_rate: 0.0005
+    T_max: 300000
+    eta_min: 2.5e-05
+  warmup_steps: 5000
+  start_lr: 0.0
+  end_lr: 0.0005
 
 model:
   type: NeuS
