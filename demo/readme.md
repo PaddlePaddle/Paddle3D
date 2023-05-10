@@ -70,6 +70,12 @@ python demo/bev_demo.py \
   --batch_size 1
 ```
 
+## Dataset or LogBox Visualization
+```
+cd demo
+python dataset_vis.py
+```
+
 ---
 if u encounter the following problems:
 
