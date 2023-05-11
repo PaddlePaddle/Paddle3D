@@ -142,7 +142,6 @@ class Petr3D(BaseMultiViewModel):
         self.neck = neck
         self.to_static = to_static
         if self.to_static:
-            self.pts_bbox_head.to_static = True
             for transformerlayer in self.pts_bbox_head.transformer.decoder.layers:
                 transformerlayer.use_recompute = False
             for backbonelayer in self.backbone.sublayers():
@@ -159,8 +158,10 @@ class Petr3D(BaseMultiViewModel):
                 InputSpec([12, 1024, 10, 25])
             ]]
             specs_backbone = [InputSpec([12, 3, 320, 800])]
-            apply_to_static(
-                to_static, self.pts_bbox_head, image_shape=specs_head)
+            if not self.pts_bbox_head.with_denoise:
+                self.pts_bbox_head.to_static = True
+                apply_to_static(
+                    to_static, self.pts_bbox_head, image_shape=specs_head)
             apply_to_static(
                 to_static, self.backbone, image_shape=specs_backbone)
             apply_to_static(to_static, self.neck, image_shape=specs_neck)
@@ -295,7 +296,7 @@ class Petr3D(BaseMultiViewModel):
                           gt_bboxes_ignore=None):
         """
         """
-        if self.to_static:
+        if self.to_static and not self.pts_bbox_head.with_denoise:
             timestamp = paddle.to_tensor(np.asarray(img_metas[0]['timestamp']))
             outs = self.pts_bbox_head(
                 pts_feats,

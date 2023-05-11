@@ -32,7 +32,7 @@ def parse_losses(losses):
         total_loss = losses
     elif isinstance(losses, dict):
         for loss_name, loss_value in losses.items():
-            log_loss[loss_name] = sum(loss_value)
+            log_loss[loss_name] = paddle.sum(loss_value)
         total_loss = sum(
             _loss_value for _loss_name, _loss_value in log_loss.items())
 
