@@ -15,6 +15,7 @@
 from .anchor3d_head import *
 from .anchor_head import *
 from .petr_head import PETRHead
+from .petr_head_seg import PETRHeadseg
 from .point_head import PointHeadSimple
 from .target_assigner import *
 from .cape_dn_head import CAPETemporalDNHead

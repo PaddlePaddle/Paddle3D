@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .nuscenes_multiview_det import NuscenesMVDataset
+from .nuscenes_multiview_det import NuscenesMVDataset, NuscenesMVSegDataset
 from .nuscenes_multi_modality import NuscenesMMDataset
 from .nuscenes_pointcloud_det import NuscenesPCDataset
 from .bevdet_custom_3d import Custom3DDataset

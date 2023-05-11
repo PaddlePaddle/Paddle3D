@@ -1,0 +1,232 @@
+batch_size: 1
+epochs: 24
+
+amp_cfg:
+  # only enable backbone and fpn
+  enable: False
+  level: O1
+  scaler:
+    init_loss_scaling: 512.0
+
+train_dataset:
+  type: NuscenesMVSegDataset
+  dataset_root: data/nuscenes/
+  ann_file: data/nuscenes/petr_nuscenes_annotation_train.pkl
+  lane_ann_file: data/nuscenes/HDmaps-nocovers_infos_train.pkl
+  mode: train
+  use_valid_flag: True
+  class_names: [
+            'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
+            'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
+        ]
+  transforms:
+    - type: LoadMultiViewImageFromFiles
+      to_float32: True
+    - type: LoadMapsFromFiles
+    - type: LoadMultiViewImageFromMultiSweepsFiles
+      sweeps_num: 1
+      to_float32: True
+      pad_empty_sweeps: True
+      sweep_range: [3, 27]
+      test_mode: False
+    - type: LoadAnnotations3D
+      with_bbox_3d: True
+      with_label_3d: True
+    - type: SampleRangeFilter
+      point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+    - type: SampleNameFilter
+      classes: [
+            'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
+            'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
+        ]
+    - type: ResizeCropFlipImage
+      sample_aug_cfg:
+        resize_lim: [0.47, 0.625]
+        final_dim: [320, 800]
+        bot_pct_lim: [0.0, 0.0]
+        rot_lim: [0.0, 0.0]
+        H: 900
+        W: 1600
+        rand_flip: True
+      training: True
+    - type: GlobalRotScaleTransImage
+      rot_range: [-0.3925, 0.3925]
+      translation_std: [0, 0, 0]
+      scale_ratio_range: [0.95, 1.05]
+      reverse_angle: True
+      training: True
+    - type: NormalizeMultiviewImage
+      mean: [103.530, 116.280, 123.675]
+      std: [57.375, 57.120, 58.395]
+    - type: PadMultiViewImage
+      size_divisor: 32
+    - type: SampleFilerByKey
+      keys: ['gt_bboxes_3d', 'gt_labels_3d', 'img', 'maps']
+      meta_keys: ['filename', 'ori_shape', 'img_shape', 'lidar2img',
+                  'intrinsics', 'extrinsics', 'pad_shape',
+                  'scale_factor', 'flip', 'box_type_3d', 'img_norm_cfg', 'sample_idx',
+                  'timestamp']
+
+val_dataset:
+  type: NuscenesMVSegDataset
+  dataset_root: data/nuscenes/
+  ann_file: data/nuscenes/petr_nuscenes_annotation_val.pkl
+  lane_ann_file: data/nuscenes/HDmaps-nocovers_infos_val.pkl
+  mode: val
+  class_names: ['car', 'truck', 'construction_vehicle', 'bus', 'trailer',
+                    'barrier', 'motorcycle', 'bicycle', 'pedestrian',
+                    'traffic_cone']
+  transforms:
+    - type: LoadMultiViewImageFromFiles
+      to_float32: True
+    - type: LoadMapsFromFiles
+    - type: LoadMultiViewImageFromMultiSweepsFiles
+      sweeps_num: 1
+      to_float32: True
+      pad_empty_sweeps: True
+      sweep_range: [3, 27]
+    - type: ResizeCropFlipImage
+      sample_aug_cfg:
+          resize_lim: [0.47, 0.625]
+          final_dim: [320, 800]
+          bot_pct_lim: [0.0, 0.0]
+          rot_lim: [0.0, 0.0]
+          H: 900
+          W: 1600
+          rand_flip: True
+      training: False
+    - type: NormalizeMultiviewImage
+      mean: [103.530, 116.280, 123.675]
+      std: [57.375, 57.120, 58.395]
+    - type: PadMultiViewImage
+      size_divisor: 32
+    - type: SampleFilerByKey
+      keys: ['img','gt_map','maps']
+      meta_keys: ['filename', 'ori_shape', 'img_shape', 'lidar2img',
+                  'intrinsics', 'extrinsics', 'pad_shape',
+                  'scale_factor', 'flip', 'box_type_3d', 'img_norm_cfg', 'sample_idx',
+                  'timestamp']
+
+optimizer:
+  type: AdamW
+  weight_decay: 0.01
+  grad_clip:
+    type: ClipGradByGlobalNorm
+    clip_norm: 35
+    # auto_skip_clip: True
+
+lr_scheduler:
+  type: LinearWarmup
+  learning_rate:
+    type: CosineAnnealingDecay
+    learning_rate: 0.0002
+    T_max: 84408 # 3517 * 24
+    eta_min: 0.0000002
+  warmup_steps: 500
+  start_lr: 0.00006666666
+  end_lr: 0.0002
+
+model:
+  type: Petr3D_seg
+  use_recompute: True
+  use_grid_mask: True
+  show: False
+  backbone:
+    type: VoVNetCP ###use checkpoint to save memory
+    spec_name: V-99-eSE
+    norm_eval: True
+    frozen_stages: -1
+    input_ch: 3
+    out_features: ('stage4','stage5',)
+  neck:
+    type: CPFPN  ###remove unused parameters
+    in_channels: [768, 1024]
+    out_channels: 256
+    num_outs: 2
+  pts_bbox_head:
+    type: PETRHeadseg
+    num_classes: 10
+    in_channels: 256
+    num_query: 900
+    num_lane: 256
+    LID: true
+    with_multiview: true
+    with_position: true
+    with_se: true
+    with_time: true
+    with_multi: False
+    position_range: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
+    code_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    normedlinear: False
+    transformer:
+      type: PETRTransformer
+      decoder_embed_dims: 256
+      decoder:
+        type: PETRTransformerDecoder
+        return_intermediate: True
+        num_layers: 6
+        transformerlayers:
+          type: PETRTransformerDecoderLayer
+          attns:
+            - type: MultiHeadAttention
+              embed_dims: 256
+              num_heads: 8
+              attn_drop: 0.1
+              drop_prob: 0.1
+            - type: PETRMultiheadAttention
+              embed_dims: 256
+              num_heads: 8
+              attn_drop: 0.1
+              drop_prob: 0.1
+              batch_first: True
+          feedforward_channels: 2048
+          ffn_dropout: 0.1
+          operation_order: ['self_attn', 'norm', 'cross_attn', 'norm', 'ffn', 'norm']
+    transformer_lane:
+      type: PETRTransformer
+      decoder_embed_dims: 256
+      decoder:
+        type: PETRTransformerDecoder
+        return_intermediate: True
+        num_layers: 6
+        transformerlayers:
+          type: PETRTransformerDecoderLayer
+          attns:
+            - type: MultiHeadAttention
+              embed_dims: 256
+              num_heads: 8
+              attn_drop: 0.1
+              drop_prob: 0.1
+            - type: PETRMultiheadAttention
+              embed_dims: 256
+              num_heads: 8
+              attn_drop: 0.1
+              drop_prob: 0.1
+              batch_first: True
+          feedforward_channels: 2048
+          ffn_dropout: 0.1
+          operation_order: ['self_attn', 'norm', 'cross_attn', 'norm', 'ffn', 'norm']
+    positional_encoding:
+      type: SinePositionalEncoding3D
+      num_feats: 128
+      normalize: True
+    bbox_coder:
+      type: NMSFreeCoder
+      post_center_range: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
+      point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+      max_num: 300
+      voxel_size: [0.2, 0.2, 8]
+      num_classes: 10
+    loss_cls:
+      type: WeightedFocalLoss
+      gamma: 2.0
+      alpha: 0.25
+      loss_weight: 2.0
+      reduction: sum
+    loss_bbox:
+      type: WeightedL1Loss
+      loss_weight: 0.25
+      reduction: sum
+    loss_lane_mask:
+      type: SigmoidCeLoss
+      loss_weight: 1.0

@@ -16,3 +16,4 @@ scikit-image
 scikit-learn
 visualdl
 h5py
+einops
