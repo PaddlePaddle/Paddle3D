@@ -1,0 +1,27 @@
+batch_size: 32
+epochs: 140
+
+train_dataset:
+  type: GUPKittiMonoDataset
+  dataset_root: /your_dataset_dir/kitti
+  mode: train
+
+val_dataset:
+  type: GUPKittiMonoDataset
+  dataset_root: /your_dataset_dir/kitti
+   mode: val
+
+optimizer:
+  type: Adam
+
+lr_scheduler:
+  type: MultiStepDecay
+  milestones: [90, 120]
+  learning_rate: 0.00125
+
+model:
+  type: GUPNET
+  downsample: 4
+  threshold: 0.2  # confidence filter
+  val_dataset_root: /your_dataset_dir/kitti
+  pretrained_model: ./checkpoint/dla34-ba72cf86_paddle.pdparams

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .base import BaseDataset
-from .kitti import KittiDepthDataset, KittiMonoDataset, KittiPCDataset
+from .kitti import KittiDepthDataset, KittiMonoDataset, KittiPCDataset, GUPKittiMonoDataset
 from .modelnet40 import ModelNet40
 from .nuscenes import NuscenesMVDataset, NuscenesPCDataset, NuscenesMVSegDataset
 from .waymo import WaymoPCDataset
