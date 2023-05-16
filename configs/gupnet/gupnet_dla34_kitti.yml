@@ -9,7 +9,7 @@ train_dataset:
 val_dataset:
   type: GUPKittiMonoDataset
   dataset_root: /your_dataset_dir/kitti
-   mode: val
+  mode: val
 
 optimizer:
   type: Adam
