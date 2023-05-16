@@ -30,19 +30,21 @@ def camera_record_to_object(
     """
     if kitti_records.shape[0] == 0:
         bboxes_2d = BBoxes2D(np.zeros([0, 4]))
-        bboxes_3d = BBoxes3D(np.zeros([0, 7]),
-                             origin=[.5, 1, .5],
-                             coordmode=CoordMode.KittiCamera,
-                             rot_axis=1)
+        bboxes_3d = BBoxes3D(
+            np.zeros([0, 7]),
+            origin=[.5, 1, .5],
+            coordmode=CoordMode.KittiCamera,
+            rot_axis=1)
         labels = []
     else:
         centers = kitti_records[:, 11:14]
         dims = kitti_records[:, 8:11]
         yaws = kitti_records[:, 14:15]
-        bboxes_3d = BBoxes3D(np.concatenate([centers, dims, yaws], axis=1),
-                             origin=[.5, 1, .5],
-                             coordmode=CoordMode.KittiCamera,
-                             rot_axis=1)
+        bboxes_3d = BBoxes3D(
+            np.concatenate([centers, dims, yaws], axis=1),
+            origin=[.5, 1, .5],
+            coordmode=CoordMode.KittiCamera,
+            rot_axis=1)
         bboxes_2d = BBoxes2D(kitti_records[:, 4:8])
         labels = kitti_records[:, 0]
 
@@ -57,19 +59,21 @@ def lidar_record_to_object(
     """
     if kitti_records.shape[0] == 0:
         bboxes_2d = BBoxes2D(np.zeros([0, 4]))
-        bboxes_3d = BBoxes3D(np.zeros([0, 7]),
-                             origin=[0.5, 0.5, 0.],
-                             coordmode=CoordMode.KittiLidar,
-                             rot_axis=2)
+        bboxes_3d = BBoxes3D(
+            np.zeros([0, 7]),
+            origin=[0.5, 0.5, 0.],
+            coordmode=CoordMode.KittiLidar,
+            rot_axis=2)
         cls_names = []
     else:
         centers = kitti_records[:, 11:14]
         dims = kitti_records[:, 8:11]
         yaws = kitti_records[:, 14:15]
-        bboxes_3d = BBoxes3D(np.concatenate([centers, dims, yaws], axis=1),
-                             origin=[0.5, 0.5, 0.],
-                             coordmode=CoordMode.KittiLidar,
-                             rot_axis=2)
+        bboxes_3d = BBoxes3D(
+            np.concatenate([centers, dims, yaws], axis=1),
+            origin=[0.5, 0.5, 0.],
+            coordmode=CoordMode.KittiLidar,
+            rot_axis=2)
         bboxes_2d = BBoxes2D(kitti_records[:, 4:8])
         cls_names = kitti_records[:, 0]
 
@@ -101,11 +105,12 @@ def box_lidar_to_camera(bboxes_3d: BBoxes3D,
     w, l, h = bboxes_3d[..., 3:4], bboxes_3d[..., 4:5], bboxes_3d[..., 5:6]
     r = bboxes_3d[..., 6:7]
     xyz = coord_velodyne_to_camera(xyz_lidar, calibration_info)
-    cam_bboxes = BBoxes3D(data=np.concatenate([xyz, l, h, w, r], axis=-1),
-                          coordmode=CoordMode.KittiCamera,
-                          velocities=None,
-                          origin=[1 - oy, 1 - oz, ox],
-                          rot_axis=1)
+    cam_bboxes = BBoxes3D(
+        data=np.concatenate([xyz, l, h, w, r], axis=-1),
+        coordmode=CoordMode.KittiCamera,
+        velocities=None,
+        origin=[1 - oy, 1 - oz, ox],
+        rot_axis=1)
     return cam_bboxes
 
 
@@ -258,10 +263,11 @@ def filter_fake_result(detection: Sample):
         detection.labels = None
         detection.confidences = None
     else:
-        detection.bboxes_3d = BBoxes3D(np.asarray(box_list),
-                                       origin=box3d.origin,
-                                       rot_axis=box3d.rot_axis,
-                                       coordmode=box3d.coordmode)
+        detection.bboxes_3d = BBoxes3D(
+            np.asarray(box_list),
+            origin=box3d.origin,
+            rot_axis=box3d.rot_axis,
+            coordmode=box3d.coordmode)
         detection.labels = np.asarray(label_list)
         detection.confidences = np.asarray(score_list)
 
@@ -284,6 +290,7 @@ class Object3d(object):
     """
     This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/object3d_kitti.py#L18
     """
+
     def __init__(self, line):
         label = line.strip().split(' ')
         self.src = line
@@ -361,6 +368,7 @@ class Calibration(object):
     """
     This code is based on https://github.com/TRAILab/CaDDN/blob/5a96b37f16b3c29dd2509507b1cdfdff5d53c558/pcdet/utils/calibration_kitti.py#L23
     """
+
     def __init__(self, calib_dict):
         calib = calib_dict
 
@@ -399,8 +407,8 @@ class Calibration(object):
                                                 dtype=np.float32)))  # (4, 4)
         V2C_ext[3, 3] = 1
 
-        pts_lidar = np.dot(pts_rect_hom,
-                           np.linalg.inv(np.dot(R0_ext, V2C_ext).T))
+        pts_lidar = np.dot(pts_rect_hom, np.linalg.inv(
+            np.dot(R0_ext, V2C_ext).T))
         return pts_lidar[:, 0:3]
 
     def lidar_to_rect(self, pts_lidar):
@@ -461,20 +469,19 @@ class Calibration(object):
         img_pts = np.matmul(corners3d_hom, self.P2.T)  # (N, 8, 3)
 
         x, y = img_pts[:, :, 0] / img_pts[:, :, 2], img_pts[:, :,
-                                                            1] / img_pts[:, :,
-                                                                         2]
+                                                            1] / img_pts[:, :, 2]
         x1, y1 = np.min(x, axis=1), np.min(y, axis=1)
         x2, y2 = np.max(x, axis=1), np.max(y, axis=1)
 
-        boxes = np.concatenate((x1.reshape(-1, 1), y1.reshape(
-            -1, 1), x2.reshape(-1, 1), y2.reshape(-1, 1)),
+        boxes = np.concatenate((x1.reshape(-1, 1), y1.reshape(-1, 1),
+                                x2.reshape(-1, 1), y2.reshape(-1, 1)),
                                axis=1)
         boxes_corner = np.concatenate(
             (x.reshape(-1, 8, 1), y.reshape(-1, 8, 1)), axis=2)
 
         return boxes, boxes_corner
 
-    # 新增GUPNET相关函数
+    # GUPNET relative function
     def alpha2ry(self, alpha, u):
         """
         Get rotation_y by alpha + theta - 180
@@ -491,7 +498,7 @@ class Calibration(object):
 
         return ry
 
-    # 新增GUPNET相关函数
+    # GUPNET relative function
     def ry2alpha(self, ry, u):
         alpha = ry - np.arctan2(u - self.cu, self.fu)
 
@@ -502,17 +509,19 @@ class Calibration(object):
 
         return alpha
 
-    # 新增GUPNET相关函数
+    # GUPNET relative function
     def flip(self, img_size):
         wsize = 4
         hsize = 2
         p2ds = (np.concatenate([
             np.expand_dims(
-                np.tile(np.expand_dims(np.linspace(0, img_size[0], wsize), 0),
-                        [hsize, 1]), -1),
+                np.tile(
+                    np.expand_dims(np.linspace(0, img_size[0], wsize), 0),
+                    [hsize, 1]), -1),
             np.expand_dims(
-                np.tile(np.expand_dims(np.linspace(0, img_size[1], hsize), 1),
-                        [1, wsize]), -1),
+                np.tile(
+                    np.expand_dims(np.linspace(0, img_size[1], hsize), 1),
+                    [1, wsize]), -1),
             np.linspace(2, 78, wsize * hsize).reshape(hsize, wsize, 1)
         ], -1)).reshape(-1, 3)
         p3ds = self.img_to_rect(p2ds[:, 0:1], p2ds[:, 1:2], p2ds[:, 2:3])

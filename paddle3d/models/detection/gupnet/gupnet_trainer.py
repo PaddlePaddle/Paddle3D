@@ -19,6 +19,7 @@ from paddle3d.models.detection.gupnet.gupnet_loss import Hierarchical_Task_Learn
 def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
     """
     """
+
     def _generate_loader(dataset: paddle.io.Dataset, model: paddle.nn.Layer):
         args = kwargs.copy()
         batch_size = args.pop('batch_size', 1)
@@ -32,10 +33,11 @@ def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
             # Do eval in single device
             BatchSampler = paddle.io.BatchSampler
 
-        batch_sampler = BatchSampler(dataset,
-                                     batch_size=batch_size,
-                                     shuffle=shuffle,
-                                     drop_last=drop_last)
+        batch_sampler = BatchSampler(
+            dataset,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            drop_last=drop_last)
 
         if hasattr(model, 'collate_fn'):
             collate_fn = model.collate_fn
@@ -53,11 +55,12 @@ def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
                                "disable shared_memory in DataLoader")
                 use_shared_memory = False
 
-        return paddle.io.DataLoader(dataset=dataset,
-                                    batch_sampler=batch_sampler,
-                                    collate_fn=collate_fn,
-                                    use_shared_memory=use_shared_memory,
-                                    **args)
+        return paddle.io.DataLoader(
+            dataset=dataset,
+            batch_sampler=batch_sampler,
+            collate_fn=collate_fn,
+            use_shared_memory=use_shared_memory,
+            **args)
 
     return _generate_loader
 
@@ -90,25 +93,24 @@ def default_scheduler_build_fn(**kwargs) -> Scheduler:
 class GupTrainer:
     """
     """
-    def __init__(
-            self,
-            model: paddle.nn.Layer,
-            optimizer: Optional[dict] = None,
-            iters: Optional[int] = None,
-            epochs: Optional[int] = None,
-            train_dataset: Optional[paddle.io.Dataset] = None,
-            val_dataset: Optional[paddle.io.Dataset] = None,
-            resume: bool = False,
-            # TODO: Default parameters should not use mutable objects, there is a risk
-            checkpoint: Union[dict, CheckpointABC] = dict(),
-            scheduler: Optional[dict] = None,
-            dataloader_fn: Union[dict, Callable] = dict(),
-            trainer: Optional[dict] = None,
-            amp_cfg: Optional[dict] = None,
-            do_bind: Optional[bool] = False,
-            temporal_start_epoch: Optional[int] = -1,
-            use_ema: Optional[bool] = False,
-            ema_cfg: Optional[dict] = {}):
+
+    def __init__(self,
+                 model: paddle.nn.Layer,
+                 optimizer: Optional[dict] = None,
+                 iters: Optional[int] = None,
+                 epochs: Optional[int] = None,
+                 train_dataset: Optional[paddle.io.Dataset] = None,
+                 val_dataset: Optional[paddle.io.Dataset] = None,
+                 resume: bool = False,
+                 checkpoint: Union[dict, CheckpointABC] = dict(),
+                 scheduler: Optional[dict] = None,
+                 dataloader_fn: Union[dict, Callable] = dict(),
+                 trainer: Optional[dict] = None,
+                 amp_cfg: Optional[dict] = None,
+                 do_bind: Optional[bool] = False,
+                 temporal_start_epoch: Optional[int] = -1,
+                 use_ema: Optional[bool] = False,
+                 ema_cfg: Optional[dict] = {}):
 
         self.model = model
         self.epoch = 0
@@ -158,8 +160,8 @@ class GupTrainer:
             # train one epoch
             self.logger.info('------ TRAIN EPOCH %03d ------' % (epoch + 1))
             if self.warmup_optimizer is not None and epoch < 5:
-                self.logger.info('Learning Rate: %f' %
-                                 self.warmup_optimizer.get_lr())
+                self.logger.info(
+                    'Learning Rate: %f' % self.warmup_optimizer.get_lr())
 
             else:
                 self.logger.info('Learning Rate: %f' % self.optimizer.get_lr())
@@ -206,9 +208,10 @@ class GupTrainer:
     def compute_e0_loss(self):
         self.model.train()
         disp_dict = {}
-        progress_bar = tqdm(total=len(self.train_dataloader),
-                            leave=True,
-                            desc='pre-training loss stat')
+        progress_bar = tqdm(
+            total=len(self.train_dataloader),
+            leave=True,
+            desc='pre-training loss stat')
         with paddle.no_grad():
             for batch_idx, samples in enumerate(self.train_dataloader):
                 inputs, calibs, coord_ranges, targets, info, sample = samples

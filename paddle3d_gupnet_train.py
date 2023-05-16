@@ -13,62 +13,74 @@ from paddle3d.utils.logger import Logger
 def parse_args():
     parser = argparse.ArgumentParser(description='Paddle-GUPNet')
     # params of training
-    parser.add_argument('--config',
-                        dest="cfg",
-                        help="The config file.",
-                        default='./configs/gupnet/gupnet_dla34_kitti.yml',
-                        type=str)
-    parser.add_argument('--batch_size',
-                        dest='batch_size',
-                        help='Mini batch size of one gpu or cpu',
-                        type=int,
-                        default=8)
-    parser.add_argument('--learning_rate',
-                        dest='learning_rate',
-                        help='Learning rate',
-                        type=float,
-                        default=0.00125)
-    parser.add_argument('--model',
-                        dest='model',
-                        help='pretrained parameters of the model',
-                        type=str,
-                        default=None)
-    parser.add_argument('--num_workers',
-                        dest='num_workers',
-                        help='Num workers for data loader',
-                        type=int,
-                        default=6)
-    parser.add_argument('--eval_frequency',
-                        help='evaluation interval (in epoch)',
-                        default=1,
-                        type=int)
-    parser.add_argument('--save_start',
-                        help='the epoch start save checkpoint',
-                        default=100,
-                        type=int)
-    parser.add_argument('--save_frequency',
-                        help='checkpoint save interval (in epoch)',
-                        default=1,
-                        type=int)
-    parser.add_argument('--disp_frequency',
-                        help='display interval (in batch)',
-                        default=20,
-                        type=int)
-    parser.add_argument('--keep_checkpoint_max',
-                        dest='keep_checkpoint_max',
-                        help='Maximum number of checkpoints to save',
-                        type=int,
-                        default=5)
-    parser.add_argument('--save_dir',
-                        dest='save_dir',
-                        help='The directory for saving the model snapshot',
-                        type=str,
-                        default='./runs/test')
-    parser.add_argument('--seed',
-                        dest='seed',
-                        help='Set the random seed of paddle during training.',
-                        default=444,
-                        type=int)
+    parser.add_argument(
+        '--config',
+        dest="cfg",
+        help="The config file.",
+        default='./configs/gupnet/gupnet_dla34_kitti.yml',
+        type=str)
+    parser.add_argument(
+        '--batch_size',
+        dest='batch_size',
+        help='Mini batch size of one gpu or cpu',
+        type=int,
+        default=8)
+    parser.add_argument(
+        '--learning_rate',
+        dest='learning_rate',
+        help='Learning rate',
+        type=float,
+        default=0.00125)
+    parser.add_argument(
+        '--model',
+        dest='model',
+        help='pretrained parameters of the model',
+        type=str,
+        default=None)
+    parser.add_argument(
+        '--num_workers',
+        dest='num_workers',
+        help='Num workers for data loader',
+        type=int,
+        default=6)
+    parser.add_argument(
+        '--eval_frequency',
+        help='evaluation interval (in epoch)',
+        default=1,
+        type=int)
+    parser.add_argument(
+        '--save_start',
+        help='the epoch start save checkpoint',
+        default=100,
+        type=int)
+    parser.add_argument(
+        '--save_frequency',
+        help='checkpoint save interval (in epoch)',
+        default=1,
+        type=int)
+    parser.add_argument(
+        '--disp_frequency',
+        help='display interval (in batch)',
+        default=20,
+        type=int)
+    parser.add_argument(
+        '--keep_checkpoint_max',
+        dest='keep_checkpoint_max',
+        help='Maximum number of checkpoints to save',
+        type=int,
+        default=5)
+    parser.add_argument(
+        '--save_dir',
+        dest='save_dir',
+        help='The directory for saving the model snapshot',
+        type=str,
+        default='./runs/test')
+    parser.add_argument(
+        '--seed',
+        dest='seed',
+        help='Set the random seed of paddle during training.',
+        default=444,
+        type=int)
 
     return parser.parse_args()
 
@@ -81,7 +93,6 @@ def paddle_main(args):
     """
     """
     logger = Logger(output=args.save_dir)
-    # paddle.device.set_device('gpu:0')  # 把get—device的结果直接复制进去
     if args.seed is not None:
         logger.info("use random seed {}".format(args.seed))
         paddle.seed(args.seed)
