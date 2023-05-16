@@ -1,4 +1,3 @@
-from re import T
 import paddle
 import paddle.nn as nn
 import numpy as np

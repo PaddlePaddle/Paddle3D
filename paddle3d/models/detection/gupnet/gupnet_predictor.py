@@ -23,8 +23,7 @@ def get_heading_angle(heading):
 
 
 def decode_detections(dets, info, calibs, cls_mean_size, threshold):
-    '''
-    NOTE: THIS IS A NUMPY FUNCTION
+    '''NOTE: THIS IS A NUMPY FUNCTION
     input: dets, numpy array, shape in [batch x max_dets x dim]
     input: img_info, dict, necessary information of input images
     input: calibs, corresponding calibs for the input batch

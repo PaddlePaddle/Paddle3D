@@ -8,10 +8,9 @@ from visualdl import LogWriter
 import numpy as np
 import paddle3d.env as env
 from paddle3d.apis.checkpoint import Checkpoint, CheckpointABC
-from paddle3d.apis.pipeline import training_step, validation_step
+from paddle3d.apis.pipeline import validation_step
 from paddle3d.apis.scheduler import Scheduler
-from paddle3d.models.detection.gupnet.gup_scheduler import build_lr_scheduler, build_optimizer
-from paddle3d.models.detection.gupnet.gupnet_predictor import extract_dets_from_outputs, decode_detections
+from paddle3d.models.detection.gupnet.gupnet_scheduler import build_lr_scheduler, build_optimizer
 from paddle3d.utils.logger import Logger, logger
 from paddle3d.utils.shm_utils import _get_shared_memory_size_in_M
 from paddle3d.models.detection.gupnet.gupnet_loss import Hierarchical_Task_Learning, GupnetLoss

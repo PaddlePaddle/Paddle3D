@@ -4,9 +4,8 @@ import numpy as np
 import paddle
 import random
 import paddle3d.env as paddle3d_env
-from paddle3d.models.detection.gupnet.gup_trainer import GupTrainer
+from paddle3d.models.detection.gupnet.gupnet_trainer import GupTrainer
 from paddle3d.apis.config import Config
-from paddle3d.slim import get_qat_config
 from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import Logger
 

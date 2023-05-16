@@ -1,4 +1,3 @@
-import numpy as np
 import paddle.nn.functional as F
 import paddle
 

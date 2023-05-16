@@ -1,10 +1,8 @@
 import numpy as np
 import math
-import os
 import paddle
 import paddle.nn as nn
 from paddle3d.utils import checkpoint
-from paddle3d.models.layers import param_init
 from paddle3d.utils.logger import logger
 
 __all__ = ["GUP_DLA", "GUP_DLA34"]
