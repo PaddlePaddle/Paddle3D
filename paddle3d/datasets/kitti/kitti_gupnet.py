@@ -1,4 +1,3 @@
-import paddle
 import os
 import numpy as np
 from PIL import Image
@@ -8,11 +7,8 @@ from paddle3d.datasets.kitti.kitti_utils import Object3d, Calibration, box_lidar
 from paddle3d.datasets.kitti.kitti_gupnet_utils import get_affine_transform, affine_transform, gaussian_radius, draw_umich_gaussian, angle2class
 from paddle3d.apis import manager
 from paddle3d.sample import Sample
-from typing import Dict, List
 from paddle3d.datasets.metrics import MetricABC
 from paddle3d.geometries.bbox import (BBoxes2D, BBoxes3D, CoordMode,
-                                      boxes3d_kitti_camera_to_imageboxes,
-                                      boxes3d_lidar_to_kitti_camera,
                                       project_to_image)
 from paddle3d.thirdparty import kitti_eval
 from paddle3d.utils.logger import logger
