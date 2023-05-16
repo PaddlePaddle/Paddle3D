@@ -26,13 +26,13 @@ try:
 except ModuleNotFoundError:
     from pprndr.cpp_extensions import trunc_exp
 
-from pprndr.models.fields import BaseField
+from pprndr.models.fields import BaseDensityField
 
 __all__ = ['RefNeRFField']
 
 
 @manager.FIELDS.add_component
-class RefNeRFField(BaseField):
+class RefNeRFField(BaseDensityField):
     """
     Ref-NeRF Field. Reference: https://arxiv.org/abs/2112.03907
 

@@ -12,19 +12,18 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import sys
 from typing import Any, Callable, Tuple
 
 import numpy as np
 import paddle
-import paddle.nn as nn
 from paddle.nn import functional as F
 
 try:
     import ray_marching_lib
 except ModuleNotFoundError:
     from pprndr.cpp_extensions import ray_marching_lib
-from pprndr.cameras.rays import Frustums, RayBundle, RaySamples
+
+from pprndr.cameras.rays import RaySamples
 from pprndr.geometries import ContractionType
 
 __all__ = [
@@ -32,7 +31,9 @@ __all__ = [
     "contract_inv", "transmittance_from_alpha", "unpack_info", "ray_marching",
     "pdf_ray_marching", "render_visibility", "pack_info",
     "render_weight_from_density", "accumulate_along_rays",
-    "render_alpha_from_densities", "render_alpha_from_sdf"
+    "render_alpha_from_densities", "render_alpha_from_sdf",
+    "render_weights_from_alpha", "render_alpha_from_sdf", "get_anneal_coeff",
+    "get_cosine_coeff"
 ]
 
 
@@ -364,29 +365,33 @@ def get_anneal_coeff(ray_samples: RaySamples = None,
 def get_cosine_coeff(ray_samples: RaySamples = None,
                      signed_distance: paddle.Tensor = None,
                      radius_filter: float = None) -> paddle.Tensor:
-    if radius_filter is not None:
-        inside_pts = ray_samples.frustums.bin_points
-        radius = paddle.linalg.norm(inside_pts, p=2, axis=-1, keepdim=True)
-        inside_sphere = (radius[:, :-1] < 1.0) | (radius[:, 1:] < 1.0)
+    if signed_distance.ndim == 3:
+        prev_sdf = signed_distance[:, :-1, :]  # [b, n_samples, 1]
+        next_sdf = signed_distance[:, 1:, :]  # [b, n_samples, 1]
+    else:
+        prev_sdf = signed_distance[::2, :]  # [n_total_samples, 1]
+        next_sdf = signed_distance[1::2, :]  # [n_total_samples, 1]
 
-    batch_size, n_samples_plus1, _ = ray_samples.frustums.bin_points.shape
-    signed_distance = signed_distance.reshape((batch_size, n_samples_plus1))
-    prev_sdf = signed_distance[:, :-1]  # [b, n_samples]
-    next_sdf = signed_distance[:, 1:]  # [b, n_samples]
-    prev_z_vals = ray_samples.frustums.starts  # [b, n_samples]
-    next_z_vals = ray_samples.frustums.ends  # [b, n_samples]
-    mid_sdf = (prev_sdf + next_sdf) * 0.5
+    prev_z_vals = ray_samples.frustums.starts  # [b, n_samples, 1] or [n_total_samples, 1]
+    next_z_vals = ray_samples.frustums.ends  # [b, n_samples, 1] or [n_total_samples, 1]
+
     cos_val = (next_sdf - prev_sdf) / (
-        next_z_vals - prev_z_vals + 1e-5).squeeze(axis=-1)  # [b, n_samples]
+        next_z_vals - prev_z_vals + 1e-5
+    )  # [b, n_samples, 1] or [n_total_samples, 1]
     prev_cos_val = paddle.concat(
-        [paddle.zeros([batch_size, 1]), cos_val[:, :-1]],
-        axis=-1)  # [b, n_samples]
-    cos_val = paddle.stack([prev_cos_val, cos_val], axis=-1)
-    cos_val = paddle.min(cos_val, axis=-1, keepdim=True)
+        [paddle.zeros_like(cos_val[..., :1, :]), cos_val[..., :-1, :]],
+        axis=-2)  # [b, n_samples, 1] or [n_total_samples, 1]
+    cos_val = paddle.concat([prev_cos_val, cos_val],
+                            axis=-1)  # [b, n_samples, 2]
+    cos_val = paddle.min(cos_val, axis=-1, keepdim=True)  # [b, n_samples, 1]
     cos_val = cos_val.clip(-1e3, 0.0)
 
     if radius_filter is not None:
+        inside_pts = ray_samples.frustums.bin_points
+        radius = paddle.linalg.norm(inside_pts, p=2, axis=-1, keepdim=True)
+        inside_sphere = (radius[..., :-1, :] < 1.0) | (radius[..., 1:, :] < 1.0)
         cos_val = cos_val * inside_sphere
+
     return cos_val
 
 
@@ -396,7 +401,6 @@ def render_alpha_from_sdf(ray_samples,
                           coeff=1.0,
                           clip_alpha=True):
     # Note: coeff limits sdf interval
-    batch_size, n_vals, _ = signed_distances.shape  # [B, n_sdfs, 1]
     dists = ray_samples.frustums.ends - ray_samples.frustums.starts
     estimated_next_sdf = signed_distances + coeff * dists * 0.5
     estimated_prev_sdf = signed_distances - coeff * dists * 0.5

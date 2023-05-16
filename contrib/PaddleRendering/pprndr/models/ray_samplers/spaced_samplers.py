@@ -187,8 +187,7 @@ class NeuSOutsideSampler(BaseSampler):
             euclidean_bins=euclidean_bins.unsqueeze(-1),
             spacing_bins=bins.unsqueeze(-1),
             spacing2euclidean_fn=None,
-            positions=positions  # Made sure not to use middle points.
-        )
+            positions=positions)
         return ray_samples
 
 
@@ -212,7 +211,6 @@ euclidean_bins
                  spacing_end: float = 1.0,
                  stratified: bool = True,
                  unified_jittering: bool = False):
-        #self.num_samples = num_samples
 
         super(UniformSampler, self).__init__(
             spacing_fn=lambda x: x,

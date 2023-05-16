@@ -82,6 +82,7 @@ def training_step(model: paddle.nn.Layer,
     return outputs
 
 
+@paddle.no_grad()
 def inference_step(model: paddle.nn.Layer,
                    ray_bundle: RayBundle,
                    ray_batch_size: int,

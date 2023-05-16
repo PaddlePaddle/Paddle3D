@@ -14,3 +14,4 @@
 
 from .grids import *
 from .mlps import *
+from .weight_initializers import *

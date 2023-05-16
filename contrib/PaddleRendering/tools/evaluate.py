@@ -84,10 +84,8 @@ def main(args):
         load_pretrained_model(cfg.model, args.model)
 
     eval_pixel_stride = dic.get("eval_pixel_stride", 1)
-    max_eval_num = getattr(dic["val_dataset"], "max_eval_num", None)
-    eval_with_grad = getattr(dic["val_dataset"], "eval_with_grad", False)
     eval_to_cpu = getattr(dic["val_dataset"], "eval_to_cpu", False)
-    image_coords_offset = getattr(dict["val_dataset"], "image_coords_offset",
+    image_coords_offset = getattr(dic["val_dataset"], "image_coords_offset",
                                   0.5)
 
     validate_mesh = getattr(dic["val_dataset"], "validate_mesh", None)
@@ -111,7 +109,6 @@ def main(args):
     trainer.evaluate(
         save_dir=os.path.join(os.path.split(args.model)[0], "renderings"),
         val_ray_batch_size=args.ray_batch_size,
-        max_eval_num=max_eval_num,
         validate_mesh=validate_mesh,
         mesh_resolution=mesh_resolution,
         pixel_stride=eval_pixel_stride,
@@ -119,7 +116,6 @@ def main(args):
         bound_min=bound_min,  # used for generating mesh
         bound_max=bound_max,  # used for generating mesh
         image_coords_offset=image_coords_offset,
-        eval_with_grad=eval_with_grad,
         eval_to_cpu=eval_to_cpu)
 
 
