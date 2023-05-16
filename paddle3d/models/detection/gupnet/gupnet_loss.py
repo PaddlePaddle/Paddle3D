@@ -54,7 +54,6 @@ class Hierarchical_Task_Learning:
                     for pre_topic in self.loss_graph[current_topic]:
                         control_weight *= c_weights[0][
                             self.term2index[pre_topic]]
-                    # (t / T)^(1 - α)
                     loss_weights[current_topic] = time_value**(1 -
                                                                control_weight)
             self.past_losses.pop(0)

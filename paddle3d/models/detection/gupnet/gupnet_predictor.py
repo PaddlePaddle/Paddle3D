@@ -2,7 +2,7 @@ import numpy as np
 import paddle
 from paddle3d.models.detection.gupnet.gupnet_helper import _nms, _topk, _transpose_and_gather_feat
 
-num_heading_bin = 12  # hyper param
+num_heading_bin = 12
 
 
 def class2angle(cls, residual, to_label_format=False):

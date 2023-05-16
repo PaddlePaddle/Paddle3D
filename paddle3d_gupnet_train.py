@@ -23,7 +23,7 @@ def parse_args():
                         dest='batch_size',
                         help='Mini batch size of one gpu or cpu',
                         type=int,
-                        default=10)
+                        default=8)
     parser.add_argument('--learning_rate',
                         dest='learning_rate',
                         help='Learning rate',
@@ -38,7 +38,7 @@ def parse_args():
                         dest='num_workers',
                         help='Num workers for data loader',
                         type=int,
-                        default=6)
+                        default=8)
     parser.add_argument('--eval_frequency',
                         help='evaluation interval (in epoch)',
                         default=1,
@@ -60,12 +60,11 @@ def parse_args():
                         help='Maximum number of checkpoints to save',
                         type=int,
                         default=5)
-    parser.add_argument(
-        '--save_dir',
-        dest='save_dir',
-        help='The directory for saving the model snapshot',
-        type=str,
-        default='./runs/paddle3d_gupnet_2023-05-16_10b_8w_savelog')
+    parser.add_argument('--save_dir',
+                        dest='save_dir',
+                        help='The directory for saving the model snapshot',
+                        type=str,
+                        default='./runs/test')
     parser.add_argument('--seed',
                         dest='seed',
                         help='Set the random seed of paddle during training.',

@@ -146,3 +146,4 @@ paddle3d/models/detection/gupnet/gupnet.py
 paddle3d_gupnet_train.py
 paddle3d_gupnet_val.py
 configs/gupnet/gupnet_dla34_kitti.yml
+paddle3d_gupnet_train.py

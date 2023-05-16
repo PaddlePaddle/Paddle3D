@@ -37,7 +37,7 @@ def parse_args():
                         dest='num_workers',
                         help='Num workers for data loader',
                         type=int,
-                        default=6)
+                        default=8)
     parser.add_argument('--eval_frequency',
                         help='evaluation interval (in epoch)',
                         default=1,

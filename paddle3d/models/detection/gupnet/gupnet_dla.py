@@ -10,11 +10,6 @@ from paddle3d.utils.logger import logger
 __all__ = ["GUP_DLA", "GUP_DLA34"]
 
 
-def get_model_url(data='imagenet', name='dla34', hash='ba72cf86'):
-    return os.path.join('http://dl.yf.io/dla/models', data,
-                        '{}-{}.pth'.format(name, hash))
-
-
 def _make_conv_level(in_channels,
                      out_channels,
                      num_convs,

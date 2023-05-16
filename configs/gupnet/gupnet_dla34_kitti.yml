@@ -22,6 +22,6 @@ lr_scheduler:
 model:
   type: GUPNET
   downsample: 4
-  threshold: 0.2  # confidence filter
+  threshold: 0.2
   val_dataset_root: /your_dataset_dir/kitti
   pretrained_model: ./checkpoint/dla34-ba72cf86_paddle.pdparams

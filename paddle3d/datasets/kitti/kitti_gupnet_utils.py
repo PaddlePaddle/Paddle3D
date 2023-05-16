@@ -2,7 +2,6 @@ from typing import List
 import cv2
 import numpy as np
 
-# TODO: 新增GUPNET相关函数
 ###################  affine trainsform  ###################
 
 
