@@ -8,10 +8,7 @@ from paddle3d.utils.logger import logger
 __all__ = ["GUP_DLA", "GUP_DLA34"]
 
 
-def _make_conv_level(in_channels,
-                     out_channels,
-                     num_convs,
-                     stride=1,
+def _make_conv_level(in_channels, out_channels, num_convs, stride=1,
                      dilation=1):
     """
         make conv layers based on its number.
@@ -19,13 +16,14 @@ def _make_conv_level(in_channels,
     layers = []
     for i in range(num_convs):
         layers.extend([
-            nn.Conv2D(in_channels,
-                      out_channels,
-                      kernel_size=3,
-                      stride=stride if i == 0 else 1,
-                      padding=dilation,
-                      bias_attr=False,
-                      dilation=dilation),
+            nn.Conv2D(
+                in_channels,
+                out_channels,
+                kernel_size=3,
+                stride=stride if i == 0 else 1,
+                padding=dilation,
+                bias_attr=False,
+                dilation=dilation),
             nn.BatchNorm2D(out_channels),
             nn.ReLU()
         ])
@@ -43,12 +41,13 @@ class Conv2d(nn.Layer):
                  stride=1,
                  bias=True):
         super(Conv2d, self).__init__()
-        self.conv = nn.Conv2D(in_planes,
-                              out_planes,
-                              kernel_size=kernal_szie,
-                              stride=stride,
-                              padding=kernal_szie // 2,
-                              bias_attr=bias)
+        self.conv = nn.Conv2D(
+            in_planes,
+            out_planes,
+            kernel_size=kernal_szie,
+            stride=stride,
+            padding=kernal_szie // 2,
+            bias_attr=bias)
         self.bn = nn.BatchNorm2D(out_planes)
         self.relu = nn.ReLU()
 
@@ -62,27 +61,30 @@ class Conv2d(nn.Layer):
 class BasicBlock(nn.Layer):
     """Basic Block
     """
+
     def __init__(self, in_channels, out_channels, stride=1, dilation=1):
         super().__init__()
 
-        self.conv1 = nn.Conv2D(in_channels,
-                               out_channels,
-                               kernel_size=3,
-                               stride=stride,
-                               padding=dilation,
-                               bias_attr=False,
-                               dilation=dilation)
+        self.conv1 = nn.Conv2D(
+            in_channels,
+            out_channels,
+            kernel_size=3,
+            stride=stride,
+            padding=dilation,
+            bias_attr=False,
+            dilation=dilation)
         self.bn1 = nn.BatchNorm2D(out_channels)
 
         self.relu = nn.ReLU()
 
-        self.conv2 = nn.Conv2D(out_channels,
-                               out_channels,
-                               kernel_size=3,
-                               stride=1,
-                               padding=dilation,
-                               bias_attr=False,
-                               dilation=dilation)
+        self.conv2 = nn.Conv2D(
+            out_channels,
+            out_channels,
+            kernel_size=3,
+            stride=1,
+            padding=dilation,
+            bias_attr=False,
+            dilation=dilation)
         self.bn2 = nn.BatchNorm2D(out_channels)
 
     def forward(self, x, residual=None):
@@ -125,35 +127,33 @@ class Tree(nn.Layer):
             root_dim += in_channels
 
         if level == 1:
-            self.tree1 = block(in_channels,
-                               out_channels,
-                               stride,
-                               dilation=dilation)
+            self.tree1 = block(
+                in_channels, out_channels, stride, dilation=dilation)
 
-            self.tree2 = block(out_channels,
-                               out_channels,
-                               stride=1,
-                               dilation=dilation)
+            self.tree2 = block(
+                out_channels, out_channels, stride=1, dilation=dilation)
         else:
             new_level = level - 1
-            self.tree1 = Tree(new_level,
-                              block,
-                              in_channels,
-                              out_channels,
-                              stride,
-                              root_dim=0,
-                              root_kernel_size=root_kernel_size,
-                              dilation=dilation,
-                              root_residual=root_residual)
+            self.tree1 = Tree(
+                new_level,
+                block,
+                in_channels,
+                out_channels,
+                stride,
+                root_dim=0,
+                root_kernel_size=root_kernel_size,
+                dilation=dilation,
+                root_residual=root_residual)
 
-            self.tree2 = Tree(new_level,
-                              block,
-                              out_channels,
-                              out_channels,
-                              root_dim=root_dim + out_channels,
-                              root_kernel_size=root_kernel_size,
-                              dilation=dilation,
-                              root_residual=root_residual)
+            self.tree2 = Tree(
+                new_level,
+                block,
+                out_channels,
+                out_channels,
+                root_dim=root_dim + out_channels,
+                root_kernel_size=root_kernel_size,
+                dilation=dilation,
+                root_residual=root_residual)
         if level == 1:
             self.root = Root(root_dim, out_channels, root_kernel_size,
                              root_residual)
@@ -171,11 +171,12 @@ class Tree(nn.Layer):
         # if in_channels != out_channels and not isinstance(self.tree1, Tree):
         if in_channels != out_channels:  # 和
             self.project = nn.Sequential(
-                nn.Conv2D(in_channels,
-                          out_channels,
-                          kernel_size=1,
-                          stride=1,
-                          bias_attr=False), nn.BatchNorm2D(out_channels))
+                nn.Conv2D(
+                    in_channels,
+                    out_channels,
+                    kernel_size=1,
+                    stride=1,
+                    bias_attr=False), nn.BatchNorm2D(out_channels))
 
     def forward(self, x, residual=None, children=None):
         """forward
@@ -203,14 +204,16 @@ class Tree(nn.Layer):
 class Root(nn.Layer):
     """Root module
     """
+
     def __init__(self, in_channels, out_channels, kernel_size, residual):
         super(Root, self).__init__()
-        self.conv = nn.Conv2D(in_channels,
-                              out_channels,
-                              kernel_size=1,
-                              stride=1,
-                              bias_attr=False,
-                              padding=(kernel_size - 1) // 2)
+        self.conv = nn.Conv2D(
+            in_channels,
+            out_channels,
+            kernel_size=1,
+            stride=1,
+            bias_attr=False,
+            padding=(kernel_size - 1) // 2)
         self.bn = nn.BatchNorm2D(out_channels)
         self.relu = nn.ReLU()
         self.residual = residual
@@ -232,6 +235,7 @@ class Root(nn.Layer):
 class GUP_DLA(nn.Layer):
     """DLA base module
     """
+
     def __init__(self,
                  levels,
                  channels,
@@ -252,68 +256,76 @@ class GUP_DLA(nn.Layer):
         block = BasicBlock
 
         self.base_layer = nn.Sequential(
-            nn.Conv2D(3,
-                      channels[0],
-                      kernel_size=7,
-                      stride=1,
-                      padding=3,
-                      bias_attr=False), nn.BatchNorm2D(channels[0]), nn.ReLU())
+            nn.Conv2D(
+                3,
+                channels[0],
+                kernel_size=7,
+                stride=1,
+                padding=3,
+                bias_attr=False), nn.BatchNorm2D(channels[0]), nn.ReLU())
 
-        self.level0 = _make_conv_level(in_channels=channels[0],
-                                       out_channels=channels[0],
-                                       num_convs=levels[0])
+        self.level0 = _make_conv_level(
+            in_channels=channels[0],
+            out_channels=channels[0],
+            num_convs=levels[0])
 
-        self.level1 = _make_conv_level(in_channels=channels[0],
-                                       out_channels=channels[1],
-                                       num_convs=levels[1],
-                                       stride=2)
+        self.level1 = _make_conv_level(
+            in_channels=channels[0],
+            out_channels=channels[1],
+            num_convs=levels[1],
+            stride=2)
 
-        self.level2 = Tree(level=levels[2],
-                           block=block,
-                           in_channels=channels[1],
-                           out_channels=channels[2],
-                           stride=2,
-                           level_root=False,
-                           root_residual=residual_root)
+        self.level2 = Tree(
+            level=levels[2],
+            block=block,
+            in_channels=channels[1],
+            out_channels=channels[2],
+            stride=2,
+            level_root=False,
+            root_residual=residual_root)
 
-        self.level3 = Tree(level=levels[3],
-                           block=block,
-                           in_channels=channels[2],
-                           out_channels=channels[3],
-                           stride=2,
-                           level_root=True,
-                           root_residual=residual_root)
+        self.level3 = Tree(
+            level=levels[3],
+            block=block,
+            in_channels=channels[2],
+            out_channels=channels[3],
+            stride=2,
+            level_root=True,
+            root_residual=residual_root)
 
-        self.level4 = Tree(level=levels[4],
-                           block=block,
-                           in_channels=channels[3],
-                           out_channels=channels[4],
-                           stride=2,
-                           level_root=True,
-                           root_residual=residual_root)
+        self.level4 = Tree(
+            level=levels[4],
+            block=block,
+            in_channels=channels[3],
+            out_channels=channels[4],
+            stride=2,
+            level_root=True,
+            root_residual=residual_root)
 
-        self.level5 = Tree(level=levels[5],
-                           block=block,
-                           in_channels=channels[4],
-                           out_channels=channels[5],
-                           stride=2,
-                           level_root=True,
-                           root_residual=residual_root)
+        self.level5 = Tree(
+            level=levels[5],
+            block=block,
+            in_channels=channels[4],
+            out_channels=channels[5],
+            stride=2,
+            level_root=True,
+            root_residual=residual_root)
 
         self.avgpool = nn.AvgPool2D(pool_size)
-        self.fc = nn.Conv2D(channels[-1],
-                            num_classes,
-                            kernel_size=1,
-                            stride=1,
-                            padding=0,
-                            bias_attr=True)
+        self.fc = nn.Conv2D(
+            channels[-1],
+            num_classes,
+            kernel_size=1,
+            stride=1,
+            padding=0,
+            bias_attr=True)
 
         for m in self.sublayers():
             if isinstance(m, nn.Conv2D):
                 n = m.weight.shape[0] * m.weight.shape[1] * m.weight.shape[2]
-                v = np.random.normal(loc=0.,
-                                     scale=np.sqrt(2. / n),
-                                     size=m.weight.shape).astype('float32')
+                v = np.random.normal(
+                    loc=0., scale=np.sqrt(2. / n),
+                    size=m.weight.shape).astype('float32')
                 m.weight.set_value(v)
             elif isinstance(m, nn.BatchNorm2D):
                 m.weight.set_value(np.ones(m.weight.shape).astype('float32'))
@@ -345,6 +357,7 @@ class GUP_DLA(nn.Layer):
 class GUP_DLAUp(nn.Layer):
     """DLA Up module
     """
+
     def __init__(self, in_channels_list, scales_list=(1, 2, 4, 8, 16)):
         super(GUP_DLAUp, self).__init__()
         scales_list = np.array(scales_list, dtype=int)
@@ -353,9 +366,10 @@ class GUP_DLAUp(nn.Layer):
             j = -i - 2
             setattr(
                 self, 'ida_{}'.format(i),
-                GUP_IDAUp(in_channels_list=in_channels_list[j:],
-                          up_factors_list=scales_list[j:] // scales_list[j],
-                          out_channels=in_channels_list[j]))
+                GUP_IDAUp(
+                    in_channels_list=in_channels_list[j:],
+                    up_factors_list=scales_list[j:] // scales_list[j],
+                    out_channels=in_channels_list[j]))
             scales_list[j + 1:] = scales_list[j]
             in_channels_list[j + 1:] = [
                 in_channels_list[j] for _ in in_channels_list[j + 1:]
@@ -375,6 +389,7 @@ class GUP_IDAUp(nn.Layer):
     input: features map of different layers
     output: up-sampled features
     '''
+
     def __init__(self, in_channels_list, up_factors_list, out_channels):
         super(GUP_IDAUp, self).__init__()
         self.in_channels_list = in_channels_list
@@ -384,24 +399,23 @@ class GUP_IDAUp(nn.Layer):
             in_channels = in_channels_list[i]
             up_factors = int(up_factors_list[i])
 
-            proj = Conv2d(in_channels,
-                          out_channels,
-                          kernal_szie=3,
-                          stride=1,
-                          bias=False)
-            node = Conv2d(out_channels * 2,
-                          out_channels,
-                          kernal_szie=3,
-                          stride=1,
-                          bias=False)
-            up = nn.Conv2DTranspose(in_channels=out_channels,
-                                    out_channels=out_channels,
-                                    kernel_size=up_factors * 2,
-                                    stride=up_factors,
-                                    padding=up_factors // 2,
-                                    output_padding=0,
-                                    groups=out_channels,
-                                    bias_attr=False)
+            proj = Conv2d(
+                in_channels, out_channels, kernal_szie=3, stride=1, bias=False)
+            node = Conv2d(
+                out_channels * 2,
+                out_channels,
+                kernal_szie=3,
+                stride=1,
+                bias=False)
+            up = nn.Conv2DTranspose(
+                in_channels=out_channels,
+                out_channels=out_channels,
+                kernel_size=up_factors * 2,
+                stride=up_factors,
+                padding=up_factors // 2,
+                output_padding=0,
+                groups=out_channels,
+                bias_attr=False)
             # self.fill_up_weights(up)
 
             setattr(self, 'proj_' + str(i), proj)
@@ -412,9 +426,9 @@ class GUP_IDAUp(nn.Layer):
         for m in self.sublayers():
             if isinstance(m, nn.Conv2D):
                 n = m.weight.shape[0] * m.weight.shape[1] * m.weight.shape[2]
-                v = np.random.normal(loc=0.,
-                                     scale=np.sqrt(2. / n),
-                                     size=m.weight.shape).astype('float32')
+                v = np.random.normal(
+                    loc=0., scale=np.sqrt(2. / n),
+                    size=m.weight.shape).astype('float32')
                 m.weight.set_value(v)
             elif isinstance(m, nn.BatchNorm2D):
                 m.weight.set_value(np.ones(m.weight.shape).astype('float32'))
@@ -448,9 +462,10 @@ class GUP_IDAUp(nn.Layer):
 
 
 def GUP_DLA34(pretrained_model, **kwargs):
-    model = GUP_DLA(levels=[1, 1, 1, 2, 2, 1],
-                    channels=[16, 32, 64, 128, 256, 512],
-                    **kwargs)
+    model = GUP_DLA(
+        levels=[1, 1, 1, 2, 2, 1],
+        channels=[16, 32, 64, 128, 256, 512],
+        **kwargs)
 
     if pretrained_model:
         logger.info('loading dla34 model ... ')

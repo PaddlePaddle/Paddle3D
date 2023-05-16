@@ -53,8 +53,8 @@ class Hierarchical_Task_Learning:
                     for pre_topic in self.loss_graph[current_topic]:
                         control_weight *= c_weights[0][
                             self.term2index[pre_topic]]
-                    loss_weights[current_topic] = time_value**(1 -
-                                                               control_weight)
+                    loss_weights[current_topic] = time_value**(
+                        1 - control_weight)
             self.past_losses.pop(0)
         self.past_losses.append(eval_loss_input)
         return loss_weights
@@ -90,31 +90,28 @@ class GupnetLoss(nn.Layer):
         return loss, self.stat
 
     def compute_segmentation_loss(self, input, target):
-        input['heatmap'] = paddle.clip(paddle.nn.functional.sigmoid(
-            input['heatmap']),
-                                       min=1e-4,
-                                       max=1 - 1e-4)
+        input['heatmap'] = paddle.clip(
+            paddle.nn.functional.sigmoid(input['heatmap']),
+            min=1e-4,
+            max=1 - 1e-4)
         loss = focal_loss_cornernet(input['heatmap'], target['heatmap'])
         self.stat['seg_loss'] = loss
         return loss
 
     def compute_bbox2d_loss(self, input, target):
         # compute size2d loss
-        size2d_input = extract_input_from_tensor(input['size_2d'],
-                                                 target['indices'],
-                                                 target['mask_2d'])
+        size2d_input = extract_input_from_tensor(
+            input['size_2d'], target['indices'], target['mask_2d'])
         size2d_target = extract_target_from_tensor(target['size_2d'],
                                                    target['mask_2d'])
         size2d_loss = F.l1_loss(size2d_input, size2d_target, reduction='mean')
         # compute offset2d loss
-        offset2d_input = extract_input_from_tensor(input['offset_2d'],
-                                                   target['indices'],
-                                                   target['mask_2d'])
+        offset2d_input = extract_input_from_tensor(
+            input['offset_2d'], target['indices'], target['mask_2d'])
         offset2d_target = extract_target_from_tensor(target['offset_2d'],
                                                      target['mask_2d'])
-        offset2d_loss = F.l1_loss(offset2d_input,
-                                  offset2d_target,
-                                  reduction='mean')
+        offset2d_loss = F.l1_loss(
+            offset2d_input, offset2d_target, reduction='mean')
 
         loss = offset2d_loss + size2d_loss
         self.stat['offset2d_loss'] = offset2d_loss
@@ -124,8 +121,8 @@ class GupnetLoss(nn.Layer):
     def compute_bbox3d_loss(self, input, target, mask_type='mask_2d'):
         # compute depth loss
         depth_input = input['depth'][input['train_tag']]
-        depth_input, depth_log_variance = depth_input[:, 0:1], depth_input[:,
-                                                                           1:2]
+        depth_input, depth_log_variance = depth_input[:, 0:1], depth_input[:, 1:
+                                                                           2]
         depth_target = extract_target_from_tensor(target['depth'],
                                                   target[mask_type])
         depth_loss = laplacian_aleatoric_uncertainty_loss(
@@ -135,9 +132,8 @@ class GupnetLoss(nn.Layer):
         offset3d_input = input['offset_3d'][input['train_tag']]
         offset3d_target = extract_target_from_tensor(target['offset_3d'],
                                                      target[mask_type])
-        offset3d_loss = F.l1_loss(offset3d_input,
-                                  offset3d_target,
-                                  reduction='mean')
+        offset3d_loss = F.l1_loss(
+            offset3d_input, offset3d_target, reduction='mean')
 
         # compute size3d loss
         size3d_input = input['size_3d'][input['train_tag']]

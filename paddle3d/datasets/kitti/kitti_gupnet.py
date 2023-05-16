@@ -18,6 +18,7 @@ from paddle3d.utils.logger import logger
 class GUPKittiMonoDataset(KittiDetDataset):
     """
     """
+
     def __init__(self, dataset_root, mode='train'):
         super().__init__(dataset_root=dataset_root, mode=mode)
         self.dataset_root = dataset_root
@@ -154,15 +155,13 @@ class GUPKittiMonoDataset(KittiDetDataset):
                             2 * self.shift, 2 * self.shift)
 
         # add affine transformation for 2d images.
-        trans, trans_inv = get_affine_transform(center,
-                                                crop_size,
-                                                0,
-                                                self.resolution,
-                                                inv=1)
-        img = img.transform(tuple(self.resolution.tolist()),
-                            method=Image.AFFINE,
-                            data=tuple(trans_inv.reshape(-1).tolist()),
-                            resample=Image.BILINEAR)
+        trans, trans_inv = get_affine_transform(
+            center, crop_size, 0, self.resolution, inv=1)
+        img = img.transform(
+            tuple(self.resolution.tolist()),
+            method=Image.AFFINE,
+            data=tuple(trans_inv.reshape(-1).tolist()),
+            resample=Image.BILINEAR)
         coord_range = np.array([center - crop_size / 2,
                                 center + crop_size / 2]).astype(np.float32)
 
@@ -472,19 +471,19 @@ class GUPKittiMetric(MetricABC):
                 'The number of predictions({}) is not equal to the number of GroundTruths({})'
                 .format(len(dt_annos), len(gt_annos)))
 
-        metric_r40_dict = kitti_eval(gt_annos,
-                                     dt_annos,
-                                     current_classes=list(
-                                         self.classmap.values()),
-                                     metric_types=["bbox", "bev", "3d"],
-                                     recall_type='R40')
+        metric_r40_dict = kitti_eval(
+            gt_annos,
+            dt_annos,
+            current_classes=list(self.classmap.values()),
+            metric_types=["bbox", "bev", "3d"],
+            recall_type='R40')
 
-        metric_r11_dict = kitti_eval(gt_annos,
-                                     dt_annos,
-                                     current_classes=list(
-                                         self.classmap.values()),
-                                     metric_types=["bbox", "bev", "3d"],
-                                     recall_type='R11')
+        metric_r11_dict = kitti_eval(
+            gt_annos,
+            dt_annos,
+            current_classes=list(self.classmap.values()),
+            metric_types=["bbox", "bev", "3d"],
+            recall_type='R11')
 
         if verbose:
             for cls, cls_metrics in metric_r40_dict.items():

@@ -4,9 +4,8 @@ import paddle
 
 def _nms(heatmap, kernel=3):
     padding = (kernel - 1) // 2
-    heatmapmax = F.max_pool2d(heatmap, (kernel, kernel),
-                              stride=1,
-                              padding=padding)
+    heatmapmax = F.max_pool2d(
+        heatmap, (kernel, kernel), stride=1, padding=padding)
     keep = (heatmapmax == heatmap).astype('float32')
     return heatmap * keep
 
@@ -62,8 +61,8 @@ def _transpose_and_gather_feat(feat, ind):
     Returns:
     '''
     feat = feat.transpose(perm=(0, 2, 3, 1))  # B * C * H * W ---> B * H * W * C
-    feat = feat.reshape(
-        (feat.shape[0], -1, feat.shape[3]))  # B * H * W * C ---> B * (H*W) * C
+    feat = feat.reshape((feat.shape[0], -1,
+                         feat.shape[3]))  # B * H * W * C ---> B * (H*W) * C
     feat = _gather_feat(feat, ind)  # B * len(ind) * C
     return feat
 

@@ -85,9 +85,8 @@ def extract_dets_from_outputs(outputs, K=50):
     size_3d = outputs['size_3d'].reshape((batch, K, -1))
     offset_3d = outputs['offset_3d'].reshape((batch, K, -1))
 
-    heatmap = paddle.clip(paddle.nn.functional.sigmoid(heatmap),
-                          min=1e-4,
-                          max=1 - 1e-4)
+    heatmap = paddle.clip(
+        paddle.nn.functional.sigmoid(heatmap), min=1e-4, max=1 - 1e-4)
 
     # perform nms on heatmaps
     heatmap = _nms(heatmap)

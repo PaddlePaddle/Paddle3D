@@ -40,6 +40,7 @@ def weights_init_xavier(layer):
 class GUPNET(BaseMonoModel):
     """
     """
+
     def __init__(self,
                  max_detection: int = 50,
                  downsample=4,
@@ -47,17 +48,18 @@ class GUPNET(BaseMonoModel):
                  box_with_velocity: bool = False,
                  val_dataset_root=None,
                  pretrained_model=None):
-        super(GUPNET, self).__init__(box_with_velocity=box_with_velocity,
-                                     need_camera_to_image=True,
-                                     need_lidar_to_camera=False,
-                                     need_down_ratios=True)
+        super(GUPNET, self).__init__(
+            box_with_velocity=box_with_velocity,
+            need_camera_to_image=True,
+            need_lidar_to_camera=False,
+            need_down_ratios=True)
 
         assert downsample in [4, 8, 16, 32]
         super(GUPNET, self).__init__()
         self.threshold = threshold
         self.max_detection = max_detection
-        self.val_dataset = GUPKittiMonoDataset(dataset_root=val_dataset_root,
-                                               mode='val')
+        self.val_dataset = GUPKittiMonoDataset(
+            dataset_root=val_dataset_root, mode='val')
         self.head_conv = 256  # default setting for head conv
         self.mean_size = np.array(
             [[1.76255119, 0.66068622, 0.84422524],
@@ -69,99 +71,113 @@ class GUPNET(BaseMonoModel):
         channels = self.backbone.channels
         self.first_level = int(np.log2(downsample))
         scales = [2**i for i in range(len(channels[self.first_level:]))]
-        self.feat_up = GUP_DLAUp(in_channels_list=channels[self.first_level:],
-                                 scales_list=scales)
+        self.feat_up = GUP_DLAUp(
+            in_channels_list=channels[self.first_level:], scales_list=scales)
 
         # initialize the head of pipeline, according to heads setting.
         self.heatmap = nn.Sequential(
-            nn.Conv2D(channels[self.first_level],
-                      self.head_conv,
-                      kernel_size=3,
-                      padding=1,
-                      bias_attr=True), nn.ReLU(),
-            nn.Conv2D(self.head_conv,
-                      3,
-                      kernel_size=1,
-                      stride=1,
-                      padding=0,
-                      bias_attr=nn.initializer.Constant(value=-2.19)))
+            nn.Conv2D(
+                channels[self.first_level],
+                self.head_conv,
+                kernel_size=3,
+                padding=1,
+                bias_attr=True), nn.ReLU(),
+            nn.Conv2D(
+                self.head_conv,
+                3,
+                kernel_size=1,
+                stride=1,
+                padding=0,
+                bias_attr=nn.initializer.Constant(value=-2.19)))
         self.offset_2d = nn.Sequential(
-            nn.Conv2D(channels[self.first_level],
-                      self.head_conv,
-                      kernel_size=3,
-                      padding=1,
-                      bias_attr=True), nn.ReLU(),
-            nn.Conv2D(self.head_conv,
-                      2,
-                      kernel_size=1,
-                      stride=1,
-                      padding=0,
-                      bias_attr=True))
+            nn.Conv2D(
+                channels[self.first_level],
+                self.head_conv,
+                kernel_size=3,
+                padding=1,
+                bias_attr=True), nn.ReLU(),
+            nn.Conv2D(
+                self.head_conv,
+                2,
+                kernel_size=1,
+                stride=1,
+                padding=0,
+                bias_attr=True))
         self.size_2d = nn.Sequential(
-            nn.Conv2D(channels[self.first_level],
-                      self.head_conv,
-                      kernel_size=3,
-                      padding=1,
-                      bias_attr=True), nn.ReLU(),
-            nn.Conv2D(self.head_conv,
-                      2,
-                      kernel_size=1,
-                      stride=1,
-                      padding=0,
-                      bias_attr=True))
+            nn.Conv2D(
+                channels[self.first_level],
+                self.head_conv,
+                kernel_size=3,
+                padding=1,
+                bias_attr=True), nn.ReLU(),
+            nn.Conv2D(
+                self.head_conv,
+                2,
+                kernel_size=1,
+                stride=1,
+                padding=0,
+                bias_attr=True))
 
         self.depth = nn.Sequential(
-            nn.Conv2D(channels[self.first_level] + 2 + self.cls_num,
-                      self.head_conv,
-                      kernel_size=3,
-                      padding=1,
-                      bias_attr=True), nn.BatchNorm2D(self.head_conv),
-            nn.ReLU(), nn.AdaptiveAvgPool2D(1),
-            nn.Conv2D(self.head_conv,
-                      2,
-                      kernel_size=1,
-                      stride=1,
-                      padding=0,
-                      bias_attr=True))
+            nn.Conv2D(
+                channels[self.first_level] + 2 + self.cls_num,
+                self.head_conv,
+                kernel_size=3,
+                padding=1,
+                bias_attr=True), nn.BatchNorm2D(self.head_conv), nn.ReLU(),
+            nn.AdaptiveAvgPool2D(1),
+            nn.Conv2D(
+                self.head_conv,
+                2,
+                kernel_size=1,
+                stride=1,
+                padding=0,
+                bias_attr=True))
         self.offset_3d = nn.Sequential(
-            nn.Conv2D(channels[self.first_level] + 2 + self.cls_num,
-                      self.head_conv,
-                      kernel_size=3,
-                      padding=1,
-                      bias_attr=True), nn.BatchNorm2D(self.head_conv),
-            nn.ReLU(), nn.AdaptiveAvgPool2D(1),
-            nn.Conv2D(self.head_conv,
-                      2,
-                      kernel_size=1,
-                      stride=1,
-                      padding=0,
-                      bias_attr=True))
+            nn.Conv2D(
+                channels[self.first_level] + 2 + self.cls_num,
+                self.head_conv,
+                kernel_size=3,
+                padding=1,
+                bias_attr=True), nn.BatchNorm2D(self.head_conv), nn.ReLU(),
+            nn.AdaptiveAvgPool2D(1),
+            nn.Conv2D(
+                self.head_conv,
+                2,
+                kernel_size=1,
+                stride=1,
+                padding=0,
+                bias_attr=True))
         self.size_3d = nn.Sequential(
-            nn.Conv2D(channels[self.first_level] + 2 + self.cls_num,
-                      self.head_conv,
-                      kernel_size=3,
-                      padding=1,
-                      bias_attr=True), nn.BatchNorm2D(self.head_conv),
-            nn.ReLU(), nn.AdaptiveAvgPool2D(1),
-            nn.Conv2D(self.head_conv,
-                      4,
-                      kernel_size=1,
-                      stride=1,
-                      padding=0,
-                      bias_attr=True))
+            nn.Conv2D(
+                channels[self.first_level] + 2 + self.cls_num,
+                self.head_conv,
+                kernel_size=3,
+                padding=1,
+                bias_attr=True), nn.BatchNorm2D(self.head_conv), nn.ReLU(),
+            nn.AdaptiveAvgPool2D(1),
+            nn.Conv2D(
+                self.head_conv,
+                4,
+                kernel_size=1,
+                stride=1,
+                padding=0,
+                bias_attr=True))
         self.heading = nn.Sequential(
-            nn.Conv2D(channels[self.first_level] + 2 + self.cls_num,
-                      self.head_conv,
-                      kernel_size=3,
-                      padding=1,
-                      bias_attr=True), nn.BatchNorm2D(self.head_conv),
-            nn.ReLU(), nn.AdaptiveAvgPool2D(1),
-            nn.Conv2D(self.head_conv,
-                      24,
-                      kernel_size=1,
-                      stride=1,
-                      padding=0,
-                      bias_attr=True))
+            nn.Conv2D(
+                channels[self.first_level] + 2 + self.cls_num,
+                self.head_conv,
+                kernel_size=3,
+                padding=1,
+                bias_attr=True), nn.BatchNorm2D(self.head_conv), nn.ReLU(),
+            nn.AdaptiveAvgPool2D(1),
+            nn.Conv2D(
+                self.head_conv,
+                24,
+                kernel_size=1,
+                stride=1,
+                padding=0,
+                bias_attr=True))
 
         # init layers
         self.offset_2d.apply(fill_fc_weights)
@@ -201,11 +217,13 @@ class GUPNET(BaseMonoModel):
         ret['heatmap'] = self.heatmap(feat)
         ret['offset_2d'] = self.offset_2d(feat)
         ret['size_2d'] = self.size_2d(feat)
-        inds, cls_ids = _topk(_nms(
-            paddle.clip(paddle.nn.functional.sigmoid(ret['heatmap']),
-                        min=1e-4,
-                        max=1 - 1e-4)),
-                              K=self.max_detection)[1:3]
+        inds, cls_ids = _topk(
+            _nms(
+                paddle.clip(
+                    paddle.nn.functional.sigmoid(ret['heatmap']),
+                    min=1e-4,
+                    max=1 - 1e-4)),
+            K=self.max_detection)[1:3]
         masks = paddle.ones(inds.shape).astype(paddle.bool)
         ret.update(
             self.get_roi_feat(feat, inds, masks, ret, calibs, coord_ranges,
@@ -221,11 +239,12 @@ class GUPNET(BaseMonoModel):
         ]
         info = {key: val.detach().cpu().numpy() for key, val in info.items()}
         cls_mean_size = self.val_dataset.cls_mean_size
-        predictions = decode_detections(dets=predictions,
-                                        info=info,
-                                        calibs=calibs,
-                                        cls_mean_size=cls_mean_size,
-                                        threshold=self.threshold)
+        predictions = decode_detections(
+            dets=predictions,
+            info=info,
+            calibs=calibs,
+            cls_mean_size=cls_mean_size,
+            threshold=self.threshold)
         res = []
         for id, img_id in enumerate(predictions.keys()):
             res.append(
@@ -242,7 +261,8 @@ class GUPNET(BaseMonoModel):
 
         if 'calibs' in sample:
             ret.calibs = [
-                sample['calibs'][i][index] for i in range(len(sample['calibs']))
+                sample['calibs'][i][index]
+                for i in range(len(sample['calibs']))
             ]
 
         if len(results):
@@ -253,10 +273,11 @@ class GUPNET(BaseMonoModel):
             bboxes_2d = BBoxes2D(results[:, 2:6])
 
             # TODO: fix hard code here
-            bboxes_3d = BBoxes3D(results[:, [9, 10, 11, 8, 6, 7, 12]],
-                                 coordmode=CoordMode.KittiCamera,
-                                 origin=(0.5, 1, 0.5),
-                                 rot_axis=1)
+            bboxes_3d = BBoxes3D(
+                results[:, [9, 10, 11, 8, 6, 7, 12]],
+                coordmode=CoordMode.KittiCamera,
+                origin=(0.5, 1, 0.5),
+                rot_axis=1)
 
             confidences = results[:, 13]
 
@@ -286,11 +307,12 @@ class GUPNET(BaseMonoModel):
             boxes_num = paddle.to_tensor([0] * BATCH_SIZE).astype('int32')
             for x in box2d_masked[:, 0]:
                 boxes_num[x.astype('int32')] += 1
-            roi_feature_masked = roi_align(feat,
-                                           box2d_masked[:, 1:],
-                                           boxes_num=boxes_num,
-                                           output_size=[7, 7],
-                                           aligned=False)
+            roi_feature_masked = roi_align(
+                feat,
+                box2d_masked[:, 1:],
+                boxes_num=boxes_num,
+                output_size=[7, 7],
+                aligned=False)
 
             # get coord range of each roi
             coord_ranges_mask2d = coord_ranges[box2d_masked[:, 0].astype(
@@ -299,18 +321,16 @@ class GUPNET(BaseMonoModel):
             # map box2d coordinate from feature map size domain to original image size domain
             box2d_masked = paddle.concat([
                 box2d_masked[:, 0:1], box2d_masked[:, 1:2] / WIDE *
-                (coord_ranges_mask2d[:, 1, 0:1] -
-                 coord_ranges_mask2d[:, 0, 0:1]) +
-                coord_ranges_mask2d[:, 0, 0:1], box2d_masked[:, 2:3] / HEIGHT *
-                (coord_ranges_mask2d[:, 1, 1:2] -
-                 coord_ranges_mask2d[:, 0, 1:2]) +
-                coord_ranges_mask2d[:, 0, 1:2], box2d_masked[:, 3:4] / WIDE *
-                (coord_ranges_mask2d[:, 1, 0:1] -
-                 coord_ranges_mask2d[:, 0, 0:1]) +
+                (coord_ranges_mask2d[:, 1, 0:1] - coord_ranges_mask2d[:, 0, 0:1]
+                 ) + coord_ranges_mask2d[:, 0, 0:1],
+                box2d_masked[:, 2:3] / HEIGHT *
+                (coord_ranges_mask2d[:, 1, 1:2] - coord_ranges_mask2d[:, 0, 1:2]
+                 ) + coord_ranges_mask2d[:, 0, 1:2],
+                box2d_masked[:, 3:4] / WIDE * (coord_ranges_mask2d[:, 1, 0:1] -
+                                               coord_ranges_mask2d[:, 0, 0:1]) +
                 coord_ranges_mask2d[:, 0, 0:1], box2d_masked[:, 4:5] / HEIGHT *
-                (coord_ranges_mask2d[:, 1, 1:2] -
-                 coord_ranges_mask2d[:, 0, 1:2]) +
-                coord_ranges_mask2d[:, 0, 1:2]
+                (coord_ranges_mask2d[:, 1, 1:2] - coord_ranges_mask2d[:, 0, 1:2]
+                 ) + coord_ranges_mask2d[:, 0, 1:2]
             ], 1)
             roi_calibs = calibs[box2d_masked[:, 0].astype(paddle.int32)]
 
@@ -334,34 +354,37 @@ class GUPNET(BaseMonoModel):
                 [box2d_masked[:, 0:1], coords_in_camera_coord], -1)
             # generate coord maps
             coord_maps = paddle.concat([
-                paddle.tile(paddle.concat([
-                    coords_in_camera_coord[:, 1:2] + i *
-                    (coords_in_camera_coord[:, 3:4] -
-                     coords_in_camera_coord[:, 1:2]) / 6 for i in range(7)
-                ], -1).unsqueeze(1),
-                            repeat_times=([1, 7, 1])).unsqueeze(1),
-                paddle.tile(paddle.concat([
-                    coords_in_camera_coord[:, 2:3] + i *
-                    (coords_in_camera_coord[:, 4:5] -
-                     coords_in_camera_coord[:, 2:3]) / 6 for i in range(7)
-                ], -1).unsqueeze(2),
-                            repeat_times=([1, 1, 7])).unsqueeze(1)
+                paddle.tile(
+                    paddle.concat([
+                        coords_in_camera_coord[:, 1:2] + i *
+                        (coords_in_camera_coord[:, 3:4] -
+                         coords_in_camera_coord[:, 1:2]) / 6 for i in range(7)
+                    ], -1).unsqueeze(1),
+                    repeat_times=([1, 7, 1])).unsqueeze(1),
+                paddle.tile(
+                    paddle.concat([
+                        coords_in_camera_coord[:, 2:3] + i *
+                        (coords_in_camera_coord[:, 4:5] -
+                         coords_in_camera_coord[:, 2:3]) / 6 for i in range(7)
+                    ], -1).unsqueeze(2),
+                    repeat_times=([1, 1, 7])).unsqueeze(1)
             ], 1)
 
             # concatenate coord maps with feature maps in the channel dim
             cls_hots = paddle.zeros([num_masked_bin, self.cls_num])
-            cls_hots[paddle.arange(num_masked_bin),
-                     cls_ids[mask].astype(paddle.int32)] = 1.0
+            cls_hots[paddle.arange(num_masked_bin), cls_ids[mask].
+                     astype(paddle.int32)] = 1.0
 
             roi_feature_masked = paddle.concat([
                 roi_feature_masked, coord_maps,
-                paddle.tile(cls_hots.unsqueeze(-1).unsqueeze(-1),
-                            repeat_times=([1, 1, 7, 7]))
+                paddle.tile(
+                    cls_hots.unsqueeze(-1).unsqueeze(-1),
+                    repeat_times=([1, 1, 7, 7]))
             ], 1)
 
             # compute heights of projected objects
-            box2d_height = paddle.clip(box2d_masked[:, 4] - box2d_masked[:, 2],
-                                       min=1.0)
+            box2d_height = paddle.clip(
+                box2d_masked[:, 4] - box2d_masked[:, 2], min=1.0)
             # compute real 3d height
             size3d_offset = self.size_3d(roi_feature_masked)[:, :, 0, 0]
             h3d_log_std = size3d_offset[:, 3:4]
@@ -376,10 +399,10 @@ class GUPNET(BaseMonoModel):
                 h3d_log_std.squeeze() + 2 *
                 (roi_calibs[:, 0, 0].log() - box2d_height.log())).unsqueeze(-1)
             # log(σ_d^2) = log(σ_p^2 + σ_b^2)
-            depth_net_log_std = paddle.logsumexp(paddle.concat(
-                [depth_net_out[:, 1:2], depth_geo_log_std], -1),
-                                                 -1,
-                                                 keepdim=True)
+            depth_net_log_std = paddle.logsumexp(
+                paddle.concat([depth_net_out[:, 1:2], depth_geo_log_std], -1),
+                -1,
+                keepdim=True)
             depth_net_out = paddle.concat(
                 [(1. /
                   (paddle.nn.functional.sigmoid(depth_net_out[:, 0:1]) + 1e-6) -
@@ -403,24 +426,27 @@ class GUPNET(BaseMonoModel):
     def get_roi_feat(self, feat, inds, mask, ret, calibs, coord_ranges, cls_ids,
                      K):
         BATCH_SIZE, _, HEIGHT, WIDE = feat.shape
-        coord_map = paddle.tile(paddle.concat([
-            paddle.tile(paddle.arange(WIDE).unsqueeze(0),
-                        repeat_times=([HEIGHT, 1])).unsqueeze(0),
-            paddle.tile(paddle.arange(HEIGHT).unsqueeze(-1),
-                        repeat_times=([1, WIDE])).unsqueeze(0)
-        ],
-                                              axis=0).unsqueeze(0),
-                                repeat_times=([BATCH_SIZE, 1, 1,
-                                               1])).astype('float32')
+        coord_map = paddle.tile(
+            paddle.concat([
+                paddle.tile(
+                    paddle.arange(WIDE).unsqueeze(0),
+                    repeat_times=([HEIGHT, 1])).unsqueeze(0),
+                paddle.tile(
+                    paddle.arange(HEIGHT).unsqueeze(-1),
+                    repeat_times=([1, WIDE])).unsqueeze(0)
+            ],
+                          axis=0).unsqueeze(0),
+            repeat_times=([BATCH_SIZE, 1, 1, 1])).astype('float32')
 
         box2d_centre = coord_map + ret['offset_2d']
         box2d_maps = paddle.concat([
             box2d_centre - ret['size_2d'] / 2, box2d_centre + ret['size_2d'] / 2
         ], 1)
         box2d_maps = paddle.concat([
-            paddle.tile(paddle.arange(BATCH_SIZE).unsqueeze(-1).unsqueeze(
-                -1).unsqueeze(-1),
-                        repeat_times=([1, 1, HEIGHT, WIDE])).astype('float32'),
+            paddle.tile(
+                paddle.arange(BATCH_SIZE).unsqueeze(-1).unsqueeze(-1).unsqueeze(
+                    -1),
+                repeat_times=([1, 1, HEIGHT, WIDE])).astype('float32'),
             box2d_maps
         ], 1)
         # box2d_maps is box2d in each bin

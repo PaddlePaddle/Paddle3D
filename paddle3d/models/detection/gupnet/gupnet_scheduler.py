@@ -20,14 +20,12 @@ def build_lr_scheduler(cfg, last_epoch):
             (1 - math.cos(math.pi * cur_epoch / num_epoch)) / 2
         return cur_decay
 
-    lr_scheduler = lr_sched.LambdaDecay(cfg['learning_rate'],
-                                        lr_lbmd,
-                                        last_epoch=last_epoch)
+    lr_scheduler = lr_sched.LambdaDecay(
+        cfg['learning_rate'], lr_lbmd, last_epoch=last_epoch)
     warmup_lr_scheduler = None
     if cfg['warmup']:
-        warmup_lr_scheduler = lr_sched.LambdaDecay(1.0,
-                                                   warm_up_lr_lbmd,
-                                                   last_epoch=last_epoch)
+        warmup_lr_scheduler = lr_sched.LambdaDecay(
+            1.0, warm_up_lr_lbmd, last_epoch=last_epoch)
     return lr_scheduler, warmup_lr_scheduler
 
 
@@ -48,19 +46,21 @@ def build_optimizer(cfg_optimizer, lr_scheduler, warmup_lr_scheduler, model):
     }]
 
     if cfg_optimizer['type'] == 'adam':
-        optimizer = optim.Adam(learning_rate=lr_scheduler,
-                               parameters=parameters,
-                               weight_decay=0.0001)
+        optimizer = optim.Adam(
+            learning_rate=lr_scheduler,
+            parameters=parameters,
+            weight_decay=0.0001)
         warm_up_optimizer = None
         if warmup_lr_scheduler:
-            warm_up_optimizer = optim.Adam(learning_rate=warmup_lr_scheduler,
-                                           parameters=parameters,
-                                           weight_decay=0.0001)
+            warm_up_optimizer = optim.Adam(
+                learning_rate=warmup_lr_scheduler,
+                parameters=parameters,
+                weight_decay=0.0001)
 
     elif cfg_optimizer['type'] == 'sgd':
         optimizer = optim.SGD(parameters, lr=cfg_optimizer['lr'], momentum=0.9)
     else:
-        raise NotImplementedError("%s optimizer is not supported" %
-                                  cfg_optimizer['type'])
+        raise NotImplementedError(
+            "%s optimizer is not supported" % cfg_optimizer['type'])
 
     return optimizer, warm_up_optimizer
