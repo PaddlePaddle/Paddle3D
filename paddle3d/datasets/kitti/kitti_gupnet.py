@@ -4,8 +4,8 @@ import numpy as np
 from PIL import Image
 from typing import List, Dict
 from paddle3d.datasets.kitti.kitti_det import KittiDetDataset
-from paddle3d.datasets.kitti.kitti_utils import *
-from paddle3d.datasets.kitti.kitti_gupnet_utils import *
+from paddle3d.datasets.kitti.kitti_utils import Object3d, Calibration, box_lidar_to_camera, filter_fake_result, camera_record_to_object
+from paddle3d.datasets.kitti.kitti_gupnet_utils import get_affine_transform, affine_transform, gaussian_radius, draw_umich_gaussian, angle2class
 from paddle3d.apis import manager
 from paddle3d.sample import Sample
 from typing import Dict, List
@@ -513,34 +513,3 @@ class GUPKittiMetric(MetricABC):
                                     metric_type.upper().ljust(4), thresh,
                                     *metrics[metric_type]))
         return metric_r40_dict, metric_r11_dict
-
-
-if __name__ == '__main__':
-    dataset = GUPKittiMonoDataset(dataset_root='/data1_4t/rrl/kitti-mini',
-                                  mode='test')
-    dataloader = paddle.io.DataLoader(dataset=dataset,
-                                      batch_size=4,
-                                      shuffle=False)
-    print(dataset.class_name)
-
-    for batch_idx, (inputs, calibs, coord_ranges, targets,
-                    info) in enumerate(dataloader):
-        # test image
-        # img = inputs[0].numpy().transpose(1, 2, 0)
-        # img = (img * dataset.std + dataset.mean) * 255
-        # img = Image.fromarray(img.astype(np.uint8))
-        # img.show()
-        # # print(targets['size_3d'][0][0])
-        #
-        # # test heatmap
-        # heatmap = targets['heatmap'][0]  # image id
-        # heatmap = Image.fromarray(heatmap[0].numpy() * 255)  # cats id
-        # heatmap.show()
-        print(f'batch_idx: {batch_idx}, inputs.shape: {inputs.shape}')
-
-    # print ground truth fisrt
-    objects = dataset.get_label(0)
-    for object in objects:
-        print(object.to_kitti_format())
-
-    pass

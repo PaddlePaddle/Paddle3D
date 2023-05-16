@@ -104,7 +104,6 @@ def compute_box_3d(obj, calib):
 ###################  affine trainsform  ###################
 
 
-# TODO: 新增GUPNET相关函数
 ###################  heatmap gaussian  ###################
 def gaussian_radius(bbox_size, min_overlap=0.7):
     height, width = bbox_size
@@ -159,7 +158,6 @@ def draw_umich_gaussian(heatmap, center, radius, k=1):
 ###################  heatmap gaussian  ###################
 
 
-# TODO: 新增GUPNET相关函数
 ###################  others  ###################
 def angle2class(angle):
     ''' Convert continuous angle to discrete class and residual. '''
