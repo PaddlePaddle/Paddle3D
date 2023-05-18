@@ -1,9 +1,8 @@
 batch_size: 4
 epochs: 20
-ema_cfg:          # for megviiemahook
+ema_cfg:       
   decay: 0.9990
   step: 10560
-# temporal_start_epoch: 2 # for sequentialcontrolhook 
 
 train_dataset:
   type: CBGSDataset
@@ -201,7 +200,7 @@ model:
 
   img_bev_encoder_backbone:
     type: CustomResNet
-    numC_input: 160 #numC_Trans * (len(range(*multi_adj_frame_id_cfg))+1),
+    numC_input: 160 # numC_Trans * (len(range(*multi_adj_frame_id_cfg))+1),
     num_channels: [160, 320, 640]
 
   img_bev_encoder_neck:
@@ -287,20 +286,7 @@ model:
     tasks:
         - num_class: 10
           class_names: ["car", "truck", "construction_vehicle", "bus", "trailer", "barrier", "motorcycle", "bicycle", "pedestrian", "traffic_cone"]
-        # - num_class: 1
-        #   class_names: ["car"]
-        # - num_class: 2
-        #   class_names: ["truck", "construction_vehicle"]
-        # - num_class: 2
-        #   class_names: ["bus", "trailer"]
-        # - num_class: 1
-        #   class_names: ["barrier"]
-        # - num_class: 2
-        #   class_names: ["motorcycle", "bicycle"]
-        # - num_class: 2
-        #   class_names: ["pedestrian", "traffic_cone"]
     weight: 0.25 # loc_loss weight
-    # code_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.2, 0.2, 1.0, 1.0] # [x, y, z, w, h, l, vx, vy, sin(angle), cos(angle)] weight in loc loss
     common_heads:
       reg: [2, 2] # classes, num_conv
       height: [1, 2]

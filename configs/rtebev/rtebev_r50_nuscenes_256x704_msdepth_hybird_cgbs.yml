@@ -3,7 +3,6 @@ epochs: 20
 ema_cfg:          # for megviiemahook
   decay: 0.9990
   step: 10560
-# temporal_start_epoch: 2 # for sequentialcontrolhook 
 
 train_dataset:
   type: CBGSDataset
@@ -26,7 +25,6 @@ train_dataset:
     test_mode: False
     box_type_3d: LiDAR
     img_info_prototype: bevdet
-    # multi_adj_frame_id_cfg: [1, 2, 1]
 
     pipeline:
       - type: PrepareImageInputs
@@ -100,12 +98,9 @@ val_dataset:
   test_mode: True
   box_type_3d: LiDAR
   img_info_prototype: bevdet
-  # multi_adj_frame_id_cfg: [1, 2, 1]
-
 
   pipeline:
     - type: PrepareImageInputs
-      # is_train: False
       data_config: {
         cams: ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT', 
                 'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT'],
@@ -287,7 +282,6 @@ model:
         - num_class: 10
           class_names: ["car", "truck", "construction_vehicle", "bus", "trailer", "barrier", "motorcycle", "bicycle", "pedestrian", "traffic_cone"]
     weight: 0.25 # loc_loss weight
-    # code_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.2, 0.2, 1.0, 1.0] # [x, y, z, w, h, l, vx, vy, sin(angle), cos(angle)] weight in loc loss
     common_heads:
       reg: [2, 2] # classes, num_conv
       height: [1, 2]
