@@ -2,9 +2,9 @@
 
 ## 目录
 * [量化训练 & 评估](#4)
-* [导出 & 部署](#8)
+* [量化模型导出](#8)
 
-## <h2 id="4">训练 & 评估</h2>
+## <h2 id="4">量化训练 & 评估</h2>
 
 #### 数据准备
 参考具体各个模型的数据集准备
@@ -14,7 +14,7 @@
 以BEVFormer在nuScenes数据集上的量化训练为例：
 
 使用已训练好的模型为预训练模型参数。
-
+```
 python -m paddle.distributed.launch --gpus 0,1,2,3 tools/train.py --config configs/bevformer/bevformer_tiny_r50_fpn_nuscenes.yml --quant_config configs/quant/bevformer_PACT.yml --save_dir ./output_bevformer_tiny_quant --num_workers 4 --save_interval 1 --model ./output_bevformer_tiny/epoch_24/model.pdparams
 ```
 
@@ -28,10 +28,7 @@ python tools/evaluate.py  --quant_config configs/quant/bevformer_PACT.yml --conf
 
 评估启动参数介绍可参考文档[全流程速览](../../quickstart.md#模型评估)。
 
-## <h2 id="8">量化导出 & 部署</h2>
-
-### <h3 id="81">模型导出</h3>
-
+## <h2 id="8">量化模型导出</h2>
 
 运行以下命令，将训练时保存的动态图模型文件导出成推理引擎能够加载的静态图模型文件。
 
