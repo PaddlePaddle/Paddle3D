@@ -110,8 +110,16 @@ FLAGS_deploy=True python tools/export.py --config configs/rtebev/rtebev_r50_nusc
 
 ### Python部署
 
+<<<<<<< HEAD
 部署代码所在路径为deploy/rtebev/python
 
+=======
+进入部署代码所在路径
+
+```
+cd deploy/rtebev/python
+```
+>>>>>>> 793b5eb1490b5a157d97e165cdd44b000bc0f9b1
 当num_adj参数大于0时，表示使用相邻帧，使用infer_mf_onnxtrt.py或者infer_mf_paddletrt.py进行推理。对应的配置文件为configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_1f_cgbs.yml、configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_4f_cgbs.yml。
 
 当num_adj参数等于0时，表示不使用相邻帧，使用infer_onnxtrt.py或者infer_paddletrt.py进行推理。对应的配置文件为configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_cgbs.yml。
@@ -142,18 +150,30 @@ FLAGS_deploy=True python tools/export.py --config configs/rtebev/rtebev_r50_nusc
 使用paddle inference，执行预测：
 
 ```
+<<<<<<< HEAD
 python deploy/rtebev/python/infer_mf_paddletrt.py --config /path/to/config.yml --model /path/to/model.pdparams --model_file /path/to/rtebev.pdmodel --params_file /path/to/rtebev.pdiparams
+=======
+python infer_mf_paddletrt.py --config /path/to/config.yml --model /path/to/model.pdparams --model_file /path/to/rtebev.pdmodel --params_file /path/to/rtebev.pdiparams
+>>>>>>> 793b5eb1490b5a157d97e165cdd44b000bc0f9b1
 ```
 
 使用paddle trt，执行预测：
 
 收集shape
 ```
+<<<<<<< HEAD
 python deploy/rtebev/python/infer_mf_paddletrt.py --config /path/to/config.yml --model /path/to/model.pdparams --model_file /path/to/rtebev.pdmodel --params_file /path/to/rtebev.pdiparams --use_trt --collect_shape_info
 ```
 trt-fp16推理
 ```
 python deploy/rtebev/python/infer_mf_paddletrt.py --config /path/to/config.yml --model /path/to/model.pdparams --model_file /path/to/rtebev.pdmodel --params_file /path/to/rtebev.pdiparams --use_trt --trt_precision 1
+=======
+python infer_mf_paddletrt.py --config /path/to/config.yml --model /path/to/model.pdparams --model_file /path/to/rtebev.pdmodel --params_file /path/to/rtebev.pdiparams --use_trt --collect_shape_info
+```
+trt-fp16推理
+```
+python infer_mf_paddletrt.py --config /path/to/config.yml --model /path/to/model.pdparams --model_file /path/to/rtebev.pdmodel --params_file /path/to/rtebev.pdiparams --use_trt --trt_precision 1
+>>>>>>> 793b5eb1490b5a157d97e165cdd44b000bc0f9b1
 ```
 
 ### 使用onnx-trt 推理nuscenes eval
@@ -181,5 +201,9 @@ cd ..
 5. trt-fp16推理
 
 ```
+<<<<<<< HEAD
 python deploy/rtebev/python/infer_mf_onnxtrt.py --config /path/to/config.yml --model /path/to/model.pdparams --engine /path/to/model.engine --plugin /path/to/plugin_ops/build/libtensorrt_ops.so
+=======
+python infer_mf_onnxtrt.py --config /path/to/config.yml --model /path/to/model.pdparams --engine /path/to/model.engine --plugin /path/to/plugin_ops/build/libtensorrt_ops.so
+>>>>>>> 793b5eb1490b5a157d97e165cdd44b000bc0f9b1
 ```

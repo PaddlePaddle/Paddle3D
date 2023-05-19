@@ -1143,7 +1143,11 @@ class RTEBev(nn.Layer):
 
         self.align_after_view_transfromation = True
         x = self.image_encoder(img)
+<<<<<<< HEAD
         if self.use_ms_depth:
+=======
+        if self.img_view_transformer.use_ms_depth:
+>>>>>>> 793b5eb1490b5a157d97e165cdd44b000bc0f9b1
             depth_digit, tran_feat = self.img_view_transformer.depth_net(
                 x[0], x[1], x[2], mlp_input)
             depth = F.softmax(depth_digit, axis=1)
@@ -1193,7 +1197,11 @@ class RTEBev(nn.Layer):
         x = self.img_neck(x)
 
         if self.use_depth:
+<<<<<<< HEAD
             if self.use_ms_depth:
+=======
+            if self.img_view_transformer.use_ms_depth:
+>>>>>>> 793b5eb1490b5a157d97e165cdd44b000bc0f9b1
                 depth_digit, tran_feat = self.img_view_transformer.depth_net(
                     x[0], x[1], x[2], mlp_input)
                 depth = F.softmax(depth_digit, axis=1)

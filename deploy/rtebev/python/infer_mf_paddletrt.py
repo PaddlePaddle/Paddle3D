@@ -218,7 +218,11 @@ def main(args):
         imgs, rots_curr, trans_curr, intrins = input_data[:4]
         rots_prev, trans_prev, post_rots, post_trans, bda = input_data[4:]
 
+<<<<<<< HEAD
         if trainer.model.use_ms_depth:
+=======
+        if trainer.model.img_view_transformer.use_ms_depth:
+>>>>>>> 793b5eb1490b5a157d97e165cdd44b000bc0f9b1
             mlp_input = trainer.model.img_view_transformer.get_mlp_input(*[
                 rots_curr[0:1, ...], trans_curr[0:1, ...], intrins, post_rots,
                 post_trans, bda[0:1, ...]

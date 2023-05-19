@@ -217,7 +217,11 @@ def main(args):
 
         img_inputs = sample['img_inputs']
         if trainer.model.use_depth:
+<<<<<<< HEAD
             if trainer.model.use_ms_depth:
+=======
+            if trainer.model.img_view_transformer.use_ms_depth:
+>>>>>>> 793b5eb1490b5a157d97e165cdd44b000bc0f9b1
                 mlp_input = trainer.model.img_view_transformer.get_mlp_input(
                     *img_inputs[1:7])
                 img_inputs.append(mlp_input)
