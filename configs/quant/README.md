@@ -45,7 +45,7 @@ python tools/export.py --quant_config configs/quant/bevformer.yml --config confi
 
 - 量化的BEVFormer在nuScenes Val set数据集上的表现
 
-| 模型 |  mAP | NDS | 
-| ---- |  --- | ----| 
+| 模型 |  mAP | NDS |
+| ---- |  --- | ----|
 | 原模型| 26.22 | 36.53 |
 | 量化模型 |  26.35 | 36.54 |
