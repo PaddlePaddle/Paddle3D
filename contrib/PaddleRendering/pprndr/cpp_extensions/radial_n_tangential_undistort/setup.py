@@ -5,7 +5,7 @@ if paddle.fluid.is_compiled_with_cuda() is True:
     setup(
         name='my_undist',
         ext_modules=CUDAExtension(
-            sources=['undistGPU.cpp', 'undistGPU.cu']
+            sources=['./GPU/undistGPU.cpp', './GPU/undistGPU.cu']
         )
     )
 else:
