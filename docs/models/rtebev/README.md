@@ -21,7 +21,7 @@
 
 | 模型 | 相邻帧数 | mAP | NDS | 模型下载 | 配置文件 | 日志 |
 | ---- | ------ | --- | ----| ------- |------- | ---- |
-| rtebev_r50 | 无 | - | - | [model]() | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_cgbs.yml) | [log]()|
+| rtebev_r50 | 无 | 24.27 | 42.29 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes/train.log)|
 | rtebev_r50_1f | 1 | 37.01 | 48.34 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_1f/model.pdema) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_1f_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_1f/train.log)|
 | rtebev_r50_4f | 4 | 39.66 | 50.19 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_4f/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_4f_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_4f/train.log)|
 
@@ -33,39 +33,38 @@
 ### <h3 id="41">nuScenes数据集</h3>
 #### 数据准备
 
-- 目前Paddle3D中提供的RTEBEV模型支持在nuScenes数据集上训练，因此需要先准备nuScenes数据集，请在[官网](https://www.nuscenes.org/nuscenes)进行下载，并且需要下载CAN bus expansion数据，将数据集目录准备如下：
+请下载Nuscenes测数据集, 下载作者提供的annotion文件。
 
+下载好后的数据集目录结构
 ```
-nuscenes_dataset_root
-|—— samples  
-|—— sweeps  
-|—— maps  
-└──  v1.0-trainval  
+nuscenes
+   ├── maps
+   ├── samples
+   ├── sweeps
+   ├── v1.0-trainval
+   ├── v1.0-test
+   ...
 ```
+将nuscenes数据软链至data/nuscenes，或更改配置文件数据集路径。
 
-在Paddle3D的目录下创建软链接 `data/nuscenes`，指向到上面的数据集目录:
+数据集标注打包请参考原版BEVDet实现中的数据打包脚本[tools/create_data_bevdet.py](https://github.com/HuangJunJie2017/BEVDet/blob/dev2.1/tools/create_data_bevdet.py)
 
+生成完后的数据集目录
 ```
-mkdir data
-ln -s /path/to/nuscenes_dataset_root ./data
-mv ./data/nuscenes_dataset_root ./data/nuscenes
+nuscenes
+   ├── maps
+   ├── samples
+   ├── sweeps
+   ├── v1.0-trainval
+   ├── v1.0-test
+   ├── bevdetv2-nuscenes_annotation_train.pkl
+   ├── bevdetv2-nuscenes_annotation_val.pkl
 ```
-
-为加速训练过程中Nuscenes数据集的加载和解析，需要事先将Nuscenes数据集里的标注信息存储在`pkl`后缀文件中。点击[下载](https://paddle3d.bj.bcebos.com/datasets/nuScenes/bevdetv2_mmdet3d.zip)PKL文件，解压到data/nuscenes目录下。
-
-下载解压后的数据集目录：
-
-```
-nuscenes_dataset_root
-|—— samples
-|—— sweeps
-|—— maps
-|—— v1.0-trainval
-└── bevdetv2_mmdet3d
-    |—— bevdetv2-nuscenes_infos_train.pkl
-    └── bevdetv2-nuscenes_infos_val.pkl
-```
-
+为了方便，我们提供了生成好的annotation文件
+| 文件名称 | 下载链接 |
+| -- | -- |
+| bevdetv2-nuscenes_annotation_train.pkl | [下载](https://paddle3d.bj.bcebos.com/models/bevdet/BEVDet2.0_depth_baseline/dataset/bevdetv2-nuscenes_infos_train.pkl) |
+| bevdetv2-nuscenes_annotation_val.pkl | [下载](https://paddle3d.bj.bcebos.com/models/bevdet/BEVDet2.0_depth_baseline/dataset/bevdetv2-nuscenes_infos_val.pkl) |
 
 #### 训练
 
@@ -85,7 +84,7 @@ python -m paddle.distributed.launch --gpus 0,1,2,3,4,5,6,7 tools/train.py --conf
 #### 评估
 
 ```
-python tools/evaluate.py --config configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_1f_cgbs.yml --model ./output_rtebev/epoch_20/model.pdparams --num_workers 4
+python tools/evaluate.py --config configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_1f_cgbs.yml --model ./output_rtebev/epoch_20/model.pdparams --num_workers 4 --batch_size 1
 ```
 
 评估启动参数介绍可参考文档[全流程速览](../../quickstart.md#模型评估)。
@@ -160,7 +159,7 @@ trt-fp16推理
 python infer_mf_paddletrt.py --config /path/to/config.yml --model /path/to/model.pdparams --model_file /path/to/rtebev.pdmodel --params_file /path/to/rtebev.pdiparams --use_trt --trt_precision 1
 ```
 
-### 使用onnx 推理nuscenes eval
+### 使用onnx-trt 推理nuscenes eval
 1. 安装develop paddle2onnx，可参考https://github.com/PaddlePaddle/Paddle2ONNX/blob/develop/docs/zh/compile.md
 
 2. onnx导出

@@ -512,12 +512,12 @@ class MSDepthNet(nn.Layer):
         self.context_conv = nn.Conv2D(
             mid_channels, context_channels, kernel_size=1, stride=1, padding=0)
         self.bn = nn.BatchNorm1D(27)
-        self.depth_mlp = Mlp(27, mid_channels, mid_channels)  # ?
-        self.depth_se = SELayer(mid_channels)  # NOTE: add camera-aware #?
-        self.context_mlp = Mlp(27, mid_channels, mid_channels)  # ?
-        self.context_se = SELayer(mid_channels)  # NOTE: add camera-aware #?
+        self.depth_mlp = Mlp(27, mid_channels, mid_channels)
+        self.depth_se = SELayer(mid_channels)
+        self.context_mlp = Mlp(27, mid_channels, mid_channels)
+        self.context_se = SELayer(mid_channels)
         depth_conv_list = [
-            BasicBlock(mid_channels, mid_channels),  #?
+            BasicBlock(mid_channels, mid_channels),
         ]
 
         depth_conv_list.append(SimSPPF(mid_channels, mid_channels))

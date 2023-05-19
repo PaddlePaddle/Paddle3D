@@ -9,7 +9,7 @@ train_dataset:
   dataset:
     type: BEVDetNuScenesDataset
     data_root: data/nuscenes/
-    ann_file: data/nuscenes/bevdetv2_mmdet3d/bevdetv2-nuscenes_infos_train.pkl
+    ann_file: data/nuscenes/bevdetv2-nuscenes_infos_train.pkl
     classes: [
               'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
               'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
@@ -28,9 +28,9 @@ train_dataset:
 
     pipeline:
       - type: PrepareImageInputs
-        
+
         data_config: {
-          cams: ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT', 
+          cams: ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT',
                   'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT'],
           Ncams: 6,
           input_size: [256, 704],
@@ -83,7 +83,7 @@ train_dataset:
 val_dataset:
   type: BEVDetNuScenesDataset
   data_root: data/nuscenes/
-  ann_file: data/nuscenes/bevdetv2_mmdet3d/bevdetv2-nuscenes_infos_val.pkl
+  ann_file: data/nuscenes/bevdetv2-nuscenes_infos_val.pkl
   classes: [
             'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
             'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
@@ -102,7 +102,7 @@ val_dataset:
   pipeline:
     - type: PrepareImageInputs
       data_config: {
-        cams: ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT', 
+        cams: ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT',
                 'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT'],
         Ncams: 6,
         input_size: [256, 704],
@@ -190,7 +190,7 @@ model:
       use_dcn: False,
       use_aspp: False,
       use_sppf: True
-    } 
+    }
     downsample: 8
 
   img_bev_encoder_backbone:
@@ -298,7 +298,7 @@ model:
       out_size_factor: 8
       voxel_size: [0.1, 0.1]
       code_size: 9
-    
+
     train_cfg:
       point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
       grid_size: [1024, 1024, 40]
