@@ -53,44 +53,43 @@ class BEVDetFormer(nn.Layer):
     """
 
     def __init__(self,
-                img_view_transformer, 
-                img_bev_encoder_backbone,
-                img_bev_encoder_neck,
-                start_temporal_epoch = None,
-                pre_process = None,
-                align_after_view_transfromation = False,
-                num_adj = 1,
-                with_prev = True,
-                pts_voxel_layer=None,
-                pts_voxel_encoder=None,
-                pts_middle_encoder=None,
-                pts_fusion_layer=None,
-                img_backbone=None,
-                pts_backbone=None,
-                img_neck=None,
-                pts_neck=None,
-                pts_bbox_head=None,
-                aux_pts_bbox_head=None,
-                img_roi_head=None,
-                img_rpn_head=None,
-                train_cfg=None,
-                test_cfg=None,
-                pretrained=None,
-                init_cfg=None,
-                use_depth=False,
-                use_resnetvd=False,
-                use_ms_depth=False,
-                **kwargs):
+                 img_view_transformer,
+                 img_bev_encoder_backbone,
+                 img_bev_encoder_neck,
+                 start_temporal_epoch=None,
+                 pre_process=None,
+                 align_after_view_transfromation=False,
+                 num_adj=1,
+                 with_prev=True,
+                 pts_voxel_layer=None,
+                 pts_voxel_encoder=None,
+                 pts_middle_encoder=None,
+                 pts_fusion_layer=None,
+                 img_backbone=None,
+                 pts_backbone=None,
+                 img_neck=None,
+                 pts_neck=None,
+                 pts_bbox_head=None,
+                 aux_pts_bbox_head=None,
+                 img_roi_head=None,
+                 img_rpn_head=None,
+                 train_cfg=None,
+                 test_cfg=None,
+                 pretrained=None,
+                 init_cfg=None,
+                 use_depth=False,
+                 use_resnetvd=False,
+                 use_ms_depth=False,
+                 **kwargs):
         super(BEVDetFormer, self).__init__(**kwargs)
-        
 
         self.pts_bbox_head = pts_bbox_head
         self.img_backbone = img_backbone
         self.img_neck = img_neck
         self.with_img_neck = self.img_neck is not None
-        self.img_view_transformer = img_view_transformer #builder.build_neck(img_view_transformer)
-        self.img_bev_encoder_backbone = img_bev_encoder_backbone #builder.build_backbone(img_bev_encoder_backbone)
-        self.img_bev_encoder_neck = img_bev_encoder_neck #builder.build_neck(img_bev_encoder_neck)
+        self.img_view_transformer = img_view_transformer  #builder.build_neck(img_view_transformer)
+        self.img_bev_encoder_backbone = img_bev_encoder_backbone  #builder.build_backbone(img_bev_encoder_backbone)
+        self.img_bev_encoder_neck = img_bev_encoder_neck  #builder.build_neck(img_bev_encoder_neck)
         self.use_resnetvd = use_resnetvd
         self.use_ms_depth = use_ms_depth
 
@@ -98,7 +97,7 @@ class BEVDetFormer(nn.Layer):
         if self.pre_process:
             self.pre_process_net = pre_process
 
-        self.align_after_view_transfromation = align_after_view_transfromation # if self.training else True
+        self.align_after_view_transfromation = align_after_view_transfromation  # if self.training else True
         self.num_frame = num_adj + 1
         self.with_prev = with_prev
         # self.test_cfg = DictObject(test_cfg)
@@ -111,17 +110,20 @@ class BEVDetFormer(nn.Layer):
         _, v, _ = trans[0].shape
 
         # generate grid
-        xs = paddle.linspace(0, w - 1, w, dtype=input.dtype).reshape((1, w)).expand((h, w))
+        xs = paddle.linspace(
+            0, w - 1, w, dtype=input.dtype).reshape((1, w)).expand((h, w))
         #torch.linspace(
-            #0, w - 1, w, dtype=input.dtype,
-            #device=input.device).view(1, w).expand(h, w)
-        ys = paddle.linspace(0, h - 1, h, dtype=input.dtype).reshape((h, 1)).expand((h, w))
+        #0, w - 1, w, dtype=input.dtype,
+        #device=input.device).view(1, w).expand(h, w)
+        ys = paddle.linspace(
+            0, h - 1, h, dtype=input.dtype).reshape((h, 1)).expand((h, w))
         #torch.linspace(
         #    0, h - 1, h, dtype=input.dtype,
         #    device=input.device).view(h, 1).expand(h, w)
         grid = paddle.stack((xs, ys, paddle.ones_like(xs)), -1)
         #torch.stack((xs, ys, torch.ones_like(xs)), -1)
-        grid = grid.reshape((1, h, w, 3)).expand((n, h, w, 3)).reshape((n, h, w, 3, 1))
+        grid = grid.reshape((1, h, w, 3)).expand((n, h, w, 3)).reshape((n, h, w,
+                                                                        3, 1))
         #grid.view(1, h, w, 3).expand(n, h, w, 3).view(n, h, w, 3, 1)
 
         # get transformation from current ego frame to adjacent ego frame
@@ -153,9 +155,10 @@ class BEVDetFormer(nn.Layer):
         c12l0 = bda_.matmul(c12l0)
 
         # transformation from current ego frame to adjacent ego frame
-        l02l1 = c02l0.matmul(paddle.inverse(c12l0))[:, 0, :, :].reshape((n, 1, 1, 4, 4))
+        l02l1 = c02l0.matmul(paddle.inverse(c12l0))[:, 0, :, :].reshape(
+            (n, 1, 1, 4, 4))
         #c02l0.matmul(torch.inverse(c12l0))[:, 0, :, :].view(
-            #n, 1, 1, 4, 4)
+        #n, 1, 1, 4, 4)
         '''
           c02l0 * inv(c12l0)
         = c02l0 * inv(l12l0 * c12l1)
@@ -164,7 +167,9 @@ class BEVDetFormer(nn.Layer):
         '''
 
         #l02l1 = l02l1[:, :, :, [True, True, False, True], :][:, :, :, :, [True, True, False, True]]
-        l02l1 = l02l1.index_select(paddle.to_tensor([0, 1, 3]), axis = 3).index_select(paddle.to_tensor([0, 1, 3]), axis = 4)
+        l02l1 = l02l1.index_select(
+            paddle.to_tensor([0, 1, 3]), axis=3).index_select(
+                paddle.to_tensor([0, 1, 3]), axis=4)
 
         feat2bev = paddle.zeros((3, 3), dtype=grid.dtype)
         #torch.zeros((3, 3), dtype=grid.dtype).to(grid)
@@ -173,19 +178,22 @@ class BEVDetFormer(nn.Layer):
         feat2bev[0, 2] = self.img_view_transformer.grid_lower_bound[0]
         feat2bev[1, 2] = self.img_view_transformer.grid_lower_bound[1]
         feat2bev[2, 2] = 1
-        feat2bev = feat2bev.reshape((1, 3, 3))#.view(1, 3, 3)
+        feat2bev = feat2bev.reshape((1, 3, 3))  #.view(1, 3, 3)
         tf = paddle.inverse(feat2bev).matmul(l02l1).matmul(feat2bev)
         #torch.inverse(feat2bev).matmul(l02l1).matmul(feat2bev)
 
         # transform and normalize
         grid = tf.matmul(grid)
-        normalize_factor = paddle.to_tensor([w - 1.0, h - 1.0], dtype = input.dtype)
+        normalize_factor = paddle.to_tensor([w - 1.0, h - 1.0],
+                                            dtype=input.dtype)
         #torch.tensor([w - 1.0, h - 1.0],
-                           #             dtype=input.dtype,
-                           #             device=input.device)
-        grid = grid[:, :, :, :2, 0] / normalize_factor.reshape((1, 1, 1, 2)) * 2.0 - 1.0
+        #             dtype=input.dtype,
+        #             device=input.device)
+        grid = grid[:, :, :, :2, 0] / normalize_factor.reshape(
+            (1, 1, 1, 2)) * 2.0 - 1.0
         #normalize_factor.view(1, 1, 1, 2) * 2.0 - 1.0
-        output = F.grid_sample(input, grid.cast(input.dtype), align_corners=True)
+        output = F.grid_sample(
+            input, grid.cast(input.dtype), align_corners=True)
 
         #F.grid_sample(input, grid.to(input.dtype), align_corners=True)
         return output
@@ -193,7 +201,8 @@ class BEVDetFormer(nn.Layer):
     def image_encoder(self, img):
         imgs = img
         B, N, C, imH, imW = imgs.shape
-        imgs = imgs.reshape((B * N, C, imH, imW)) # imgs.view(B * N, C, imH, imW)
+        imgs = imgs.reshape((B * N, C, imH,
+                             imW))  # imgs.view(B * N, C, imH, imW)
         if self.use_resnetvd:
             x = self.img_backbone(dict(image=imgs))
         else:
@@ -207,7 +216,7 @@ class BEVDetFormer(nn.Layer):
             #     _, output_dim, ouput_H, output_W = x[idx].shape
             #     x[idx] = x[idx].reshape_((B, N, output_dim, ouput_H, output_W))
         else:
-            if self.with_img_neck:# todo check 
+            if self.with_img_neck:  # todo check
                 x = self.img_neck(x)
                 if type(x) in [list, tuple]:
                     x = x[0]
@@ -222,8 +231,8 @@ class BEVDetFormer(nn.Layer):
             x = x[0]
         return x
 
-    def prepare_bev_feat(self, img, rot, tran, intrin, post_rot, post_tran,
-                         bda, mlp_input):
+    def prepare_bev_feat(self, img, rot, tran, intrin, post_rot, post_tran, bda,
+                         mlp_input):
         # global cnt
         # if cnt > 20:
         #     exit()
@@ -235,7 +244,7 @@ class BEVDetFormer(nn.Layer):
         # tran_np = tran.numpy()
         # np.save(f'match_result/idx6_pbf_pd_tran_{cnt}.npy', tran_np)
 
-        x = self.image_encoder(img) # backbone + neck
+        x = self.image_encoder(img)  # backbone + neck
         # x_np = x.numpy()
         # np.save(f'match_result/idx6_pbf_pd_x_{cnt}.npy', x_np)
 
@@ -246,7 +255,8 @@ class BEVDetFormer(nn.Layer):
         # np.save(f'match_result/idx6_pbf_pd_bev_feat1_{cnt}.npy', bev_feat1)
 
         if self.pre_process:
-            bev_feat = self.pre_process_net(bev_feat)[0] #self.pre_process_net(bev_feat)[0]
+            bev_feat = self.pre_process_net(bev_feat)[
+                0]  #self.pre_process_net(bev_feat)[0]
 
         # bev_feat2 = bev_feat.numpy()
         # np.save(f'match_result/idx6_pbf_pd_bev_feat2_{cnt}.npy', bev_feat2)
@@ -254,7 +264,6 @@ class BEVDetFormer(nn.Layer):
         # print("!!t2 - t1: ", t2 - t1)
         # print("!!t4 - t3: ", t4 - t3)
         # print("!!t3 - t2: ",t3 - t2)
-        
 
         return bev_feat, depth
 
@@ -265,9 +274,8 @@ class BEVDetFormer(nn.Layer):
         mlp_input = self.img_view_transformer.get_mlp_input(
             rots_curr[0:1, ...], trans_curr[0:1, ...], intrins, post_rots,
             post_trans, bda[0:1, ...])
-        inputs_curr = (imgs, rots_curr[0:1, ...], trans_curr[0:1, ...],
-                       intrins, post_rots, post_trans, bda[0:1,
-                                                           ...], mlp_input)
+        inputs_curr = (imgs, rots_curr[0:1, ...], trans_curr[0:1, ...], intrins,
+                       post_rots, post_trans, bda[0:1, ...], mlp_input)
         bev_feat, depth = self.prepare_bev_feat(*inputs_curr)
         bev_feat_list.append(bev_feat)
 
@@ -280,7 +288,8 @@ class BEVDetFormer(nn.Layer):
                                bda)
         bev_feat_list.append(feat_prev.view(1, (self.num_frame - 1) * C, H, W))
 
-        bev_feat = paddle.concat(bev_feat_list, axis=1)#torch.cat(bev_feat_list, dim=1)
+        bev_feat = paddle.concat(
+            bev_feat_list, axis=1)  #torch.cat(bev_feat_list, dim=1)
         x = self.bev_encoder(bev_feat)
         return [x], depth
 
@@ -288,8 +297,11 @@ class BEVDetFormer(nn.Layer):
         # split the inputs into each frame
         B, N, _, H, W = inputs[0].shape
         N = N // self.num_frame
-        imgs = inputs[0].reshape((B, N, self.num_frame, 3, H, W)) #inputs[0].view(B, N, self.num_frame, 3, H, W)
-        imgs = paddle.split(imgs, imgs.shape[2], axis = 2)#torch.split(imgs, 1, 2)
+        imgs = inputs[0].reshape(
+            (B, N, self.num_frame, 3, H,
+             W))  #inputs[0].view(B, N, self.num_frame, 3, H, W)
+        imgs = paddle.split(
+            imgs, imgs.shape[2], axis=2)  #torch.split(imgs, 1, 2)
         imgs = [t.squeeze(2) for t in imgs]
         rots, trans, intrins, post_rots, post_trans, bda = inputs[1:7]
         extra = [
@@ -304,21 +316,20 @@ class BEVDetFormer(nn.Layer):
             #post_rots.view(B, self.num_frame, N, 3, 3),
             #post_trans.view(B, self.num_frame, N, 3)
         ]
-        extra = [paddle.split(t, t.shape[1], 1) for t in extra] #[torch.split(t, 1, 1) for t in extra]
+        extra = [paddle.split(t, t.shape[1], 1)
+                 for t in extra]  #[torch.split(t, 1, 1) for t in extra]
         extra = [[p.squeeze(1) for p in t] for t in extra]
         rots, trans, intrins, post_rots, post_trans = extra
         return imgs, rots, trans, intrins, post_rots, post_trans, bda
 
-    def extract_img_feat(self,
-                        img,
-                        img_metas,
-                        **kwargs):
+    def extract_img_feat(self, img, img_metas, **kwargs):
         x = self.image_encoder(img[0])
         if self.use_depth:
             _, rot, tran, intrin, post_rot, post_tran, bda = img[:7]
             # print(x.shape, rot.shape, tran.shape, intrin.shape, post_rot.shape, post_tran.shape, bda.shape)
-            mlp_input = self.img_view_transformer.get_mlp_input(rot, tran, intrin, post_rot, post_tran, bda)
-   
+            mlp_input = self.img_view_transformer.get_mlp_input(
+                rot, tran, intrin, post_rot, post_tran, bda)
+
             x, depth = self.img_view_transformer(
                 [x, rot, tran, intrin, post_rot, post_tran, bda, mlp_input])
         else:
@@ -326,25 +337,25 @@ class BEVDetFormer(nn.Layer):
         x = self.bev_encoder(x)
         return [x], depth
 
-
     def extract_feat(self, points, img, img_metas, **kwargs):
         """Extract features from images and points."""
         img_feats, depth = self.extract_img_feat(img, img_metas, **kwargs)
         pts_feats = None
         return (img_feats, pts_feats, depth)
 
-    def forward_train(self,
-                      samples,
-                    #   points=None,
-                    #   img_metas=None,
-                      gt_bboxes_3d=None,
-                      gt_labels_3d=None,
-                      gt_labels=None,
-                      gt_bboxes=None,
-                    #   img_inputs=None,
-                      proposals=None,
-                      gt_bboxes_ignore=None,
-                      **kwargs):
+    def forward_train(
+            self,
+            samples,
+            #   points=None,
+            #   img_metas=None,
+            gt_bboxes_3d=None,
+            gt_labels_3d=None,
+            gt_labels=None,
+            gt_bboxes=None,
+            #   img_inputs=None,
+            proposals=None,
+            gt_bboxes_ignore=None,
+            **kwargs):
         """Forward training function.
 
         Args:
@@ -387,20 +398,20 @@ class BEVDetFormer(nn.Layer):
             points, img=img, img_metas=img_metas, **kwargs)
         #gt_depth = kwargs['gt_depth']
         if self.use_depth:
-            loss_depth = self.img_view_transformer.get_depth_loss(gt_depth, depth)
+            loss_depth = self.img_view_transformer.get_depth_loss(
+                gt_depth, depth)
             # print("loss_depth", loss_depth)
             losses = dict(loss_depth=loss_depth)
         else:
             losses = dict()
 
-        losses_pts = self.forward_pts_train(img_feats, gt_bboxes_3d,
-                                            gt_labels_3d, img_metas,
-                                            gt_bboxes_ignore)
+        losses_pts = self.forward_pts_train(
+            img_feats, gt_bboxes_3d, gt_labels_3d, img_metas, gt_bboxes_ignore)
         losses.update(losses_pts)
         if self.aux_pts_bbox_head is not None:
             aux_losses_pts = self.forward_aux_pts_train(img_feats, gt_bboxes_3d,
-                                                    gt_labels_3d, img_metas,
-                                                    gt_bboxes_ignore)
+                                                        gt_labels_3d, img_metas,
+                                                        gt_bboxes_ignore)
             losses.update(aux_losses_pts)
         # print("loss = ", losses)
         return {"loss": losses}
@@ -428,17 +439,17 @@ class BEVDetFormer(nn.Layer):
         """
         # outs = self.pts_bbox_head(pts_feats[0]) # single apply
         # loss_inputs = [gt_bboxes_3d, gt_labels_3d, outs[0]]
-        outs = self.pts_bbox_head(pts_feats) # single apply
+        outs = self.pts_bbox_head(pts_feats)  # single apply
         loss_inputs = [gt_bboxes_3d, gt_labels_3d, outs]
         losses = self.pts_bbox_head.loss(*loss_inputs)
         return losses
 
     def forward_aux_pts_train(self,
-                          pts_feats,
-                          gt_bboxes_3d,
-                          gt_labels_3d,
-                          img_metas,
-                          gt_bboxes_ignore=None):
+                              pts_feats,
+                              gt_bboxes_3d,
+                              gt_labels_3d,
+                              img_metas,
+                              gt_bboxes_ignore=None):
         """Forward function for point cloud branch.
 
         Args:
@@ -454,7 +465,7 @@ class BEVDetFormer(nn.Layer):
         Returns:
             dict: Losses of each branch.
         """
-        outs = self.aux_pts_bbox_head(pts_feats[0]) # single apply
+        outs = self.aux_pts_bbox_head(pts_feats[0])  # single apply
         loss_inputs = [gt_bboxes_3d, gt_labels_3d, outs[0]]
         # outs = self.pts_bbox_head(pts_feats) # single apply
         # loss_inputs = [gt_bboxes_3d, gt_labels_3d, outs]
@@ -467,19 +478,20 @@ class BEVDetFormer(nn.Layer):
         # return self.forward_dummy(samples, *args, **kwargs)
 
         #return self.forward_train(samples, *args, **kwargs)
-        
+
         if self.training:
             return self.forward_train(samples, *args, **kwargs)
 
         self.align_after_view_transfromation = True
         return self.forward_test(samples, *args, **kwargs)
 
-    def forward_test(self,
-                    samples,
-                    #  points=None,
-                    #  img_metas=None,
-                    #  img_inputs=None,
-                     **kwargs):
+    def forward_test(
+            self,
+            samples,
+            #  points=None,
+            #  img_metas=None,
+            #  img_inputs=None,
+            **kwargs):
         """
         Args:
             points (list[torch.Tensor]): the outer list indicates test-time
@@ -497,7 +509,6 @@ class BEVDetFormer(nn.Layer):
         points = None
         img_metas = [samples['meta']]
 
-
         #img_inputs = samples['img_inputs']
         # for debug on sample
         img_inputs = samples['img_inputs']
@@ -513,8 +524,6 @@ class BEVDetFormer(nn.Layer):
         #     raise ValueError(
         #         'num of augmentations ({}) != num of image meta ({})'.format(
         #             len(img_inputs), len(img_metas)))
-    
-        
 
         if not isinstance(img_inputs[0][0], list):
             img_inputs = [img_inputs] if img_inputs is None else img_inputs
@@ -534,7 +543,9 @@ class BEVDetFormer(nn.Layer):
         num_samples = len(results)
         new_results = []
         for i in range(num_samples):
-            data = Sample(None, sample["modality"][i]) # Sample(sample["path"][i], sample["modality"][i])
+            data = Sample(
+                None, sample["modality"]
+                [i])  # Sample(sample["path"][i], sample["modality"][i])
             # bboxes_3d = results[i]["box3d_lidar"].numpy()
             # labels = results[i]["label_preds"].numpy()
             # confidences = results[i]["scores"].numpy()
@@ -546,11 +557,13 @@ class BEVDetFormer(nn.Layer):
             data.bboxes_3d.coordmode = 'Lidar'
             data.bboxes_3d.origin = [0.5, 0.5, 0.5]
             data.bboxes_3d.rot_axis = 2
-            if bboxes_3d.shape[-1] == 9:    # box has shape (9,) (cx, cy, cz, w, h, l, {angle, vx, vy})
+            if bboxes_3d.shape[
+                    -1] == 9:  # box has shape (9,) (cx, cy, cz, w, h, l, {angle, vx, vy})
                 data.bboxes_3d.velocities = bboxes_3d[:, 6:8]
             data.labels = labels
             data.confidences = confidences
-            data.meta = SampleMeta(id=sample["meta"]["id"][0]) # fix id = meta {id: ...}
+            data.meta = SampleMeta(
+                id=sample["meta"]["id"][0])  # fix id = meta {id: ...}
             if "calibs" in sample:
                 calib = [calibs.numpy()[i] for calibs in sample["calibs"]]
                 data.calibs = calib
@@ -562,33 +575,34 @@ class BEVDetFormer(nn.Layer):
             data.origin = [0.5, 0.5, 0.5]
             data.rot_axis = 2
             data.velocities = bboxes_3d[:, 6:8]
-            
+
             new_results.append(data)
         return new_results
 
-    def simple_test(self,
-                    # points,
-                    # img_metas,
-                    samples,
-                    img=None,
-                    rescale=False,
-                    **kwargs):
-        
+    def simple_test(
+            self,
+            # points,
+            # img_metas,
+            samples,
+            img=None,
+            rescale=False,
+            **kwargs):
+
         points = None
         # img_metas = [samples['img_metas']]
         img_metas = [samples['meta']]
         #img = samples['img_inputs']
         # for debug on sample
-        img = samples['img_inputs'] # [0]
+        img = samples['img_inputs']  # [0]
         """Test function without augmentation."""
         img_feats, _, _ = self.extract_feat(
             points, img=img, img_metas=img_metas, **kwargs)
-        
+
         bbox_list = [dict() for _ in range(len(img_metas))]
         bbox_pts = self.simple_test_pts(img_feats, img_metas, rescale=rescale)
         for result_dict, pts_bbox in zip(bbox_list, bbox_pts):
             result_dict['pts_bbox'] = pts_bbox
-        
+
         #preds, x = self.pts_bbox_head(img_feats[0])
 
         # preds = self.pts_bbox_head.predict_by_custom_op(samples, preds,
@@ -611,12 +625,11 @@ class BEVDetFormer(nn.Layer):
         # cnt += 1
         # =================================================================
 
-
         return {"preds": [result_dict]}
 
     def simple_test_pts(self, x, img_metas, rescale=False):
         """Test function of point cloud branch."""
-        outs = self.pts_bbox_head(x) # single apply
+        outs = self.pts_bbox_head(x)  # single apply
         # outs = self.pts_bbox_head(x[0]) # single apply
         #return outs
 
@@ -638,12 +651,9 @@ class BEVDetFormer(nn.Layer):
         # cnt += 1
         # =================================================================
 
-
-
-
         bbox_list = self.pts_bbox_head.get_bboxes(
             outs, img_metas, rescale=rescale)
-            # outs[0], img_metas, rescale=rescale)
+        # outs[0], img_metas, rescale=rescale)
         # print(len(bbox_list))
         bbox_results = [
             self.bbox3d2result(bboxes, scores, labels)
@@ -662,10 +672,9 @@ class BEVDetFormer(nn.Layer):
         # }
         # with open(pklpath, 'wb') as f:
         #     pickle.dump(metadata, f)
-        
+
         # cnt += 1
         # ---------------------------
-
 
         return bbox_results
         '''
@@ -675,6 +684,7 @@ class BEVDetFormer(nn.Layer):
         with open(pklpath, 'wb') as f:
             pickle.dump(bbox_results, f)
         '''
+
     def bbox3d2result(self, bboxes, scores, labels, attrs=None):
         """Convert detection results to a list of numpy arrays.
 
@@ -703,30 +713,29 @@ class BEVDetFormer(nn.Layer):
 
         return result_dict
 
-    def forward_dummy(self,
-                      samples,
-                      **kwargs):
-        points = None #samples['points']
+    def forward_dummy(self, samples, **kwargs):
+        points = None  #samples['points']
         img_metas = [samples['meta']]
         img_inputs = samples['img_inputs']
         img_feats, _, _ = self.extract_feat(
             points, img=img_inputs[0], img_metas=img_metas, **kwargs)
         #assert self.with_pts_bbox
-        outs = self.pts_bbox_head(img_feats[0])# single apply in paddle centerhead
+        outs = self.pts_bbox_head(
+            img_feats[0])  # single apply in paddle centerhead
         return outs
-    
+
     def get_bev_pool_input(self, input):
         coor = self.img_view_transformer.get_lidar_coor(*input[1:7])
         return self.img_view_transformer.voxel_pooling_prepare_v2(coor)
 
     def export_forward(
-        self,
-        img,
-        ranks_depth,
-        ranks_feat,
-        ranks_bev,
-        interval_starts,
-        interval_lengths,
+            self,
+            img,
+            ranks_depth,
+            ranks_feat,
+            ranks_bev,
+            interval_starts,
+            interval_lengths,
     ):
         x = self.img_backbone(img)
         x = self.img_neck(x)
@@ -741,33 +750,17 @@ class BEVDetFormer(nn.Layer):
         ###############
         feat = tran_feat
         n, d, h, w = depth.shape
-        feat = feat.reshape([1, n, feat.shape[1], h, w])
-        feat = feat.transpose([0, 1, 3, 4, 2])
-        depth = depth.reshape([1, n, d, h, w])
+        feat = feat.reshape([n, feat.shape[1], h, w])
+        feat = feat.transpose([0, 2, 3, 1])
 
-        out_height, out_width = 128, 128
-        bev_feat_shape = (1, 1, out_height, out_width,
-                            80)  # (B, Z, Y, X, C)
-        out = bev_pool_v2.bev_pool_v2(
-            depth,
-            feat,
-            ranks_depth,
-            ranks_feat,
-            ranks_bev,
-            interval_lengths,
-            interval_starts,
-            bev_feat_shape
-        )
+        output_height, output_width = 128, 128
+        bev_feat_shape = (1, output_height, output_width, 80)  # (B, Z, Y, X, C)
+        out = bev_pool_v2.bev_pool_v2(depth, feat, ranks_depth, ranks_feat,
+                                      ranks_bev, interval_lengths,
+                                      interval_starts, bev_feat_shape)
 
-        # bev_feat = bev_pool_v2(depth, feat, ranks_depth, ranks_feat, ranks_bev,
-        #                        bev_feat_shape, interval_starts,
-        #                        interval_lengths)
-        # bev_feat = out.squeeze(2)
-        # bev_feat = bev_feat.permute(0, 2, 3, 1)
-        ###############
-        # x = x.permute(0, 3, 1, 2).contiguous()
-        # x = x.transpose([0, 3, 1, 2])#.contiguous()
-        x = out.transpose((0, 4, 1, 2, 3)).squeeze(2)
+        x = out.transpose((0, 3, 1, 2))
+        x = x.reshape([1, 80, 128, 128])
         bev_feat = self.bev_encoder(x)
         outs = self.pts_bbox_head([bev_feat], None)
         outs = self.pts_bbox_head.get_bboxes(outs, None)
@@ -789,12 +782,9 @@ class BEVDetFormer(nn.Layer):
         #                                      dtype="float32")
         image_spec = paddle.static.InputSpec(
             shape=[6, 3, 320, 800], dtype="float32")
-        ranks_depth_spec = paddle.static.InputSpec(
-            shape=[None], dtype="int32")
-        ranks_feat_spec = paddle.static.InputSpec(
-            shape=[None], dtype="int32")
-        ranks_bev_spec = paddle.static.InputSpec(
-            shape=[None], dtype="int32")
+        ranks_depth_spec = paddle.static.InputSpec(shape=[None], dtype="int32")
+        ranks_feat_spec = paddle.static.InputSpec(shape=[None], dtype="int32")
+        ranks_bev_spec = paddle.static.InputSpec(shape=[None], dtype="int32")
         interval_starts_spec = paddle.static.InputSpec(
             shape=[None], dtype="int32")
         interval_lengths_spec = paddle.static.InputSpec(
@@ -804,7 +794,10 @@ class BEVDetFormer(nn.Layer):
         #     paddle.static.InputSpec(shape=[1, num_cams, 4, 4], name='img2lidars'),
         # }
 
-        input_spec = [image_spec, ranks_depth_spec, ranks_feat_spec, ranks_bev_spec, interval_starts_spec, interval_lengths_spec]
+        input_spec = [
+            image_spec, ranks_depth_spec, ranks_feat_spec, ranks_bev_spec,
+            interval_starts_spec, interval_lengths_spec
+        ]
 
         model_name = "bevpool"
         # if self.pts_bbox_head.with_time:
@@ -822,7 +815,6 @@ class BEVDetFormer(nn.Layer):
         paddle.jit.save(self, os.path.join(save_dir, model_name))
 
 
-
 @manager.MODELS.add_component
 class RTEBev(nn.Layer):
     r"""BEVDet paradigm for multi-camera 3D object detection.
@@ -837,49 +829,49 @@ class RTEBev(nn.Layer):
     """
 
     def __init__(self,
-                img_view_transformer, 
-                img_bev_encoder_backbone,
-                img_bev_encoder_neck,
-                start_temporal_epoch = None,
-                pre_process = None,
-                align_after_view_transfromation = False,
-                num_adj = 1,
-                with_prev = True,
-                pts_voxel_layer=None,
-                pts_voxel_encoder=None,
-                pts_middle_encoder=None,
-                pts_fusion_layer=None,
-                img_backbone=None,
-                pts_backbone=None,
-                img_neck=None,
-                pts_neck=None,
-                pts_bbox_head=None,
-                aux_pts_bbox_head=None,
-                img_roi_head=None,
-                img_rpn_head=None,
-                train_cfg=None,
-                test_cfg=None,
-                pretrained=None,
-                init_cfg=None,
-                use_depth=False,
-                use_resnetvd=False,
-                use_ms_depth=False,
-                **kwargs):
+                 img_view_transformer,
+                 img_bev_encoder_backbone,
+                 img_bev_encoder_neck,
+                 start_temporal_epoch=None,
+                 pre_process=None,
+                 align_after_view_transfromation=False,
+                 num_adj=1,
+                 with_prev=True,
+                 pts_voxel_layer=None,
+                 pts_voxel_encoder=None,
+                 pts_middle_encoder=None,
+                 pts_fusion_layer=None,
+                 img_backbone=None,
+                 pts_backbone=None,
+                 img_neck=None,
+                 pts_neck=None,
+                 pts_bbox_head=None,
+                 aux_pts_bbox_head=None,
+                 img_roi_head=None,
+                 img_rpn_head=None,
+                 train_cfg=None,
+                 test_cfg=None,
+                 pretrained=None,
+                 init_cfg=None,
+                 use_depth=False,
+                 use_resnetvd=False,
+                 use_ms_depth=False,
+                 **kwargs):
         super(RTEBev, self).__init__(**kwargs)
 
         self.pts_bbox_head = pts_bbox_head
         self.img_backbone = img_backbone
         self.img_neck = img_neck
         self.with_img_neck = self.img_neck is not None
-        self.img_view_transformer = img_view_transformer #builder.build_neck(img_view_transformer)
-        self.img_bev_encoder_backbone = img_bev_encoder_backbone #builder.build_backbone(img_bev_encoder_backbone)
-        self.img_bev_encoder_neck = img_bev_encoder_neck #builder.build_neck(img_bev_encoder_neck)
-        
+        self.img_view_transformer = img_view_transformer  #builder.build_neck(img_view_transformer)
+        self.img_bev_encoder_backbone = img_bev_encoder_backbone  #builder.build_backbone(img_bev_encoder_backbone)
+        self.img_bev_encoder_neck = img_bev_encoder_neck  #builder.build_neck(img_bev_encoder_neck)
+
         self.pre_process = pre_process is not None
         if self.pre_process:
             self.pre_process_net = pre_process
 
-        self.align_after_view_transfromation = align_after_view_transfromation # if self.training else True
+        self.align_after_view_transfromation = align_after_view_transfromation  # if self.training else True
         self.num_frame = num_adj + 1
         self.with_prev = with_prev
         # self.test_cfg = DictObject(test_cfg)
@@ -894,17 +886,20 @@ class RTEBev(nn.Layer):
         _, v, _ = trans[0].shape
 
         # generate grid
-        xs = paddle.linspace(0, w - 1, w, dtype=input.dtype).reshape((1, w)).expand((h, w))
+        xs = paddle.linspace(
+            0, w - 1, w, dtype=input.dtype).reshape((1, w)).expand((h, w))
         #torch.linspace(
-            #0, w - 1, w, dtype=input.dtype,
-            #device=input.device).view(1, w).expand(h, w)
-        ys = paddle.linspace(0, h - 1, h, dtype=input.dtype).reshape((h, 1)).expand((h, w))
+        #0, w - 1, w, dtype=input.dtype,
+        #device=input.device).view(1, w).expand(h, w)
+        ys = paddle.linspace(
+            0, h - 1, h, dtype=input.dtype).reshape((h, 1)).expand((h, w))
         #torch.linspace(
         #    0, h - 1, h, dtype=input.dtype,
         #    device=input.device).view(h, 1).expand(h, w)
         grid = paddle.stack((xs, ys, paddle.ones_like(xs)), -1)
         #torch.stack((xs, ys, torch.ones_like(xs)), -1)
-        grid = grid.reshape((1, h, w, 3)).expand((n, h, w, 3)).reshape((n, h, w, 3, 1))
+        grid = grid.reshape((1, h, w, 3)).expand((n, h, w, 3)).reshape((n, h, w,
+                                                                        3, 1))
         #grid.view(1, h, w, 3).expand(n, h, w, 3).view(n, h, w, 3, 1)
 
         # get transformation from current ego frame to adjacent ego frame
@@ -936,9 +931,10 @@ class RTEBev(nn.Layer):
         c12l0 = bda_.matmul(c12l0)
 
         # transformation from current ego frame to adjacent ego frame
-        l02l1 = c02l0.matmul(paddle.inverse(c12l0))[:, 0, :, :].reshape((n, 1, 1, 4, 4))
+        l02l1 = c02l0.matmul(paddle.inverse(c12l0))[:, 0, :, :].reshape(
+            (n, 1, 1, 4, 4))
         #c02l0.matmul(torch.inverse(c12l0))[:, 0, :, :].view(
-            #n, 1, 1, 4, 4)
+        #n, 1, 1, 4, 4)
         '''
           c02l0 * inv(c12l0)
         = c02l0 * inv(l12l0 * c12l1)
@@ -947,7 +943,9 @@ class RTEBev(nn.Layer):
         '''
 
         #l02l1 = l02l1[:, :, :, [True, True, False, True], :][:, :, :, :, [True, True, False, True]]
-        l02l1 = l02l1.index_select(paddle.to_tensor([0, 1, 3]), axis = 3).index_select(paddle.to_tensor([0, 1, 3]), axis = 4)
+        l02l1 = l02l1.index_select(
+            paddle.to_tensor([0, 1, 3]), axis=3).index_select(
+                paddle.to_tensor([0, 1, 3]), axis=4)
 
         feat2bev = paddle.zeros((3, 3), dtype=grid.dtype)
         #torch.zeros((3, 3), dtype=grid.dtype).to(grid)
@@ -956,19 +954,22 @@ class RTEBev(nn.Layer):
         feat2bev[0, 2] = self.img_view_transformer.grid_lower_bound[0]
         feat2bev[1, 2] = self.img_view_transformer.grid_lower_bound[1]
         feat2bev[2, 2] = 1
-        feat2bev = feat2bev.reshape((1, 3, 3))#.view(1, 3, 3)
+        feat2bev = feat2bev.reshape((1, 3, 3))  #.view(1, 3, 3)
         tf = paddle.inverse(feat2bev).matmul(l02l1).matmul(feat2bev)
         #torch.inverse(feat2bev).matmul(l02l1).matmul(feat2bev)
 
         # transform and normalize
         grid = tf.matmul(grid)
-        normalize_factor = paddle.to_tensor([w - 1.0, h - 1.0], dtype = input.dtype)
+        normalize_factor = paddle.to_tensor([w - 1.0, h - 1.0],
+                                            dtype=input.dtype)
         #torch.tensor([w - 1.0, h - 1.0],
-                           #             dtype=input.dtype,
-                           #             device=input.device)
-        grid = grid[:, :, :, :2, 0] / normalize_factor.reshape((1, 1, 1, 2)) * 2.0 - 1.0
+        #             dtype=input.dtype,
+        #             device=input.device)
+        grid = grid[:, :, :, :2, 0] / normalize_factor.reshape(
+            (1, 1, 1, 2)) * 2.0 - 1.0
         #normalize_factor.view(1, 1, 1, 2) * 2.0 - 1.0
-        output = F.grid_sample(input, grid.cast(input.dtype), align_corners=True)
+        output = F.grid_sample(
+            input, grid.cast(input.dtype), align_corners=True)
 
         #F.grid_sample(input, grid.to(input.dtype), align_corners=True)
         return output
@@ -976,9 +977,10 @@ class RTEBev(nn.Layer):
     def image_encoder(self, img):
         imgs = img
         B, N, C, imH, imW = imgs.shape
-        imgs = imgs.reshape((B * N, C, imH, imW)) # imgs.view(B * N, C, imH, imW)
+        imgs = imgs.reshape((B * N, C, imH,
+                             imW))  # imgs.view(B * N, C, imH, imW)
         x = self.img_backbone(imgs)
-        # if self.with_img_neck:# todo check 
+        # if self.with_img_neck:# todo check
         #     x = self.img_neck(x)
         #     if type(x) in [list, tuple]:
         #         x = x[0]
@@ -992,7 +994,7 @@ class RTEBev(nn.Layer):
             #     _, output_dim, ouput_H, output_W = x[idx].shape
             #     x[idx] = x[idx].reshape_((B, N, output_dim, ouput_H, output_W))
         else:
-            if self.with_img_neck:# todo check 
+            if self.with_img_neck:  # todo check
                 x = self.img_neck(x)
                 if type(x) in [list, tuple]:
                     x = x[0]
@@ -1007,16 +1009,17 @@ class RTEBev(nn.Layer):
             x = x[0]
         return x
 
-    def prepare_bev_feat(self, img, rot, tran, intrin, post_rot, post_tran,
-                         bda, mlp_input):
+    def prepare_bev_feat(self, img, rot, tran, intrin, post_rot, post_tran, bda,
+                         mlp_input):
 
-        x = self.image_encoder(img) # backbone + neck
+        x = self.image_encoder(img)  # backbone + neck
 
         bev_feat, depth = self.img_view_transformer(
             [x, rot, tran, intrin, post_rot, post_tran, bda, mlp_input])
 
         if self.pre_process:
-            bev_feat = self.pre_process_net(bev_feat)[0] #self.pre_process_net(bev_feat)[0]
+            bev_feat = self.pre_process_net(bev_feat)[
+                0]  #self.pre_process_net(bev_feat)[0]
 
         return bev_feat, depth
 
@@ -1027,9 +1030,8 @@ class RTEBev(nn.Layer):
         mlp_input = self.img_view_transformer.get_mlp_input(
             rots_curr[0:1, ...], trans_curr[0:1, ...], intrins, post_rots,
             post_trans, bda[0:1, ...])
-        inputs_curr = (imgs, rots_curr[0:1, ...], trans_curr[0:1, ...],
-                       intrins, post_rots, post_trans, bda[0:1,
-                                                           ...], mlp_input)
+        inputs_curr = (imgs, rots_curr[0:1, ...], trans_curr[0:1, ...], intrins,
+                       post_rots, post_trans, bda[0:1, ...], mlp_input)
         bev_feat, depth = self.prepare_bev_feat(*inputs_curr)
         bev_feat_list.append(bev_feat)
 
@@ -1042,7 +1044,8 @@ class RTEBev(nn.Layer):
                                bda)
         bev_feat_list.append(feat_prev.view(1, (self.num_frame - 1) * C, H, W))
 
-        bev_feat = paddle.concat(bev_feat_list, axis=1)#torch.cat(bev_feat_list, dim=1)
+        bev_feat = paddle.concat(
+            bev_feat_list, axis=1)  #torch.cat(bev_feat_list, dim=1)
         x = self.bev_encoder(bev_feat)
         return [x], depth
 
@@ -1050,8 +1053,11 @@ class RTEBev(nn.Layer):
         # split the inputs into each frame
         B, N, _, H, W = inputs[0].shape
         N = N // self.num_frame
-        imgs = inputs[0].reshape((B, N, self.num_frame, 3, H, W)) #inputs[0].view(B, N, self.num_frame, 3, H, W)
-        imgs = paddle.split(imgs, imgs.shape[2], axis = 2)#torch.split(imgs, 1, 2)
+        imgs = inputs[0].reshape(
+            (B, N, self.num_frame, 3, H,
+             W))  #inputs[0].view(B, N, self.num_frame, 3, H, W)
+        imgs = paddle.split(
+            imgs, imgs.shape[2], axis=2)  #torch.split(imgs, 1, 2)
         imgs = [t.squeeze(2) for t in imgs]
         rots, trans, intrins, post_rots, post_trans, bda = inputs[1:7]
         extra = [
@@ -1066,24 +1072,24 @@ class RTEBev(nn.Layer):
             #post_rots.view(B, self.num_frame, N, 3, 3),
             #post_trans.view(B, self.num_frame, N, 3)
         ]
-        extra = [paddle.split(t, t.shape[1], 1) for t in extra] #[torch.split(t, 1, 1) for t in extra]
+        extra = [paddle.split(t, t.shape[1], 1)
+                 for t in extra]  #[torch.split(t, 1, 1) for t in extra]
         extra = [[p.squeeze(1) for p in t] for t in extra]
         rots, trans, intrins, post_rots, post_trans = extra
         return imgs, rots, trans, intrins, post_rots, post_trans, bda
 
     def extract_img_feat(self,
-                        img,
-                        img_metas,
-                        pred_prev=False,
-                        sequential=False,
-                        **kwargs):
+                         img,
+                         img_metas,
+                         pred_prev=False,
+                         sequential=False,
+                         **kwargs):
         if sequential:
             return self.extract_img_feat_sequential(img, kwargs['feat_prev'])
 
             # paddle.save(item, pklpath)
         imgs, rots, trans, intrins, post_rots, post_trans, bda = \
            self.prepare_inputs(img)
-
         """Extract features of images."""
         bev_feat_list = []
         depth_list = []
@@ -1097,15 +1103,16 @@ class RTEBev(nn.Layer):
                 t1 = time.time()
                 mlp_input = self.img_view_transformer.get_mlp_input(
                     rots[0], trans[0], intrin, post_rot, post_tran, bda)
-                inputs_curr = (img, rot, tran, intrin, post_rot,
-                               post_tran, bda, mlp_input)
+                inputs_curr = (img, rot, tran, intrin, post_rot, post_tran, bda,
+                               mlp_input)
                 if key_frame:
                     bev_feat, depth = self.prepare_bev_feat(*inputs_curr)
                 else:
                     with paddle.no_grad():
                         bev_feat, depth = self.prepare_bev_feat(*inputs_curr)
             else:
-                bev_feat = paddle.zeros_like(bev_feat_list[0]) #torch.zeros_like(bev_feat_list[0])
+                bev_feat = paddle.zeros_like(
+                    bev_feat_list[0])  #torch.zeros_like(bev_feat_list[0])
                 depth = None
             bev_feat_list.append(bev_feat)
             depth_list.append(depth)
@@ -1114,14 +1121,17 @@ class RTEBev(nn.Layer):
         if pred_prev:
             assert self.align_after_view_transfromation
             assert rots[0].shape[0] == 1
-            feat_prev = paddle.concat(bev_feat_list[1:], axis = 0)
+            feat_prev = paddle.concat(bev_feat_list[1:], axis=0)
 
-            trans_curr = trans[0].tile([self.num_frame - 1, 1, 1]) #.repeat(self.num_frame - 1, 1, 1)
-            rots_curr = rots[0].tile([self.num_frame - 1, 1, 1, 1])#.repeat(self.num_frame - 1, 1, 1, 1)
-            trans_prev = paddle.concat(rots[1:], axis = 0)
-            rots_prev = paddle.concat(rots[1:], axis = 0)
+            trans_curr = trans[0].tile([self.num_frame - 1, 1,
+                                        1])  #.repeat(self.num_frame - 1, 1, 1)
+            rots_curr = rots[0].tile([self.num_frame - 1, 1, 1,
+                                      1])  #.repeat(self.num_frame - 1, 1, 1, 1)
+            trans_prev = paddle.concat(trans[1:], axis=0)
+            rots_prev = paddle.concat(rots[1:], axis=0)
 
-            bda_curr = bda.tile([self.num_frame - 1, 1, 1]) #.repeat(self.num_frame - 1, 1, 1)
+            bda_curr = bda.tile([self.num_frame - 1, 1,
+                                 1])  #.repeat(self.num_frame - 1, 1, 1)
             return feat_prev, [
                 imgs[0], rots_curr, trans_curr, intrins[0], rots_prev,
                 trans_prev, post_rots[0], post_trans[0], bda_curr
@@ -1134,22 +1144,20 @@ class RTEBev(nn.Layer):
                                        [trans[0], trans[adj_id]],
                                        [rots[0], rots[adj_id]],
                                        bda)
-        bev_feat = paddle.concat(bev_feat_list, axis = 1)
+        bev_feat = paddle.concat(bev_feat_list, axis=1)
 
         x = self.bev_encoder(bev_feat)
 
         return [x], depth_list[0]
 
-    def extract_img_feat_single(self,
-                        img,
-                        img_metas,
-                        **kwargs):
+    def extract_img_feat_single(self, img, img_metas, **kwargs):
         x = self.image_encoder(img[0])
         if self.use_depth:
             _, rot, tran, intrin, post_rot, post_tran, bda = img[:7]
             # print(x.shape, rot.shape, tran.shape, intrin.shape, post_rot.shape, post_tran.shape, bda.shape)
-            mlp_input = self.img_view_transformer.get_mlp_input(rot, tran, intrin, post_rot, post_tran, bda)
-   
+            mlp_input = self.img_view_transformer.get_mlp_input(
+                rot, tran, intrin, post_rot, post_tran, bda)
+
             x, depth = self.img_view_transformer(
                 [x, rot, tran, intrin, post_rot, post_tran, bda, mlp_input])
         else:
@@ -1160,7 +1168,8 @@ class RTEBev(nn.Layer):
     def extract_feat(self, points, img, img_metas, **kwargs):
         """Extract features from images and points."""
         if self.num_frame == 1:
-            img_feats, depth = self.extract_img_feat_single(img, img_metas, **kwargs)
+            img_feats, depth = self.extract_img_feat_single(
+                img, img_metas, **kwargs)
         else:
             img_feats, depth = self.extract_img_feat(img, img_metas, **kwargs)
 
@@ -1168,18 +1177,19 @@ class RTEBev(nn.Layer):
 
         return (img_feats, pts_feats, depth)
 
-    def forward_train(self,
-                      samples,
-                    #   points=None,
-                    #   img_metas=None,
-                      gt_bboxes_3d=None,
-                      gt_labels_3d=None,
-                      gt_labels=None,
-                      gt_bboxes=None,
-                    #   img_inputs=None,
-                      proposals=None,
-                      gt_bboxes_ignore=None,
-                      **kwargs):
+    def forward_train(
+            self,
+            samples,
+            #   points=None,
+            #   img_metas=None,
+            gt_bboxes_3d=None,
+            gt_labels_3d=None,
+            gt_labels=None,
+            gt_bboxes=None,
+            #   img_inputs=None,
+            proposals=None,
+            gt_bboxes_ignore=None,
+            **kwargs):
         """Forward training function.
 
         Args:
@@ -1220,34 +1230,34 @@ class RTEBev(nn.Layer):
         # print(gt_depth)
         img_feats, _, depth = self.extract_feat(
             points, img=img, img_metas=img_metas, **kwargs)
-        
+
         if self.use_depth:
-            loss_depth = self.img_view_transformer.get_depth_loss(gt_depth, depth)
+            loss_depth = self.img_view_transformer.get_depth_loss(
+                gt_depth, depth)
             losses = dict(loss_depth=loss_depth)
         else:
             losses = dict()
 
         # print("loss_depth", loss_depth)
         losses = dict(loss_depth=loss_depth)
-        losses_pts = self.forward_pts_train(img_feats, gt_bboxes_3d,
-                                            gt_labels_3d, img_metas,
-                                            gt_bboxes_ignore)
+        losses_pts = self.forward_pts_train(
+            img_feats, gt_bboxes_3d, gt_labels_3d, img_metas, gt_bboxes_ignore)
         losses.update(losses_pts)
-        
+
         if self.aux_pts_bbox_head is not None:
             aux_losses_pts = self.forward_aux_pts_train(img_feats, gt_bboxes_3d,
-                                                    gt_labels_3d, img_metas,
-                                                    gt_bboxes_ignore)
+                                                        gt_labels_3d, img_metas,
+                                                        gt_bboxes_ignore)
             losses.update(aux_losses_pts)
-            
+
         return {"loss": losses}
 
     def forward_aux_pts_train(self,
-                          pts_feats,
-                          gt_bboxes_3d,
-                          gt_labels_3d,
-                          img_metas,
-                          gt_bboxes_ignore=None):
+                              pts_feats,
+                              gt_bboxes_3d,
+                              gt_labels_3d,
+                              img_metas,
+                              gt_bboxes_ignore=None):
         """Forward function for point cloud branch.
 
         Args:
@@ -1263,7 +1273,7 @@ class RTEBev(nn.Layer):
         Returns:
             dict: Losses of each branch.
         """
-        outs = self.aux_pts_bbox_head(pts_feats[0]) # single apply
+        outs = self.aux_pts_bbox_head(pts_feats[0])  # single apply
         loss_inputs = [gt_bboxes_3d, gt_labels_3d, outs[0]]
         # outs = self.pts_bbox_head(pts_feats) # single apply
         # loss_inputs = [gt_bboxes_3d, gt_labels_3d, outs]
@@ -1291,7 +1301,7 @@ class RTEBev(nn.Layer):
         Returns:
             dict: Losses of each branch.
         """
-        outs = self.pts_bbox_head(pts_feats) # single apply
+        outs = self.pts_bbox_head(pts_feats)  # single apply
         loss_inputs = [gt_bboxes_3d, gt_labels_3d, outs]
         losses = self.pts_bbox_head.loss(*loss_inputs)
         return losses
@@ -1302,19 +1312,20 @@ class RTEBev(nn.Layer):
         # return self.forward_dummy(samples, *args, **kwargs)
 
         #return self.forward_train(samples, *args, **kwargs)
-        
+
         if self.training:
             return self.forward_train(samples, *args, **kwargs)
 
         self.align_after_view_transfromation = True
         return self.forward_test(samples, *args, **kwargs)
 
-    def forward_test(self,
-                    samples,
-                    #  points=None,
-                    #  img_metas=None,
-                    #  img_inputs=None,
-                     **kwargs):
+    def forward_test(
+            self,
+            samples,
+            #  points=None,
+            #  img_metas=None,
+            #  img_inputs=None,
+            **kwargs):
         """
         Args:
             points (list[torch.Tensor]): the outer list indicates test-time
@@ -1332,7 +1343,6 @@ class RTEBev(nn.Layer):
         points = None
         img_metas = [samples['meta']]
 
-
         #img_inputs = samples['img_inputs']
         # for debug on sample
         img_inputs = samples['img_inputs']
@@ -1348,8 +1358,6 @@ class RTEBev(nn.Layer):
         #     raise ValueError(
         #         'num of augmentations ({}) != num of image meta ({})'.format(
         #             len(img_inputs), len(img_metas)))
-    
-        
 
         if not isinstance(img_inputs[0][0], list):
             img_inputs = [img_inputs] if img_inputs is None else img_inputs
@@ -1369,7 +1377,9 @@ class RTEBev(nn.Layer):
         num_samples = len(results)
         new_results = []
         for i in range(num_samples):
-            data = Sample(None, sample["modality"][i]) # Sample(sample["path"][i], sample["modality"][i])
+            data = Sample(
+                None, sample["modality"]
+                [i])  # Sample(sample["path"][i], sample["modality"][i])
             # bboxes_3d = results[i]["box3d_lidar"].numpy()
             # labels = results[i]["label_preds"].numpy()
             # confidences = results[i]["scores"].numpy()
@@ -1381,11 +1391,13 @@ class RTEBev(nn.Layer):
             data.bboxes_3d.coordmode = 'Lidar'
             data.bboxes_3d.origin = [0.5, 0.5, 0.5]
             data.bboxes_3d.rot_axis = 2
-            if bboxes_3d.shape[-1] == 9:    # box has shape (9,) (cx, cy, cz, w, h, l, {angle, vx, vy})
+            if bboxes_3d.shape[
+                    -1] == 9:  # box has shape (9,) (cx, cy, cz, w, h, l, {angle, vx, vy})
                 data.bboxes_3d.velocities = bboxes_3d[:, 6:8]
             data.labels = labels
             data.confidences = confidences
-            data.meta = SampleMeta(id=sample["meta"]["id"][0]) # fix id = meta {id: ...}
+            data.meta = SampleMeta(
+                id=sample["meta"]["id"][0])  # fix id = meta {id: ...}
             if "calibs" in sample:
                 calib = [calibs.numpy()[i] for calibs in sample["calibs"]]
                 data.calibs = calib
@@ -1397,33 +1409,34 @@ class RTEBev(nn.Layer):
             data.origin = [0.5, 0.5, 0.5]
             data.rot_axis = 2
             data.velocities = bboxes_3d[:, 6:8]
-            
+
             new_results.append(data)
         return new_results
 
-    def simple_test(self,
-                    # points,
-                    # img_metas,
-                    samples,
-                    img=None,
-                    rescale=False,
-                    **kwargs):
-        
+    def simple_test(
+            self,
+            # points,
+            # img_metas,
+            samples,
+            img=None,
+            rescale=False,
+            **kwargs):
+
         points = None
         # img_metas = [samples['img_metas']]
         img_metas = [samples['meta']]
         #img = samples['img_inputs']
         # for debug on sample
-        img = samples['img_inputs'] # [0]
+        img = samples['img_inputs']  # [0]
         """Test function without augmentation."""
         img_feats, _, _ = self.extract_feat(
             points, img=img, img_metas=img_metas, **kwargs)
-        
+
         bbox_list = [dict() for _ in range(len(img_metas))]
         bbox_pts = self.simple_test_pts(img_feats, img_metas, rescale=rescale)
         for result_dict, pts_bbox in zip(bbox_list, bbox_pts):
             result_dict['pts_bbox'] = pts_bbox
-        
+
         #preds, x = self.pts_bbox_head(img_feats[0])
 
         # preds = self.pts_bbox_head.predict_by_custom_op(samples, preds,
@@ -1446,12 +1459,11 @@ class RTEBev(nn.Layer):
         # cnt += 1
         # =================================================================
 
-
         return {"preds": [result_dict]}
 
     def simple_test_pts(self, x, img_metas, rescale=False):
         """Test function of point cloud branch."""
-        outs = self.pts_bbox_head(x) # single apply
+        outs = self.pts_bbox_head(x)  # single apply
 
         # bbox_list = self.pts_bbox_head.get_bboxes(
         #     outs[0], img_metas, rescale=rescale)
@@ -1470,6 +1482,7 @@ class RTEBev(nn.Layer):
         with open(pklpath, 'wb') as f:
             pickle.dump(bbox_results, f)
         '''
+
     def bbox3d2result(self, bboxes, scores, labels, attrs=None):
         """Convert detection results to a list of numpy arrays.
 
@@ -1498,24 +1511,257 @@ class RTEBev(nn.Layer):
 
         return result_dict
 
-    def forward_dummy(self,
-                      samples,
-                      **kwargs):
-        points = None #samples['points']
+    def get_bev_pool_input(self, input):
+        coor = self.img_view_transformer.get_lidar_coor(*input[1:7])
+        return self.img_view_transformer.voxel_pooling_prepare_v2(coor)
+
+    def mf_export_forward(self, img, feat_prev, mlp_input, ranks_depth,
+                          ranks_feat, ranks_bev, interval_starts,
+                          interval_lengths):
+
+        self.align_after_view_transfromation = True
+        x = self.image_encoder(img)
+        if self.img_view_transformer.use_ms_depth:
+            depth_digit, tran_feat = self.img_view_transformer.depth_net(
+                x[0], x[1], x[2], mlp_input)
+            depth = F.softmax(depth_digit, axis=1)
+        else:
+            B, N, C, H, W = x.shape
+            x = x.reshape((B * N, C, H, W))
+            x = self.img_view_transformer.depth_net(x, mlp_input)
+            depth = F.softmax(x[:, :self.img_view_transformer.D], axis=1)
+            tran_feat = x[:, self.img_view_transformer.D:(
+                self.img_view_transformer.D +
+                self.img_view_transformer.out_channels)]
+        feat = tran_feat
+        n, d, h, w = depth.shape
+        feat = feat.reshape([n, feat.shape[1], h, w])
+        feat = feat.transpose([0, 2, 3, 1])
+
+        output_height, output_width = 128, 128
+        bev_feat_shape = (1, output_height, output_width, 80)  # (B, Z, Y, X, C)
+        out = bev_pool_v2.bev_pool_v2(depth, feat, ranks_depth, ranks_feat,
+                                      ranks_bev, interval_lengths,
+                                      interval_starts, bev_feat_shape)
+        bev_feat = out.transpose((0, 3, 1, 2))  #.squeeze(2)
+        bev_feat = bev_feat.reshape([1, 80, 128, 128])
+
+        if self.pre_process:
+            bev_feat = self.pre_process_net(bev_feat)[0]
+
+        bev_feat_list = []
+        bev_feat_list.append(bev_feat)
+        bev_feat_list.append(feat_prev)
+        bev_feat = paddle.concat(bev_feat_list, axis=1)
+        bev_feat = self.bev_encoder(bev_feat)
+
+        outs = self.pts_bbox_head([bev_feat], None)
+        outs = self.pts_bbox_head.get_bboxes(outs, None, rescale=False)
+        return outs
+
+    def export_forward(self,
+                       img,
+                       ranks_depth,
+                       ranks_feat,
+                       ranks_bev,
+                       interval_starts,
+                       interval_lengths,
+                       mlp_input=None):
+        x = self.img_backbone(img)
+        x = self.img_neck(x)
+
+        if self.use_depth:
+            if self.img_view_transformer.use_ms_depth:
+                depth_digit, tran_feat = self.img_view_transformer.depth_net(
+                    x[0], x[1], x[2], mlp_input)
+                depth = F.softmax(depth_digit, axis=1)
+            else:
+                x = self.img_view_transformer.depth_net(x, mlp_input)
+                depth = F.softmax(x[:, :self.img_view_transformer.D], axis=1)
+                tran_feat = x[:, self.img_view_transformer.D:(
+                    self.img_view_transformer.D +
+                    self.img_view_transformer.out_channels)]
+        else:
+            x = self.img_view_transformer.depth_net(x)
+            depth = F.softmax(x[:, :self.img_view_transformer.D], axis=1)
+            tran_feat = x[:, self.img_view_transformer.D:(
+                self.img_view_transformer.D +
+                self.img_view_transformer.out_channels)]
+
+        feat = tran_feat
+        n, d, h, w = depth.shape
+        feat = feat.reshape([n, feat.shape[1], h, w])
+        feat = feat.transpose([0, 2, 3, 1])
+
+        output_height, output_width = 128, 128
+        bev_feat_shape = (1, output_height, output_width, 80)  # (B, Z, Y, X, C)
+        out = bev_pool_v2.bev_pool_v2(depth, feat, ranks_depth, ranks_feat,
+                                      ranks_bev, interval_lengths,
+                                      interval_starts, bev_feat_shape)
+
+        x = out.transpose((0, 3, 1, 2))  #.squeeze(2)
+        x = x.reshape([1, 80, 128, 128])
+        bev_feat = self.bev_encoder(x)
+        outs = self.pts_bbox_head([bev_feat], None)
+        outs = self.pts_bbox_head.get_bboxes(outs, None)
+        return outs
+
+    def export(self, save_dir: str, **kwargs):
+        if self.num_frame == 1:
+            self.forward = self.export_forward
+            self.export_model = True
+
+            deploy_cnt = 0
+            for layer in self.sublayers():
+                if hasattr(layer, 'convert_to_deploy'):
+                    layer.convert_to_deploy()
+                    deploy_cnt += 1
+            print('Convert {} layer to deploy'.format(deploy_cnt))
+            if os.environ.get('FLAGS_onnx'):
+                print('onnx export')
+                image_spec = paddle.static.InputSpec(
+                    shape=[6, 3, 256, 704], dtype="float32", name='image')
+                ranks_depth_spec = paddle.static.InputSpec(
+                    shape=[15010], dtype="int32", name='ranks_depth')
+                ranks_feat_spec = paddle.static.InputSpec(
+                    shape=[15010], dtype="int32", name='ranks_feat')
+                ranks_bev_spec = paddle.static.InputSpec(
+                    shape=[728985], dtype="int32", name='ranks_bev')
+                interval_starts_spec = paddle.static.InputSpec(
+                    shape=[728985], dtype="int32", name='interval_starts')
+                interval_lengths_spec = paddle.static.InputSpec(
+                    shape=[728985], dtype="int32", name='interval_lengths')
+
+                input_spec = [
+                    image_spec, ranks_depth_spec, ranks_feat_spec,
+                    ranks_bev_spec, interval_starts_spec, interval_lengths_spec
+                ]
+                model_name = "rtebev/model"
+                if self.use_depth:
+                    mlp_input_spec = paddle.static.InputSpec(
+                        shape=[1, 6, 27], dtype="float32", name='mlp_input')
+                input_spec += [mlp_input_spec]
+                paddle.onnx.export(
+                    self,
+                    os.path.join(save_dir, model_name),
+                    input_spec=input_spec,
+                    opset_version=13,
+                    enable_onnx_checker=True,
+                    custom_ops={"bev_pool_v2": "bev_pool_v2"})
+
+            else:
+                image_spec = paddle.static.InputSpec(
+                    shape=[6, 3, 256, 704], dtype="float32", name='image')
+                ranks_depth_spec = paddle.static.InputSpec(
+                    shape=[None], dtype="int32", name='ranks_depth')
+                ranks_feat_spec = paddle.static.InputSpec(
+                    shape=[None], dtype="int32", name='ranks_feat')
+                ranks_bev_spec = paddle.static.InputSpec(
+                    shape=[None], dtype="int32", name='ranks_bev')
+                interval_starts_spec = paddle.static.InputSpec(
+                    shape=[None], dtype="int32", name='interval_starts')
+                interval_lengths_spec = paddle.static.InputSpec(
+                    shape=[None], dtype="int32", name='interval_lengths')
+
+                input_spec = [
+                    image_spec, ranks_depth_spec, ranks_feat_spec,
+                    ranks_bev_spec, interval_starts_spec, interval_lengths_spec
+                ]
+
+                model_name = "rtebev/model"
+                if self.use_depth:
+                    mlp_input_spec = paddle.static.InputSpec(
+                        shape=[1, 6, 27], dtype="float32", name='mlp_input')
+                    input_spec += [mlp_input_spec]
+
+                paddle.jit.to_static(self, input_spec=input_spec)
+                paddle.jit.save(self, os.path.join(save_dir, model_name))
+
+        else:
+            self.forward = self.mf_export_forward
+            self.export_model = True
+
+            if os.environ.get('FLAGS_onnx'):
+                print('onnx export')
+                image_spec = paddle.static.InputSpec(
+                    shape=[1, 6, 3, 256, 704], dtype="float32", name='image')
+                feat_prev_spec = paddle.static.InputSpec(
+                    shape=[1, (self.num_frame - 1) * 80, 128, 128],
+                    dtype="float32",
+                    name="feat_prev")
+                mlp_input_spec = paddle.static.InputSpec(
+                    shape=[1, 6, 27], dtype="float32", name="mlp_input")
+                ranks_depth_spec = paddle.static.InputSpec(
+                    shape=[15010], dtype="int32", name='ranks_depth')
+                ranks_feat_spec = paddle.static.InputSpec(
+                    shape=[15010], dtype="int32", name='ranks_feat')
+                ranks_bev_spec = paddle.static.InputSpec(
+                    shape=[728985], dtype="int32", name='ranks_bev')
+                interval_starts_spec = paddle.static.InputSpec(
+                    shape=[728985], dtype="int32", name='interval_starts')
+                interval_lengths_spec = paddle.static.InputSpec(
+                    shape=[728985], dtype="int32", name='interval_lengths')
+                input_spec = [
+                    image_spec, feat_prev_spec, mlp_input_spec,
+                    ranks_depth_spec, ranks_feat_spec, ranks_bev_spec,
+                    interval_starts_spec, interval_lengths_spec
+                ]
+
+                model_name = "rtebev_mf/model"
+                paddle.onnx.export(
+                    self,
+                    os.path.join(save_dir, model_name),
+                    input_spec=input_spec,
+                    opset_version=13,
+                    enable_onnx_checker=True,
+                    custom_ops={"bev_pool_v2": "bev_pool_v2"})
+            else:
+                image_spec = paddle.static.InputSpec(
+                    shape=[1, 6, 3, 256, 704], dtype="float32", name='image')
+                feat_prev_spec = paddle.static.InputSpec(
+                    shape=[1, (self.num_frame - 1) * 80, 128, 128],
+                    dtype="float32",
+                    name="feat_prev")
+                mlp_input_spec = paddle.static.InputSpec(
+                    shape=[1, 6, 27], dtype="float32", name="mlp_input")
+                ranks_depth_spec = paddle.static.InputSpec(
+                    shape=[None], dtype="int32", name='ranks_depth')
+                ranks_feat_spec = paddle.static.InputSpec(
+                    shape=[None], dtype="int32", name='ranks_feat')
+                ranks_bev_spec = paddle.static.InputSpec(
+                    shape=[None], dtype="int32", name='ranks_bev')
+                interval_starts_spec = paddle.static.InputSpec(
+                    shape=[None], dtype="int32", name='interval_starts')
+                interval_lengths_spec = paddle.static.InputSpec(
+                    shape=[None], dtype="int32", name='interval_lengths')
+
+                input_spec = [
+                    image_spec, feat_prev_spec, mlp_input_spec,
+                    ranks_depth_spec, ranks_feat_spec, ranks_bev_spec,
+                    interval_starts_spec, interval_lengths_spec
+                ]
+
+                model_name = "rtebev_mf/model"
+
+                paddle.jit.to_static(self, input_spec=input_spec)
+                paddle.jit.save(self, os.path.join(save_dir, model_name))
+
+    def forward_dummy(self, samples, **kwargs):
+        points = None  #samples['points']
         img_metas = [samples['meta']]
         img_inputs = samples['img_inputs']
         img_feats, _, _ = self.extract_feat(
             points, img=img_inputs[0], img_metas=img_metas, **kwargs)
         #assert self.with_pts_bbox
-        outs = self.pts_bbox_head(img_feats[0])# single apply in paddle centerhead
+        outs = self.pts_bbox_head(
+            img_feats[0])  # single apply in paddle centerhead
         return outs
-    
 
     # ==========================
     # format torch style output result
 
-class HoriConv(nn.Layer):
 
+class HoriConv(nn.Layer):
     def __init__(self, in_channels, mid_channels, out_channels, cat_dim=0):
         """HoriConv that reduce the image feature
             in height dimension and refine it.
@@ -1530,10 +1776,11 @@ class HoriConv(nn.Layer):
         super().__init__()
 
         self.merger = nn.Sequential(
-            nn.Conv2D(in_channels + cat_dim,
-                      in_channels,
-                      kernel_size=1,
-                      bias_attr=True),
+            nn.Conv2D(
+                in_channels + cat_dim,
+                in_channels,
+                kernel_size=1,
+                bias_attr=True),
             nn.Sigmoid(),
             nn.Conv2D(in_channels, in_channels, kernel_size=1, bias_attr=True),
         )
@@ -1628,8 +1875,8 @@ class HoriConv(nn.Layer):
         x = self.out_conv(x)
         return x
 
-class LightDepthReducer(nn.Layer):
 
+class LightDepthReducer(nn.Layer):
     def __init__(self, img_channels, mid_channels):
         """Module that compresses the predicted
             categorical depth in height dimension
@@ -1647,8 +1894,7 @@ class LightDepthReducer(nn.Layer):
             #           padding=1),
             # nn.BatchNorm2D(mid_channels),
             # nn.ReLU(),
-            nn.Conv2D(mid_channels, 1, kernel_size=3, stride=1, padding=1),
-        )
+            nn.Conv2D(mid_channels, 1, kernel_size=3, stride=1, padding=1), )
         self.vertical_weighter.apply(param_init.init_weight)
 
     def forward(self, feat, depth):
@@ -1656,8 +1902,8 @@ class LightDepthReducer(nn.Layer):
         depth = (depth * vert_weight).sum(2)
         return depth
 
-class DepthReducer(nn.Layer):
 
+class DepthReducer(nn.Layer):
     def __init__(self, img_channels, mid_channels):
         """Module that compresses the predicted
             categorical depth in height dimension
@@ -1668,11 +1914,8 @@ class DepthReducer(nn.Layer):
         """
         super().__init__()
         self.vertical_weighter = nn.Sequential(
-            nn.Conv2D(img_channels,
-                      mid_channels,
-                      kernel_size=3,
-                      stride=1,
-                      padding=1),
+            nn.Conv2D(
+                img_channels, mid_channels, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2D(mid_channels),
             nn.ReLU(),
             nn.Conv2D(mid_channels, 1, kernel_size=3, stride=1, padding=1),
