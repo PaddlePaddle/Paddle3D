@@ -127,7 +127,6 @@ class Trainer:
             amp_cfg: Optional[dict] = None,
             do_bind: Optional[bool] = False,
             temporal_start_epoch: Optional[int] = -1,
-            use_ema: Optional[bool] = False,
             ema_cfg: Optional[dict] = {}):
 
         self.model = model
@@ -150,7 +149,6 @@ class Trainer:
 
         self.do_bind = do_bind
         self.temporal_start_epoch = temporal_start_epoch
-        self.use_ema = use_ema
 
         if iters is None:
             self.epochs = epochs
@@ -207,6 +205,15 @@ class Trainer:
 
         if self.checkpoint is None:
             return
+
+        self.use_ema = False
+        if ema_cfg is not None:
+            logger.info(
+                'Use EMA train, ema config: {}'.format(ema_cfg))
+            self.ema = ModelEMA(
+                self.model,
+                **ema_cfg)
+            self.use_ema = True
 
         if not self.checkpoint.empty:
             if not resume:

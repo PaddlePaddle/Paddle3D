@@ -165,6 +165,13 @@ class CustomFPN(nn.Layer):
                         outs.append(self.fpn_convs[i](F.relu(outs[-1])))
                     else:
                         outs.append(self.fpn_convs[i](outs[-1]))
+        
+        if len(self.out_ids) > 1:
+            results = []
+            for idx in self.out_ids:
+                results.append(outs[idx])
+            return results
+
         return outs[0]
 
     def init_weights(self):

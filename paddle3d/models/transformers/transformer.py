@@ -26,7 +26,7 @@ from paddle3d.apis import manager
 from paddle3d.models.layers.param_init import (
     constant_init, normal_init, reset_parameters, xavier_uniform_init)
 from paddle3d.models.transformers.utils import rotate
-
+from .attentions import CustomMSDeformableAttention, MSDeformableAttention3D, TemporalSelfAttention
 
 def inverse_sigmoid(x, eps=1e-5):
     """Inverse function of sigmoid.
@@ -384,6 +384,143 @@ class PerceptionTransformer(nn.Layer):
             ],
                                          axis=-1),
             level_start_index=paddle.full([1], 0, dtype=paddle.int64),
+            **kwargs)
+
+        inter_references_out = inter_references
+
+        return bev_embed, inter_states, init_reference_out, inter_references_out
+
+
+@manager.TRANSFORMERS.add_component
+class RTEBevTransformer(nn.Layer):
+    """Implements the Detr3D transformer.
+    Args:
+        as_two_stage (bool): Generate query from encoder features.
+            Default: False.
+        num_feature_levels (int): Number of feature maps from FPN:
+            Default: 4.
+        two_stage_num_proposals (int): Number of proposals when set
+            `as_two_stage` as True. Default: 300.
+    """
+
+    def __init__(self,
+                 num_feature_levels=4,
+                 num_cams=6,
+                 encoder=None,
+                 decoder=None,
+                 embed_dims=256,
+                 rotate_center=[100, 100],
+                 **kwargs):
+        super(RTEBevTransformer, self).__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+        self.embed_dims = embed_dims
+        self.num_feature_levels = num_feature_levels
+        self.num_cams = num_cams
+        self.fp16_enabled = False
+
+        self.init_layers()
+        self.rotate_center = rotate_center
+        self.init_weights()
+
+    def init_layers(self):
+        """Initialize layers of the Detr3DTransformer."""
+        pass
+
+    @paddle.no_grad()
+    def init_weights(self):
+        """Initialize the transformer weights."""
+        for p in self.parameters():
+            if len(p.shape) > 1:
+                if len(p.shape) == 2:
+                    xavier_uniform_init(p, reverse=True)
+                else:
+                    xavier_uniform_init(p)
+                # nn.init.xavier_uniform_(p)
+        for m in self.sublayers():
+            if isinstance(m, MSDeformableAttention3D) or isinstance(m, TemporalSelfAttention) \
+                    or isinstance(m, CustomMSDeformableAttention):
+                try:
+                    m.init_weight()
+                except AttributeError:
+                    m.init_weights()
+
+        pass
+
+    def forward(self,
+                bev_feat,
+                query_pos, 
+                query,
+                reference_points,
+                bev_h,
+                bev_w,
+                grid_length=[0.512, 0.512],
+                bev_pos=None,
+                reg_branches=None,
+                cls_branches=None,
+                prev_bev=None,
+                **kwargs):
+        """Forward function for `Detr3DTransformer`.
+        Args:
+            mlvl_feats (list(Tensor)): Input queries from
+                different level. Each element has shape
+                [bs, num_cams, embed_dims, h, w].
+            bev_queries (Tensor): (bev_h*bev_w, c)
+            bev_pos (Tensor): (bs, embed_dims, bev_h, bev_w)
+            object_query_embed (Tensor): The query embedding for decoder,
+                with shape [num_query, c].
+            reg_branches (obj:`nn.ModuleList`): Regression heads for
+                feature maps from each decoder layer. Only would
+                be passed when `with_box_refine` is True. Default to None.
+        Returns:
+            tuple[Tensor]: results of decoder containing the following tensor.
+                - bev_embed: BEV features
+                - inter_states: Outputs from decoder. If
+                    return_intermediate_dec is True output has shape \
+                      (num_dec_layers, bs, num_query, embed_dims), else has \
+                      shape (1, bs, num_query, embed_dims).
+                - init_reference_out: The initial value of reference \
+                    points, has shape (bs, num_queries, 4).
+                - inter_references_out: The internal value of reference \
+                    points in decoder, has shape \
+                    (num_dec_layers, bs,num_query, embed_dims)
+                - enc_outputs_class: The classification score of \
+                    proposals generated from \
+                    encoder's feature maps, has shape \
+                    (batch, h*w, num_classes). \
+                    Only would be returned when `as_two_stage` is True, \
+                    otherwise None.
+                - enc_outputs_coord_unact: The regression results \
+                    generated from encoder's feature maps., has shape \
+                    (batch, h*w, 4). Only would \
+                    be returned when `as_two_stage` is True, \
+                    otherwise None.
+        """
+
+        bs = bev_feat.shape[0]
+
+        bev_embed = bev_feat.flatten(2)
+        bev_embed = bev_embed.transpose([2, 0, 1])
+
+        init_reference_out = reference_points
+
+        query_pos = query_pos.transpose([1, 0, 2])
+        if query is None:
+            query = paddle.zeros_like(query_pos)
+        else:
+            query = query.transpose([1, 0, 2])
+
+        inter_states, inter_references = self.decoder(
+            query=query,
+            key=None,
+            value=bev_embed,
+            query_pos=query_pos,
+            reference_points=reference_points,
+            reg_branches=reg_branches,
+            cls_branches=cls_branches,
+            spatial_shapes=paddle.to_tensor([[bev_h, bev_w]],
+                                            dtype=paddle.int64),
+            level_start_index=paddle.to_tensor([0], dtype=paddle.int64),
             **kwargs)
 
         inter_references_out = inter_references

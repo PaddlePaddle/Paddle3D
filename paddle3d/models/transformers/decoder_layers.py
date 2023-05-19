@@ -18,6 +18,7 @@
 # ------------------------------------------------------------------------
 
 import copy
+import warnings
 
 import numpy as np
 import paddle
@@ -196,7 +197,7 @@ class DetrTransformerDecoderLayer(nn.Layer):
             attn_masks = [
                 copy.deepcopy(attn_masks) for _ in range(self.num_attn)
             ]
-            logger.warning(f'Use same attn_mask in all attentions in '
+            warnings.warn(f'Use same attn_mask in all attentions in '
                            f'{self.__class__.__name__} ')
         else:
             assert len(attn_masks) == self.num_attn, f'The length of ' \

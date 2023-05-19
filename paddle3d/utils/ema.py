@@ -64,12 +64,13 @@ class ModelEMA(object):
 
     def __init__(self,
                  model,
+                 step=0,
                  decay=0.9998,
                  ema_decay_type='threshold',
                  cycle_epoch=-1,
                  ema_black_list=None,
                  ema_filter_no_grad=False):
-        self.step = 0
+        self.step = step
         self.epoch = 0
         self.decay = decay
         self.ema_decay_type = ema_decay_type

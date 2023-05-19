@@ -141,8 +141,6 @@ class BEVDetNuScenesDataset(Custom3DDataset):
         # add for compatible with paddle
         self.mode = 'val' if test_mode else 'train'
         self.version = self.VERSION_MAP[self.mode]
-        self.nusc = NuScenesManager.get(
-            version=self.version, dataroot=self.data_root)
 
         self.channel = "LIDAR_TOP"
         self.ATTRIBUTE_MAP_REVERSE = {
