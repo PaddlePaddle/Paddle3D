@@ -21,7 +21,7 @@
 
 | 模型 | 相邻帧数 | mAP | NDS | 模型下载 | 配置文件 | 日志 |
 | ---- | ------ | --- | ----| ------- |------- | ---- |
-| rtebev_r50 | 无 | 24.27 | 42.29 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes/train.log)|
+| rtebev_r50 | 无 | 34.30 | 42.29 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes/train.log)|
 | rtebev_r50_1f | 1 | 37.01 | 48.34 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_1f/model.pdema) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_1f_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_1f/train.log)|
 | rtebev_r50_4f | 4 | 39.66 | 50.19 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_4f/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_4f_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_4f/train.log)|
 
@@ -110,11 +110,8 @@ FLAGS_deploy=True python tools/export.py --config configs/rtebev/rtebev_r50_nusc
 
 ### Python部署
 
-进入部署代码所在路径
+部署代码所在路径为deploy/rtebev/python
 
-```
-cd deploy/rtebev/python
-```
 当num_adj参数大于0时，表示使用相邻帧，使用infer_mf_onnxtrt.py或者infer_mf_paddletrt.py进行推理。对应的配置文件为configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_1f_cgbs.yml、configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_4f_cgbs.yml。
 
 当num_adj参数等于0时，表示不使用相邻帧，使用infer_onnxtrt.py或者infer_paddletrt.py进行推理。对应的配置文件为configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_cgbs.yml。
@@ -145,18 +142,18 @@ cd deploy/rtebev/python
 使用paddle inference，执行预测：
 
 ```
-python infer_mf_paddletrt.py --config /path/to/config.yml --model /path/to/model.pdparams --model_file /path/to/rtebev.pdmodel --params_file /path/to/rtebev.pdiparams
+python deploy/rtebev/python/infer_mf_paddletrt.py --config /path/to/config.yml --model /path/to/model.pdparams --model_file /path/to/rtebev.pdmodel --params_file /path/to/rtebev.pdiparams
 ```
 
 使用paddle trt，执行预测：
 
 收集shape
 ```
-python infer_mf_paddletrt.py --config /path/to/config.yml --model /path/to/model.pdparams --model_file /path/to/rtebev.pdmodel --params_file /path/to/rtebev.pdiparams --use_trt --collect_shape_info
+python deploy/rtebev/python/infer_mf_paddletrt.py --config /path/to/config.yml --model /path/to/model.pdparams --model_file /path/to/rtebev.pdmodel --params_file /path/to/rtebev.pdiparams --use_trt --collect_shape_info
 ```
 trt-fp16推理
 ```
-python infer_mf_paddletrt.py --config /path/to/config.yml --model /path/to/model.pdparams --model_file /path/to/rtebev.pdmodel --params_file /path/to/rtebev.pdiparams --use_trt --trt_precision 1
+python deploy/rtebev/python/infer_mf_paddletrt.py --config /path/to/config.yml --model /path/to/model.pdparams --model_file /path/to/rtebev.pdmodel --params_file /path/to/rtebev.pdiparams --use_trt --trt_precision 1
 ```
 
 ### 使用onnx-trt 推理nuscenes eval
@@ -184,5 +181,5 @@ cd ..
 5. trt-fp16推理
 
 ```
-python infer_mf_onnxtrt.py --config /path/to/config.yml --model /path/to/model.pdparams --engine /path/to/model.engine --plugin /path/to/plugin_ops/build/libtensorrt_ops.so
+python deploy/rtebev/python/infer_mf_onnxtrt.py --config /path/to/config.yml --model /path/to/model.pdparams --engine /path/to/model.engine --plugin /path/to/plugin_ops/build/libtensorrt_ops.so
 ```

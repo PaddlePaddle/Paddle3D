@@ -205,6 +205,7 @@ class LSSViewTransformer(nn.Layer):
         self.interval_lengths = interval_lengths.cast('int32')
 
     def voxel_pooling_v2(self, coor, depth, feat):
+        B = coor.shape[0]
         ranks_bev, ranks_depth, ranks_feat, \
             interval_starts, interval_lengths = \
             self.voxel_pooling_prepare_v2(coor)
@@ -212,15 +213,15 @@ class LSSViewTransformer(nn.Layer):
             print('warning ---> no points within the predefined '
                   'bev receptive field')
             dummy = paddle.zeros(shape=[
-                int(self.grid_size[2]), feat.shape[1],
+                B, feat.shape[1],
                 int(self.grid_size[0]),
                 int(self.grid_size[1])
             ]).cast(feat.dtype)
 
             return dummy
         feat = feat.transpose([0, 2, 3, 1])
-        bev_feat_shape = (int(self.grid_size[2]), int(self.grid_size[1]),
-                          int(self.grid_size[0]), feat.shape[-1])
+        bev_feat_shape = (B, int(self.grid_size[1]), int(self.grid_size[0]),
+                          feat.shape[-1])
         bev_feat = bev_pool_v2_pyop(depth, feat, ranks_depth, ranks_feat,
                                     ranks_bev, bev_feat_shape, interval_starts,
                                     interval_lengths)
@@ -284,16 +285,15 @@ class LSSViewTransformer(nn.Layer):
         # Lift-Splat
         if self.accelerate:
             feat = tran_feat.transpose([0, 2, 3, 1])
-            bev_feat_shape = (int(self.grid_size[2]), int(self.grid_size[1]),
-                              int(self.grid_size[0]), feat.shape[-1])
+            bev_feat_shape = (B, int(self.grid_size[1]), int(self.grid_size[0]),
+                              feat.shape[-1])
             bev_feat = bev_pool_v2_pyop(
                 depth, feat, self.ranks_depth, self.ranks_feat, self.ranks_bev,
                 bev_feat_shape, self.interval_starts, self.interval_lengths)
 
         else:
             coor = self.get_lidar_coor(*input[1:7])
-            bev_feat = self.voxel_pooling_v2(
-                coor, depth, tran_feat.reshape((N, self.out_channels, H, W)))
+            bev_feat = self.voxel_pooling_v2(coor, depth, tran_feat)
         return bev_feat, depth
 
     def view_transform(self, input, depth, tran_feat):
