@@ -111,7 +111,7 @@ std::vector<paddle::DataType> BevPoolV2InferDtype(
 PD_BUILD_OP(bev_pool_v2)
     .Inputs({"_depth", "_feat", "_ranks_depth", "_ranks_feat", "_ranks_bev",
              "_interval_lengths", "_interval_starts"})
-    .Attrs({"_bev_feat_shape: std::vector<float>"})
+    .Attrs({"_bev_feat_shape: std::vector<int>"})
     .Outputs({"out"})
     .SetKernelFn(PD_KERNEL(bev_pool_v2_forward))
     .SetInferShapeFn(PD_INFER_SHAPE(BevPoolV2InferShape))
