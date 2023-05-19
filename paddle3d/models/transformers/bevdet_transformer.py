@@ -23,6 +23,7 @@ from paddle3d.apis import manager
 from paddle3d.models.layers import param_init, reset_parameters, constant_init
 from paddle3d.models.layers.layer_libs import SimConv
 
+
 class QuickCumsumCuda(PyLayer):
     r"""BEVPoolv2 implementation for Lift-Splat-Shoot view transformation.
 
@@ -82,7 +83,7 @@ def bev_pool_v2_pyop(depth, feat, ranks_depth, ranks_feat, ranks_bev,
                      bev_feat_shape, interval_starts, interval_lengths):
     x = QuickCumsumCuda.apply(depth, feat, ranks_depth, ranks_feat, ranks_bev,
                               bev_feat_shape, interval_starts, interval_lengths)
-    x = x.transpose((0, 4, 1, 2, 3))
+    x = x.transpose((0, 3, 1, 2))
     return x
 
 
@@ -211,23 +212,18 @@ class LSSViewTransformer(nn.Layer):
             print('warning ---> no points within the predefined '
                   'bev receptive field')
             dummy = paddle.zeros(shape=[
-                feat.shape[0], feat.shape[2],
-                int(self.grid_size[2]),
+                int(self.grid_size[2]), feat.shape[1],
                 int(self.grid_size[0]),
                 int(self.grid_size[1])
             ]).cast(feat.dtype)
 
-            dummy = paddle.concat(dummy.unbind(axis=2), 1)
             return dummy
-        feat = feat.transpose((0, 1, 3, 4, 2))
-        bev_feat_shape = (depth.shape[0], int(self.grid_size[2]),
-                          int(self.grid_size[1]), int(self.grid_size[0]),
-                          feat.shape[-1])
+        feat = feat.transpose([0, 2, 3, 1])
+        bev_feat_shape = (int(self.grid_size[2]), int(self.grid_size[1]),
+                          int(self.grid_size[0]), feat.shape[-1])
         bev_feat = bev_pool_v2_pyop(depth, feat, ranks_depth, ranks_feat,
                                     ranks_bev, bev_feat_shape, interval_starts,
                                     interval_lengths)
-        # collapse Z
-        bev_feat = paddle.concat(bev_feat.unbind(axis=2), 1)
         return bev_feat
 
     def voxel_pooling_prepare_v2(self, coor):
@@ -287,22 +283,17 @@ class LSSViewTransformer(nn.Layer):
 
         # Lift-Splat
         if self.accelerate:
-            feat = tran_feat.reshape((B, N, self.out_channels, H, W))
-            feat = feat.transpose((0, 1, 3, 4, 2))
-            depth = depth.reshape((B, N, self.D, H, W))
-            bev_feat_shape = (depth.shape[0], int(self.grid_size[2]),
-                              int(self.grid_size[1]), int(self.grid_size[0]),
-                              feat.shape[-1])
+            feat = tran_feat.transpose([0, 2, 3, 1])
+            bev_feat_shape = (int(self.grid_size[2]), int(self.grid_size[1]),
+                              int(self.grid_size[0]), feat.shape[-1])
             bev_feat = bev_pool_v2_pyop(
                 depth, feat, self.ranks_depth, self.ranks_feat, self.ranks_bev,
                 bev_feat_shape, self.interval_starts, self.interval_lengths)
 
-            bev_feat = bev_feat.squeeze(2)
         else:
             coor = self.get_lidar_coor(*input[1:7])
             bev_feat = self.voxel_pooling_v2(
-                coor, depth.reshape((B, N, self.D, H, W)),
-                tran_feat.reshape((B, N, self.out_channels, H, W)))
+                coor, depth, tran_feat.reshape((N, self.out_channels, H, W)))
         return bev_feat, depth
 
     def view_transform(self, input, depth, tran_feat):
@@ -486,12 +477,14 @@ class SELayer(nn.Layer):
 
 class SimSPPF(nn.Layer):
     '''Simplified SPPF with ReLU activation'''
+
     def __init__(self, in_channels, out_channels, kernel_size=5):
         super().__init__()
         c_ = in_channels // 2  # hidden channels
         self.cv1 = SimConv(in_channels, c_, 1, 1)
         self.cv2 = SimConv(c_ * 4, out_channels, 1, 1)
-        self.m = nn.MaxPool2D(kernel_size=kernel_size, stride=1, padding=kernel_size // 2)
+        self.m = nn.MaxPool2D(
+            kernel_size=kernel_size, stride=1, padding=kernel_size // 2)
 
     def forward(self, x):
         x = self.cv1(x)
@@ -501,7 +494,6 @@ class SimSPPF(nn.Layer):
 
 
 class MSDepthNet(nn.Layer):
-
     def __init__(self,
                  in_channels,
                  mid_channels,
@@ -519,13 +511,13 @@ class MSDepthNet(nn.Layer):
         )
         self.context_conv = nn.Conv2D(
             mid_channels, context_channels, kernel_size=1, stride=1, padding=0)
-        self.bn = nn.BatchNorm1D(27) 
-        self.depth_mlp = Mlp(27, mid_channels, mid_channels) # ?
-        self.depth_se = SELayer(mid_channels)  # NOTE: add camera-aware #? 
-        self.context_mlp = Mlp(27, mid_channels, mid_channels) # ? 
-        self.context_se = SELayer(mid_channels)  # NOTE: add camera-aware #?
+        self.bn = nn.BatchNorm1D(27)
+        self.depth_mlp = Mlp(27, mid_channels, mid_channels)
+        self.depth_se = SELayer(mid_channels)
+        self.context_mlp = Mlp(27, mid_channels, mid_channels)
+        self.context_se = SELayer(mid_channels)
         depth_conv_list = [
-            BasicBlock(mid_channels, mid_channels), #?
+            BasicBlock(mid_channels, mid_channels),
         ]
 
         depth_conv_list.append(SimSPPF(mid_channels, mid_channels))
@@ -533,7 +525,7 @@ class MSDepthNet(nn.Layer):
         if use_aspp:
             raise NotImplementedError
 
-        if use_dcn:   # todo
+        if use_dcn:  # todo
             raise NotImplementedError
 
         self.depth_conv_low = nn.Sequential(*depth_conv_list)
@@ -581,10 +573,11 @@ class MSDepthNet(nn.Layer):
         context_se = self.context_mlp(mlp_input)[..., None, None]
         context = self.context_se(x_high, context_se)
         context = self.context_conv(context)
-        
-        depth =self.up(depth)
+
+        depth = self.up(depth)
 
         return depth, context
+
 
 class DepthNet(nn.Layer):
     def __init__(self,
@@ -757,7 +750,7 @@ class MSLSSViewTransformerBEVDepth(LSSViewTransformer):
         super(MSLSSViewTransformerBEVDepth, self).__init__(**kwargs)
         self.loss_depth_weight = loss_depth_weight
         self.depth_net = MSDepthNet(self.in_channels, self.in_channels,
-                                  self.out_channels, self.D, **depthnet_cfg)
+                                    self.out_channels, self.D, **depthnet_cfg)
 
     def get_mlp_input(self, rot, tran, intrin, post_rot, post_tran, bda):
         B, N, _, _ = rot.shape
@@ -833,9 +826,11 @@ class MSLSSViewTransformerBEVDepth(LSSViewTransformer):
         B, N = rots.shape[:2]
         _, C, H, W = x[0].shape
         x_feat = x[0].reshape([B, N, C, H, W])
-        input = [x_feat, rots, trans, intrins, post_rots, post_trans, bda, mlp_input]
+        input = [
+            x_feat, rots, trans, intrins, post_rots, post_trans, bda, mlp_input
+        ]
         depth_digit, tran_feat = self.depth_net(x[0], x[1], x[2], mlp_input)
-        depth = F.softmax(depth_digit, axis = 1) 
+        depth = F.softmax(depth_digit, axis=1)
 
         ret = self.view_transform(input, depth, tran_feat)
         return ret

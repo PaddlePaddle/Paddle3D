@@ -27,7 +27,7 @@ std::vector<paddle::Tensor> bev_pool_v2_bkwd_forward(
     const paddle::Tensor& _ranks_feat, const paddle::Tensor& _ranks_bev,
     const paddle::Tensor& _interval_lengths,
     const paddle::Tensor& _interval_starts) {
-  int c = _out_grad.shape()[4];
+  int c = _out_grad.shape()[3];
   int n_intervals = _interval_lengths.shape()[0];
   const float* out_grad = _out_grad.data<float>();
   const float* depth = _depth.data<float>();
