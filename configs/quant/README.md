@@ -48,5 +48,4 @@ python tools/export.py --quant_config configs/quant/bevformer.yml --config confi
 | 模型 |  mAP | NDS | 
 | ---- |  --- | ----| 
 | 原模型| 26.22 | 36.53 |
-| ---- |  --- | ----| 
 | 量化模型 |  26.35 | 36.54 |
