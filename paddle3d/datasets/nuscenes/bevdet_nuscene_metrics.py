@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import tempfile
 from paddle3d.datasets.metrics import MetricABC
 from nuscenes import NuScenes
 from nuscenes.eval.detection.evaluate import NuScenesEval
@@ -83,8 +84,8 @@ class BevDetNuScenesMetric(MetricABC):
         """
         assert isinstance(results, list), 'results must be a list'
         if jsonfile_prefix is None:
-            tmp_dir = './tmp_results/'
-            jsonfile_prefix = os.path.join(tmp_dir, 'results')
+            tmp_dir = tempfile.TemporaryDirectory()
+            jsonfile_prefix = os.path.join(tmp_dir.name, 'results')
         else:
             tmp_dir = None
 
