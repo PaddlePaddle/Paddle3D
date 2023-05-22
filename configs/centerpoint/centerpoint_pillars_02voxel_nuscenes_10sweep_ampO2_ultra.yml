@@ -1,4 +1,4 @@
-batch_size: 4
+batch_size: 8
 epochs: 20
 
 amp_cfg:

@@ -51,7 +51,7 @@ null:null
 ===========================to_static_train_benchmark_params===========================
 to_static_train:--to_static True
 ===========================train_benchmark_params==========================
-batch_size:2
+batch_size:4
 fp_items:fp32
 iters:100
 --profiler_options:batch_range=[10,20];state=GPU;tracer_option=Default;profile_path=model.profile
