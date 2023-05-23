@@ -6,9 +6,9 @@ if paddle.device.is_compiled_with_cuda():
         name='undistort',
         version='1.0.0',
         ext_modules=CUDAExtension(
-            sources=['./src/undist_gpu.cc', './src/undist_gpu.cu']))
+            sources=['./src/undist.cc', './src/undist.cu']))
 else:
     setup(
         name='undistort',
         version='1.0.0',
-        ext_modules=CppExtension(sources=['./src/undist_cpu.cc']))
+        ext_modules=CppExtension(sources=['./src/undist.cc']))
