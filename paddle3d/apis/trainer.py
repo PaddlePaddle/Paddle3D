@@ -215,12 +215,7 @@ class Trainer:
                 **ema_cfg)
             self.use_ema = True
 
-        if not self.checkpoint.empty:
-            if not resume:
-                raise RuntimeError(
-                    'The checkpoint {} is not emtpy! Set `resume=True` to continue training or use another dir as checkpoint'
-                    .format(self.checkpoint.rootdir))
-
+        if not self.checkpoint.empty and resume:
             if self.checkpoint.meta.get(
                     'train_by_epoch') != self.train_by_epoch:
                 raise RuntimeError(
