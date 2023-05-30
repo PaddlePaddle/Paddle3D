@@ -3,25 +3,50 @@ epochs: 140
 
 train_dataset:
   type: GUPKittiMonoDataset
-  dataset_root: /your_dataset_dir/kitti
+  dataset_root: /root/kitti
+  use_3d_center: True
+  class_name: ['Pedestrian', 'Car', 'Cyclist']
+  resolution: [1280, 384]
+  random_flip: 0.5
+  random_crop: 0.5
+  scale: 0.4
+  shift: 0.1
   mode: train
 
 val_dataset:
   type: GUPKittiMonoDataset
-  dataset_root: /your_dataset_dir/kitti
+  dataset_root: /root/kitti
+  use_3d_center: True
+  class_name: ['Pedestrian', 'Car', 'Cyclist']
+  resolution: [1280, 384]
+  random_flip: 0.5
+  random_crop: 0.5
+  scale: 0.4
+  shift: 0.1
   mode: val
 
 optimizer:
   type: Adam
+  weight_decay: 0.00001
 
 lr_scheduler:
-  type: MultiStepDecay
-  milestones: [90, 120]
+  type: CosineWarmupMultiStepDecayByEpoch
+  warmup_steps: 5
   learning_rate: 0.00125
+  milestones: [90, 120]
+  decay_rate: 0.1
+  start_lr: 0.00001
 
 model:
   type: GUPNET
-  downsample: 4
+  backbone:
+    type: GUP_DLA34
+    down_ratio: 4
+    pretrained: ./checkpoint/dla34-ba72cf86_paddle_new.pdparams
+  head:
+    type: GUPNETPredictor
+    head_conv: 256
   threshold: 0.2
-  val_dataset_root: /your_dataset_dir/kitti
-  pretrained_model: ./checkpoint/dla34-ba72cf86_paddle.pdparams
+  stat_epoch_nums: 5
+  max_epoch: 140
+  train_datasets_length: 3712

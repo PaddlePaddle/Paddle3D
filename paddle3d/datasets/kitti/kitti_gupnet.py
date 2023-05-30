@@ -1,3 +1,17 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import numpy as np
 from PIL import Image
@@ -19,17 +33,25 @@ class GUPKittiMonoDataset(KittiDetDataset):
     """
     """
 
-    def __init__(self, dataset_root, mode='train'):
+    def __init__(self,
+                 dataset_root,
+                 use_3d_center=True,
+                 class_name=['Pedestrian', 'Car', 'Cyclist'],
+                 resolution=[1280, 384],
+                 random_flip=0.5,
+                 random_crop=0.5,
+                 scale=0.4,
+                 shift=0.1,
+                 mode='train'):
         super().__init__(dataset_root=dataset_root, mode=mode)
         self.dataset_root = dataset_root
         # basic configuration
         self.num_classes = 3
         self.max_objs = 50
-        self.class_name = ['Pedestrian', 'Car', 'Cyclist']
+        self.class_name = class_name
         self.cls2id = {'Pedestrian': 0, 'Car': 1, 'Cyclist': 2}
-        self.resolution = np.array([1280, 384])  # W * H
-        self.use_3d_center = True
-        # self.writelist = ['Car', 'Pedestrian', 'Cyclist']
+        self.resolution = np.array(resolution)  # W * H
+        self.use_3d_center = use_3d_center
 
         # l,w,h
         self.cls_mean_size = np.array(
@@ -48,10 +70,10 @@ class GUPKittiMonoDataset(KittiDetDataset):
         # data augmentation configuration
         self.data_augmentation = True if mode in ['train', 'trainval'
                                                   ] else False
-        self.random_flip = 0.5
-        self.random_crop = 0.5
-        self.scale = 0.4
-        self.shift = 0.1
+        self.random_flip = random_flip
+        self.random_crop = random_crop
+        self.scale = scale
+        self.shift = shift
 
         # statistics
         self.mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)

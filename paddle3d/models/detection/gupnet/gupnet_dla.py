@@ -1,9 +1,24 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import numpy as np
 import math
 import paddle
 import paddle.nn as nn
 from paddle3d.utils import checkpoint
 from paddle3d.utils.logger import logger
+from paddle3d.apis import manager
 
 __all__ = ["GUP_DLA", "GUP_DLA34"]
 
@@ -188,13 +203,10 @@ class Tree(nn.Layer):
         if self.level_root:
             children.append(bottom)
         x1 = self.tree1(x, residual)
-        # print('paddle.backbone.level2.tree1 output: ', x1.mean())
 
         if self.level == 1:
             x2 = self.tree2(x1)
-            # print('paddle.backbone.level2.tree2 output: ', x2.mean())
             x = self.root(x2, x1, *children)
-            # print('paddle.backbone.level2.root output: ', x.mean())
         else:
             children.append(x1)
             x = self.tree2(x1, children=children)
@@ -232,28 +244,27 @@ class Root(nn.Layer):
         return x
 
 
-class GUP_DLA(nn.Layer):
+class GUP_DLABase(nn.Layer):
     """DLA base module
     """
 
     def __init__(self,
                  levels,
                  channels,
+                 block,
                  down_ratio=4,
                  last_level=5,
-                 residual_root=False,
-                 pool_size=7,
-                 num_classes=1000,
-                 return_levels=True):
+                 residual_root=False):
         super().__init__()
         assert down_ratio in [2, 4, 8, 16]
         self.channels = channels
         self.level_length = len(levels)
-        self.return_levels = return_levels
         self.first_level = int(np.log2(down_ratio))
         self.last_level = last_level
-        self.num_classes = num_classes
-        block = BasicBlock
+        if block is None:
+            block = BasicBlock
+        else:
+            block = eval(block)
 
         self.base_layer = nn.Sequential(
             nn.Conv2D(
@@ -311,15 +322,6 @@ class GUP_DLA(nn.Layer):
             level_root=True,
             root_residual=residual_root)
 
-        self.avgpool = nn.AvgPool2D(pool_size)
-        self.fc = nn.Conv2D(
-            channels[-1],
-            num_classes,
-            kernel_size=1,
-            stride=1,
-            padding=0,
-            bias_attr=True)
-
         for m in self.sublayers():
             if isinstance(m, nn.Conv2D):
                 n = m.weight.shape[0] * m.weight.shape[1] * m.weight.shape[2]
@@ -341,14 +343,7 @@ class GUP_DLA(nn.Layer):
             x = getattr(self, 'level{}'.format(i))(x)
             y.append(x)
 
-        if self.return_levels:
-            return y
-        else:
-            x = self.avgpool(x)
-            x = self.fc(x)
-            x = x.view(x.size(0), -1)
-
-            return x
+        return y
 
     def load_pretrained_model(self, path):
         checkpoint.load_pretrained_model(self, path)
@@ -461,13 +456,44 @@ class GUP_IDAUp(nn.Layer):
         return layers
 
 
-def GUP_DLA34(pretrained_model, **kwargs):
+@manager.BACKBONES.add_component
+class GUP_DLA(nn.Layer):
+    """DLA base module
+    """
+
+    def __init__(self, levels, channels, block, down_ratio=4, pretrained=None):
+        super().__init__()
+        assert down_ratio in [2, 4, 8, 16]
+
+        self.pretrained = pretrained
+        self.first_level = int(np.log2(down_ratio))
+        self.base = GUP_DLABase(levels, channels, block)
+
+        # 只加载特征提取网络部分参数
+        self.load_pretrained_model()
+
+        scales = [2**i for i in range(len(channels[self.first_level:]))]
+        self.dla_up = GUP_DLAUp(
+            in_channels_list=channels[self.first_level:], scales_list=scales)
+
+    def forward(self, x):
+        """forward
+        """
+        x = self.base(x)
+        feat = self.dla_up(x[self.first_level:])
+        return feat
+
+    def load_pretrained_model(self):
+        if self.pretrained is not None:
+            checkpoint.load_pretrained_model(self, self.pretrained)
+
+
+@manager.BACKBONES.add_component
+def GUP_DLA34(**kwargs):
     model = GUP_DLA(
         levels=[1, 1, 1, 2, 2, 1],
         channels=[16, 32, 64, 128, 256, 512],
+        block="BasicBlock",
         **kwargs)
 
-    if pretrained_model:
-        logger.info('loading dla34 model ... ')
-        model.load_pretrained_model(path=pretrained_model)
     return model

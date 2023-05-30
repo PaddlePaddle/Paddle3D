@@ -1,11 +1,26 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle3d.models.detection.gupnet.gupnet_helper import _transpose_and_gather_feat
+from paddle3d.apis import manager
 
 
 class Hierarchical_Task_Learning:
-    def __init__(self, epoch0_loss, stat_epoch_nums=5):
+    def __init__(self, epoch0_loss, stat_epoch_nums=5, max_epoch=140):
         self.index2term = [*epoch0_loss.keys()]
         self.term2index = {
             term: self.index2term.index(term)
@@ -25,9 +40,9 @@ class Hierarchical_Task_Learning:
             'heading_loss': ['size2d_loss', 'offset2d_loss'],
             'depth_loss': ['size2d_loss', 'size3d_loss', 'offset2d_loss']
         }
+        self.max_epoch = max_epoch
 
     def compute_weight(self, current_loss, epoch):
-        T = 140
         # compute initial weights
         loss_weights = {}
         eval_loss_input = paddle.concat(
@@ -46,7 +61,7 @@ class Hierarchical_Task_Learning:
             c_weights = 1 - \
                 paddle.nn.functional.relu_(
                     mean_diff / self.init_diff).unsqueeze(0)
-            time_value = min(((epoch - 5) / (T - 5)), 1.0)
+            time_value = min(((epoch - 5) / (self.max_epoch - 5)), 1.0)
             for current_topic in self.loss_graph:
                 if len(self.loss_graph[current_topic]) != 0:
                     control_weight = 1.0
@@ -64,13 +79,13 @@ class Hierarchical_Task_Learning:
             [_.unsqueeze(0) for _ in eval_loss.values()]).unsqueeze(0)
 
 
-class GupnetLoss(nn.Layer):
-    def __init__(self, epoch):
+@manager.LOSSES.add_component
+class GUPNETLoss(nn.Layer):
+    def __init__(self):
         super().__init__()
         self.stat = {}
-        self.epoch = epoch
 
-    def forward(self, preds, targets, task_uncertainties=None):
+    def forward(self, preds, targets):
         '''
         Args:
             preds: prediction {dict 9}
@@ -81,13 +96,13 @@ class GupnetLoss(nn.Layer):
             'depth', 'size_2d', 'heatmap', 'offset_2d', 'indices',
             'size_3d', 'offset_3d', 'heading_bin', 'heading_res', 'cls_ids', 'mask_2d'
         '''
-        seg_loss = self.compute_segmentation_loss(preds, targets)
-        bbox2d_loss = self.compute_bbox2d_loss(preds, targets)
-        bbox3d_loss = self.compute_bbox3d_loss(preds, targets)
-
-        loss = seg_loss + bbox2d_loss + bbox3d_loss
-
-        return loss, self.stat
+        self.stat['seg_loss'] = self.compute_segmentation_loss(preds, targets)
+        self.stat['offset2d_loss'], self.stat[
+            'size2d_loss'] = self.compute_bbox2d_loss(preds, targets)
+        self.stat['depth_loss'], self.stat['offset3d_loss'], self.stat[
+            'size3d_loss'], self.stat[
+                'heading_loss'] = self.compute_bbox3d_loss(preds, targets)
+        return self.stat
 
     def compute_segmentation_loss(self, input, target):
         input['heatmap'] = paddle.clip(
@@ -95,7 +110,6 @@ class GupnetLoss(nn.Layer):
             min=1e-4,
             max=1 - 1e-4)
         loss = focal_loss_cornernet(input['heatmap'], target['heatmap'])
-        self.stat['seg_loss'] = loss
         return loss
 
     def compute_bbox2d_loss(self, input, target):
@@ -113,10 +127,7 @@ class GupnetLoss(nn.Layer):
         offset2d_loss = F.l1_loss(
             offset2d_input, offset2d_target, reduction='mean')
 
-        loss = offset2d_loss + size2d_loss
-        self.stat['offset2d_loss'] = offset2d_loss
-        self.stat['size2d_loss'] = size2d_loss
-        return loss
+        return offset2d_loss, size2d_loss
 
     def compute_bbox3d_loss(self, input, target, mask_type='mask_2d'):
         # compute depth loss
@@ -147,14 +158,8 @@ class GupnetLoss(nn.Layer):
             target[mask_type],  # mask_2d
             target['heading_bin'],
             target['heading_res'])
-        loss = depth_loss + offset3d_loss + size3d_loss + heading_loss
 
-        self.stat['depth_loss'] = depth_loss
-        self.stat['offset3d_loss'] = offset3d_loss
-        self.stat['size3d_loss'] = size3d_loss
-        self.stat['heading_loss'] = heading_loss
-
-        return loss
+        return depth_loss, offset3d_loss, size3d_loss, heading_loss
 
 
 # ======================  auxiliary functions  =======================
