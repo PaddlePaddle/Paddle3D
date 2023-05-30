@@ -21,6 +21,7 @@ from paddle.vision.models.resnet import BasicBlock
 import paddle.nn.functional as F
 from paddle3d.apis import manager
 from paddle3d.models.layers import param_init, reset_parameters, constant_init
+from paddle3d.models.layers.layer_libs import SimConv
 
 
 class QuickCumsumCuda(PyLayer):
@@ -82,7 +83,7 @@ def bev_pool_v2_pyop(depth, feat, ranks_depth, ranks_feat, ranks_bev,
                      bev_feat_shape, interval_starts, interval_lengths):
     x = QuickCumsumCuda.apply(depth, feat, ranks_depth, ranks_feat, ranks_bev,
                               bev_feat_shape, interval_starts, interval_lengths)
-    x = x.transpose((0, 4, 1, 2, 3))
+    x = x.transpose((0, 3, 1, 2))
     return x
 
 
@@ -204,6 +205,7 @@ class LSSViewTransformer(nn.Layer):
         self.interval_lengths = interval_lengths.cast('int32')
 
     def voxel_pooling_v2(self, coor, depth, feat):
+        B = coor.shape[0]
         ranks_bev, ranks_depth, ranks_feat, \
             interval_starts, interval_lengths = \
             self.voxel_pooling_prepare_v2(coor)
@@ -211,23 +213,18 @@ class LSSViewTransformer(nn.Layer):
             print('warning ---> no points within the predefined '
                   'bev receptive field')
             dummy = paddle.zeros(shape=[
-                feat.shape[0], feat.shape[2],
-                int(self.grid_size[2]),
+                B, feat.shape[1],
                 int(self.grid_size[0]),
                 int(self.grid_size[1])
             ]).cast(feat.dtype)
 
-            dummy = paddle.concat(dummy.unbind(axis=2), 1)
             return dummy
-        feat = feat.transpose((0, 1, 3, 4, 2))
-        bev_feat_shape = (depth.shape[0], int(self.grid_size[2]),
-                          int(self.grid_size[1]), int(self.grid_size[0]),
+        feat = feat.transpose([0, 2, 3, 1])
+        bev_feat_shape = (B, int(self.grid_size[1]), int(self.grid_size[0]),
                           feat.shape[-1])
         bev_feat = bev_pool_v2_pyop(depth, feat, ranks_depth, ranks_feat,
                                     ranks_bev, bev_feat_shape, interval_starts,
                                     interval_lengths)
-        # collapse Z
-        bev_feat = paddle.concat(bev_feat.unbind(axis=2), 1)
         return bev_feat
 
     def voxel_pooling_prepare_v2(self, coor):
@@ -287,22 +284,16 @@ class LSSViewTransformer(nn.Layer):
 
         # Lift-Splat
         if self.accelerate:
-            feat = tran_feat.reshape((B, N, self.out_channels, H, W))
-            feat = feat.transpose((0, 1, 3, 4, 2))
-            depth = depth.reshape((B, N, self.D, H, W))
-            bev_feat_shape = (depth.shape[0], int(self.grid_size[2]),
-                              int(self.grid_size[1]), int(self.grid_size[0]),
+            feat = tran_feat.transpose([0, 2, 3, 1])
+            bev_feat_shape = (B, int(self.grid_size[1]), int(self.grid_size[0]),
                               feat.shape[-1])
             bev_feat = bev_pool_v2_pyop(
                 depth, feat, self.ranks_depth, self.ranks_feat, self.ranks_bev,
                 bev_feat_shape, self.interval_starts, self.interval_lengths)
 
-            bev_feat = bev_feat.squeeze(2)
         else:
             coor = self.get_lidar_coor(*input[1:7])
-            bev_feat = self.voxel_pooling_v2(
-                coor, depth.reshape((B, N, self.D, H, W)),
-                tran_feat.reshape((B, N, self.out_channels, H, W)))
+            bev_feat = self.voxel_pooling_v2(coor, depth, tran_feat)
         return bev_feat, depth
 
     def view_transform(self, input, depth, tran_feat):
@@ -443,7 +434,7 @@ class Mlp(nn.Layer):
         super(Mlp, self).__init__()
         out_features = out_features or in_features
         hidden_features = hidden_features or in_features
-        self.fc1 = nn.Linear(27, 512)
+        self.fc1 = nn.Linear(27, hidden_features)
         self.act = act_layer()
         self.drop1 = nn.Dropout(drop)
         self.fc2 = nn.Linear(hidden_features, out_features)
@@ -482,6 +473,110 @@ class SELayer(nn.Layer):
         for m in self.sublayers():
             if isinstance(m, nn.Conv2D):
                 reset_parameters(m)
+
+
+class SimSPPF(nn.Layer):
+    '''Simplified SPPF with ReLU activation'''
+
+    def __init__(self, in_channels, out_channels, kernel_size=5):
+        super().__init__()
+        c_ = in_channels // 2  # hidden channels
+        self.cv1 = SimConv(in_channels, c_, 1, 1)
+        self.cv2 = SimConv(c_ * 4, out_channels, 1, 1)
+        self.m = nn.MaxPool2D(
+            kernel_size=kernel_size, stride=1, padding=kernel_size // 2)
+
+    def forward(self, x):
+        x = self.cv1(x)
+        y1 = self.m(x)
+        y2 = self.m(y1)
+        return self.cv2(paddle.concat([x, y1, y2, self.m(y2)], 1))
+
+
+class MSDepthNet(nn.Layer):
+    def __init__(self,
+                 in_channels,
+                 mid_channels,
+                 context_channels,
+                 depth_channels,
+                 use_dcn=False,
+                 use_aspp=False,
+                 use_sppf=True):
+        super(MSDepthNet, self).__init__()
+        self.reduce_conv = nn.Sequential(
+            nn.Conv2D(
+                in_channels, mid_channels, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2D(mid_channels),
+            nn.ReLU(),
+        )
+        self.context_conv = nn.Conv2D(
+            mid_channels, context_channels, kernel_size=1, stride=1, padding=0)
+        self.bn = nn.BatchNorm1D(27)
+        self.depth_mlp = Mlp(27, mid_channels, mid_channels)
+        self.depth_se = SELayer(mid_channels)
+        self.context_mlp = Mlp(27, mid_channels, mid_channels)
+        self.context_se = SELayer(mid_channels)
+        depth_conv_list = [
+            BasicBlock(mid_channels, mid_channels),
+        ]
+
+        depth_conv_list.append(SimSPPF(mid_channels, mid_channels))
+
+        if use_aspp:
+            raise NotImplementedError
+
+        if use_dcn:  # todo
+            raise NotImplementedError
+
+        self.depth_conv_low = nn.Sequential(*depth_conv_list)
+
+        self.up = nn.Upsample(scale_factor=2, mode='bilinear')
+        depth_conv_list_mid = [
+            BasicBlock(mid_channels, mid_channels),
+            BasicBlock(mid_channels, mid_channels),
+        ]
+
+        depth_conv_list_mid.append(
+            nn.Conv2D(
+                mid_channels,
+                depth_channels,
+                kernel_size=1,
+                stride=1,
+                padding=0))
+        self.depth_conv_mid = nn.Sequential(*depth_conv_list_mid)
+
+        self._init_weight()
+
+    def _init_weight(self):
+        self.depth_conv_low.apply(param_init.init_weight)
+        self.depth_conv_mid.apply(param_init.init_weight)
+
+        self.reduce_conv.apply(param_init.init_weight)
+        self.depth_se.apply(param_init.init_weight)
+        self.depth_mlp.apply(param_init.init_weight)
+        self.context_mlp.apply(param_init.init_weight)
+        self.context_se.apply(param_init.init_weight)
+        self.context_conv.apply(param_init.init_weight)
+        param_init.init_weight(self.bn)
+
+    def forward(self, x_high, x_mid, x_low, mlp_input):
+        mlp_input.stop_gradient = False
+        mlp_input = self.bn(mlp_input.reshape((-1, mlp_input.shape[-1])))
+        x_high = self.reduce_conv(x_high)
+        depth_se = self.depth_mlp(mlp_input)[..., None, None]
+        depth = self.depth_se(x_low, depth_se)
+        depth = self.depth_conv_low(depth)
+        depth = self.up(depth)
+        depth = x_mid + depth
+        depth = self.depth_conv_mid(depth)
+
+        context_se = self.context_mlp(mlp_input)[..., None, None]
+        context = self.context_se(x_high, context_se)
+        context = self.context_conv(context)
+
+        depth = self.up(depth)
+
+        return depth, context
 
 
 class DepthNet(nn.Layer):
@@ -645,5 +740,97 @@ class LSSViewTransformerBEVDepth(LSSViewTransformer):
         depth_digit = x[:, :self.D, ...]
         tran_feat = x[:, self.D:self.D + self.out_channels, ...]
         depth = F.softmax(depth_digit, axis=1)
+        ret = self.view_transform(input, depth, tran_feat)
+        return ret
+
+
+@manager.TRANSFORMERS.add_component
+class MSLSSViewTransformerBEVDepth(LSSViewTransformer):
+    def __init__(self, loss_depth_weight=3.0, depthnet_cfg=dict(), **kwargs):
+        super(MSLSSViewTransformerBEVDepth, self).__init__(**kwargs)
+        self.loss_depth_weight = loss_depth_weight
+        self.depth_net = MSDepthNet(self.in_channels, self.in_channels,
+                                    self.out_channels, self.D, **depthnet_cfg)
+
+    def get_mlp_input(self, rot, tran, intrin, post_rot, post_tran, bda):
+        B, N, _, _ = rot.shape
+        bda = bda.reshape((B, 1, 3, 3)).tile([1, N, 1, 1])
+        intrin = intrin.cast("float32")
+        mlp_input = paddle.stack([
+            intrin[:, :, 0, 0],
+            intrin[:, :, 1, 1],
+            intrin[:, :, 0, 2],
+            intrin[:, :, 1, 2],
+            post_rot[:, :, 0, 0],
+            post_rot[:, :, 0, 1],
+            post_tran[:, :, 0],
+            post_rot[:, :, 1, 0],
+            post_rot[:, :, 1, 1],
+            post_tran[:, :, 1],
+            bda[:, :, 0, 0],
+            bda[:, :, 0, 1],
+            bda[:, :, 1, 0],
+            bda[:, :, 1, 1],
+            bda[:, :, 2, 2],
+        ],
+                                 axis=-1)
+        sensor2ego = paddle.concat([rot, tran.reshape((B, N, 3, 1))],
+                                   axis=-1).reshape((B, N, -1))
+        mlp_input = paddle.concat([mlp_input, sensor2ego], axis=-1)
+        return mlp_input
+
+    def get_downsampled_gt_depth(self, gt_depths):
+        B, N, H, W = gt_depths.shape
+        gt_depths = gt_depths.reshape(
+            (B * N, H // self.downsample, self.downsample, W // self.downsample,
+             self.downsample, 1))
+        gt_depths = gt_depths.transpose((0, 1, 3, 5, 2, 4))
+        gt_depths = gt_depths.reshape((-1, self.downsample * self.downsample))
+        gt_depths_tmp = paddle.where(
+            gt_depths == 0.0, 1e5 * paddle.ones(
+                (gt_depths.shape), dtype=gt_depths.dtype), gt_depths)
+        gt_depths = paddle.min(gt_depths_tmp, axis=-1)
+        gt_depths = gt_depths.reshape((B * N, H // self.downsample,
+                                       W // self.downsample))
+
+        gt_depths = (gt_depths - (
+            self.grid_config['depth'][0] - self.grid_config['depth'][2])
+                     ) / self.grid_config['depth'][2]
+
+        gt_depths = paddle.where(
+            (gt_depths < self.D + 1) & (gt_depths >= 0.0), gt_depths,
+            paddle.zeros(gt_depths.shape, dtype=gt_depths.dtype))
+        gt_depths = F.one_hot(
+            gt_depths.cast("int64"), num_classes=self.D + 1).reshape(
+                (-1, self.D + 1))[:, 1:]
+        return gt_depths.cast("float32")
+
+    def get_depth_loss(self, depth_labels, depth_preds):
+        depth_labels = self.get_downsampled_gt_depth(depth_labels)
+        depth_preds = depth_preds.transpose((0, 2, 3, 1))
+        depth_preds = depth_preds.reshape((-1, self.D))
+        fg_mask = paddle.max(depth_labels, axis=1) > 0.0
+        depth_labels = depth_labels[fg_mask]
+        depth_preds = depth_preds[fg_mask]
+        depth_loss = F.binary_cross_entropy(
+            depth_preds,
+            depth_labels,
+            reduction='none',
+        ).sum() / max(1.0, fg_mask.sum())
+        return self.loss_depth_weight * depth_loss
+
+    def forward(self, input):
+        (x, rots, trans, intrins, post_rots, post_trans, bda,
+         mlp_input) = input[:8]
+
+        B, N = rots.shape[:2]
+        _, C, H, W = x[0].shape
+        x_feat = x[0].reshape([B, N, C, H, W])
+        input = [
+            x_feat, rots, trans, intrins, post_rots, post_trans, bda, mlp_input
+        ]
+        depth_digit, tran_feat = self.depth_net(x[0], x[1], x[2], mlp_input)
+        depth = F.softmax(depth_digit, axis=1)
+
         ret = self.view_transform(input, depth, tran_feat)
         return ret

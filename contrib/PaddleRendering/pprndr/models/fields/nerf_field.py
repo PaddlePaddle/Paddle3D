@@ -20,13 +20,13 @@ import paddle.nn.functional as F
 
 from pprndr.apis import manager
 from pprndr.cameras.rays import RaySamples
-from pprndr.models.fields import BaseField
+from pprndr.models.fields import BaseDensityField
 
-__all__ = ['NeRFField']
+__all__ = ['NeRFField', 'NeRFPPField']
 
 
 @manager.FIELDS.add_component
-class NeRFField(BaseField):
+class NeRFField(BaseDensityField):
     """
     NeRF Field. Reference: https://arxiv.org/abs/2003.08934
 
@@ -64,33 +64,13 @@ class NeRFField(BaseField):
         self.rgb_padding = rgb_padding
         self.use_integrated_encoding = use_integrated_encoding
 
-    def get_density(
-            self,
-            ray_samples: Union[RaySamples, paddle.Tensor],
-            which_pts: str = "mid_points",
-            manipulate_pts: str = None) -> Tuple[paddle.Tensor, paddle.Tensor]:
+    def get_density(self, ray_samples: Union[RaySamples, paddle.Tensor]
+                    ) -> Tuple[paddle.Tensor, paddle.Tensor]:
         if isinstance(ray_samples, RaySamples):
             if self.use_integrated_encoding:
-                assert (which_pts == "mid_points")
                 pos_inputs = ray_samples.frustums.gaussians
             else:
-                if which_pts == "mid_points":
-                    pos_inputs = ray_samples.frustums.positions
-                elif which_pts == "bin_points":
-                    pos_inputs = ray_samples.frustums.bin_points
-                else:
-                    raise ValueError(
-                        'which_pts should be either "mid_points" or "bin_points".'
-                    )
-            if manipulate_pts is not None:
-                assert (manipulate_pts in ["nerf_pp_outside_warp"])
-                if manipulate_pts == "nerf_pp_outside_warp":
-                    assert (self.pos_encoder.input_dims == 4)
-                    dis_to_center = paddle.linalg.norm(
-                        pos_inputs, p=2, axis=-1, keepdim=True).clip(1.0, 1e10)
-                    pos_inputs = paddle.concat(
-                        [pos_inputs / dis_to_center, 1.0 / dis_to_center],
-                        axis=-1)
+                pos_inputs = ray_samples.frustums.positions
         else:
             pos_inputs = ray_samples
         pos_embeddings = self.pos_encoder(pos_inputs)
@@ -119,3 +99,43 @@ class NeRFField(BaseField):
             color = color * (1. + 2. * self.rgb_padding) - self.rgb_padding
 
         return dict(rgb=color)
+
+
+@manager.FIELDS.add_component
+class NeRFPPField(NeRFField):
+    """
+    NeRF++ Field according to the paper.
+    """
+
+    def __init__(
+            self,
+            dir_encoder: nn.Layer,
+            pos_encoder: nn.Layer,
+            stem_net: nn.Layer,
+            density_head: nn.Layer,
+            color_head: nn.Layer,
+            density_noise: float = None,
+            density_bias: float = None,
+            rgb_padding: float = None,
+    ):
+        super(NeRFPPField, self).__init__(
+            dir_encoder=dir_encoder,
+            pos_encoder=pos_encoder,
+            stem_net=stem_net,
+            density_head=density_head,
+            color_head=color_head,
+            density_noise=density_noise,
+            density_bias=density_bias,
+            rgb_padding=rgb_padding,
+            use_integrated_encoding=False)
+
+    def get_density(self, ray_samples: RaySamples
+                    ) -> Tuple[paddle.Tensor, paddle.Tensor]:
+        # warp outsiders
+        positions = ray_samples.frustums.positions
+        dis_to_center = paddle.linalg.norm(
+            positions, p=2, axis=-1, keepdim=True).clip(1.0, 1e10)
+        pos_inputs = paddle.concat(
+            [positions / dis_to_center, 1.0 / dis_to_center], axis=-1)
+
+        return super(NeRFPPField, self).get_density(pos_inputs)

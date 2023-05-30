@@ -58,13 +58,23 @@ class Frustums(object):
 
     @property
     def bin_points(self) -> paddle.Tensor:
-        origins = paddle.concat(
-            [self.origins, self.origins[:, -1, :].unsqueeze(axis=1)], axis=1)
-        directions = paddle.concat(
-            [self.directions, self.directions[:, -1, :].unsqueeze(axis=1)],
-            axis=1)
-        points = origins + directions * \
-                 paddle.concat((self.starts, self.ends[:, -1, None]), axis=1)
+        # TODO: [Warning] If bin_points is passed to networks,
+        #  note that there is a mismatch between the shapes of bin_points and shape of directions.
+        if self.origins.ndim == 3:
+            origins = paddle.concat([self.origins, self.origins[:, -1:, :]],
+                                    axis=-2)
+            directions = paddle.concat(
+                [self.directions, self.directions[:, -1:, :]], axis=-2)
+            points = origins + directions * paddle.concat(
+                [self.starts, self.ends[:, -1:, :]],
+                axis=-2)  # [num_rays, num_samples + 1, 3]
+        else:
+            origins = paddle.repeat_interleave(self.origins, repeats=2, axis=-2)
+            directions = paddle.repeat_interleave(
+                self.directions, repeats=2, axis=-2)
+            intervals = paddle.stack([self.starts, self.ends], axis=-2).flatten(
+                -3, -2)
+            points = origins + directions * intervals  # [num_total_samples * 2, 3]
 
         return points
 
@@ -164,8 +174,6 @@ class RaySamples:
             directions = self.frustums.directions
             pixel_area = self.frustums.pixel_area
             camera_ids = self.camera_ids
-            spacing_bins = None
-            spacing2euclidean_fn = None
 
             for i, sample in enumerate(sample_list):
                 origin_pad = sample.frustums.origins[:, -1:, :]

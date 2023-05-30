@@ -157,7 +157,7 @@ class Config(object):
 
     @property
     def image_batch_size(self) -> int:
-        return self.dic.get('batch_size', -1)
+        return self.dic.get('image_batch_size', -1)
 
     @property
     def ray_batch_size(self) -> int:

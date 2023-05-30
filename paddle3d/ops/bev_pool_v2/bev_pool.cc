@@ -33,7 +33,7 @@ std::vector<paddle::Tensor> bev_pool_v2_forward(
     const paddle::Tensor& _ranks_bev, const paddle::Tensor& _interval_lengths,
     const paddle::Tensor& _interval_starts,
     const std::vector<int>& _bev_feat_shape) {
-  int c = _feat.shape()[4];
+  int c = _feat.shape()[3];
   int n_intervals = _interval_lengths.shape()[0];
   const float* depth = _depth.data<float>();
   const float* feat = _feat.data<float>();
@@ -59,7 +59,7 @@ std::vector<paddle::Tensor> bev_pool_v2_backward(
     const paddle::Tensor& _ranks_feat, const paddle::Tensor& _ranks_bev,
     const paddle::Tensor& _interval_lengths,
     const paddle::Tensor& _interval_starts) {
-  int c = _out_grad.shape()[4];
+  int c = _out_grad.shape()[3];
   int n_intervals = _interval_lengths.shape()[0];
   const float* out_grad = _out_grad.data<float>();
   const float* depth = _depth.data<float>();
@@ -70,11 +70,10 @@ std::vector<paddle::Tensor> bev_pool_v2_backward(
   const int* interval_lengths = _interval_lengths.data<int>();
   const int* interval_starts = _interval_starts.data<int>();
 
-  int b = _feat.shape()[0];
-  int h = _feat.shape()[2];
-  int w = _feat.shape()[3];
-  int d = _depth.shape()[2];
-  int n = _depth.shape()[1];
+  int h = _feat.shape()[1];
+  int w = _feat.shape()[2];
+  int d = _depth.shape()[1];
+  int n = _depth.shape()[0];
 
   auto _depth_grad =
       paddle::full({n, d, h, w}, 0.0, _depth.type(), paddle::GPUPlace());
@@ -98,7 +97,7 @@ std::vector<std::vector<int64_t>> BevPoolV2InferShape(
     std::vector<int64_t> _interval_starts_shape,
     const std::vector<int> _bev_feat_shape) {
   return {{_bev_feat_shape[0], _bev_feat_shape[1], _bev_feat_shape[2],
-           _bev_feat_shape[3], _bev_feat_shape[4]}};
+           _bev_feat_shape[3]}};
 }
 
 std::vector<paddle::DataType> BevPoolV2InferDtype(
@@ -112,7 +111,7 @@ std::vector<paddle::DataType> BevPoolV2InferDtype(
 PD_BUILD_OP(bev_pool_v2)
     .Inputs({"_depth", "_feat", "_ranks_depth", "_ranks_feat", "_ranks_bev",
              "_interval_lengths", "_interval_starts"})
-    .Attrs({"_bev_feat_shape: std::vector<float>"})
+    .Attrs({"_bev_feat_shape: std::vector<int>"})
     .Outputs({"out"})
     .SetKernelFn(PD_KERNEL(bev_pool_v2_forward))
     .SetInferShapeFn(PD_INFER_SHAPE(BevPoolV2InferShape))

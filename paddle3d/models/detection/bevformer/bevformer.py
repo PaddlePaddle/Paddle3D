@@ -32,6 +32,7 @@ from paddle3d.sample import Sample, SampleMeta
 from paddle3d.utils import dtype2float32
 from paddle3d.utils.grid import GridMask
 from paddle3d.utils.logger import logger
+from paddle3d.slim.quant import QAT
 
 
 @manager.MODELS.add_component
@@ -59,6 +60,20 @@ class BEVFormer(nn.Layer):
         self.pts_bbox_head = pts_bbox_head
         self.pretrained = pretrained
         self.video_test_mode = video_test_mode
+        self._quant = False
+
+    def is_quant_model(self) -> bool:
+        return self._quant
+
+    def build_slim_model(self, slim_config: str):
+        """ Slim the model and update the cfg params
+        """
+        self._quant = True
+
+        logger.info("Build QAT model.")
+        self.qat = QAT(quant_config=slim_config)
+        # slim the model
+        self.qat(self)
 
     def extract_img_feat(self, img, img_metas, len_queue=None):
         """Extract features of images."""
@@ -339,7 +354,13 @@ class BEVFormer(nn.Layer):
         input_spec = [image_spec, pre_bev_spec, img_metas_spec]
 
         paddle.jit.to_static(self, input_spec=input_spec)
-        paddle.jit.save(self, os.path.join(save_dir, "bevformer_inference"))
+        if self.is_quant_model:
+            self.qat.save_quantized_model(
+                model=self,
+                path=os.path.join(save_dir, "bevformer_inference"),
+                input_spec=input_spec)
+        else:
+            paddle.jit.save(self, os.path.join(save_dir, "bevformer_inference"))
         logger.info("Exported model is saved in {}".format(
             os.path.join(save_dir, "bevformer_inference")))
 

@@ -1,5 +1,5 @@
 iters: 300000
-image_batch_size: 1
+image_batch_size: -1
 ray_batch_size: 256
 eval_pixel_stride: 1
 image_resampling_interval: -1
@@ -23,7 +23,7 @@ train_dataset:
   transforms:
     - type: LoadImage
     - type: Normalize
-  split: "train"
+  split: train
 
 val_dataset:
   type: LLFFDataset
@@ -33,10 +33,8 @@ val_dataset:
   camera_scale_factor: 1.0
   camera_axis_convention: OpenCV
   image_coords_offset: 0
-  eval_with_grad: True  # must be set True to enable rendering normal_map in evaluation mode.
   eval_to_cpu: True
-  max_eval_num: 3
-  validate_mesh: "neus_style"
+  validate_mesh: neus_style
   mesh_resolution: 256
   world_space_for_mesh: False
   bound_min: [-1.0, -1.0, -1.0]
@@ -46,7 +44,7 @@ val_dataset:
   transforms:
     - type: LoadImage
     - type: Normalize
-  split: "val"
+  split: val
 
 optimizer:
   type: Adam
@@ -57,16 +55,19 @@ optimizer:
   multi_precision: False
 
 lr_scheduler:
-  type: NeuSLRDecay
-  lr_init: 0.0005
-  warm_up_end: 5000
-  learning_rate_alpha: 0.05
-  max_steps: 300001
+  type: LinearWarmup
+  learning_rate:
+    type: CosineAnnealingDecay
+    learning_rate: 0.0005
+    T_max: 300000
+    eta_min: 2.5e-05
+  warmup_steps: 5000
+  start_lr: 0.0
+  end_lr: 0.0005
 
 model:
   type: NeuS
   fine_sampling_steps: 4
-  background_rgb: null
   loss_weight_color: 1.0
   loss_weight_idr: 0.1
   loss_weight_mask: 0.0
@@ -126,15 +127,18 @@ model:
       num_layers: 9
       hidden_dim: 256
       skip_layers: [4]
-      skip_connection_way: "concat_in"   # concat_in, concat_out
+      skip_connection_way: concat_in   # concat_in, concat_out
       skip_connection_scale: 1.4142135   # np.sqrt(2)
       with_bias: True # to be set to 0
       activation:
         type: Softplus
         beta: 100
         threshold: 20
-      output_activation: "none"
-      weight_init: ["geometric_init", 0.5, True] # the last one indicates if num_freqs > 0
+      output_activation: none
+      weight_init:
+        type: GeometricInit
+        bias: 0.5
+        multi_res: True
       weight_normalization: True
 
     color_network:
@@ -145,8 +149,8 @@ model:
       hidden_dim: 256
       skip_layers: null
       with_bias: True
-      activation: "relu"
-      output_activation: "sigmoid"
+      activation: relu
+      output_activation: sigmoid
       weight_normalization: True
 
   global_field:
@@ -173,8 +177,8 @@ model:
       num_layers: 8
       hidden_dim: 256
       skip_layers: [5]
-      activation: "relu"
-      output_activation: "relu"
+      activation: relu
+      output_activation: relu
       weight_normalization: False
 
     density_head: # Called alpha_linear though.
@@ -182,7 +186,7 @@ model:
       input_dim: 256
       output_dim: 1
       num_layers: 1
-      output_activation: "none"
+      output_activation: none
 
     color_head:
       type: MLP
@@ -191,7 +195,7 @@ model:
       hidden_dim: 128
       num_layers: 2
       activation: relu
-      output_activation: "sigmoid"
+      output_activation: sigmoid
 
   rgb_renderer:
     type: RGBRenderer

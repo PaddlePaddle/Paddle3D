@@ -12,25 +12,20 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple, Optional
 
 import paddle
 import paddle.nn.functional as F
 import paddle.nn as nn
 import numpy as np
-import time
 import mcubes
 
 from pprndr.apis import manager
 from pprndr.cameras.rays import RayBundle
-from pprndr.models.fields import BaseField
+from pprndr.models.fields import BaseDensityField
 from pprndr.models.ray_samplers import BaseSampler
-from pprndr.ray_marching import render_weight_from_density
-from pprndr.ray_marching import render_alpha_from_densities
-from pprndr.ray_marching import render_weights_from_alpha
-from pprndr.ray_marching import render_alpha_from_sdf
-from pprndr.ray_marching import get_anneal_coeff
-from pprndr.ray_marching import get_cosine_coeff
+from pprndr.ray_marching import render_alpha_from_densities, render_weights_from_alpha, render_alpha_from_sdf, \
+    get_anneal_coeff, get_cosine_coeff
 from pprndr.utils.logger import logger
 
 __all__ = ["NeuS"]
@@ -41,12 +36,11 @@ class NeuS(nn.Layer):
     def __init__(self,
                  coarse_ray_sampler: BaseSampler,
                  fine_ray_sampler: BaseSampler,
-                 outside_ray_sampler: BaseSampler,
-                 inside_field: BaseField,
-                 global_field: BaseField,
+                 inside_field: BaseDensityField,
+                 global_field: BaseDensityField,
                  rgb_renderer: nn.Layer,
+                 outside_ray_sampler: Optional[BaseSampler] = None,
                  fine_sampling_steps: int = 4,
-                 background_rgb=None,
                  loss_weight_color: float = 1.0,
                  loss_weight_idr: float = 1.0,
                  loss_weight_mask: float = 1.0,
@@ -59,7 +53,6 @@ class NeuS(nn.Layer):
         self.global_field = global_field
         self.rgb_renderer = rgb_renderer
         self.fine_sampling_steps = fine_sampling_steps
-        self.background_rgb = background_rgb
         self.loss_weight_color = loss_weight_color
         self.loss_weight_idr = loss_weight_idr
         self.loss_weight_mask = loss_weight_mask
@@ -69,8 +62,8 @@ class NeuS(nn.Layer):
         if fine_ray_sampler is None or fine_sampling_steps == 0:
             self.num_importance = 0
         else:
-            assert (not fine_ray_sampler is None)
-            assert (fine_sampling_steps > 0)
+            assert fine_ray_sampler is not None
+            assert fine_sampling_steps > 0
             self.num_importance = fine_sampling_steps * fine_ray_sampler.num_samples
 
     def _forward(self, sample: Tuple[RayBundle, dict],
@@ -87,22 +80,26 @@ class NeuS(nn.Layer):
         if self.num_importance > 0:
             num_inside = num_inside + self.num_importance
             with paddle.no_grad():
-                signed_distances, sdf_features = self.inside_field.get_sdf_output(
-                    ray_samples_inside, which_pts="bin_points")
+                signed_distances = self.inside_field.sdf_fn(
+                    ray_samples_inside.frustums.bin_points)
 
                 for i in range(self.fine_sampling_steps):
                     batch_size = ray_samples_inside.spacing_bins.shape[0]
                     cos_val = get_cosine_coeff(
                         ray_samples_inside, signed_distances, radius_filter=1.0)
                     # Use middle sdf
-                    prev_sdf = signed_distances[:, :-1, :]
-                    next_sdf = signed_distances[:, 1:, :]
+                    if signed_distances.ndim == 3:
+                        prev_sdf = signed_distances[:, :-1, :]
+                        next_sdf = signed_distances[:, 1:, :]
+                    else:
+                        prev_sdf = signed_distances[::2, :]
+                        next_sdf = signed_distances[1::2, :]
                     mid_sdf = (prev_sdf + next_sdf) * 0.5  # [b, n_samples, 1]
 
                     inside_alpha = render_alpha_from_sdf(
                         ray_samples_inside,
                         mid_sdf,
-                        inv_s=64 * 2**i,  # not sure.
+                        inv_s=64 * 2**i,
                         coeff=cos_val,
                         clip_alpha=False)
                     inside_weights = render_weights_from_alpha(inside_alpha)
@@ -115,11 +112,11 @@ class NeuS(nn.Layer):
                         [ray_samples_inside_new], ray_bundle, mode="sort")
 
                     if i + 1 != self.fine_sampling_steps:
-                        new_signed_distances, _ = self.inside_field.get_sdf_output(
-                            ray_samples_inside_new, which_pts="bin_points")
+                        new_signed_distances = self.inside_field.sdf_fn(
+                            ray_samples_inside_new.frustums.bin_points)
 
                         signed_distances = paddle.concat(
-                            [signed_distances, new_signed_distances], axis=1)
+                            [signed_distances, new_signed_distances], axis=-2)
                         num_inside_for_step_i = ray_samples_inside.frustums.bin_points.shape[
                             1]
 
@@ -133,87 +130,63 @@ class NeuS(nn.Layer):
                             batch_id, index)].reshape(
                                 [batch_size, num_inside_for_step_i, 1])
 
-        num_outside = self.outside_ray_sampler.num_samples
-        if num_outside > 0:
-            ray_samples_outside = self.outside_ray_sampler(
-                ray_bundle)  # Sampling outside
-            ray_samples = ray_samples_inside.merge_samples(
-                [ray_samples_outside], mode="force_concat")
-
-            # Compute densities and colors in the global field
-            global_densities, embeddings = self.global_field.get_density(
-                ray_samples,
-                which_pts="mid_points",
-                manipulate_pts="nerf_pp_outside_warp")
-            global_colors = self.global_field.get_outputs(
-                ray_samples, embeddings)
-
-            global_alphas = render_alpha_from_densities(
-                ray_samples=ray_samples, densities=global_densities)
-        else:
-            global_alphas = None
-
         # Get inside field (SDF + RenderNet) outputs.
-        batch_size, n_samples, _ = ray_samples_inside.frustums.positions.shape
+        inside_outputs = self.inside_field(ray_samples_inside)
 
-        signed_distances, sdf_features = self.inside_field.get_sdf_output(
-            ray_samples_inside)
+        anneal_coeff = get_anneal_coeff(
+            ray_samples_inside, inside_outputs["gradients"], cur_iter,
+            self.anneal_end if self.training else 0.0)  # cos_anneal
 
-        gradients = self.inside_field.get_gradients(ray_samples_inside)
-
-        inside_colors = self.inside_field.get_colors(ray_samples_inside,
-                                                     gradients, sdf_features)
-
-        if not self.training:
-            self.anneal_end = 0.0
-        anneal_coeff = get_anneal_coeff(ray_samples_inside, gradients, cur_iter,
-                                        self.anneal_end)  # cos_anneal
-
-        inv_s = self.inside_field.get_inv_s(batch_size, n_samples)
         inside_alphas = render_alpha_from_sdf(
-            ray_samples_inside, signed_distances, inv_s, anneal_coeff)
+            ray_samples_inside, inside_outputs["sdf"], self.inside_field.inv_s,
+            anneal_coeff)
 
         # Filtering points by their norm
         inside_sphere, relax_inside_sphere = self.inside_field.get_inside_filter_by_norm(
             ray_samples_inside)
 
         # Get the final alpha and color.
-        if global_alphas is not None:
-            assert (not global_colors is None)
-            alphas = inside_alphas * inside_sphere + global_alphas[:, :
-                                                                   num_inside, :] * (
-                                                                       1.0 -
-                                                                       inside_sphere
-                                                                   )
-            alphas = paddle.concat([alphas, global_alphas[:, num_inside:, :]],
+        if self.outside_ray_sampler is not None:
+            ray_samples_outside = self.outside_ray_sampler(
+                ray_bundle)  # Sampling outside
+            global_ray_samples = ray_samples_inside.merge_samples(
+                [ray_samples_outside], mode="force_concat")
+
+            global_outputs = self.global_field(global_ray_samples)
+            global_alphas = render_alpha_from_densities(
+                ray_samples=global_ray_samples,
+                densities=global_outputs["density"])
+
+            alphas = inside_alphas * inside_sphere + global_alphas[
+                ..., :num_inside, :] * (1.0 - inside_sphere)
+            alphas = paddle.concat([alphas, global_alphas[..., num_inside:, :]],
                                    axis=1)
-            colors = inside_colors * inside_sphere + \
-                    global_colors["rgb"][:, :num_inside, :] * (1.0 - inside_sphere)
+            colors = inside_outputs["rgb"] * inside_sphere + global_outputs[
+                "rgb"][..., :num_inside, :] * (1.0 - inside_sphere)
             colors = paddle.concat(
-                [colors, global_colors["rgb"][:, num_inside:, :]], axis=1)
+                [colors, global_outputs["rgb"][:, num_inside:, :]], axis=1)
         else:
             alphas = inside_alphas
-            colors = inside_colors
+            colors = inside_outputs["rgb"]
 
         # Compute weights from alpha
         alphas = alphas.squeeze(-1)
-        weights = alphas * paddle.cumprod(paddle.concat([paddle.ones([batch_size, 1]), \
-                                                        1. - alphas + 1e-7], -1), -1)[:, :-1]
+        weights = alphas * paddle.cumprod(
+            paddle.concat([paddle.ones([batch_size, 1]), 1. - alphas + 1e-7],
+                          -1), -1)[:, :-1]
         weights = weights.unsqueeze(axis=-1)
 
         rgbs, visibility_mask = self.rgb_renderer(
             colors, weights, return_visibility=self.training)
 
         weights_sum = weights.squeeze(axis=-1).sum(axis=-1, keepdim=True)
-        if self.background_rgb is not None:
-            rgbs = rgbs + self.background_rgb * (1 - weights_sum)
 
         outputs = dict(rgb=rgbs)
 
         if self.training:
             # Eikonal loss
-            gradient_error = (
-                paddle.linalg.norm(gradients, p=2, axis=-1) - 1.0)**2
+            gradient_error = (paddle.linalg.norm(
+                inside_outputs["gradients"], p=2, axis=-1) - 1.0)**2
             gradient_error = gradient_error.unsqueeze(-1)
 
             eikonal_loss = (relax_inside_sphere * gradient_error).sum() / (
@@ -228,23 +201,21 @@ class NeuS(nn.Layer):
             mask_loss = F.binary_cross_entropy(
                 weights_sum.clip(1e-3, 1.0 - 1e-3), ones)
 
-            combined_loss = rgb_loss * self.loss_weight_color + \
-                            eikonal_loss * self.loss_weight_idr + \
-                            mask_loss * self.loss_weight_mask
             outputs["loss"] = dict(
-                rgb_loss=rgb_loss,
-                eikonal_loss=eikonal_loss,
-                mask_loss=mask_loss)
+                rgb_loss=self.loss_weight_color * rgb_loss,
+                eikonal_loss=self.loss_weight_idr * eikonal_loss,
+                mask_loss=self.loss_weight_mask * mask_loss)
 
         num_samples_all = num_inside
 
-        if num_outside is not None:
-            num_samples_all += num_outside
+        if self.outside_ray_sampler is not None:
+            num_samples_all += self.outside_ray_sampler.num_samples
 
         outputs["num_samples_per_batch"] = num_samples_all
-        normals = gradients * weights[:, :num_inside, :] * inside_sphere
+        normals = inside_outputs[
+            "gradients"] * weights[:, :num_inside, :] * inside_sphere
 
-        normals = paddle.sum(normals, axis=1).cpu()
+        normals = paddle.sum(normals, axis=1)
         outputs["normals"] = normals
 
         return outputs
@@ -269,7 +240,6 @@ class NeuS(nn.Layer):
             for xi, xs in enumerate(X):
                 for yi, ys in enumerate(Y):
                     for zi, zs in enumerate(Z):
-                        t1 = time.time()
                         xx, yy, zz = paddle.meshgrid(xs, ys, zs)
                         pts = paddle.concat([
                             xx.reshape((-1, 1)),

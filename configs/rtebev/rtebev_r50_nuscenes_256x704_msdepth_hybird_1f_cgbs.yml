@@ -1,0 +1,340 @@
+batch_size: 4
+epochs: 20
+ema_cfg:
+  decay: 0.9990
+  step: 10560
+
+train_dataset:
+  type: CBGSDataset
+  dataset:
+    type: BEVDetNuScenesDataset
+    data_root: data/nuscenes/
+    ann_file: data/nuscenes/bevdetv2-nuscenes_infos_train.pkl
+    classes: [
+              'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
+              'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
+            ]
+    modality: {
+      use_lidar: False,
+      use_camera: True,
+      use_radar: False,
+      use_map: False,
+      use_external: False
+    }
+    use_valid_flag: True
+    test_mode: False
+    box_type_3d: LiDAR
+    img_info_prototype: bevdet4d
+    multi_adj_frame_id_cfg: [1, 2, 1]
+
+    pipeline:
+      - type: PrepareImageInputs
+
+        data_config: {
+          cams: ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT',
+                  'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT'],
+          Ncams: 6,
+          input_size: [256, 704],
+          src_size: [900, 1600],
+          resize: [-0.06, 0.11],
+          rot: [-5.4, 5.4],
+          flip: True,
+          crop_h: [0.0, 0.0],
+          resize_test: 0.00
+        }
+        is_train: True
+        sequential: True
+
+      - type: LoadAnnotationsBEVDepth
+        bda_aug_conf: {
+          rot_lim: [-22.5, 22.5],
+          scale_lim: [0.95, 1.05],
+          flip_dx_ratio: 0.5,
+          flip_dy_ratio: 0.5
+        }
+        classes: [
+          'car', 'truck', 'construction_vehicle', 'bus', 'trailer', 'barrier',
+          'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
+        ]
+        is_train: True
+      - type: LoadPointsFromFile
+        coord_type: LIDAR
+        load_dim: 5
+        use_dim: 5
+      - type: PointToMultiViewDepth
+        downsample: 1
+        grid_config: {
+          'x': [-51.2, 51.2, 0.8],
+          'y': [-51.2, 51.2, 0.8],
+          'z': [-5, 3, 8],
+          'depth': [1.0, 60.0, 0.5]
+        }
+      - type: SampleRangeFilter
+        point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+      - type: SampleNameFilter
+        classes: [
+          'car', 'truck', 'construction_vehicle', 'bus', 'trailer', 'barrier',
+          'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
+        ]
+      - type: ConvertToSample
+      - type: SampleFilerByKey
+        keys: ['img_inputs', 'gt_bboxes_3d', 'gt_labels_3d', 'gt_depth']
+
+
+val_dataset:
+  type: BEVDetNuScenesDataset
+  data_root: data/nuscenes/
+  ann_file: data/nuscenes/bevdetv2-nuscenes_infos_val.pkl
+  classes: [
+            'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
+            'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
+          ]
+  modality: {
+    use_lidar: False,
+    use_camera: True,
+    use_radar: False,
+    use_map: False,
+    use_external: False
+  }
+  test_mode: True
+  box_type_3d: LiDAR
+  img_info_prototype: bevdet4d
+  multi_adj_frame_id_cfg: [1, 2, 1]
+
+
+  pipeline:
+    - type: PrepareImageInputs
+      # is_train: False
+      data_config: {
+        cams: ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT',
+                'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT'],
+        Ncams: 6,
+        input_size: [256, 704],
+        src_size: [900, 1600],
+        resize: [-0.06, 0.11],
+        rot: [-5.4, 5.4],
+        flip: True,
+        crop_h: [0.0, 0.0],
+        resize_test: 0.00
+      }
+      sequential: True
+    - type: LoadAnnotationsBEVDepth
+      bda_aug_conf: {
+        rot_lim: [-22.5, 22.5],
+        scale_lim: [0.95, 1.05],
+        flip_dx_ratio: 0.5,
+        flip_dy_ratio: 0.5
+      }
+      classes: [
+        'car', 'truck', 'construction_vehicle', 'bus', 'trailer', 'barrier',
+        'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
+      ]
+      is_train: False
+    - type: ConvertToSample
+    - type: SampleFilerByKey
+      keys: ['img_inputs', 'labels']
+
+
+optimizer:
+  type: AdamW
+  weight_decay: 0.01
+  grad_clip:
+    type: ClipGradByGlobalNorm
+    clip_norm: 5
+
+
+lr_scheduler:
+  type: LinearWarmup
+  learning_rate:
+    type: StepDecay
+    learning_rate: 0.0002
+    step_size: 1406400 #20 * 7032(iters_per_epoch)
+  warmup_steps: 200
+  start_lr: 0.0000002
+  end_lr: 0.0002
+
+
+model:
+  type: RTEBev
+  use_depth: True
+  use_ms_depth: True
+  align_after_view_transfromation: False
+  num_adj: 1
+  start_temporal_epoch: 1
+  img_backbone:
+    type: MMResNet
+    depth: 50
+    num_stages: 4
+    out_indices: [1, 2, 3]
+    frozen_stages: -1
+    norm_cfg:
+      type_name: 'BatchNorm2D'
+      requires_grad: True
+    norm_eval: False
+
+  img_neck:
+    type: CustomFPN
+    in_channels: [512, 1024, 2048]
+    out_channels: 256
+    num_outs: 3
+    start_level: 0
+    out_ids: [0, 1, 2]
+
+  img_view_transformer:
+    type: MSLSSViewTransformerBEVDepth
+    grid_config: {
+      x: [-51.2, 51.2, 0.8],
+      y: [-51.2, 51.2, 0.8],
+      z: [-5, 3, 8],
+      depth: [1.0, 60.0, 0.5]
+    }
+    input_size: [256, 704]
+    in_channels: 256
+    out_channels: 80
+    depthnet_cfg: {
+      use_dcn: False,
+      use_aspp: False,
+      use_sppf: True
+    }
+    downsample: 8
+
+  img_bev_encoder_backbone:
+    type: CustomResNet
+    numC_input: 160 # numC_Trans * (len(range(*multi_adj_frame_id_cfg))+1),
+    num_channels: [160, 320, 640]
+
+  img_bev_encoder_neck:
+    type: FPN_LSS
+    in_channels: 800
+    out_channels: 256
+
+
+  pts_bbox_head:
+    type: 'RTEBevHead'
+    num_query: 1536
+    num_queries_one2one: 512
+    k_one2many: 4
+    bev_h: 128
+    bev_w: 128
+    num_classes: 10
+    in_channels: 256
+    use_clone: True
+    sync_cls_avg_factor: True
+    with_box_refine: False
+    as_two_stage: False
+    code_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    transformer:
+      type: 'RTEBevTransformer'
+      embed_dims: 256
+      decoder:
+        type: 'DetectionTransformerDecoder'
+        num_layers: 2
+        return_intermediate: True
+        transformerlayers:
+          type_name: 'DetrTransformerDecoderLayer'
+          attn_cfgs: [
+            {
+              type_name: 'MultiheadAttention',
+              embed_dims: 256,
+              num_heads: 8,
+              dropout: 0.1
+            },
+            {
+              type_name: 'CustomMSDeformableAttention',
+              embed_dims: 256,
+              num_levels: 1
+            },
+          ]
+          feedforward_channels: 512
+          ffn_dropout: 0.1
+          operation_order: ['self_attn', 'norm', 'cross_attn', 'norm', 'ffn', 'norm']
+    bbox_coder:
+      type: 'NMSFreeCoder'
+      post_center_range: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
+      point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+      max_num: 300
+      voxel_size: [0.2, 0.2, 8]
+      num_classes: 10
+    loss_cls:
+      type: 'WeightedFocalLoss'
+      use_sigmoid: True
+      gamma: 2.0
+      alpha: 0.25
+      loss_weight: 2.0
+    loss_bbox:
+      type: 'L1Loss'
+      loss_weight: 0.25
+    loss_iou:
+      type: 'GIoULoss'
+      loss_weight: 0.0
+    assigner:
+      type: 'HungarianAssigner3D'
+      cls_cost:
+        type: 'FocalLossCost'
+        weight: 2.0
+      reg_cost:
+        type: 'BBox3DL1Cost'
+        weight: 0.25
+      iou_cost:
+        type: 'IoUCost'
+        weight: 0.0 # Fake cost. This is just to make it compatible with DETR head.
+    sampler:
+      type: 'PseudoSampler'
+  aux_pts_bbox_head:
+    type: CenterHeadMatch
+    in_channels: 256
+    tasks:
+        - num_class: 10
+          class_names: ["car", "truck", "construction_vehicle", "bus", "trailer", "barrier", "motorcycle", "bicycle", "pedestrian", "traffic_cone"]
+    weight: 0.25 # loc_loss weight
+    common_heads:
+      reg: [2, 2] # classes, num_conv
+      height: [1, 2]
+      dim: [3, 2]
+      rot: [2, 2]
+      vel: [2, 2]
+    share_conv_channel: 64
+    bbox_coder:
+      type: CenterPointBBoxCoder
+      pc_range: [-51.2, -51.2]
+      post_center_range: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
+      max_num: 500
+      score_threshold: 0.1
+      out_size_factor: 8
+      voxel_size: [0.1, 0.1]
+      code_size: 9
+
+    train_cfg:
+      point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+      grid_size: [1024, 1024, 40]
+      voxel_size: [0.1, 0.1, 0.2]
+      out_size_factor: 8
+      dense_reg: 1
+      gaussian_overlap: 0.1
+      max_objs: 500
+      min_radius: 2
+      code_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+
+    test_cfg:
+      # pts:
+      pc_range: [-51.2, -51.2]
+      post_center_limit_range: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
+      max_per_img: 500
+      max_pool_nms: False
+      min_radius: [4, 12, 10, 1, 0.85, 0.175]
+      score_threshold: 0.1
+      out_size_factor: 8
+      voxel_size: [0.1, 0.1]
+      pre_max_size: 1000
+      post_max_size: 83
+
+      # Scale-NMS
+      nms_type: [
+          'rotate', 'rotate', 'rotate', 'circle', 'rotate', 'rotate'
+      ]
+      nms_thr: [0.2, 0.2, 0.2, 0.2, 0.2, 0.5]
+      nms_rescale_factor: [
+          1.0, [0.7, 0.7], [0.4, 0.55], 1.1, [1.0, 1.0], [4.5, 9.0]
+      ]
+
+    task_specific: True

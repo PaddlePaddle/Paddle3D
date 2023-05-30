@@ -254,9 +254,9 @@ class Config(object):
     def export_config(self) -> Dict:
         return self.dic.get('export', {})
 
-    @property
-    def use_ema(self) -> bool:
-        return self.dic.get('use_ema', False)
+    # @property
+    # def use_ema(self) -> bool:
+    #     return self.dic.get('use_ema', False)
 
     @property
     def temporal_start_epoch(self) -> int:
@@ -359,7 +359,7 @@ class Config(object):
             'val_dataset': self.val_dataset,
             'batch_size': self.batch_size,
             'amp_cfg': self.amp_config,
-            'use_ema': self.use_ema,
+            # 'use_ema': self.use_ema,
             'temporal_start_epoch': self.temporal_start_epoch
         })
 

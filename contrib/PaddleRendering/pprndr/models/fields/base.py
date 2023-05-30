@@ -20,10 +20,10 @@ import paddle.nn as nn
 
 from pprndr.cameras.rays import RaySamples
 
-__all__ = ["BaseField"]
+__all__ = ["BaseDensityField", "BaseSDFField"]
 
 
-class BaseField(nn.Layer):
+class BaseDensityField(nn.Layer):
     @paddle.no_grad()
     def density_fn(self, positions: paddle.Tensor) -> paddle.Tensor:
         """
@@ -52,12 +52,46 @@ class BaseField(nn.Layer):
     def get_outputs(self, ray_samples: RaySamples,
                     geo_features: paddle.Tensor) -> Dict[str, paddle.Tensor]:
         """
-        Computes the final outputs (RGBs) of the field.
+        Computes the final outputs (RGBs, etc.) of the field.
         """
 
     def forward(self, ray_samples: RaySamples) -> Dict[str, paddle.Tensor]:
         density, geo_features = self.get_density(ray_samples)
         outputs = self.get_outputs(ray_samples, geo_features=geo_features)
         outputs["density"] = density
+
+        return outputs
+
+
+class BaseSDFField(nn.Layer):
+    @paddle.no_grad()
+    def sdf_fn(self, positions: paddle.Tensor) -> paddle.Tensor:
+        """
+        Query SDF values at given positions in no_grad context.
+        """
+        sdf = self.get_sdf(positions, compute_grad=False)[0]
+
+        return sdf
+
+    @abc.abstractmethod
+    def get_sdf(self,
+                ray_samples: Union[RaySamples, paddle.Tensor],
+                compute_grad: bool = True
+                ) -> Tuple[paddle.Tensor, Optional[paddle.Tensor]]:
+        """
+        Query SDF values of given ray samples. Returns a tensor of sdfs and a tensor of geometry features.
+        """
+
+    @abc.abstractmethod
+    def get_outputs(self, ray_samples: RaySamples,
+                    geo_features: paddle.Tensor) -> Dict[str, paddle.Tensor]:
+        """
+        Computes the final outputs (RGBs, normals, etc.) of the field.
+        """
+
+    def forward(self, ray_samples: RaySamples) -> Dict[str, paddle.Tensor]:
+        sdf, geo_features = self.get_sdf(ray_samples, compute_grad=True)
+        outputs = self.get_outputs(ray_samples, geo_features=geo_features)
+        outputs["sdf"] = sdf
 
         return outputs
