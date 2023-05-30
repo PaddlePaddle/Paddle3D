@@ -16,6 +16,7 @@ scikit-image
 scikit-learn
 visualdl
 h5py
+einops
 vtk==8.1.2
 mayavi==4.7.4
 PyQt5
