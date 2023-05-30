@@ -42,7 +42,7 @@ model:
   backbone:
     type: GUP_DLA34
     down_ratio: 4
-    pretrained: ./checkpoint/dla34-ba72cf86_paddle_new.pdparams
+    pretrained: ./checkpoint_root/dla34-ba72cf86_paddle_new.pdparams
   head:
     type: GUPNETPredictor
     head_conv: 256
