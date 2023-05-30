@@ -26,3 +26,4 @@ from .dd3d import *
 from .voxel_rcnn import *
 from .bevdet import *
 from .rtebev import *
+from .gupnet import *
