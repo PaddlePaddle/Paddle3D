@@ -17,7 +17,7 @@ import numpy as np
 import paddle
 from paddle.inference import Config, create_predictor
 from paddle3d.ops.iou3d_nms_cuda import nms_gpu
-from .utils import preprocess, Calibration, show_bev_with_boxes
+from demo.visualization_demo.vis_utils import preprocess, Calibration, show_bev_with_boxes
 
 
 def parse_args():

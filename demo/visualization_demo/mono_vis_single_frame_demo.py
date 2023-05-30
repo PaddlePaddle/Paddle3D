@@ -19,7 +19,7 @@ import numpy as np
 
 from paddle.inference import Config, PrecisionType, create_predictor
 from paddle3d.datasets.kitti.kitti_utils import camera_record_to_object
-from .utils import get_img, get_ratio, total_pred_by_conf_to_kitti_records, make_imgpts_list, draw_mono_3d
+from demo.visualization_demo.vis_utils import get_img, get_ratio, total_pred_by_conf_to_kitti_records, make_imgpts_list, draw_mono_3d
 
 
 def parse_args():

@@ -17,7 +17,7 @@ import os
 import cv2
 import numpy as np
 
-from demo.utils import make_imgpts_list, draw_mono_3d, total_imgpred_by_conf_to_kitti_records
+from demo.visualization_demo.vis_utils import make_imgpts_list, draw_mono_3d, total_imgpred_by_conf_to_kitti_records
 
 from paddle3d.apis.infer import Infer
 from paddle3d.apis.config import Config

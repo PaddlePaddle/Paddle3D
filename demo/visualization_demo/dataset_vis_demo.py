@@ -18,7 +18,7 @@ import cv2
 
 from paddle3d.datasets.kitti.kitti_utils import camera_record_to_object
 
-from demo.utils import Calibration, show_lidar_with_boxes, total_imgpred_by_conf_to_kitti_records, \
+from demo.visualization_demo.vis_utils import Calibration, show_lidar_with_boxes, total_imgpred_by_conf_to_kitti_records, \
     make_imgpts_list, draw_mono_3d, show_bev_with_boxes
 
 pth = '../datasets/KITTI/training'  # Kitti dataset path
