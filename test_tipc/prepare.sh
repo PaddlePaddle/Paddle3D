@@ -39,18 +39,24 @@ if [ ${MODE} = "lite_train_lite_infer" ];then
         rm -rf ./test_tipc/data/mini_modelnet40
         mkdir -p ./test_tipc/data/mini_modelnet40
         cd ./test_tipc/data/mini_modelnet40 && tar xf ../mini_modelnet40.tar.gz && cd ../../
-    elif [ ${model_name} = "petrv2" ]; then
-
-        wget -nc  -P ./ https://paddle3d.bj.bcebos.com/pretrained/fcos3d_vovnet_imgbackbone-remapped.pdparams --no-check-certificate
+    elif [ ${model_name} == "petr" ]; then
         rm -rf ./data
         mkdir data && cd data
-        # 数据集比较大,在benchmark侧统一挂载
-        cp ${BENCHMARK_ROOT}/models_data_cfs/model_benchmark/petrv2/nuscenes.zip ./
-        unzip -q nuscenes.zip && cd ../
-    elif [ ${model_name} = "centerpoint" ]; then
-        rm -rf ./datasets/KITTI
-        wget -nc -P ./datasets/ https://paddle3d.bj.bcebos.com/TIPC/dataset/kitti_mini_centerpoint.tar.gz --no-check-certificate
-        cd ./datasets/ && tar -xzf kitti_mini_centerpoint.tar.gz && cd ../ ;
+        cp ${BENCHMARK_ROOT}/models_data_cfs/model_benchmark/paddle3d/petr_data/nuscenes.tar ./
+        tar -xvf nuscenes.tar && cd ../
+    elif [ ${model_name} == "petrv2" ]; then
+        rm -rf ./data
+        mkdir data && cd data
+        cp ${BENCHMARK_ROOT}/models_data_cfs/model_benchmark/paddle3d/petr_data/nuscenes.tar ./
+        tar -xvf nuscenes.tar && cd ../
+    elif [ ${model_name} == "centerpoint" ]; then
+        # rm -rf ./datasets/KITTI
+        # wget -nc -P ./datasets/ https://paddle3d.bj.bcebos.com/TIPC/dataset/kitti_mini_centerpoint.tar.gz --no-check-certificate
+        # cd ./datasets/ && tar -xzf kitti_mini_centerpoint.tar.gz && cd ../ ;
+        rm -rf ./datasets
+        mkdir datasets && cd datasets
+        cp ${BENCHMARK_ROOT}/models_data_cfs/model_benchmark/paddle3d/centerpoint_data/nuscenes.tar ./
+        tar -xvf nuscenes.tar && cd ../
     else
         echo "Not added into TIPC yet."
     fi
