@@ -1,0 +1,185 @@
+batch_size: 4
+epochs: 20
+train_dataset:
+  type: NuscenesPCDataset
+  dataset_root: datasets/nuscenes/
+  transforms:
+    - type: LoadPointCloud
+      dim: 5
+      use_dim: 4
+      use_time_lag: True
+      sweep_remove_radius: 1
+    - type: SamplingDatabase
+      min_num_points_in_box_per_class:
+        car: 5
+        truck: 5
+        bus: 5
+        trailer: 5
+        construction_vehicle: 5
+        traffic_cone: 5
+        barrier: 5
+        motorcycle: 5
+        bicycle: 5
+        pedestrian: 5
+      max_num_samples_per_class:
+        car: 2
+        truck: 3
+        construction_vehicle: 7
+        bus: 4
+        trailer: 6
+        barrier: 2
+        motorcycle: 6
+        bicycle: 6
+        pedestrian: 2
+        traffic_cone: 2
+      database_anno_path: datasets/nuscenes/gt_database_train_nsweeps10_withvelo/anno_info_train_nsweeps10_withvelo.pkl
+      database_root: datasets/nuscenes/
+      class_names: ["car", "truck", "construction_vehicle", "bus", "trailer", "barrier", "motorcycle", "bicycle", "pedestrian", "traffic_cone"]
+    - type: RandomVerticalFlip
+    - type: RandomHorizontalFlip
+    - type: GlobalRotate
+      min_rot: -0.3925
+      max_rot: 0.3925
+    - type: GlobalScale
+      min_scale: 0.95
+      max_scale: 1.05
+    - type: ShufflePoint
+    - type: FilterBBoxOutsideRange
+      point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+    - type: Gt2CenterPointTarget
+      tasks:
+        - num_class: 1
+          class_names: ["car"]
+        - num_class: 2
+          class_names: ["truck", "construction_vehicle"]
+        - num_class: 2
+          class_names: ["bus", "trailer"]
+        - num_class: 1
+          class_names: ["barrier"]
+        - num_class: 2
+          class_names: ["motorcycle", "bicycle"]
+        - num_class: 2
+          class_names: ["pedestrian", "traffic_cone"]
+      down_ratio: 4
+      point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+      voxel_size: [0.2, 0.2, 8]
+      gaussian_overlap: 0.1
+      max_objs: 500
+      min_radius: 2
+  mode: train
+  max_sweeps: 10
+  class_balanced_sampling: True
+  class_names: ["car", "truck", "construction_vehicle", "bus", "trailer", "barrier", "motorcycle", "bicycle", "pedestrian", "traffic_cone"]
+
+
+val_dataset:
+  type: NuscenesPCDataset
+  dataset_root: datasets/nuscenes/
+  transforms:
+    - type: LoadPointCloud
+      dim: 5
+      use_dim: 4
+      use_time_lag: True
+      sweep_remove_radius: 1
+  mode: val
+  max_sweeps: 10
+  class_names: ["car", "truck", "construction_vehicle", "bus", "trailer", "barrier", "motorcycle", "bicycle", "pedestrian", "traffic_cone"]
+
+optimizer:
+  type: OneCycleAdam
+  beta2: 0.99
+  weight_decay: 0.01
+  grad_clip:
+    type: ClipGradByGlobalNorm
+    clip_norm: 35
+  beta1:
+    type: OneCycleDecayWarmupMomentum
+    momentum_peak: 0.95
+    momentum_trough: 0.85
+    step_ratio_peak: 0.4
+
+lr_scheduler:
+  type: OneCycleWarmupDecayLr
+  base_learning_rate: 0.0001
+  lr_ratio_peak: 10
+  lr_ratio_trough: 0.0001
+
+  step_ratio_peak: 0.4
+
+model:
+  type: CenterPoint
+  voxelizer:
+    type: HardVoxelizer
+    point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+    voxel_size: [0.2, 0.2, 8]
+    max_num_points_in_voxel: 20
+    max_num_voxels: [30000, 60000]
+  voxel_encoder:
+    type: PillarFeatureNet
+    in_channels: 5
+    feat_channels: [64, 64]
+    with_distance: False
+    max_num_points_in_voxel: 20
+    voxel_size: [0.2, 0.2, 8]
+    point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+    legacy: False
+  middle_encoder:
+    type: PointPillarsScatter
+    in_channels: 64
+    voxel_size: [0.2, 0.2, 8]
+    point_cloud_range: [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+  backbone:
+    type: SecondBackbone
+    in_channels: 64
+    out_channels: [64, 128, 256]
+    layer_nums: [3, 5, 5]
+    downsample_strides: [2, 2, 2]
+  neck:
+    type: SecondFPN
+    in_channels: [64, 128, 256]
+    out_channels: [128, 128, 128]
+    upsample_strides: [0.5, 1, 2]
+    use_conv_for_no_stride: True
+  bbox_head:
+    type: CenterHead
+    in_channels: 384 # sum([128, 128, 128])
+    tasks:
+        - num_class: 1
+          class_names: ["car"]
+        - num_class: 2
+          class_names: ["truck", "construction_vehicle"]
+        - num_class: 2
+          class_names: ["bus", "trailer"]
+        - num_class: 1
+          class_names: ["barrier"]
+        - num_class: 2
+          class_names: ["motorcycle", "bicycle"]
+        - num_class: 2
+          class_names: ["pedestrian", "traffic_cone"]
+    weight: 0.25 # loc_loss weight
+    code_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.2, 0.2, 1.0, 1.0] # [x, y, z, w, h, l, vx, vy, sin(angle), cos(angle)] weight in loc loss
+    common_heads:
+      reg: [2, 2] # classes, num_conv
+      height: [1, 2]
+      dim: [3, 2]
+      rot: [2, 2]
+      vel: [2, 2]
+  test_cfg:
+    post_center_limit_range: [-61.2, -61.2, -10.0, 61.2, 61.2, 10.0]
+    max_per_img: 500
+    nms:
+      nms_pre_max_size: 1000
+      nms_post_max_size: 83
+      nms_iou_threshold: 0.2
+    score_threshold: 0.1
+    point_cloud_range: [-51.2, -51.2]
+    down_ratio: 4
+    voxel_size: [0.2, 0.2]
+  box_with_velocity: True
+
+export:
+  transforms:
+    - type: LoadPointCloud
+      dim: 5
+      use_dim: 4
+      use_time_lag: True

@@ -208,19 +208,11 @@ class Trainer:
 
         self.use_ema = False
         if ema_cfg is not None:
-            logger.info(
-                'Use EMA train, ema config: {}'.format(ema_cfg))
-            self.ema = ModelEMA(
-                self.model,
-                **ema_cfg)
+            logger.info('Use EMA train, ema config: {}'.format(ema_cfg))
+            self.ema = ModelEMA(self.model, **ema_cfg)
             self.use_ema = True
 
-        if not self.checkpoint.empty:
-            if not resume:
-                raise RuntimeError(
-                    'The checkpoint {} is not emtpy! Set `resume=True` to continue training or use another dir as checkpoint'
-                    .format(self.checkpoint.rootdir))
-
+        if not self.checkpoint.empty and resume:
             if self.checkpoint.meta.get(
                     'train_by_epoch') != self.train_by_epoch:
                 raise RuntimeError(
