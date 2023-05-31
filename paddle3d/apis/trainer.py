@@ -208,11 +208,8 @@ class Trainer:
 
         self.use_ema = False
         if ema_cfg is not None:
-            logger.info(
-                'Use EMA train, ema config: {}'.format(ema_cfg))
-            self.ema = ModelEMA(
-                self.model,
-                **ema_cfg)
+            logger.info('Use EMA train, ema config: {}'.format(ema_cfg))
+            self.ema = ModelEMA(self.model, **ema_cfg)
             self.use_ema = True
 
         if not self.checkpoint.empty and resume:
