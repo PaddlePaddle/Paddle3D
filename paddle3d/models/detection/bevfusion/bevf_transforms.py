@@ -490,7 +490,6 @@ class LoadPointsFromFile(TransformABC):
     """
 
     def __init__(self,
-                 coord_type='LIDAR',
                  load_dim=6,
                  use_dim=[0, 1, 2],
                  shift_height=False,
@@ -501,9 +500,7 @@ class LoadPointsFromFile(TransformABC):
             use_dim = list(range(use_dim))
         assert max(use_dim) < load_dim, \
             f'Expect all used dimensions < {load_dim}, got {use_dim}'
-        assert coord_type in ['CAMERA', 'LIDAR', 'DEPTH']
 
-        self.coord_type = coord_type
         self.load_dim = load_dim
         self.use_dim = use_dim
 
