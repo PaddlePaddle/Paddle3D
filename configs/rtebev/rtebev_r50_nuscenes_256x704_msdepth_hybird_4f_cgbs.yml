@@ -58,7 +58,6 @@ train_dataset:
         ]
         is_train: True
       - type: LoadPointsFromFile
-        coord_type: LIDAR
         load_dim: 5
         use_dim: 5
       - type: PointToMultiViewDepth

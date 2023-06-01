@@ -456,6 +456,8 @@ class KittiDepthDataset(KittiDetDataset):
                 input_dict['road_plane'] = road_plane
 
         data_dict = self.update_data(data_dict=input_dict)
+        if self.training:
+            data_dict = self.data_augmentor(data_dict)
         data_dict = self.prepare_data(data_dict=data_dict)
         data_dict['image_shape'] = img_shape
         return data_dict

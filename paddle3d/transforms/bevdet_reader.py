@@ -9,69 +9,6 @@ from paddle3d.sample import Sample
 
 
 @manager.TRANSFORMS.add_component
-class LoadPointsFromFile(TransformABC):
-    """Load Points From File.
-    """
-
-    def __init__(self,
-                 coord_type,
-                 load_dim=6,
-                 use_dim=[0, 1, 2],
-                 shift_height=False,
-                 use_color=False):
-        self.shift_height = shift_height
-        self.use_color = use_color
-        if isinstance(use_dim, int):
-            use_dim = list(range(use_dim))
-        assert max(use_dim) < load_dim, \
-            f'Expect all used dimensions < {load_dim}, got {use_dim}'
-        assert coord_type in ['CAMERA', 'LIDAR', 'DEPTH']
-
-        self.coord_type = coord_type
-        self.load_dim = load_dim
-        self.use_dim = use_dim
-
-    def _load_points(self, pts_filename):
-        """Private function to load point clouds data.
-        """
-
-        points = np.fromfile(pts_filename, dtype=np.float32)
-        return points
-
-    def __call__(self, results):
-        """Call function to load points data from file.
-        """
-        pts_filename = results['pts_filename']
-        points = self._load_points(pts_filename)
-        points = points.reshape(-1, self.load_dim)
-        points = points[:, self.use_dim]
-        attribute_dims = None
-
-        if self.shift_height:
-            floor_height = np.percentile(points[:, 2], 0.99)
-            height = points[:, 2] - floor_height
-            points = np.concatenate(
-                [points[:, :3],
-                 np.expand_dims(height, 1), points[:, 3:]], 1)
-            attribute_dims = dict(height=3)
-
-        if self.use_color:
-            assert len(self.use_dim) >= 6
-            if attribute_dims is None:
-                attribute_dims = dict()
-            attribute_dims.update(
-                dict(color=[
-                    points.shape[1] - 3,
-                    points.shape[1] - 2,
-                    points.shape[1] - 1,
-                ]))
-
-        results['points'] = points
-
-        return results
-
-
-@manager.TRANSFORMS.add_component
 class PointToMultiViewDepth(object):
     def __init__(self, grid_config, downsample=1):
         self.downsample = downsample
