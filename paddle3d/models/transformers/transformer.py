@@ -28,6 +28,7 @@ from paddle3d.models.layers.param_init import (
 from paddle3d.models.transformers.utils import rotate
 from .attentions import CustomMSDeformableAttention, MSDeformableAttention3D, TemporalSelfAttention
 
+
 def inverse_sigmoid(x, eps=1e-5):
     """Inverse function of sigmoid.
 
@@ -223,10 +224,10 @@ class PerceptionTransformer(nn.Layer):
                             center=self.rotate_center)
                         tmp_prev_bev = tmp_prev_bev.transpose(
                             [1, 2, 0]).reshape([bev_h * bev_w, 1, -1])
-                        prev_bev_new = tmp_prev_bev[:,
-                                                    0] * valid_prev_bev + prev_bev[:, i] * (
-                                                        1 - valid_prev_bev)
-                        prev_bev = prev_bev_new.unsqueeze(1)
+                        prev_bev[:,
+                                 i] = tmp_prev_bev[:,
+                                                   0] * valid_prev_bev + prev_bev[:, i] * (
+                                                       1 - valid_prev_bev)
                 else:
                     valid_prev_bev = prev_bev[:, 0].cast('bool').any().cast(
                         'int32')
@@ -449,7 +450,7 @@ class RTEBevTransformer(nn.Layer):
 
     def forward(self,
                 bev_feat,
-                query_pos, 
+                query_pos,
                 query,
                 reference_points,
                 bev_h,
