@@ -57,6 +57,11 @@ if [ ${MODE} = "lite_train_lite_infer" ];then
         mkdir datasets && cd datasets
         cp ${BENCHMARK_ROOT}/models_data_cfs/model_benchmark/paddle3d/centerpoint_data/nuscenes.tar ./
         tar -xvf nuscenes.tar && cd ../
+    elif [ ${model_name} == "caddn" ]; then
+        rm -rf ./data
+        mkdir data && cd data
+        cp ${BENCHMARK_ROOT}/models_data_cfs/model_benchmark/paddle3d/cadnn_data/KITTI.tar ./
+        tar -xvf KITTI.tar && cd ../
     else
         echo "Not added into TIPC yet."
     fi
