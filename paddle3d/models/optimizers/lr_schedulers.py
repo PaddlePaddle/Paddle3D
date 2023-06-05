@@ -1,4 +1,4 @@
-# Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ Ths copyright of CaDDN is as follows:
 Apache-2.0 license [see LICENSE for details].
 """
 from functools import partial
-
+import math
 import paddle
 from paddle.optimizer.lr import LRScheduler
 
@@ -32,7 +32,6 @@ from .utils import annealing_cos
 
 @manager.LR_SCHEDULERS.add_component
 class OneCycleWarmupDecayLr(LRScheduler):
-
     def __init__(self,
                  base_learning_rate,
                  lr_ratio_peak=10,
@@ -66,7 +65,6 @@ class OneCycleWarmupDecayLr(LRScheduler):
 
 
 class LRSchedulerCycle(LRScheduler):
-
     def __init__(self, total_step, lr_phases, mom_phases):
 
         self.total_step = total_step
@@ -78,12 +76,12 @@ class LRSchedulerCycle(LRScheduler):
             if isinstance(lambda_func, str):
                 lambda_func = eval(lambda_func)
             if i < len(lr_phases) - 1:
-                self.lr_phases.append(
-                    (int(start * total_step),
-                     int(lr_phases[i + 1][0] * total_step), lambda_func))
+                self.lr_phases.append((int(start * total_step),
+                                       int(lr_phases[i + 1][0] * total_step),
+                                       lambda_func))
             else:
-                self.lr_phases.append(
-                    (int(start * total_step), total_step, lambda_func))
+                self.lr_phases.append((int(start * total_step), total_step,
+                                       lambda_func))
         assert self.lr_phases[0][0] == 0
         self.mom_phases = []
         for i, (start, lambda_func) in enumerate(mom_phases):
@@ -92,19 +90,18 @@ class LRSchedulerCycle(LRScheduler):
             if isinstance(lambda_func, str):
                 lambda_func = eval(lambda_func)
             if i < len(mom_phases) - 1:
-                self.mom_phases.append(
-                    (int(start * total_step),
-                     int(mom_phases[i + 1][0] * total_step), lambda_func))
+                self.mom_phases.append((int(start * total_step),
+                                        int(mom_phases[i + 1][0] * total_step),
+                                        lambda_func))
             else:
-                self.mom_phases.append(
-                    (int(start * total_step), total_step, lambda_func))
+                self.mom_phases.append((int(start * total_step), total_step,
+                                        lambda_func))
         assert self.mom_phases[0][0] == 0
         super().__init__()
 
 
 @manager.OPTIMIZERS.add_component
 class OneCycle(LRSchedulerCycle):
-
     def __init__(self, total_step, lr_max, moms, div_factor, pct_start):
         self.lr_max = lr_max
         self.moms = moms
@@ -154,10 +151,48 @@ class CosineAnnealingDecayByEpoch(paddle.optimizer.lr.CosineAnnealingDecay):
         if self.last_epoch == 0:
             return self.base_lr
         else:
-            cur_epoch = (self.last_epoch +
-                         self.warmup_iters) // self.iters_per_epoch
+            cur_epoch = (
+                self.last_epoch + self.warmup_iters) // self.iters_per_epoch
             return annealing_cos(self.base_lr, self.eta_min,
                                  cur_epoch / self.T_max)
 
     def _get_closed_form_lr(self):
         return self.get_lr()
+
+
+@manager.LR_SCHEDULERS.add_component
+class CosineWarmupMultiStepDecayByEpoch(LRScheduler):
+    def __init__(self,
+                 learning_rate,
+                 warmup_steps,
+                 start_lr,
+                 milestones,
+                 decay_rate,
+                 end_lr=None):
+        self.iters_per_epoch = 1
+        self.warmup_iters = 0
+        self.warmup_epochs = warmup_steps
+        self.start_lr = start_lr
+        self.end_lr = end_lr if end_lr is not None else learning_rate
+        self.milestones = milestones
+        self.decay_rate = decay_rate
+        super(CosineWarmupMultiStepDecayByEpoch, self).__init__(learning_rate)
+
+    def get_lr(self):
+        # update current epoch
+        cur_epoch = (
+            self.last_epoch + self.warmup_iters) // self.iters_per_epoch
+
+        # cosine warmup
+        if cur_epoch < self.warmup_epochs:
+            return self.start_lr + (self.end_lr - self.start_lr) * (
+                1 - math.cos(math.pi * cur_epoch / self.warmup_epochs)) / 2
+        else:
+            if self.last_epoch in [
+                    self.milestones[0] * self.iters_per_epoch,
+                    self.milestones[1] * self.iters_per_epoch
+            ]:
+                self.end_lr *= self.decay_rate
+                return self.end_lr
+            else:
+                return self.end_lr

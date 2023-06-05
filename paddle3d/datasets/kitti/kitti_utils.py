@@ -352,8 +352,8 @@ class Object3d(object):
 
     def to_str(self):
         print_str = '%s %.3f %.3f %.3f box2d: %s hwl: [%.3f %.3f %.3f] pos: %s ry: %.3f' \
-                     % (self.cls_type, self.truncation, self.occlusion, self.alpha, self.box2d, self.h, self.w, self.l,
-                        self.loc, self.ry)
+            % (self.cls_type, self.truncation, self.occlusion, self.alpha, self.box2d, self.h, self.w, self.l,
+               self.loc, self.ry)
         return print_str
 
     def to_kitti_format(self):
@@ -480,3 +480,74 @@ class Calibration(object):
             (x.reshape(-1, 8, 1), y.reshape(-1, 8, 1)), axis=2)
 
         return boxes, boxes_corner
+
+    # GUPNET relative function
+    def alpha2ry(self, alpha, u):
+        """
+        Get rotation_y by alpha + theta - 180
+        alpha : Observation angle of object, ranging [-pi..pi]
+        x : Object center x to the camera center (x-W/2), in pixels
+        rotation_y : Rotation ry around Y-axis in camera coordinates [-pi..pi]
+        """
+        ry = alpha + np.arctan2(u - self.cu, self.fu)
+
+        if ry > np.pi:
+            ry -= 2 * np.pi
+        if ry < -np.pi:
+            ry += 2 * np.pi
+
+        return ry
+
+    # GUPNET relative function
+    def ry2alpha(self, ry, u):
+        alpha = ry - np.arctan2(u - self.cu, self.fu)
+
+        if alpha > np.pi:
+            alpha -= 2 * np.pi
+        if alpha < -np.pi:
+            alpha += 2 * np.pi
+
+        return alpha
+
+    # GUPNET relative function
+    def flip(self, img_size):
+        wsize = 4
+        hsize = 2
+        p2ds = (np.concatenate([
+            np.expand_dims(
+                np.tile(
+                    np.expand_dims(np.linspace(0, img_size[0], wsize), 0),
+                    [hsize, 1]), -1),
+            np.expand_dims(
+                np.tile(
+                    np.expand_dims(np.linspace(0, img_size[1], hsize), 1),
+                    [1, wsize]), -1),
+            np.linspace(2, 78, wsize * hsize).reshape(hsize, wsize, 1)
+        ], -1)).reshape(-1, 3)
+        p3ds = self.img_to_rect(p2ds[:, 0:1], p2ds[:, 1:2], p2ds[:, 2:3])
+        p3ds[:, 0] *= -1
+        p2ds[:, 0] = img_size[0] - p2ds[:, 0]
+
+        # self.P2[0,3] *= -1
+        cos_matrix = np.zeros([wsize * hsize, 2, 7])
+        cos_matrix[:, 0, 0] = p3ds[:, 0]
+        cos_matrix[:, 0, 1] = cos_matrix[:, 1, 2] = p3ds[:, 2]
+        cos_matrix[:, 1, 0] = p3ds[:, 1]
+        cos_matrix[:, 0, 3] = cos_matrix[:, 1, 4] = 1
+        cos_matrix[:, :, -2] = -p2ds[:, :2]
+        cos_matrix[:, :, -1] = (-p2ds[:, :2] * p3ds[:, 2:3])
+        new_calib = np.linalg.svd(cos_matrix.reshape(-1, 7))[-1][-1]
+        new_calib /= new_calib[-1]
+
+        new_calib_matrix = np.zeros([4, 3]).astype(np.float32)
+        new_calib_matrix[0, 0] = new_calib_matrix[1, 1] = new_calib[0]
+        new_calib_matrix[2, 0:2] = new_calib[1:3]
+        new_calib_matrix[3, :] = new_calib[3:6]
+        new_calib_matrix[-1, -1] = self.P2[-1, -1]
+        self.P2 = new_calib_matrix.T
+        self.cu = self.P2[0, 2]
+        self.cv = self.P2[1, 2]
+        self.fu = self.P2[0, 0]
+        self.fv = self.P2[1, 1]
+        self.tx = self.P2[0, 3] / (-self.fu)
+        self.ty = self.P2[1, 3] / (-self.fv)
