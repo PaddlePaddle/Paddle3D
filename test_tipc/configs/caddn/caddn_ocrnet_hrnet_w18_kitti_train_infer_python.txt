@@ -48,7 +48,7 @@ null:null
 null:null
 --benchmark:True
 null:null
-===========================to_static_train_benchmark_params===========================
+===========================disable_to_static_train_benchmark===========================
 to_static_train:--to_static True
 ===========================train_benchmark_params==========================
 batch_size:4
