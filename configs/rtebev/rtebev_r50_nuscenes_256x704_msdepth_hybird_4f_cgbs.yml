@@ -1,15 +1,16 @@
 batch_size: 4
 epochs: 20
-ema_cfg:          # for megviiemahook
-  decay: 0.9990
-  step: 10560
+ema_cfg:
+  step: 0
+
+temporal_start_epoch: 2 # for sequentialcontrolhook
 
 train_dataset:
   type: CBGSDataset
   dataset:
     type: BEVDetNuScenesDataset
     data_root: data/nuscenes/
-    ann_file: data/nuscenes/bevdetv2-nuscenes_infos_train.pkl
+    ann_file: data/nuscenes/bevdetv2_mmdet3d/bevdetv2-nuscenes_infos_train.pkl
     classes: [
               'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
               'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
@@ -83,7 +84,7 @@ train_dataset:
 val_dataset:
   type: BEVDetNuScenesDataset
   data_root: data/nuscenes/
-  ann_file: data/nuscenes/bevdetv2-nuscenes_infos_val.pkl
+  ann_file: data/nuscenes/bevdetv2_mmdet3d/bevdetv2-nuscenes_infos_val.pkl
   classes: [
             'car', 'truck', 'construction_vehicle', 'bus', 'trailer',
             'barrier', 'motorcycle', 'bicycle', 'pedestrian', 'traffic_cone'
@@ -181,6 +182,7 @@ model:
 
   img_view_transformer:
     type: MSLSSViewTransformerBEVDepth
+    loss_depth_weight: 1.0
     grid_config: {
       x: [-51.2, 51.2, 0.8],
       y: [-51.2, 51.2, 0.8],

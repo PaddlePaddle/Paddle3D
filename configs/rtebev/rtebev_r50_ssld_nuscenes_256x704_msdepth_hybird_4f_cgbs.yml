@@ -3,6 +3,8 @@ epochs: 20
 ema_cfg:
   step: 0
 
+temporal_start_epoch: 2 # for sequentialcontrolhook
+
 train_dataset:
   type: CBGSDataset
   dataset:
@@ -23,7 +25,8 @@ train_dataset:
     use_valid_flag: True
     test_mode: False
     box_type_3d: LiDAR
-    img_info_prototype: bevdet
+    img_info_prototype: bevdet4d
+    multi_adj_frame_id_cfg: [1, 5, 1]
 
     pipeline:
       - type: PrepareImageInputs
@@ -41,7 +44,7 @@ train_dataset:
           resize_test: 0.00
         }
         is_train: True
-        sequential: False
+        sequential: True
 
       - type: LoadAnnotationsBEVDepth
         bda_aug_conf: {
@@ -95,10 +98,13 @@ val_dataset:
   }
   test_mode: True
   box_type_3d: LiDAR
-  img_info_prototype: bevdet
+  img_info_prototype: bevdet4d
+  multi_adj_frame_id_cfg: [1, 5, 1]
+
 
   pipeline:
     - type: PrepareImageInputs
+      # is_train: False
       data_config: {
         cams: ['CAM_FRONT_LEFT', 'CAM_FRONT', 'CAM_FRONT_RIGHT',
                 'CAM_BACK_LEFT', 'CAM_BACK', 'CAM_BACK_RIGHT'],
@@ -111,7 +117,7 @@ val_dataset:
         crop_h: [0.0, 0.0],
         resize_test: 0.00
       }
-      sequential: False
+      sequential: True
     - type: LoadAnnotationsBEVDepth
       bda_aug_conf: {
         rot_lim: [-22.5, 22.5],
@@ -153,17 +159,17 @@ model:
   use_depth: True
   use_ms_depth: True
   align_after_view_transfromation: False
-  num_adj: 0
+  num_adj: 4
+  start_temporal_epoch: 1
   img_backbone:
-    type: MMResNet
+    type: $paddledet.ResNet
+    variant: d
     depth: 50
+    freeze_norm: False
+    norm_type: bn
+    return_idx: [2, 3]
     num_stages: 4
-    out_indices: [1, 2, 3]
-    frozen_stages: -1
-    norm_cfg:
-      type_name: 'BatchNorm2D'
-      requires_grad: True
-    norm_eval: False
+    freeze_at: -1
 
   img_neck:
     type: CustomFPN
@@ -180,7 +186,7 @@ model:
       x: [-51.2, 51.2, 0.8],
       y: [-51.2, 51.2, 0.8],
       z: [-5, 3, 8],
-      depth: [1.0, 60.0, 1.0]
+      depth: [1.0, 60.0, 0.5]
     }
     input_size: [256, 704]
     in_channels: 256
@@ -194,7 +200,7 @@ model:
 
   img_bev_encoder_backbone:
     type: CustomResNet
-    numC_input: 80
+    numC_input: 400
     num_channels: [160, 320, 640]
 
   img_bev_encoder_neck:
@@ -282,7 +288,7 @@ model:
           class_names: ["car", "truck", "construction_vehicle", "bus", "trailer", "barrier", "motorcycle", "bicycle", "pedestrian", "traffic_cone"]
     weight: 0.25 # loc_loss weight
     common_heads:
-      reg: [2, 2] # classes, num_conv
+      reg: [2, 2]
       height: [1, 2]
       dim: [3, 2]
       rot: [2, 2]

@@ -155,15 +155,14 @@ model:
   align_after_view_transfromation: False
   num_adj: 0
   img_backbone:
-    type: MMResNet
+    type: $paddledet.ResNet
+    variant: d
     depth: 50
+    freeze_norm: False
+    norm_type: bn
+    return_idx: [2, 3]
     num_stages: 4
-    out_indices: [1, 2, 3]
-    frozen_stages: -1
-    norm_cfg:
-      type_name: 'BatchNorm2D'
-      requires_grad: True
-    norm_eval: False
+    freeze_at: -1
 
   img_neck:
     type: CustomFPN
