@@ -418,8 +418,8 @@ def output_to_nusc_box(detection):
         detection (dict): Detection results.
 
             - boxes_3d (:obj:`BaseInstance3DBoxes`): Detection bbox.
-            - scores_3d (torch.Tensor): Detection scores.
-            - labels_3d (torch.Tensor): Predicted box labels.
+            - scores_3d (paddle.Tensor): Detection scores.
+            - labels_3d (paddle.Tensor): Predicted box labels.
 
     Returns:
         list[:obj:`NuScenesBox`]: List of standard NuScenesBoxes.

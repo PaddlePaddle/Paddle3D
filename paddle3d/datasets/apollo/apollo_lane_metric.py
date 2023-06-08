@@ -1,12 +1,30 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# ------------------------------------------------------------------------
+# Modified from BEV-LaneDet (https://github.com/gigo-team/bev_lane_det)
+# ------------------------------------------------------------------------
+
 import os
 import json
 import tempfile
 import os.path as osp
 import numpy as np
 from tqdm import tqdm
-from .MinCostFlow import SolveMinCostFlow
+from .min_cost_flow import SolveMinCostFlow
 from paddle3d.datasets.metrics import MetricABC
-# from .utils import *
+
 from pprint import pprint
 import paddle
 from .cluster import embedding_post
@@ -171,7 +189,6 @@ class LaneEval(object):
                                    self.y_samples <= max_y)))
             pred_visibility_mat[i, :] = np.logical_and(
                 pred_visibility_mat[i, :], visibility_vec)
-            # pred_visibility_mat[i, :] = np.logical_and(x_values >= self.x_min, x_values <= self.x_max)
 
         adj_mat = np.zeros((cnt_gt, cnt_pred), dtype=int)
         cost_mat = np.zeros((cnt_gt, cnt_pred), dtype=int)
@@ -259,9 +276,7 @@ class LaneEval(object):
                             pred_visibility_mat[pred_i, :]) >= self.ratio_th:
                         p_lane += 1
                         match_pred_ids.append(pred_i)
-                    # if pred_category != []:
-                    #     if pred_category[pred_i] == gt_category[gt_i] or (pred_category[pred_i]==20 and gt_category[gt_i]==21):
-                    #         c_lane += 1    # category matched num
+
                     x_error_close.append(x_dist_mat_close[gt_i, pred_i])
                     x_error_far.append(x_dist_mat_far[gt_i, pred_i])
                     z_error_close.append(z_dist_mat_close[gt_i, pred_i])
@@ -305,79 +320,6 @@ class LaneEval(object):
         pprint(dict_res)
         return dict_res
 
-    # def bench_all_(self,pred_lanes,gt_lanes):
-    #     laneline_stats = []
-    #     laneline_x_error_close = []
-    #     laneline_x_error_far = []
-    #     laneline_z_error_close = []
-    #     laneline_z_error_far = []
-    #     r_lane, p_lane, c_lane, cnt_gt, cnt_pred, match_num, \
-    #     x_error_close, x_error_far, \
-    #     z_error_close, z_error_far = self.bench(pred_lanes,
-    #                                             gt_lanes)
-    #     laneline_stats.append(np.array([r_lane, p_lane, c_lane, cnt_gt, cnt_pred, match_num]))
-    #     # consider x_error z_error only for the matched lanes
-    #     # if r_lane > 0 and p_lane > 0:
-    #     laneline_x_error_close.extend(x_error_close)
-    #     laneline_x_error_far.extend(x_error_far)
-    #     laneline_z_error_close.extend(z_error_close)
-    #     laneline_z_error_far.extend(z_error_far)
-    #
-    #     ''' 2 '''
-    #     output_stats = []
-    #     laneline_stats = np.array(laneline_stats)
-    #     laneline_x_error_close = np.array(laneline_x_error_close)
-    #     laneline_x_error_far = np.array(laneline_x_error_far)
-    #     laneline_z_error_close = np.array(laneline_z_error_close)
-    #     laneline_z_error_far = np.array(laneline_z_error_far)
-    #
-    #     R_lane = np.sum(laneline_stats[:, 0]) / (np.sum(laneline_stats[:, 3]) + 1e-6)  # recall = TP / (TP+FN)
-    #     P_lane = np.sum(laneline_stats[:, 1]) / (np.sum(laneline_stats[:, 4]) + 1e-6)  # precision = TP / (TP+FP)
-    #     C_lane = np.sum(laneline_stats[:, 2]) / (np.sum(laneline_stats[:, 5]) + 1e-6)  # category_accuracy
-    #     F_lane = 2 * R_lane * P_lane / (R_lane + P_lane + 1e-6) #f1
-    #     x_error_close_avg = np.average(laneline_x_error_close) #
-    #     x_error_far_avg = np.average(laneline_x_error_far)
-    #     z_error_close_avg = np.average(laneline_z_error_close)
-    #     z_error_far_avg = np.average(laneline_z_error_far)
-    #     # 整体的
-    #     output_stats.append(F_lane) #f1
-    #     output_stats.append(R_lane) #recall
-    #     output_stats.append(P_lane) # percesion
-    #     output_stats.append(C_lane) # categray 没用
-    #     # 上边的实际上没用到
-    #     output_stats.append(x_error_close_avg) # 直接求
-    #     output_stats.append(x_error_far_avg) # 直
-    #     output_stats.append(z_error_close_avg)
-    #     output_stats.append(z_error_far_avg)
-    #     # 逐帧结果
-    #     output_stats.append(np.sum(laneline_stats[:, 0]))  # 8
-    #     output_stats.append(np.sum(laneline_stats[:, 1]))  # 9
-    #     output_stats.append(np.sum(laneline_stats[:, 2]))  # 10
-    #     output_stats.append(np.sum(laneline_stats[:, 3]))  # 11
-    #     output_stats.append(np.sum(laneline_stats[:, 4]))  # 12
-    #     output_stats.append(np.sum(laneline_stats[:, 5]))  # 13
-    #
-    #     ''' 3 '''
-    #     gather_output = [None for _ in range(args.world_size)] # list
-    #     # all_gather all eval_stats and calculate mean
-    #     dist.all_gather_object(gather_output, output_stats)
-    #     r_lane = np.sum([eval_stats_sub[8] for eval_stats_sub in gather_output])
-    #     p_lane = np.sum([eval_stats_sub[9] for eval_stats_sub in gather_output])
-    #     c_lane = np.sum([eval_stats_sub[10] for eval_stats_sub in gather_output])
-    #     cnt_gt = np.sum([eval_stats_sub[11] for eval_stats_sub in gather_output])
-    #     cnt_pred = np.sum([eval_stats_sub[12] for eval_stats_sub in gather_output])
-    #     match_num = np.sum([eval_stats_sub[13] for eval_stats_sub in gather_output])
-    #     Recall = r_lane / (cnt_gt + 1e-6)
-    #     Precision = p_lane / (cnt_pred + 1e-6)
-    #     f1_score = 2 * Recall * Precision / (Recall + Precision + 1e-6)
-    #     category_accuracy = c_lane / (match_num + 1e-6)
-    #
-    #     eval_stats[0] = f1_score
-    #     eval_stats[1] = Recall
-    #     eval_stats[2] = Precision
-    #     eval_stats[3] = category_accuracy
-    #     return output_stats
-
 
 class PostProcessDataset(paddle.io.Dataset):
     def __init__(self, model_res_save_path, postprocess_save_path,
@@ -396,7 +338,7 @@ class PostProcessDataset(paddle.io.Dataset):
         with open(test_json_paths, 'r') as f:
             for i in f.readlines():
                 line_content = json.loads(i.strip())
-                # print('hah') #'raw_file', 'cam_height', 'cam_pitch', 'centerLines', 'laneLines', 'centerLines_visibility', 'laneLines_visibility'
+
                 lanes = []
                 for lane_idx in range(len(line_content['laneLines'])):
                     lane_selected = np.array(
@@ -457,9 +399,9 @@ class ApolloLaneMetric(MetricABC):
         self.x_range = x_range
         self.meter_per_pixel = meter_per_pixel
         tmp_dir = tempfile.TemporaryDirectory()
-        # self.np_save_path = osp.join(tmp_dir.name, 'np_save')
+
         self.res_save_path = osp.join(tmp_dir.name, 'result')
-        # os.makedirs(self.np_save_path, exist_ok=True)
+
         os.makedirs(self.res_save_path, exist_ok=True)
         self.predictions = []
 
@@ -492,14 +434,3 @@ class ApolloLaneMetric(MetricABC):
             lane_eval.bench_all(res[0], res[1])
         lane_eval.show()
         return None
-
-
-if __name__ == '__main__':
-    pred_lanes = [np.array([[10, 2], [10, 10], [10, 20]])]
-    gt_lanes = [
-        np.array([[10, 2], [10, 10], [10, 20]]),
-        np.array([[9, 2], [9, 10], [9, 20]])
-    ]
-    le = LaneEval()
-    res = le.bench(pred_lanes, gt_lanes)
-    print(res)

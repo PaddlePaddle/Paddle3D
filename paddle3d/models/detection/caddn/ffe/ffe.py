@@ -76,10 +76,10 @@ class FFE(nn.Layer):
         """
         Create image depth feature volume by multiplying image features with depth classification scores
         Args:
-            image_features [torch.Tensor(N, C, H, W)]: Image features
-            depth_logits [torch.Tensor(N, D, H, W)]: Depth classification logits
+            image_features [paddle.Tensor(N, C, H, W)]: Image features
+            depth_logits [paddle.Tensor(N, D, H, W)]: Depth classification logits
         Returns:
-            frustum_features [torch.Tensor(N, C, D, H, W)]: Image features
+            frustum_features [paddle.Tensor(N, C, D, H, W)]: Image features
         """
         channel_dim = 1
         depth_dim = 2

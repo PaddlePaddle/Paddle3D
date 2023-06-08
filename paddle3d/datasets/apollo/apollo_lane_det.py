@@ -1,17 +1,36 @@
-import copy
-import json
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# ------------------------------------------------------------------------
+# Modified from BEV-LaneDet (https://github.com/gigo-team/bev_lane_det)
+# ------------------------------------------------------------------------
+
 import os
 import cv2
+import copy
+import json
 import numpy as np
-import paddle
 from scipy.interpolate import interp1d
 
-from .coord_util import ego2image, IPM2ego_matrix
-from .standard_camera_cpu import Standard_camera
+import paddle
 from paddle3d.apis import manager
 import paddle3d.transforms as T
-from .apollo_lane_metric import ApolloLaneMetric
 import albumentations as A
+
+from .apollo_lane_metric import ApolloLaneMetric
+from .standard_camera_cpu import Standard_camera
+from .coord_util import ego2image, IPM2ego_matrix
 
 
 @manager.DATASETS.add_component
@@ -43,8 +62,7 @@ class ApolloOffsetDataset(paddle.io.Dataset):
                 self.cnt_list.append(info_dict)
         ''' virtual camera paramter'''
         self.use_virtual_camera = virtual_camera_config['use_virtual_camera']
-        # self.vc_intrinsic = virtual_camera_config['vc_intrinsic']
-        # self.vc_extrinsics = virtual_camera_config['vc_extrinsics']
+
         camera_ext_virtual, camera_K_virtual = get_camera_matrix(
             0.04325083977888603, 1.7860000133514404)  # a random parameter
         self.vc_intrinsic = camera_K_virtual
@@ -59,7 +77,6 @@ class ApolloOffsetDataset(paddle.io.Dataset):
                 A.RandomBrightnessContrast(),
                 A.ColorJitter(p=0.1),
                 A.Normalize(),
-                # ToTensorV2()
             ])
         self.ipm_h, self.ipm_w = int(
             (self.x_range[1] - self.x_range[0]) / self.meter_per_pixel), int(
@@ -78,34 +95,31 @@ class ApolloOffsetDataset(paddle.io.Dataset):
             lane_z_selected = lane_z.T[condition]
             offset_y = np.mean(lane_points_selected[:, 1]) - base_points[1]
             z = np.mean(lane_z_selected[:, 1])
-            return offset_y, z  # @distances.argmin(),distances[min_idx] #1#lane_points_selected[distances.argmin()],distances.min()
+            return offset_y, z
 
-        # 画mask
         res_lane_points = {}
         res_lane_points_z = {}
         res_lane_points_bin = {}
         res_lane_points_set = {}
         for idx in res_d:
             ipm_points_ = np.array(res_d[idx])
-            ipm_points = ipm_points_.T[np.where((ipm_points_[1] >= 0) & (
-                ipm_points_[1] < self.ipm_h))].T  # 进行筛选
+            ipm_points = ipm_points_.T[np.where(
+                (ipm_points_[1] >= 0) & (ipm_points_[1] < self.ipm_h))].T
             if len(ipm_points[0]) <= 1:
                 continue
             x, y, z = ipm_points[1], ipm_points[0], ipm_points[2]
             base_points = np.linspace(x.min(), x.max(),
-                                      int((x.max() - x.min()) //
-                                          0.05))  # 画 offset 用得 画的非常细 一个格子里面20个点
+                                      int((x.max() - x.min()) // 0.05))
             base_points_bin = np.linspace(
                 int(x.min()), int(x.max()),
-                int(int(x.max()) - int(x.min())) + 1)  # .astype(np.int)
-            # print(len(x),len(y),len(y))
+                int(int(x.max()) - int(x.min())) + 1)
+
             if len(x) == len(set(x)):
                 if len(x) <= 1:
                     continue
                 elif len(x) <= 2:
                     function1 = interp1d(
-                        x, y, kind='linear', fill_value="extrapolate"
-                    )  # 线性插值 #三次样条插值 kind='quadratic' linear cubic
+                        x, y, kind='linear', fill_value="extrapolate")
                     function2 = interp1d(x, z, kind='linear')
                 elif len(x) <= 3:
                     function1 = interp1d(
@@ -116,9 +130,9 @@ class ApolloOffsetDataset(paddle.io.Dataset):
                         x, y, kind='cubic', fill_value="extrapolate")
                     function2 = interp1d(x, z, kind='cubic')
             else:
-                sorted_index = np.argsort(x)[::-1]  # 从大到小
+                sorted_index = np.argsort(x)[::-1]
                 x_, y_, z_ = [], [], []
-                for x_index in range(len(sorted_index)):  # 越来越小
+                for x_index in range(len(sorted_index)):
                     if x[sorted_index[x_index]] >= x[sorted_index[
                             x_index - 1]] and x_index != 0:
                         continue
@@ -131,8 +145,7 @@ class ApolloOffsetDataset(paddle.io.Dataset):
                     continue
                 elif len(x) <= 2:
                     function1 = interp1d(
-                        x, y, kind='linear', fill_value="extrapolate"
-                    )  # 线性插值 #三次样条插值 kind='quadratic' linear cubic
+                        x, y, kind='linear', fill_value="extrapolate")
                     function2 = interp1d(x, z, kind='linear')
                 elif len(x) <= 3:
                     function1 = interp1d(
@@ -146,11 +159,11 @@ class ApolloOffsetDataset(paddle.io.Dataset):
             y_points = function1(base_points)
             y_points_bin = function1(base_points_bin)
             z_points = function2(base_points)
-            # cv2.polylines(instance_seg, [ipm_points.T.astype(np.int)], False, idx+1, 1)
-            res_lane_points[idx] = np.array([base_points, y_points])  #
+
+            res_lane_points[idx] = np.array([base_points, y_points])
             res_lane_points_z[idx] = np.array([base_points, z_points])
-            res_lane_points_bin[idx] = np.array(
-                [base_points_bin, y_points_bin]).astype(np.int)  # 画bin用的
+            res_lane_points_bin[idx] = np.array([base_points_bin,
+                                                 y_points_bin]).astype(np.int)
             res_lane_points_set[idx] = np.array([base_points,
                                                  y_points]).astype(np.int)
         offset_map = np.zeros((self.ipm_h, self.ipm_w))
@@ -160,22 +173,19 @@ class ApolloOffsetDataset(paddle.io.Dataset):
             lane_bin = res_lane_points_bin[idx].T
             for point in lane_bin:
                 row, col = point[0], point[1]
-                if not (0 < row < self.ipm_h
-                        and 0 < col < self.ipm_w):  # 没有在视野内部的去除掉
+                if not (0 < row < self.ipm_h and 0 < col < self.ipm_w):
                     continue
                 ipm_image[row, col] = idx
                 center = np.array([row, col])
-                offset_y, z = caculate_distance(
-                    center, res_lane_points[idx], res_lane_points_z[idx],
-                    res_lane_points_set[idx])  # 根据距离选idex
-                if offset_y is None:  #
+                offset_y, z = caculate_distance(center, res_lane_points[idx],
+                                                res_lane_points_z[idx],
+                                                res_lane_points_set[idx])
+                if offset_y is None:
                     ipm_image[row, col] = 0
                     continue
                 if offset_y > 1:
-                    print('haha')
                     offset_y = 1
                 if offset_y < 0:
-                    print('hahahahahha')
                     offset_y = 0
                 offset_map[row][col] = offset_y
                 z_map[row][col] = z
@@ -260,7 +270,7 @@ class ApolloOffsetDataset(paddle.io.Dataset):
         image_gt_instance = np.array(
             image_gt, dtype=np.float32)[np.newaxis, ...]  # h, w, c
         image_gt_segment = copy.deepcopy(image_gt_instance)
-        # image_gt_segment = torch.clone(image_gt_instance)
+
         image_gt_segment[image_gt_segment > 0] = 1
         ''' 3d gt'''
         bev_gt_instance = np.array(
@@ -270,7 +280,7 @@ class ApolloOffsetDataset(paddle.io.Dataset):
         bev_gt_z = np.array(z_map, dtype=np.float32)[np.newaxis, ...]
         bev_gt_segment = copy.deepcopy(bev_gt_instance)
         bev_gt_segment[bev_gt_segment > 0] = 1
-        # return image, bev_gt_segment, bev_gt_instance,bev_gt_offset,bev_gt_z,image_gt_segment,image_gt_instance
+
         sample = dict(
             img=image,
             bev_gt_segment=bev_gt_segment,
@@ -280,7 +290,6 @@ class ApolloOffsetDataset(paddle.io.Dataset):
             image_gt_segment=image_gt_segment,
             image_gt_instance=image_gt_instance)
         return sample
-        # return image, bev_gt_segment.float(), bev_gt_instance.float(),bev_gt_offset.float(),bev_gt_z.float(),image_gt_segment.float(),image_gt_instance.float()
 
     def get_camera_matrix(self, cam_pitch, cam_height):
         proj_g2c = np.array([[1, 0, 0, 0],
@@ -314,15 +323,9 @@ class ApolloOffsetValDataset(paddle.io.Dataset):
                  meter_per_pixel,
                  transforms=None):
 
-        # if transforms is None:
         if isinstance(transforms, list):
             transforms = paddle.vision.Compose(transforms)
 
-            # self.transforms = transforms
-            # input_shape = (576, 1024)
-            # data_trans = paddle.vision.Compose([
-            #     paddle.vision.Resize(input_shape),
-            #     paddle.vision.Normalize()])
         self.cnt_list = []
         self.data_json_path = data_json_path
         json_file_path = data_json_path
@@ -340,11 +343,9 @@ class ApolloOffsetValDataset(paddle.io.Dataset):
             0.04325083977888603, 1.7860000133514404)  # a random parameter
         self.vc_intrinsic = camera_K_virtual
         self.vc_extrinsics = np.linalg.inv(camera_ext_virtual)
-        # self.vc_intrinsic = virtual_camera_config['vc_intrinsic']
-        # self.vc_extrinsics = virtual_camera_config['vc_extrinsics']
+
         self.vc_image_shape = tuple(virtual_camera_config['vc_image_shape'])
         ''' transform loader '''
-        print('transforms', transforms)
         self.trans_image = transforms
 
         self.is_train_mode = False
@@ -376,9 +377,7 @@ class ApolloOffsetValDataset(paddle.io.Dataset):
                                         self.vc_image_shape)
 
         image = self.trans_image(image)
-        # print(type(transformed))
-        # image = transformed["image"]
-        # return image#, name_list[1:]
+
         return dict(img=image, name_list=name_list[1:])
 
     def get_camera_matrix(self, cam_pitch, cam_height):
@@ -404,9 +403,6 @@ class ApolloOffsetValDataset(paddle.io.Dataset):
 
     @property
     def metric(self):
-        # if not hasattr(self, 'nusc'):
-        #     self.nusc = NuScenesManager.get(
-        #         version=self.version, dataroot=self.dataset_root)
         return ApolloLaneMetric(self.data_json_path, self.x_range,
                                 self.meter_per_pixel)
 
@@ -425,13 +421,3 @@ def get_camera_matrix(cam_pitch, cam_height):
     camera_K = np.array([[2015., 0., 960.], [0., 2015., 540.], [0., 0., 1.]])
 
     return proj_g2c, camera_K
-
-
-if __name__ == '__main__':
-    ''' parameter from config '''
-    from utils.config_util import load_config_module
-    config_file = '/mnt/ve_perception/wangruihao/code/BEV-LaneDet/tools/apollo_config.py'
-    configs = load_config_module(config_file)
-    dataset = configs.val_dataset()
-    for item in dataset:
-        continue

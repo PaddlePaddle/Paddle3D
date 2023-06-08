@@ -1,13 +1,34 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# ------------------------------------------------------------------------
+# Modified from BEV-LaneDet (https://github.com/gigo-team/bev_lane_det)
+# ------------------------------------------------------------------------
+
 import os
 import math
 import tempfile
-import os.path as osp
 import numpy as np
+import os.path as osp
+
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle3d.models.backbones.mm_resnet import resnet34
-from paddle3d.models.layers.param_init import kaiming_normal_init, constant_init, init_weight, _no_grad_uniform_, _calculate_fan_in_and_fan_out
+from paddle3d.models.losses.push_pull_loss import NDPushPullLoss, IoULoss
+from paddle3d.models.layers.param_init import kaiming_normal_init, constant_init, \
+                        init_weight, _no_grad_uniform_, _calculate_fan_in_and_fan_out
 from paddle3d.apis import manager
 
 
@@ -33,9 +54,9 @@ def pairwise_dist(A, B):
     return paddle.abs(A - B).sum(-1)
 
 
-class InstanceEmbedding_offset_y_z(nn.Layer):
+class InstanceEmbeddingOffsetYZ(nn.Layer):
     def __init__(self, ci, co=1):
-        super(InstanceEmbedding_offset_y_z, self).__init__()
+        super(InstanceEmbeddingOffsetYZ, self).__init__()
         self.neck_new = nn.Sequential(
             # SELayer(ci),
             nn.Conv2D(ci, 128, 3, 1, 1, bias_attr=False),
@@ -77,15 +98,10 @@ class InstanceEmbedding_offset_y_z(nn.Layer):
             nn.Conv2D(64, 1, 3, 1, 1, bias_attr=True))
 
         self.me_new = nn.Sequential(
-            # nn.Dropout2d(0.2),
-            nn.Conv2D(ci, 128, 3, 1, 1, bias_attr=False),
-            nn.BatchNorm2D(128),
-            nn.ReLU(),
-            nn.Conv2D(128, 64, 3, 1, 1, bias_attr=False),
-            nn.BatchNorm2D(64),
-            nn.ReLU(),
+            nn.Conv2D(ci, 128, 3, 1, 1, bias_attr=False), nn.BatchNorm2D(128),
+            nn.ReLU(), nn.Conv2D(128, 64, 3, 1, 1, bias_attr=False),
+            nn.BatchNorm2D(64), nn.ReLU(),
             nn.Conv2D(64, co, 3, 1, 1, bias_attr=True))
-        # self.apply(init_weight)
 
         naive_init_module(self.ms_new)
         naive_init_module(self.me_new)
@@ -103,7 +119,6 @@ class InstanceEmbedding(nn.Layer):
     def __init__(self, ci, co=1):
         super(InstanceEmbedding, self).__init__()
         self.neck = nn.Sequential(
-            # SELayer(ci),
             nn.Conv2D(ci, 128, 3, 1, 1, bias_attr=False),
             nn.BatchNorm2D(128),
             nn.ReLU(),
@@ -113,25 +128,16 @@ class InstanceEmbedding(nn.Layer):
         )
 
         self.ms = nn.Sequential(
-            # nn.Dropout2d(0.2),
-            nn.Conv2D(ci, 128, 3, 1, 1, bias_attr=False),
-            nn.BatchNorm2D(128),
-            nn.ReLU(),
-            nn.Conv2D(128, 64, 3, 1, 1, bias_attr=False),
-            nn.BatchNorm2D(64),
-            nn.ReLU(),
+            nn.Conv2D(ci, 128, 3, 1, 1, bias_attr=False), nn.BatchNorm2D(128),
+            nn.ReLU(), nn.Conv2D(128, 64, 3, 1, 1, bias_attr=False),
+            nn.BatchNorm2D(64), nn.ReLU(),
             nn.Conv2D(64, 1, 3, 1, 1, bias_attr=True))
 
         self.me = nn.Sequential(
-            # nn.Dropout2d(0.2),
-            nn.Conv2D(ci, 128, 3, 1, 1, bias_attr=False),
-            nn.BatchNorm2D(128),
-            nn.ReLU(),
-            nn.Conv2D(128, 64, 3, 1, 1, bias_attr=False),
-            nn.BatchNorm2D(64),
-            nn.ReLU(),
+            nn.Conv2D(ci, 128, 3, 1, 1, bias_attr=False), nn.BatchNorm2D(128),
+            nn.ReLU(), nn.Conv2D(128, 64, 3, 1, 1, bias_attr=False),
+            nn.BatchNorm2D(64), nn.ReLU(),
             nn.Conv2D(64, co, 3, 1, 1, bias_attr=True))
-        # self.apply(init_weight)
         naive_init_module(self.ms)
         naive_init_module(self.me)
         naive_init_module(self.neck)
@@ -141,9 +147,9 @@ class InstanceEmbedding(nn.Layer):
         return self.ms(feat), self.me(feat)
 
 
-class LaneHeadResidual_Instance_with_offset_z(nn.Layer):
+class LaneHeadResidualInstanceWithOffsetZ(nn.Layer):
     def __init__(self, output_size, input_channel=256):
-        super(LaneHeadResidual_Instance_with_offset_z, self).__init__()
+        super(LaneHeadResidualInstanceWithOffsetZ, self).__init__()
 
         self.bev_up_new = nn.Sequential(
             nn.Upsample(scale_factor=2),  #
@@ -167,13 +173,11 @@ class LaneHeadResidual_Instance_with_offset_z(nn.Layer):
                     nn.Dropout2D(p=0.2),
                     nn.Conv2D(64, 64, 3, padding=1, bias_attr=False),
                     nn.BatchNorm2D(64),
-                    # nn.ReLU(),
                 ),
                 downsample=nn.Conv2D(128, 64, 1),
             ),
         )
-        self.head = InstanceEmbedding_offset_y_z(64, 2)
-        # self.apply(init_weight)
+        self.head = InstanceEmbeddingOffsetYZ(64, 2)
 
         naive_init_module(self.head)
         naive_init_module(self.bev_up_new)
@@ -183,12 +187,12 @@ class LaneHeadResidual_Instance_with_offset_z(nn.Layer):
         return self.head(bev_feat)
 
 
-class LaneHeadResidual_Instance(nn.Layer):
+class LaneHeadResidualInstance(nn.Layer):
     def __init__(self, output_size, input_channel=256):
-        super(LaneHeadResidual_Instance, self).__init__()
+        super(LaneHeadResidualInstance, self).__init__()
 
         self.bev_up = nn.Sequential(
-            nn.Upsample(scale_factor=2),  # 60x 24
+            nn.Upsample(scale_factor=2),
             Residual(
                 module=nn.Sequential(
                     nn.Conv2D(input_channel, 64, 3, padding=1, bias_attr=False),
@@ -200,7 +204,7 @@ class LaneHeadResidual_Instance(nn.Layer):
                 ),
                 downsample=nn.Conv2D(input_channel, 128, 1),
             ),
-            nn.Upsample(scale_factor=2),  # 120 x 48
+            nn.Upsample(scale_factor=2),
             Residual(
                 module=nn.Sequential(
                     nn.Conv2D(128, 64, 3, padding=1, bias_attr=False),
@@ -209,11 +213,10 @@ class LaneHeadResidual_Instance(nn.Layer):
                     nn.Dropout2D(p=0.2),
                     nn.Conv2D(64, 32, 3, padding=1, bias_attr=False),
                     nn.BatchNorm2D(32),
-                    # nn.ReLU(),
                 ),
                 downsample=nn.Conv2D(128, 32, 1),
             ),
-            nn.Upsample(size=output_size),  # 300 x 120
+            nn.Upsample(size=output_size),
             Residual(
                 module=nn.Sequential(
                     nn.Conv2D(32, 16, 3, padding=1, bias_attr=False),
@@ -226,7 +229,6 @@ class LaneHeadResidual_Instance(nn.Layer):
         )
 
         self.head = InstanceEmbedding(32, 2)
-        # self.apply(init_weight)
 
         naive_init_module(self.head)
         naive_init_module(self.bev_up)
@@ -304,110 +306,8 @@ class Residual(nn.Layer):
         return self.relu(out)
 
 
-class NDPushPullLoss(nn.Layer):
-    """
-    An embedding loss to min var of per cluster and max distance between different clusters.
-
-    So, for easier cluster, margin_var should be small, and margin_dist should be larger
-
-    Inputs:
-    featmap: prediction of network, [b,N,h,w], float tensor
-    gt: gt, [b,N,h,w], long tensor, all val >= ignore_label will NOT be contributed to loss.
-
-    loss = var_weight * var_loss + dist_weight * dist_loss
-
-    Args:
-        var_weight (float):
-        dist_weight (float):
-        margin_var (float): margin for var, any var < this margin will NOT be counted in loss
-        margin_dist (float): margin for distance, any distance > this margin will NOT be counted in loss
-        ignore_label: val in gt >= this arg, will be ignored.
-    """
-
-    def __init__(self, var_weight, dist_weight, margin_var, margin_dist,
-                 ignore_label):
-        super(NDPushPullLoss, self).__init__()
-        self.var_weight = var_weight
-        self.dist_weight = dist_weight
-        self.margin_var = margin_var
-        self.margin_dist = margin_dist
-        self.ignore_label = ignore_label
-
-    def forward(self, featmap, gt):
-        assert (featmap.shape[2:] == gt.shape[2:])
-        pull_loss = []
-        push_loss = []
-        C = gt[gt < self.ignore_label].max().item()
-        # [B, N, H, W] = fm, [B, 1, H, W]  = gt
-        # TODO not an optimized implement here. Should not expand B dim.
-        for b in range(featmap.shape[0]):
-            bfeat = featmap[b]
-            bgt = gt[b][0]
-            instance_centers = {}
-            for i in range(1, int(C) + 1):
-                instance_mask = bgt == i
-                if instance_mask.sum() == 0:
-                    continue
-                # pos_featmap = bfeat[:, instance_mask].T#.contiguous()  #  mask_num x N
-                first_dim = bfeat.shape[0]
-                # print('before', instance_mask.shape)
-                instance_mask = instance_mask.expand_as(bfeat)
-                # print('post', instance_mask.shape)
-                pos_featmap = paddle.masked_select(
-                    bfeat, instance_mask)  #.contiguous()  #  mask_num x N
-                # print('pos_featmap', pos_featmap.shape)
-                pos_featmap = pos_featmap.reshape([first_dim,
-                                                   -1]).transpose([1, 0])
-                instance_center = pos_featmap.mean(
-                    axis=0, keepdim=True)  # N x mask_num (mean)-> N x 1
-                instance_centers[i] = instance_center
-                # TODO xxx
-                instance_loss = paddle.clip(
-                    pairwise_dist(pos_featmap, instance_center) -
-                    self.margin_var,
-                    min=0.0)
-                pull_loss.append(instance_loss.mean())
-            for i in range(1, int(C) + 1):
-                for j in range(1, int(C) + 1):
-                    if i == j:
-                        continue  # No need to push
-                    if i not in instance_centers or j not in instance_centers:
-                        continue
-                    instance_loss = paddle.clip(
-                        2 * self.margin_dist - pairwise_dist(
-                            instance_centers[i], instance_centers[j]),
-                        min=0.0)
-                    push_loss.append(instance_loss)
-        if len(pull_loss) > 0:
-            pull_loss = paddle.concat([item.unsqueeze(0) for item in pull_loss
-                                       ]).mean() * self.var_weight
-        else:
-            pull_loss = 0.0 * featmap.mean()  # Fake loss
-
-        if len(push_loss) > 0:
-            push_loss = paddle.concat([item.unsqueeze(0) for item in push_loss
-                                       ]).mean() * self.dist_weight
-        else:
-            push_loss = 0.0 * featmap.mean()  # Fake loss
-        return push_loss + pull_loss
-
-
-class IoULoss(nn.Layer):
-    def __init__(self, ignore_index=255):
-        super(IoULoss, self).__init__()
-        self.ignore_index = ignore_index
-
-    def forward(self, outputs, targets):
-        mask = (targets != self.ignore_index).astype('float32')
-        targets = targets.astype('float32')
-        num = paddle.sum(outputs * targets * mask)
-        den = paddle.sum(outputs * mask + targets * mask -
-                         outputs * targets * mask)
-        return 1 - num / den
-
-
 @manager.MODELS.add_component
-class BEVLaneDet(nn.Layer):  # BEV-LaneDet
+class BEVLaneDet(nn.Layer):
     def __init__(self,
                  bev_shape,
                  output_2d_shape,
@@ -432,18 +332,18 @@ class BEVLaneDet(nn.Layer):  # BEV-LaneDet
 
         self.s32transformer = FCTransform_((512, 18, 32), (256, 25, 5))
         self.s64transformer = FCTransform_((1024, 9, 16), (256, 25, 5))
-        self.lane_head = LaneHeadResidual_Instance_with_offset_z(
+        self.lane_head = LaneHeadResidualInstanceWithOffsetZ(
             bev_shape, input_channel=512)
         self.is_train = train
         if self.is_train:
-            self.lane_head_2d = LaneHeadResidual_Instance(
+            self.lane_head_2d = LaneHeadResidualInstance(
                 output_2d_shape, input_channel=512)
 
         tmp_dir = tempfile.TemporaryDirectory()
         self.np_save_path = osp.join(tmp_dir.name, 'np_save')
         self.res_save_path = osp.join(tmp_dir.name, 'result')
         os.makedirs(self.np_save_path, exist_ok=True)
-        # os.makedirs(self.res_save_path, exist_ok=True)
+
         self.bce = nn.BCEWithLogitsLoss(pos_weight=paddle.to_tensor([10.0]))
         self.iou_loss = IoULoss()
         self.poopoo = NDPushPullLoss(1.0, 1., 1.0, 5.0, 200)
@@ -451,8 +351,6 @@ class BEVLaneDet(nn.Layer):  # BEV-LaneDet
         self.bce_loss = nn.BCELoss()
 
     def forward(self, samples, *args, **kwargs):
-        # if self.in_export_mode:
-        #     return self.export_forward(samples, *args, **kwargs)
         if self.training:
             return self.train_forward(samples, *args, **kwargs)
 
@@ -460,16 +358,7 @@ class BEVLaneDet(nn.Layer):  # BEV-LaneDet
 
     def train_forward(self, samples, *args, **kwargs):
         img = samples['img']
-        # bn_name = samples['name_list']
-        # sample = dict(
-        #     img=image,
-        #     bev_gt_segment=bev_gt_segment,
-        #     bev_gt_instance=bev_gt_instance,
-        #     bev_gt_offset=bev_gt_offset,
-        #     bev_gt_z=bev_gt_z,
-        #     image_gt_segment=image_gt_segment,
-        #     image_gt_instance=image_gt_instance
-        # )
+
         gt_seg = samples['bev_gt_segment']
         gt_instance = samples['bev_gt_instance']
         gt_offset_y = samples['bev_gt_offset']
@@ -488,7 +377,7 @@ class BEVLaneDet(nn.Layer):  # BEV-LaneDet
 
         loss_seg = self.bce(pred, gt_seg) + self.iou_loss(
             F.sigmoid(pred), gt_seg)
-        # print(emb.shape, gt_instance.shape)
+
         loss_emb = self.poopoo(emb, gt_instance)
         loss_offset = self.bce_loss(gt_seg * F.sigmoid(offset_y), gt_offset_y)
         loss_z = self.mse_loss(gt_seg * z, gt_z)
@@ -508,7 +397,7 @@ class BEVLaneDet(nn.Layer):  # BEV-LaneDet
         losses['loss_total_2d'] = loss_total_2d.mean()
         losses['loss_offset'] = loss_offset.mean()
         losses['loss_z'] = loss_z.mean()
-        # return pred, loss_total, loss_total_2d, loss_offset, loss_z
+
         return dict(loss=losses)
 
     def test_forward(self, samples, *args, **kwargs):
@@ -544,5 +433,5 @@ class BEVLaneDet(nn.Layer):  # BEV-LaneDet
                 bn_name[0][idx] + '__' + bn_name[1][idx].replace('json', 'np'))
 
             np.save(save_path, tmp_res_for_save)
-        # outputs['preds'] = self.np_save_path
+
         return dict(preds=[np_save_path])

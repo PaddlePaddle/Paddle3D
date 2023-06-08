@@ -27,11 +27,6 @@ def naive_cluster(list, gap, spatial_gap):
     centers = []  # (mean, num)
     cids = []
     for x, y, val in list:
-        # if len(centers) == 0:
-        #     centers.append((val, 1))
-        #     cids.append(len(centers) - 1)
-        #     continue
-        # find_center = False
 
         min_gap = gap + 1
         min_cid = -1
@@ -104,12 +99,6 @@ def embedding_post(pred,
     seg, emb = pred  # [key]
     seg, emb = seg[0][0], emb[0]
     nd, h, w = emb.shape
-    # emb_show = (emb - emb.min()).detach().numpy().astype(np.uint8)
-    # emb_show[:, seg < 0] = 0
-    # cv2.imshow("emb0", emb_show[0] * 5)
-    # cv2.imshow("emb1", emb_show[1] * 5)
-
-    # cv2.waitKey(0)
 
     if nd > 1:
         ret = collect_nd_embedding_with_position(seg, emb, conf)
@@ -118,13 +107,11 @@ def embedding_post(pred,
         ret = collect_embedding_with_position(seg, emb, conf)
         c = naive_cluster(ret, emb_margin, None)
 
-    # print(c)
     if canvas_color:
         lanes = np.zeros((*seg.shape, 3), dtype=np.uint8)
     else:
         lanes = np.zeros(seg.shape, dtype=np.uint8)
-    # print("Cluster centers:", len(c[1]))
-    # print(key, len(list(filter(lambda x: x[1] > 150, c[1]))))
+
     for x, y, id in c[0]:
         if c[1][id][1] < min_cluster_size:  # Filter small clusters
             continue

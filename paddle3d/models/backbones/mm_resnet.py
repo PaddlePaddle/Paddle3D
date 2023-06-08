@@ -603,5 +603,5 @@ def resnet34(pretrained=None, **kwargs):
     if pretrained is not None:
         state_dict = paddle.load(pretrained)
         model.set_state_dict(state_dict)
-        print('finish load resnet34 pretrained model from', pretrained)
+        print('Loaded resnet34 pretrained model from', pretrained)
     return model

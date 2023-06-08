@@ -242,17 +242,17 @@ class CenterHeadMatch(nn.Layer):
 
         Args:
             gt_bboxes_3d (:obj:`LiDARInstance3DBoxes`): Ground truth gt boxes.
-            gt_labels_3d (torch.Tensor): Labels of boxes.
+            gt_labels_3d (paddle.Tensor): Labels of boxes.
 
         Returns:
-            tuple[list[torch.Tensor]]: Tuple of target including
+            tuple[list[paddle.Tensor]]: Tuple of target including
                 the following results in order.
 
-                - list[torch.Tensor]: Heatmap scores.
-                - list[torch.Tensor]: Ground truth boxes.
-                - list[torch.Tensor]: Indexes indicating the position
+                - list[paddle.Tensor]: Heatmap scores.
+                - list[paddle.Tensor]: Ground truth boxes.
+                - list[paddle.Tensor]: Indexes indicating the position
                     of the valid boxes.
-                - list[torch.Tensor]: Masks indicating which boxes
+                - list[paddle.Tensor]: Masks indicating which boxes
                     are valid.
         """
 
