@@ -1506,3 +1506,13 @@ if Image is not None:
         'lanczos': Image.LANCZOS,
         'hamming': Image.HAMMING
     }
+
+manager.TRANSFORMS.add_component(paddle.vision.Resize)
+manager.TRANSFORMS.add_component(paddle.vision.Transpose)
+# NormalizeVision = paddle.vision.Normalize
+# manager.TRANSFORMS.add_component(NormalizeVision)
+
+
+@manager.TRANSFORMS.add_component
+class NormalizeVision(paddle.vision.Normalize):
+    pass

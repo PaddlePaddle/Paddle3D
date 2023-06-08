@@ -215,6 +215,10 @@ class Config(object):
         return self.dic.get('amp_cfg', None)
 
     @property
+    def ema_config(self) -> int:
+        return self.dic.get('ema_cfg', None)
+
+    @property
     def train_dataset_config(self) -> Dict:
         return self.dic.get('train_dataset', {}).copy()
 
@@ -359,6 +363,7 @@ class Config(object):
             'val_dataset': self.val_dataset,
             'batch_size': self.batch_size,
             'amp_cfg': self.amp_config,
+            'ema_cfg': self.ema_config,
             # 'use_ema': self.use_ema,
             'temporal_start_epoch': self.temporal_start_epoch
         })
