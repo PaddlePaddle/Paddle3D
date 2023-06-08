@@ -47,13 +47,6 @@ def naive_init_module(mod):
     return mod
 
 
-def pairwise_dist(A, B):
-    A = A.unsqueeze(-2)
-    B = B.unsqueeze(-3)
-
-    return paddle.abs(A - B).sum(-1)
-
-
 class InstanceEmbeddingOffsetYZ(nn.Layer):
     def __init__(self, ci, co=1):
         super(InstanceEmbeddingOffsetYZ, self).__init__()

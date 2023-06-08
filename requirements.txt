@@ -17,3 +17,4 @@ scikit-learn
 visualdl
 h5py
 einops
+albumentations
