@@ -188,7 +188,7 @@ class BBox3DL1Cost:
             gt_bboxes (Tensor): Ground truth boxes with normalized
                 coordinates (x1, y1, x2, y2). Shape [num_gt, 4].
         Returns:
-            torch.Tensor: bbox_cost value with weight
+            paddle.Tensor: bbox_cost value with weight
         """
         bbox_cost = pairwise_dist(bbox_pred, gt_bboxes)
         return bbox_cost * self.weight

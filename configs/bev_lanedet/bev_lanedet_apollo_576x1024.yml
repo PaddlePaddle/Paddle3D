@@ -1,0 +1,58 @@
+batch_size: 4
+epochs: 50
+
+train_dataset:
+  type: ApolloOffsetDataset
+  data_json_path: data/apollo/data_splits/standard/train.json
+  dataset_base_dir: data/apollo/Apollo_Sim_3D_Lane_Release
+  x_range: [3, 103]
+  y_range: [-12, 12]
+  meter_per_pixel: 0.5
+  input_shape: [576, 1024]
+  output_2d_shape: [144, 256]
+  virtual_camera_config:
+    use_virtual_camera: True
+    vc_intrinsic: camera_K_virtual
+    vc_image_shape: [1920, 1080]
+
+val_dataset:
+  type: ApolloOffsetValDataset
+  data_json_path: data/apollo/data_splits/standard/test.json
+  dataset_base_dir: data/apollo/Apollo_Sim_3D_Lane_Release
+  x_range: [3, 103]
+  meter_per_pixel: 0.5
+  virtual_camera_config:
+    use_virtual_camera: True
+    vc_intrinsic: camera_K_virtual
+    vc_image_shape: [1920, 1080]
+
+  transforms:
+    - type: Resize
+      size: [576, 1024]
+    - type: Transpose
+    - type: NormalizeVision
+      mean: [123.675, 116.28, 103.53]
+      std: [58.395, 57.12, 57.375]
+
+optimizer:
+  type: AdamW
+  weight_decay: 0.01
+
+
+lr_scheduler:
+  type: LinearWarmup
+  learning_rate:
+    type: CosineAnnealingDecay
+    learning_rate: 0.001
+    T_max: 37450 # 749.0 * 50
+    eta_min: 0.0000002
+  warmup_steps: 200
+  start_lr: 0.00006666666
+  end_lr: 0.001
+
+
+model:
+  type: BEVLaneDet
+  bev_shape: [200, 48]
+  output_2d_shape: [144, 256]
+  train: True

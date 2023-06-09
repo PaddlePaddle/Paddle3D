@@ -127,7 +127,7 @@ class Trainer:
             amp_cfg: Optional[dict] = None,
             do_bind: Optional[bool] = False,
             temporal_start_epoch: Optional[int] = -1,
-            ema_cfg: Optional[dict] = {}):
+            ema_cfg: Optional[dict] = None):
 
         self.model = model
         self.optimizer = optimizer

@@ -17,3 +17,5 @@ scikit-learn
 visualdl
 h5py
 einops
+albumentations
+ortools==9.1.9490
