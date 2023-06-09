@@ -261,7 +261,7 @@ class ApolloOffsetDataset(paddle.io.Dataset):
             idx)
         transformed = self.trans_image(image=image)
         image = transformed["image"]
-        # print(image.shape)
+
         image = image.transpose([2, 0, 1])
         ''' 2d gt'''
         image_gt = cv2.resize(

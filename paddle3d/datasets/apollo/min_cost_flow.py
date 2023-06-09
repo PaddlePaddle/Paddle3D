@@ -96,8 +96,6 @@ def SolveMinCostFlow(adj_mat, cost_mat):
     match_results = []
     # Find the minimum cost flow between node 0 and node 10.
     if min_cost_flow.Solve() == min_cost_flow.OPTIMAL:
-        # print('Total cost = ', min_cost_flow.OptimalCost())
-        # print()
         for arc in range(min_cost_flow.NumArcs()):
 
             # Can ignore arcs leading out of source or into sink.
@@ -108,10 +106,6 @@ def SolveMinCostFlow(adj_mat, cost_mat):
                 # give an assignment of worker to task.
 
                 if min_cost_flow.Flow(arc) > 0:
-                    # print('set A item %d assigned to set B item %d.  Cost = %d' % (
-                    #     min_cost_flow.Tail(arc)-1,
-                    #     min_cost_flow.Head(arc)-cnt_1-1,
-                    #     min_cost_flow.UnitCost(arc)))
                     match_results.append([
                         min_cost_flow.Tail(arc) - 1,
                         min_cost_flow.Head(arc) - cnt_1 - 1,

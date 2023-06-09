@@ -1,3 +1,21 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# ------------------------------------------------------------------------
+# Modified from BEV-LaneDet (https://github.com/gigo-team/bev_lane_det)
+# ------------------------------------------------------------------------
+
 import paddle
 import paddle.nn as nn
 
@@ -53,20 +71,17 @@ class NDPushPullLoss(nn.Layer):
                 instance_mask = bgt == i
                 if instance_mask.sum() == 0:
                     continue
-                # pos_featmap = bfeat[:, instance_mask].T#.contiguous()  #  mask_num x N
+                #  mask_num x N
+                # pos_featmap = bfeat[:, instance_mask].T
                 first_dim = bfeat.shape[0]
-                # print('before', instance_mask.shape)
                 instance_mask = instance_mask.expand_as(bfeat)
-                # print('post', instance_mask.shape)
-                pos_featmap = paddle.masked_select(
-                    bfeat, instance_mask)  #.contiguous()  #  mask_num x N
-                # print('pos_featmap', pos_featmap.shape)
+                pos_featmap = paddle.masked_select(bfeat, instance_mask)
                 pos_featmap = pos_featmap.reshape([first_dim,
                                                    -1]).transpose([1, 0])
                 instance_center = pos_featmap.mean(
                     axis=0, keepdim=True)  # N x mask_num (mean)-> N x 1
                 instance_centers[i] = instance_center
-                # TODO xxx
+
                 instance_loss = paddle.clip(
                     pairwise_dist(pos_featmap, instance_center) -
                     self.margin_var,

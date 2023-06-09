@@ -1,8 +1,5 @@
 batch_size: 4
 epochs: 50
-# ema_cfg:          # for megviiemahook
-#   decay: 0.9990
-#   step: 10560
 
 train_dataset:
   type: ApolloOffsetDataset
@@ -11,20 +8,12 @@ train_dataset:
   x_range: [3, 103]
   y_range: [-12, 12]
   meter_per_pixel: 0.5
-  # data_trans: None
   input_shape: [576, 1024]
   output_2d_shape: [144, 256]
   virtual_camera_config:
     use_virtual_camera: True
     vc_intrinsic: camera_K_virtual
     vc_image_shape: [1920, 1080]
-  # transforms:
-  #   - type: Resize
-  #     size: [576, 1024]
-  #   - type: Transpose
-  #   - type: NormalizeVision
-  #     mean: [123.675, 116.28, 103.53]
-  #     std: [58.395, 57.12, 57.375]
 
 val_dataset:
   type: ApolloOffsetValDataset
