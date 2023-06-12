@@ -13,6 +13,7 @@
 
 ## <h2 id="2">简介</h2>
 近年来，基于鸟瞰图(BEV)表示的感知任务越来越受到人们的关注，BEV表示有望成为下一代自动驾驶汽车(AV)感知的基础。而现有的方法计算资源大或依赖于非最大抑制(NMS)，无法达到理想的性能。在本文中，我们将两种方法结合起来，设计了一种实时端到端方法，称为RTE-BEV。RTE-BEV在NuScenes val数据集上达到51.4 NDS，在T4 GPU上达到35.46 FPS。
+![rtebev_overview](https://github.com/PaddlePaddle/Paddle3D/assets/79366697/495d7891-eb5c-4ac1-b65d-f087b37f805f)
 
 
 ## <h2 id="3">模型库</h2>
@@ -21,9 +22,9 @@
 
 | 模型 | 相邻帧数 | mAP | NDS | 模型下载 | 配置文件 | 日志 |
 | ---- | ------ | --- | ----| ------- |------- | ---- |
-| rtebev_r50 | 无 | 34.30 | 42.29 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes/train.log)|
+| rtebev_r50 | 无 | 34.36 | 42.93 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes/train.log)|
 | rtebev_r50_1f | 1 | 36.55 | 48.52 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_1f/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_1f_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_1f/train.log)|
-| rtebev_r50_4f | 4 | 39.66 | 50.19 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_4f/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_4f_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_4f/train.log)|
+| rtebev_r50_4f | 4 | 38.71 | 50.90 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_4f/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_4f_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_4f/train.log)|
 
 **注意：nuScenes benchmark使用8张V100 GPU训练得出。**
 
