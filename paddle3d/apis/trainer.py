@@ -415,14 +415,12 @@ class Trainer:
                     else:
                         tag = 'iter_{}'.format(self.cur_iter)
 
-                    if not self.checkpoint.have(tag):
-                        self.checkpoint.push(
-                            tag=tag,
-                            params_dict=self.model.state_dict(),
-                            opt_dict=self.optimizer.state_dict(),
-                            verbose=True,
-                            ema_model=self.ema.apply()
-                            if self.use_ema else None)
+                    self.checkpoint.push(
+                        tag=tag,
+                        params_dict=self.model.state_dict(),
+                        opt_dict=self.optimizer.state_dict(),
+                        verbose=True,
+                        ema_model=self.ema.apply() if self.use_ema else None)
 
                     self.checkpoint.record('iters', self.cur_iter)
                     self.checkpoint.record('epochs', self.cur_epoch)
