@@ -175,6 +175,13 @@ class Checkpoint(CheckpointABC):
         os.makedirs(dirname, exist_ok=True)
         paddle.save(params_dict, params_path)
 
+        # Currently we save the *latest* model as the *best* model
+        best_model_path = os.path.join(self.rootdir, 'best_model')
+        if not os.path.exists(best_model_path):
+            os.makedirs(best_model_path)
+        paddle.save(params_dict, os.path.join(best_model_path,
+                                              'model.pdparams'))
+
         if ema_model is not None:
             assert isinstance(ema_model,
                               dict), ("ema_model is not a instance of dict, "
