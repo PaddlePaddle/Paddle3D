@@ -179,8 +179,16 @@ class Checkpoint(CheckpointABC):
         best_model_path = os.path.join(self.rootdir, 'best_model')
         if not os.path.exists(best_model_path):
             os.makedirs(best_model_path)
-        paddle.save(params_dict, os.path.join(best_model_path,
-                                              'model.pdparams'))
+        try:
+            os.symlink(params_path,
+                       os.path.join(best_model_path, 'model.pdparams'))
+        except OSError:
+            # On Windows with Developer Mode disabled, OSError is raised
+            # when os.symlink is called by an unprivileged user.
+            # In such cases, we make a copy of the source model.
+            # We do not preserve the metadata.
+            shutil.copyfile(params_path,
+                            os.path.join(best_model_path, 'model.pdparams'))
 
         if ema_model is not None:
             assert isinstance(ema_model,
