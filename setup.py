@@ -63,7 +63,7 @@ setup(
     author='PaddlePaddle Author',
     author_email='',
     install_requires=REQUIRED_PACKAGES,
-    packages=find_packages(),
+    packages=find_packages(include=['paddle3d', 'paddle3d.*']),
     package_data={
         'paddle3d.ops': get_cpp_files('paddle3d/ops'),
         'paddle3d.thirdparty': get_all_files('paddle3d/thirdparty')
