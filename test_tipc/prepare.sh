@@ -61,7 +61,8 @@ if [ ${MODE} = "lite_train_lite_infer" ];then
         rm -rf ./data
         mkdir data && cd data
         cp ${BENCHMARK_ROOT}/models_data_cfs/model_benchmark/paddle3d/cadnn_data/KITTI.tar ./
-        tar -xvf KITTI.tar && cd ../
+        tar -xvf KITTI.tar 
+	mv KITTI kitti && cd ../
     else
         echo "Not added into TIPC yet."
     fi
