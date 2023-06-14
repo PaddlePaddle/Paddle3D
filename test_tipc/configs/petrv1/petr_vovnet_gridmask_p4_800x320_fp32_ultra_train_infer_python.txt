@@ -48,8 +48,6 @@ null:null
 null:null
 --benchmark:True
 null:null
-===========================to_static_train_benchmark_params===========================
-to_static_train:--to_static True
 ===========================train_benchmark_params==========================
 batch_size:8
 fp_items:fp32
