@@ -177,20 +177,22 @@ class Checkpoint(CheckpointABC):
 
         # Currently we save the *latest* model as the *best* model
         best_model_path = os.path.join(self.rootdir, 'best_model')
-        if not os.path.exists(best_model_path):
-            os.makedirs(best_model_path)
+        os.makedirs(best_model_path, exist_ok=True)
         tgt_path = os.path.join(best_model_path, 'model.pdparams')
-        if os.path.exists(tgt_path):
-            # Overwrite the existing best model
+        if os.path.lexists(tgt_path):
+            # We will overwrite the existing best model
             os.remove(tgt_path)
         try:
-            os.symlink(params_path, tgt_path)
+            # Since the two paths share a common prefix, it is fine to
+            # use `os.path.relpath` to compute the relative path.
+            os.symlink(os.path.relpath(params_path, best_model_path), tgt_path)
+            # Now the symlink always points to the newest model, and
+            # we don't have to worry about the source model being popped.
         except OSError:
             # On Windows with Developer Mode disabled, OSError is raised
             # when os.symlink is called by an unprivileged user.
             # In such cases, we make a copy of the source model.
-            # We do not preserve the metadata.
-            shutil.copyfile(params_path, tgt_path)
+            shutil.copy2(params_path, tgt_path)
 
         if ema_model is not None:
             assert isinstance(ema_model,
