@@ -152,6 +152,7 @@ model:
   type: RTEBev
   use_depth: True
   use_ms_depth: True
+  use_resnetvd: True
   align_after_view_transfromation: False
   num_adj: 0
   img_backbone:
@@ -160,7 +161,7 @@ model:
     depth: 50
     freeze_norm: False
     norm_type: bn
-    return_idx: [2, 3]
+    return_idx: [1, 2, 3]
     num_stages: 4
     freeze_at: -1
 
