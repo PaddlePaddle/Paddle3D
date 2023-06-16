@@ -719,7 +719,12 @@ class RTEBev(nn.Layer):
         imgs = img
         B, N, C, imH, imW = imgs.shape
         imgs = imgs.reshape((B * N, C, imH, imW))
-        x = self.img_backbone(imgs)
+
+        if self.use_resnetvd:
+            x = self.img_backbone(dict(image=imgs))
+        else:
+            x = self.img_backbone(imgs)
+
         if self.use_ms_depth:
             x = self.img_neck(x)
         else:

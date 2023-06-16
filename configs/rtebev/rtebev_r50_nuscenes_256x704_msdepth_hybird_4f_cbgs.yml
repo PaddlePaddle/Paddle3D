@@ -1,8 +1,9 @@
 batch_size: 4
 epochs: 20
 ema_cfg:
-  decay: 0.9990
-  step: 10560
+  step: 0
+
+temporal_start_epoch: 2 # for sequentialcontrolhook
 
 train_dataset:
   type: CBGSDataset
@@ -25,7 +26,7 @@ train_dataset:
     test_mode: False
     box_type_3d: LiDAR
     img_info_prototype: bevdet4d
-    multi_adj_frame_id_cfg: [1, 2, 1]
+    multi_adj_frame_id_cfg: [1, 5, 1]
 
     pipeline:
       - type: PrepareImageInputs
@@ -98,7 +99,7 @@ val_dataset:
   test_mode: True
   box_type_3d: LiDAR
   img_info_prototype: bevdet4d
-  multi_adj_frame_id_cfg: [1, 2, 1]
+  multi_adj_frame_id_cfg: [1, 5, 1]
 
 
   pipeline:
@@ -158,7 +159,7 @@ model:
   use_depth: True
   use_ms_depth: True
   align_after_view_transfromation: False
-  num_adj: 1
+  num_adj: 4
   start_temporal_epoch: 1
   img_backbone:
     type: MMResNet
@@ -181,6 +182,7 @@ model:
 
   img_view_transformer:
     type: MSLSSViewTransformerBEVDepth
+    loss_depth_weight: 1.0
     grid_config: {
       x: [-51.2, 51.2, 0.8],
       y: [-51.2, 51.2, 0.8],
@@ -199,7 +201,7 @@ model:
 
   img_bev_encoder_backbone:
     type: CustomResNet
-    numC_input: 160 # numC_Trans * (len(range(*multi_adj_frame_id_cfg))+1),
+    numC_input: 400
     num_channels: [160, 320, 640]
 
   img_bev_encoder_neck:
@@ -287,7 +289,7 @@ model:
           class_names: ["car", "truck", "construction_vehicle", "bus", "trailer", "barrier", "motorcycle", "bicycle", "pedestrian", "traffic_cone"]
     weight: 0.25 # loc_loss weight
     common_heads:
-      reg: [2, 2] # classes, num_conv
+      reg: [2, 2]
       height: [1, 2]
       dim: [3, 2]
       rot: [2, 2]

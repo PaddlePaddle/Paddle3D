@@ -338,9 +338,9 @@ class Trainer:
                 # simple implementation of SequentialControlHook
                 if self.temporal_start_epoch != -1 and (
                         self.cur_epoch > self.temporal_start_epoch):
-                    model.with_prev = True
+                    self.model.with_prev = True
                 else:
-                    model.with_prev = False
+                    self.model.with_prev = False
 
                 if self.cur_iter > self.iters:
                     break
