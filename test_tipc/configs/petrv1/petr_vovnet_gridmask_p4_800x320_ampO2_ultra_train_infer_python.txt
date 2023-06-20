@@ -1,5 +1,5 @@
 ===========================train_params===========================
-model_name:petr
+model_name:petr_vovnet_gridmask_p4_800x320
 python:python3.7
 gpu_list:0
 ##
