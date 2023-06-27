@@ -13,7 +13,7 @@
 
 ## <h2 id="2">简介</h2>
 近年来，基于鸟瞰图(BEV)表示的感知任务越来越受到人们的关注，BEV表示有望成为下一代自动驾驶汽车(AV)感知的基础。而现有的方法计算资源大或依赖于非最大抑制(NMS)，无法达到理想的性能。在本文中，我们将两种方法结合起来，设计了一种实时端到端方法，称为RTE-BEV。RTE-BEV在NuScenes val数据集上达到51.4 NDS，在T4 GPU上达到35.46 FPS。
-![rtebev_overview](https://github.com/PaddlePaddle/Paddle3D/assets/79366697/495d7891-eb5c-4ac1-b65d-f087b37f805f)
+![rtebev_overview](https://github.com/PaddlePaddle/Paddle/assets/79366697/432f253b-7fc4-4f0b-89af-b81b3ce8404f)
 
 
 ## <h2 id="3">模型库</h2>
@@ -25,8 +25,24 @@
 | rtebev_r50 | 无 | 34.36 | 42.93 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes/train.log)|
 | rtebev_r50_1f | 1 | 36.55 | 48.52 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_1f/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_1f_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_1f/train.log)|
 | rtebev_r50_4f | 4 | 38.71 | 50.90 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_4f/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_4f_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_4f/train.log)|
+| rtebev_r50_ssld | 无 | 37.86 | 45.20 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes/model_ema.pdparams) | [config](../../../configs/rtebev/rtebev_r50_ssld_nuscenes_256x704_msdepth_hybird_cbgs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes/log.txt)|
+| rtebev_r50_ssld_1f | 1 | 40.56 | 51.14 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes_1f/log.txt) | [config](../../../configs/rtebev/rtebev_r50_ssld_nuscenes_256x704_msdepth_hybird_1f_cbgs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes_1f/log.txt)|
+| rtebev_r50_ssld_4f | 4 | 42.10 | 52.75 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes_4f/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_ssld_nuscenes_256x704_msdepth_hybird_4f_cbgs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes_4f/log.txt)|
 
-**注意：nuScenes benchmark使用8张V100 GPU训练得出。**
+- bev系列模型在nuScenes Val set数据集上的表现
+
+| 模型  | mAP | NDS | 训练速度（ips） | 配置文件 |
+| ---- | ------ | --- | ----| ------- |
+| rtebev_r50_ssld_4f | 42.10 | 52.75 | 16.4 | [config](../../../configs/rtebev/rtebev_r50_ssld_nuscenes_256x704_msdepth_hybird_4f_cbgs.yml) |
+| BEVDet2.0 | 37.36 | 47.78 | 7.28 | [config](../../../configs/bevdet/bevdet4d_r50_depth_nuscenes.yml) |
+| PETR v1 | 38.35 | 43.52 | 18.56 | [config](../../../configs/petr/petr_vovnet_gridmask_p4_800x320_amp.yml) |
+| PETR v2 | 41.05 | 49.86 | 14.4 | [config](../../../configs/petr/petrv2_vovnet_gridmask_p4_800x320.yml) | 
+| BEVFormer-tiny | 26.22 | 36.53 | 6.64 | [config](../../../configs/bevformer/bevformer_tiny_r50_fpn_nuscenes.yml) |
+| BEVFusion (C)  | 22.7 | 29.5 | 12.88 | [config](../../../configs/bevfusion/cam_stream/bevf_pp_4x8_2x_nusc_cam.yaml) |
+| BEVFusion (L) |  34.8 | 49.7 | 42.08 | [config](../../../configs/bevfusion/lidar_stream/bevf_pp_4x8_2x_nusc_lidar.yaml) |
+| BEVFusion (L+C) | 53.9 | 60.9 | 11.92 | [config](../../../configs/bevfusion/bevf_pp_2x8_1x_nusc.yaml) | 
+
+**注意：nuScenes benchmark使用8张A100 GPU cuda11.7 python3.7 paddle2.5.rc训练数据得出。**
 
 
 ## <h2 id="4">训练 & 评估</h2>
