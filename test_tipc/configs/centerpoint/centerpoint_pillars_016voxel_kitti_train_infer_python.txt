@@ -1,5 +1,5 @@
 ===========================train_params===========================
-model_name:centerpoint
+model_name:centerpoint_pillars_016voxel_kitti
 python:python3.7
 gpu_list:0
 ##

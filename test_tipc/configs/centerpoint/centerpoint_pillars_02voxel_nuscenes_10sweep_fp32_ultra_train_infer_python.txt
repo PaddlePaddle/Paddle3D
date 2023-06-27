@@ -1,5 +1,5 @@
 ===========================train_params===========================
-model_name:centerpoint
+model_name:centerpoint_pillars_02voxel_nuscenes_10sweep
 python:python3.7
 gpu_list:0
 ##
