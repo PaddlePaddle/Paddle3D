@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from typing import Dict, List
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle3d.apis import manager
+from paddle3d.ops import bev_pool_v2
 
 
 class DictObject(Dict):
@@ -419,9 +421,8 @@ class BEVDet4D(nn.Layer):
         coor = self.img_view_transformer.get_lidar_coor(*input[1:7])
         return self.img_view_transformer.voxel_pooling_prepare_v2(coor)
 
-    def export_forward(self, img, feat_prev, mlp_input, ranks_depth,
-                          ranks_feat, ranks_bev, interval_starts,
-                          interval_lengths):
+    def export_forward(self, img, feat_prev, mlp_input, ranks_depth, ranks_feat,
+                       ranks_bev, interval_starts, interval_lengths):
 
         self.align_after_view_transfromation = True
         x = self.image_encoder(img)
@@ -482,9 +483,9 @@ class BEVDet4D(nn.Layer):
             shape=[None], dtype="int32", name='interval_lengths')
 
         input_spec = [
-            image_spec, feat_prev_spec, mlp_input_spec,
-            ranks_depth_spec, ranks_feat_spec, ranks_bev_spec,
-            interval_starts_spec, interval_lengths_spec
+            image_spec, feat_prev_spec, mlp_input_spec, ranks_depth_spec,
+            ranks_feat_spec, ranks_bev_spec, interval_starts_spec,
+            interval_lengths_spec
         ]
 
         model_name = "bevdet/model"

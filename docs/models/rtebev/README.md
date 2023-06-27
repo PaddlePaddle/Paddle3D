@@ -36,11 +36,11 @@
 | rtebev_r50_ssld_4f | 42.10 | 52.75 | 16.4 | [config](../../../configs/rtebev/rtebev_r50_ssld_nuscenes_256x704_msdepth_hybird_4f_cbgs.yml) |
 | BEVDet2.0 | 37.36 | 47.78 | 7.28 | [config](../../../configs/bevdet/bevdet4d_r50_depth_nuscenes.yml) |
 | PETR v1 | 38.35 | 43.52 | 18.56 | [config](../../../configs/petr/petr_vovnet_gridmask_p4_800x320_amp.yml) |
-| PETR v2 | 41.05 | 49.86 | 14.4 | [config](../../../configs/petr/petrv2_vovnet_gridmask_p4_800x320.yml) | 
+| PETR v2 | 41.05 | 49.86 | 14.4 | [config](../../../configs/petr/petrv2_vovnet_gridmask_p4_800x320.yml) |
 | BEVFormer-tiny | 26.22 | 36.53 | 6.64 | [config](../../../configs/bevformer/bevformer_tiny_r50_fpn_nuscenes.yml) |
 | BEVFusion (C)  | 22.7 | 29.5 | 12.88 | [config](../../../configs/bevfusion/cam_stream/bevf_pp_4x8_2x_nusc_cam.yaml) |
 | BEVFusion (L) |  34.8 | 49.7 | 42.08 | [config](../../../configs/bevfusion/lidar_stream/bevf_pp_4x8_2x_nusc_lidar.yaml) |
-| BEVFusion (L+C) | 53.9 | 60.9 | 11.92 | [config](../../../configs/bevfusion/bevf_pp_2x8_1x_nusc.yaml) | 
+| BEVFusion (L+C) | 53.9 | 60.9 | 11.92 | [config](../../../configs/bevfusion/bevf_pp_2x8_1x_nusc.yaml) |
 
 **注意：nuScenes benchmark使用8张A100 GPU cuda11.7 python3.7 paddle2.5.rc训练数据得出。**
 
