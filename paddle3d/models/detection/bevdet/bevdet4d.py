@@ -455,8 +455,7 @@ class BEVDet4D(nn.Layer):
         bev_feat = paddle.concat(bev_feat_list, axis=1)
         bev_feat = self.bev_encoder(bev_feat)
 
-        outs = self.pts_bbox_head(bev_feat)
-        outs = self.pts_bbox_head.get_bboxes(outs[0], None, rescale=False)
+        outs = self.pts_bbox_head(bev_feat)[0]
         return outs
 
     def export(self, save_dir: str, **kwargs):

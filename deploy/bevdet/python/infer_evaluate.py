@@ -258,12 +258,12 @@ def main(args):
         start = time.time()
         predictor.run()
 
-        outs = []
+        outs_ = []
         output_names = predictor.get_output_names()
         for name in output_names:
             out = predictor.get_output_handle(name)
             out = out.copy_to_cpu()
-            outs.append(out)
+            outs_.append(out)
         paddle.device.cuda.synchronize()
 
         if idx >= 10 and idx < 110:
@@ -271,12 +271,66 @@ def main(args):
             if idx == 109:
                 print('infer time:', infer_time / 100)
 
-        result = {}
-        result['boxes_3d'] = outs[0]
-        result['scores_3d'] = outs[1]
-        result['labels_3d'] = outs[2]
+        outs = [paddle.to_tensor(out) for out in outs_]
+        out_list = [
+            {
+                'reg': outs[3],
+                'height': outs[2],
+                'dim': outs[0],
+                'rot': outs[4],
+                'vel': outs[5],
+                'heatmap': outs[1]
+            },
+            {
+                'reg': outs[9],
+                'height': outs[8],
+                'dim': outs[6],
+                'rot': outs[10],
+                'vel': outs[11],
+                'heatmap': outs[7]
+            },
+            {
+                'reg': outs[15],
+                'height': outs[14],
+                'dim': outs[12],
+                'rot': outs[16],
+                'vel': outs[17],
+                'heatmap': outs[13]
+            },
+            {
+                'reg': outs[21],
+                'height': outs[20],
+                'dim': outs[18],
+                'rot': outs[22],
+                'vel': outs[23],
+                'heatmap': outs[19]
+            },
+            {
+                'reg': outs[27],
+                'height': outs[26],
+                'dim': outs[24],
+                'rot': outs[28],
+                'vel': outs[29],
+                'heatmap': outs[25]
+            },
+            {
+                'reg': outs[33],
+                'height': outs[32],
+                'dim': outs[30],
+                'rot': outs[34],
+                'vel': outs[35],
+                'heatmap': outs[31]
+            },
+        ]
+
+        bbox_list = trainer.model.pts_bbox_head.get_bboxes(
+            out_list, img_metas=None, rescale=False)
+        bbox_pts = [
+            trainer.model.bbox3d2result(bboxes, scores, labels)
+            for bboxes, scores, labels in bbox_list
+        ]
         results = {}
-        results['pts_bbox'] = result
+        results['pts_bbox'] = bbox_pts[0]
 
         metric_obj.update(predictions=[results], ground_truths=sample)
 
