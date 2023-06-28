@@ -30,6 +30,7 @@ trainer_list=$(func_parser_value "${lines[14]}")
 
 if [ ${MODE} = "benchmark_train" ];then
     pip install -r requirements.txt
+    pip install -U opencv-python==4.5.5.64
     pip install -e .
     MODE="lite_train_lite_infer"
 fi
@@ -39,20 +40,26 @@ if [ ${MODE} = "lite_train_lite_infer" ];then
         rm -rf ./test_tipc/data/mini_modelnet40
         mkdir -p ./test_tipc/data/mini_modelnet40
         cd ./test_tipc/data/mini_modelnet40 && tar xf ../mini_modelnet40.tar.gz && cd ../../
-    elif [ ${model_name} == "petr" ]; then
+    elif [ ${model_name} == "petr_vovnet_gridmask_p4_800x320" ]; then
         rm -rf ./data
         mkdir data && cd data
         cp ${BENCHMARK_ROOT}/models_data_cfs/model_benchmark/paddle3d/petr_data/nuscenes.tar ./
         tar -xvf nuscenes.tar && cd ../
-    elif [ ${model_name} == "petrv2" ]; then
+    elif [ ${model_name} == "petrv2_vovnet_gridmask_p4_800x320_dn_centerview" ]; then
         rm -rf ./data
         mkdir data && cd data
         cp ${BENCHMARK_ROOT}/models_data_cfs/model_benchmark/paddle3d/petr_data/nuscenes.tar ./
         tar -xvf nuscenes.tar && cd ../
-    elif [ ${model_name} == "centerpoint" ]; then
-        # rm -rf ./datasets/KITTI
-        # wget -nc -P ./datasets/ https://paddle3d.bj.bcebos.com/TIPC/dataset/kitti_mini_centerpoint.tar.gz --no-check-certificate
-        # cd ./datasets/ && tar -xzf kitti_mini_centerpoint.tar.gz && cd ../ ;
+    elif [ ${model_name} == "petr_vovnet_gridmask_p4_800x320" ]; then
+        rm -rf ./data
+        mkdir data && cd data
+        cp ${BENCHMARK_ROOT}/models_data_cfs/model_benchmark/paddle3d/petr_data/nuscenes.tar ./
+        tar -xvf nuscenes.tar && cd ../
+    elif [ ${model_name} == "centerpoint_pillars_016voxel_kitti" ]; then
+        rm -rf ./datasets/KITTI
+        wget -nc -P ./datasets/ https://paddle3d.bj.bcebos.com/TIPC/dataset/kitti_mini_centerpoint.tar.gz --no-check-certificate
+        cd ./datasets/ && tar -xzf kitti_mini_centerpoint.tar.gz && cd ../ ;
+    elif [ ${model_name} == "centerpoint_pillars_02voxel_nuscenes_10sweep" ]; then
         rm -rf ./datasets
         mkdir datasets && cd datasets
         cp ${BENCHMARK_ROOT}/models_data_cfs/model_benchmark/paddle3d/centerpoint_data/nuscenes.tar ./
