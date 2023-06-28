@@ -25,21 +25,20 @@
 | rtebev_r50 | 无 | 34.36 | 42.93 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes/train.log)|
 | rtebev_r50_1f | 1 | 36.55 | 48.52 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_1f/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_1f_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_1f/train.log)|
 | rtebev_r50_4f | 4 | 38.71 | 50.90 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_4f/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_4f_cgbs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_nuscenes_4f/train.log)|
-| rtebev_r50_ssld | 无 | 37.86 | 45.20 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes/model_ema.pdparams) | [config](../../../configs/rtebev/rtebev_r50_ssld_nuscenes_256x704_msdepth_hybird_cbgs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes/log.txt)|
-| rtebev_r50_ssld_1f | 1 | 40.56 | 51.14 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes_1f/log.txt) | [config](../../../configs/rtebev/rtebev_r50_ssld_nuscenes_256x704_msdepth_hybird_1f_cbgs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes_1f/log.txt)|
+| rtebev_r50_ssld | 无 | 37.86 | 45.20 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_ssld_nuscenes_256x704_msdepth_hybird_cbgs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes/log.txt)|
+| rtebev_r50_ssld_1f | 1 | 40.56 | 51.14 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes_1f/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_ssld_nuscenes_256x704_msdepth_hybird_1f_cbgs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes_1f/log.txt)|
 | rtebev_r50_ssld_4f | 4 | 42.10 | 52.75 | [model](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes_4f/model.pdparams) | [config](../../../configs/rtebev/rtebev_r50_ssld_nuscenes_256x704_msdepth_hybird_4f_cbgs.yml) | [log](https://paddle3d.bj.bcebos.com/models/rtebev/rtebev_r50_ssld_nuscenes_4f/log.txt)|
 
 - bev系列模型在nuScenes Val set数据集上的表现
 
 | 模型  | mAP | NDS | T4 推理时间（ms） | 配置文件 |
 | ---- | ------ | --- | ----| ------- |
-| rtebev_r50_ssld_4f | 42.10 | 52.75 | 21 | [config](../../../configs/rtebev/rtebev_r50_ssld_nuscenes_256x704_msdepth_hybird_4f_cbgs.yml) |
+| rtebev_r50_ssld_4f | 42.10 | 52.75 | 27 | [config](../../../configs/rtebev/rtebev_r50_ssld_nuscenes_256x704_msdepth_hybird_4f_cbgs.yml) |
+| rtebev_r50_4f | 38.71 | 50.90 | 21 | [config](../../../configs/rtebev/rtebev_r50_nuscenes_256x704_msdepth_hybird_4f_cgbs.yml) |
 | BEVDet2.0 | 37.36 | 47.78 | 30 | [config](../../../configs/bevdet/bevdet4d_r50_depth_nuscenes.yml) |
 | PETR v1 | 38.35 | 43.52 | 32 | [config](../../../configs/petr/petr_vovnet_gridmask_p4_800x320_amp.yml) |
 | PETR v2 | 41.05 | 49.86 | 40 | [config](../../../configs/petr/petrv2_vovnet_gridmask_p4_800x320.yml) |
 | BEVFormer-tiny | 26.22 | 36.53 | 40 | [config](../../../configs/bevformer/bevformer_tiny_r50_fpn_nuscenes.yml) |
-
-**注意：nuScenes benchmark使用8张V100 GPU 训练数据得出。**
 
 
 ## <h2 id="4">训练 & 评估</h2>
