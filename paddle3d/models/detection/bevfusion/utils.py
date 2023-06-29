@@ -20,7 +20,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle.distribution import Normal
 # from paddle3d.ops.iou3d_nms_cuda_v2 import nms_gpu_v2
-from paddle3d.ops.iou3d_nms_cuda import nms_gpu
+from paddle3d.ops import iou3d_nms
 
 __all__ = [
     'generate_guassian_depth_target', 'map_pointcloud_to_image', 'limit_period',
@@ -232,7 +232,7 @@ def box3d_multiclass_nms(mlvl_bboxes,
         order = _scores.argsort(0, descending=True)
         _bboxes_for_nms = paddle.gather(_bboxes_for_nms, index=order)
 
-        keep, num_out = nms_gpu(_bboxes_for_nms, cfg['nms_thr'])
+        keep, num_out = iou3d_nms.nms_gpu(_bboxes_for_nms, cfg['nms_thr'])
         selected = order[keep[:num_out]]
         _mlvl_bboxes = paddle.gather(mlvl_bboxes, cls_inds)
         bboxes.append(paddle.gather(_mlvl_bboxes, selected))

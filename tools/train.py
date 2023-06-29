@@ -162,7 +162,12 @@ def main(args):
     """
     """
     logger = Logger(output=args.save_dir)
-    place = 'gpu' if paddle.is_compiled_with_cuda() else 'cpu'
+    if paddle.is_compiled_with_cuda():
+        place = 'gpu'
+    elif paddle.is_compiled_with_xpu():
+        place = 'xpu'
+    else:
+        place = 'cpu'
     paddle.set_device(place)
 
     if args.seed is not None:

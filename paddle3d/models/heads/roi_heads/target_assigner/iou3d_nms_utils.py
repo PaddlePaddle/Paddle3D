@@ -19,7 +19,7 @@ All Rights Reserved 2019-2020.
 
 import paddle
 
-from paddle3d.ops import iou3d_nms_cuda
+from paddle3d.ops import iou3d_nms
 
 
 def boxes_iou3d_gpu(boxes_a, boxes_b):
@@ -40,7 +40,7 @@ def boxes_iou3d_gpu(boxes_a, boxes_b):
     boxes_b_height_min = (boxes_b[:, 2] - boxes_b[:, 5] / 2).reshape([1, -1])
 
     # bev overlap
-    overlaps_bev = iou3d_nms_cuda.boxes_overlap_bev_gpu(boxes_a, boxes_b)
+    overlaps_bev = iou3d_nms.boxes_overlap_bev_gpu(boxes_a, boxes_b)
 
     max_of_min = paddle.maximum(boxes_a_height_min, boxes_b_height_min)
     min_of_max = paddle.minimum(boxes_a_height_max, boxes_b_height_max)
