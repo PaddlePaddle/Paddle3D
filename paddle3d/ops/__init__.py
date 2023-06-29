@@ -29,7 +29,7 @@ custom_ops = {
         'sources': ['voxel/voxelize_op.cc', 'voxel/voxelize_op.cu'],
         'version': '0.1.0'
     },
-    'iou3d_nms_cuda': {
+    'iou3d_nms': {
         'sources': [
             'iou3d_nms/iou3d_cpu.cpp', 'iou3d_nms/iou3d_nms_api.cpp',
             'iou3d_nms/iou3d_nms.cpp', 'iou3d_nms/iou3d_nms_kernel.cu'

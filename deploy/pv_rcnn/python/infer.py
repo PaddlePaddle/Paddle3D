@@ -21,7 +21,7 @@ from paddle.inference import Config, create_predictor
 
 from paddle3d.ops.voxelize import hard_voxelize
 from paddle3d.ops.pointnet2_ops import farthest_point_sample
-from paddle3d.ops.iou3d_nms_cuda import nms_gpu
+from paddle3d.ops.iou3d_nms import nms_gpu
 
 
 def parse_args():

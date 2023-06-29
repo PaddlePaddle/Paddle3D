@@ -14,7 +14,7 @@
 
 import paddle
 
-from paddle3d.ops import iou3d_nms_cuda
+from paddle3d.ops import iou3d_nms
 
 
 def class_agnostic_nms(box_scores,
@@ -30,8 +30,7 @@ def class_agnostic_nms(box_scores,
         label_preds = paddle.gather(label_preds, index=order)
         # When order is one-value tensor,
         # boxes[order] loses a dimension, so we add a reshape
-        keep, num_out = iou3d_nms_cuda.nms_gpu(box_preds,
-                                               nms_config['nms_thresh'])
+        keep, num_out = iou3d_nms.nms_gpu(box_preds, nms_config['nms_thresh'])
         selected = keep[0:num_out]
         selected = selected[:nms_config['nms_post_maxsize']]
         selected_score = paddle.gather(box_scores, index=selected)

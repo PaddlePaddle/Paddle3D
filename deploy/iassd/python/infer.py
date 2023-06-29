@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle.inference import Config, PrecisionType, create_predictor
 
-from paddle3d.ops.iou3d_nms_cuda import nms_gpu
+from paddle3d.ops.iou3d_nms import nms_gpu
 from paddle3d.ops.pointnet2_ops import (ball_query, farthest_point_sample,
                                         gather_operation, group_operation)
 
