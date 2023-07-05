@@ -50,7 +50,8 @@ if [ ${MODE} = "lite_train_lite_infer" ];then
         mkdir data && cd data
         cp ${BENCHMARK_ROOT}/models_data_cfs/model_benchmark/paddle3d/petr_data/nuscenes.tar ./
         tar -xvf nuscenes.tar && cd ../
-    elif [ ${model_name} == "petr_vovnet_gridmask_p4_800x320" ]; then
+    elif [ ${model_name} == "petrv2_vovnet_gridmask_p4_800x320" ]; then
+        wget https://paddle3d.bj.bcebos.com/pretrained/fcos3d_vovnet_imgbackbone-remapped.pdparams
         rm -rf ./data
         mkdir data && cd data
         cp ${BENCHMARK_ROOT}/models_data_cfs/model_benchmark/paddle3d/petr_data/nuscenes.tar ./
