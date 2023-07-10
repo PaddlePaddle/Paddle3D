@@ -36,8 +36,8 @@ def parse_losses(losses):
                 log_loss[loss_name] = paddle.sum(loss_value)
             else:
                 log_loss[loss_name] = sum(loss_value)
-        total_loss = sum(
-            _loss_value for _loss_name, _loss_value in log_loss.items())
+        total_loss = sum(_loss_value
+                         for _loss_name, _loss_value in log_loss.items())
 
     log_loss['total_loss'] = total_loss
 
@@ -108,7 +108,10 @@ def training_step(model: paddle.nn.Layer,
     if paddle.distributed.is_initialized():
         with paddle.no_grad():
             for loss_name, loss_value in log_loss.items():
-                loss_clone = loss_value.clone()
+                if isinstance(loss_value, paddle.Tensor):
+                    loss_clone = loss_value.clone()
+                else:
+                    loss_clone = paddle.to_tensor(loss_value, dtype='float32')
                 paddle.distributed.all_reduce(
                     loss_clone.scale_(1. / paddle.distributed.get_world_size()))
                 log_loss[loss_name] = loss_clone.item()

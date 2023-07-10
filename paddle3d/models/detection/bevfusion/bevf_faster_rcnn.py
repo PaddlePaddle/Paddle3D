@@ -33,17 +33,19 @@ __all__ = ['BEVFFasterRCNN']
 
 
 class SE_Block(nn.Layer):
+
     def __init__(self, c):
         super().__init__()
-        self.att = nn.Sequential(
-            nn.AdaptiveAvgPool2D(1), nn.Conv2D(c, c, kernel_size=1, stride=1),
-            nn.Sigmoid())
+        self.att = nn.Sequential(nn.AdaptiveAvgPool2D(1),
+                                 nn.Conv2D(c, c, kernel_size=1, stride=1),
+                                 nn.Sigmoid())
         self.init_weights()
 
     def forward(self, x):
         return x * self.att(x)
 
     def init_weights(self):
+
         def _init_weights(m):
             if isinstance(m, nn.Conv2D):
                 reset_parameters(m)
@@ -56,6 +58,7 @@ class BEVFFasterRCNN(MVXFasterRCNN):
     """Multi-modality BEVFusion."""
 
     def __init__(self,
+                 use_recompute=False,
                  lss=False,
                  lc_fusion=False,
                  camera_stream=False,
@@ -86,6 +89,7 @@ class BEVFFasterRCNN(MVXFasterRCNN):
 
         """
         super(BEVFFasterRCNN, self).__init__(**kwargs)
+        self.use_recompute = use_recompute
         self.num_views = num_views
         self.lc_fusion = lc_fusion
         self.img_depth_loss_weight = img_depth_loss_weight
@@ -94,26 +98,25 @@ class BEVFFasterRCNN(MVXFasterRCNN):
         self.lift = camera_stream
         self.se = se
         if camera_stream:
-            self.lift_splat_shot_vis = LiftSplatShoot(
-                lss=lss,
-                grid=grid,
-                inputC=imc,
-                camC=64,
-                pc_range=pc_range,
-                final_dim=final_dim,
-                downsample=downsample)
+            self.lift_splat_shot_vis = LiftSplatShoot(lss=lss,
+                                                      grid=grid,
+                                                      inputC=imc,
+                                                      camC=64,
+                                                      pc_range=pc_range,
+                                                      final_dim=final_dim,
+                                                      downsample=downsample)
         if lc_fusion:
             if se:
                 self.seblock = SE_Block(lic)
-            self.reduc_conv = ConvModule(
-                lic + imc,
-                lic,
-                3,
-                padding=1,
-                conv_cfg=None,
-                norm_cfg=dict(
-                    type='BatchNorm2D', epsilon=1e-3, momentum=1 - 0.01),
-                act_cfg=dict(type='ReLU'))
+            self.reduc_conv = ConvModule(lic + imc,
+                                         lic,
+                                         3,
+                                         padding=1,
+                                         conv_cfg=None,
+                                         norm_cfg=dict(type='BatchNorm2D',
+                                                       epsilon=1e-3,
+                                                       momentum=1 - 0.01),
+                                         act_cfg=dict(type='ReLU'))
 
         self.freeze_img = kwargs.get('freeze_img', False)
         self.init_weights(pretrained=kwargs.get('pretrained', None))
@@ -196,19 +199,19 @@ class BEVFFasterRCNN(MVXFasterRCNN):
             else:
                 if self.lc_fusion:
                     if img_bev_feat.shape[2:] != pts_feats[0].shape[2:]:
-                        img_bev_feat = F.interpolate(
-                            img_bev_feat,
-                            pts_feats[0].shape[2:],
-                            mode='bilinear',
-                            align_corners=True)
+                        img_bev_feat = F.interpolate(img_bev_feat,
+                                                     pts_feats[0].shape[2:],
+                                                     mode='bilinear',
+                                                     align_corners=True)
                     pts_feats = [
                         self.reduc_conv(
                             paddle.concat([img_bev_feat, pts_feats[0]], axis=1))
                     ]
                     if self.se:
                         pts_feats = [self.seblock(pts_feats[0])]
-        return dict(
-            img_feats=img_feats, pts_feats=pts_feats, depth_dist=depth_dist)
+        return dict(img_feats=img_feats,
+                    pts_feats=pts_feats,
+                    depth_dist=depth_dist)
 
     def export_forward(self, points, img, img_metas):
         """
@@ -233,13 +236,15 @@ class BEVFFasterRCNN(MVXFasterRCNN):
 
         bbox_list = [dict() for i in range(len(img_metas))]
         if pts_feats and self.with_pts_bbox:
-            bbox_pts = self.simple_test_pts(
-                pts_feats, img_metas, rescale=rescale)
+            bbox_pts = self.simple_test_pts(pts_feats,
+                                            img_metas,
+                                            rescale=rescale)
             for result_dict, pts_bbox in zip(bbox_list, bbox_pts):
                 result_dict['pts_bbox'] = pts_bbox
         if img_feats and self.with_img_bbox:
-            bbox_img = self.simple_test_img(
-                img_feats, img_metas, rescale=rescale)
+            bbox_img = self.simple_test_img(img_feats,
+                                            img_metas,
+                                            rescale=rescale)
             for result_dict, img_bbox in zip(bbox_list, bbox_img):
                 result_dict['img_bbox'] = img_bbox
         return bbox_list
@@ -264,8 +269,10 @@ class BEVFFasterRCNN(MVXFasterRCNN):
             points = sample.get('points', None)
             img_depth = sample.get('img_depth', None)
 
-        feature_dict = self.extract_feat(
-            points, img=img, img_metas=img_metas, gt_bboxes_3d=gt_bboxes_3d)
+        feature_dict = self.extract_feat(points,
+                                         img=img,
+                                         img_metas=img_metas,
+                                         gt_bboxes_3d=gt_bboxes_3d)
         img_feats = feature_dict['img_feats']
         pts_feats = feature_dict['pts_feats']
         depth_dist = feature_dict['depth_dist']
@@ -308,13 +315,13 @@ class BEVFFasterRCNN(MVXFasterRCNN):
             min_depth <= self.camera_depth_range[1])
         mask = mask.reshape([-1])
         guassian_depth = guassian_depth.reshape([-1, D])[mask]
-        predict_depth_dist = predict_depth_dist.transpose(
-            [0, 1, 3, 4, 2]).reshape([-1, D])[mask]
+        predict_depth_dist = predict_depth_dist.transpose([0, 1, 3, 4,
+                                                           2]).reshape([-1, D
+                                                                        ])[mask]
         if loss_method == 'kld':
-            loss = F.kl_div(
-                paddle.log(predict_depth_dist),
-                guassian_depth,
-                reduction='mean')
+            loss = F.kl_div(paddle.log(predict_depth_dist),
+                            guassian_depth,
+                            reduction='mean')
         elif loss_method == 'mse':
             loss = F.mse_loss(predict_depth_dist, guassian_depth)
         else:
@@ -325,15 +332,17 @@ class BEVFFasterRCNN(MVXFasterRCNN):
         self.forward = self.export_forward
         self.pts_middle_encoder.export_model = True
         self.lift_splat_shot_vis = True
-        img_spec = paddle.static.InputSpec(
-            shape=[1 * 6, 3, 448, 800], dtype='float32', name='img')
-        pts_spec = paddle.static.InputSpec(
-            shape=[-1, 4], dtype='float32', name='pts')
+        img_spec = paddle.static.InputSpec(shape=[1 * 6, 3, 448, 800],
+                                           dtype='float32',
+                                           name='img')
+        pts_spec = paddle.static.InputSpec(shape=[-1, 4],
+                                           dtype='float32',
+                                           name='pts')
         img_metas_spec = {
             'lidar2img': [
-                paddle.static.InputSpec(
-                    shape=[4, 4], dtype='float32', name='lidar2img')
-                for i in range(6)
+                paddle.static.InputSpec(shape=[4, 4],
+                                        dtype='float32',
+                                        name='lidar2img') for i in range(6)
             ]
         }
         input_spec = [pts_spec, img_spec, img_metas_spec]

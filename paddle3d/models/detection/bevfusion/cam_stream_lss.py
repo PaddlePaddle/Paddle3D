@@ -34,40 +34,47 @@ __all__ = ['LiftSplatShoot']
 
 
 class Up(nn.Layer):
+
     def __init__(self, in_channels, out_channels, scale_factor=2):
         super().__init__()
 
-        self.up = nn.Upsample(
-            scale_factor=scale_factor, mode='bilinear', align_corners=True)
+        self.up = nn.Upsample(scale_factor=scale_factor,
+                              mode='bilinear',
+                              align_corners=True)
 
         self.conv = nn.Sequential(
-            nn.Conv2D(
-                in_channels,
-                out_channels,
-                kernel_size=3,
-                padding=1,
-                bias_attr=False), nn.BatchNorm2D(out_channels), nn.ReLU(),
-            nn.Conv2D(
-                out_channels,
-                out_channels,
-                kernel_size=3,
-                padding=1,
-                bias_attr=False), nn.BatchNorm2D(out_channels), nn.ReLU())
+            nn.Conv2D(in_channels,
+                      out_channels,
+                      kernel_size=3,
+                      padding=1,
+                      bias_attr=False), nn.BatchNorm2D(out_channels), nn.ReLU(),
+            nn.Conv2D(out_channels,
+                      out_channels,
+                      kernel_size=3,
+                      padding=1,
+                      bias_attr=False), nn.BatchNorm2D(out_channels), nn.ReLU())
 
     def forward(self, x1, x2):
-        x1 = F.interpolate(
-            x1, x2.shape[2:], mode='bilinear', align_corners=True)
+        x1 = F.interpolate(x1,
+                           x2.shape[2:],
+                           mode='bilinear',
+                           align_corners=True)
         x1 = paddle.concat([x2, x1], axis=1)
         return self.conv(x1)
 
 
 class BevEncode(nn.Layer):
+
     def __init__(self, inC, outC):
         super(BevEncode, self).__init__()
 
         trunk = resnet18(pretrained=False)
-        self.conv1 = nn.Conv2D(
-            inC, 64, kernel_size=7, stride=2, padding=3, bias_attr=False)
+        self.conv1 = nn.Conv2D(inC,
+                               64,
+                               kernel_size=7,
+                               stride=2,
+                               padding=3,
+                               bias_attr=False)
         self.bn1 = trunk.bn1
         self.relu = trunk.relu
 
@@ -122,6 +129,7 @@ def cumsum_trick(x, geom_feats, ranks):
 
 
 class QuickCumsum(paddle.autograd.PyLayer):
+
     @staticmethod
     def forward(ctx, x, geom_feats, ranks):
         x = x.transpose([1, 0]).cumsum(1).transpose([1, 0])
@@ -148,12 +156,15 @@ class QuickCumsum(paddle.autograd.PyLayer):
 
 
 class CamEncode(nn.Layer):
+
     def __init__(self, D, C, inputC):
         super(CamEncode, self).__init__()
         self.D = D
         self.C = C
-        self.depthnet = nn.Conv2D(
-            inputC, self.D + self.C, kernel_size=1, padding=0)
+        self.depthnet = nn.Conv2D(inputC,
+                                  self.D + self.C,
+                                  kernel_size=1,
+                                  padding=0)
 
     def get_depth_dist(self, x, eps=1e-20):
         return F.softmax(x, axis=1)
@@ -173,6 +184,7 @@ class CamEncode(nn.Layer):
 
 
 class LiftSplatShoot(nn.Layer):
+
     def __init__(self,
                  lss=False,
                  final_dim=(900, 1600),
@@ -250,6 +262,7 @@ class LiftSplatShoot(nn.Layer):
         self.init_weights()
 
     def init_weights(self):
+
         def _init_weights(m):
             if isinstance(m, nn.Conv2D):
                 reset_parameters(m)
@@ -263,9 +276,9 @@ class LiftSplatShoot(nn.Layer):
         # make grid in image plane
         ogfH, ogfW = self.final_dim
         fH, fW = self.fH, self.fW
-        ds = paddle.arange(
-            *self.grid_conf['dbound'],
-            dtype='float32').reshape([-1, 1, 1]).expand([-1, fH, fW])
+        ds = paddle.arange(*self.grid_conf['dbound'],
+                           dtype='float32').reshape([-1, 1,
+                                                     1]).expand([-1, fH, fW])
         D, _, _ = ds.shape
         # yapf: disable
         xs = paddle.linspace(0, ogfW - 1, fW, dtype='float32').reshape([1, 1, fW]).expand([D, fH, fW])
@@ -323,8 +336,8 @@ class LiftSplatShoot(nn.Layer):
         x = x.reshape([Nprime, C])
 
         # flatten indices
-        geom_feats = (
-            (geom_feats - (self.bx - self.dx / 2.)) / self.dx).astype('int64')
+        geom_feats = ((geom_feats - (self.bx - self.dx / 2.)) /
+                      self.dx).astype('int64')
         geom_feats = geom_feats.reshape([Nprime, 3])
         batch_ix = paddle.concat([
             paddle.full([Nprime // B, 1], ix, dtype='int64') for ix in range(B)
@@ -372,6 +385,64 @@ class LiftSplatShoot(nn.Layer):
 
         return final
 
+    def voxel_pooling_xpu(self, geom_feats, x):
+        B, N, D, H, W, C = x.shape
+        Nprime = B * N * D * H * W
+
+        # flatten x
+        x = x.reshape([Nprime, C])
+
+        # flatten indices
+        geom_feats = ((geom_feats - (self.bx - self.dx / 2.)) /
+                      self.dx).astype('int64')
+        geom_feats = geom_feats.reshape([Nprime, 3])
+        batch_ix = paddle.concat([
+            paddle.full([Nprime // B, 1], ix, dtype='int64') for ix in range(B)
+        ])
+        geom_feats = paddle.concat((geom_feats, batch_ix), 1)
+        # filter out points that are outside box
+        kept = (geom_feats[:, 0] >= 0) & (geom_feats[:, 0] < self.nx[0]) \
+               & (geom_feats[:, 1] >= 0) & (geom_feats[:, 1] < self.nx[1]) \
+               & (geom_feats[:, 2] >= 0) & (geom_feats[:, 2] < self.nx[2])
+
+        from xpu_gather_unique import xpu_gather_unique
+        kept_idx = paddle.nonzero(kept).flatten()
+        x = xpu_gather_unique(x, kept_idx, axis=0)
+        geom_feats = xpu_gather_unique(geom_feats, kept_idx, axis=0)
+        # get tensors from the same voxel next to each other
+        ranks = geom_feats[:, 0] * (self.nx[1] * self.nx[2] * B) \
+                + geom_feats[:, 1] * (self.nx[2] * B) \
+                + geom_feats[:, 2] * B \
+                + geom_feats[:, 3]
+        sorts = ranks.argsort()
+        # x, geom_feats, ranks = x[sorts], geom_feats[sorts], ranks[sorts]
+        x = xpu_gather_unique(x, sorts, axis=0)
+        geom_feats = xpu_gather_unique(geom_feats, sorts, axis=0)
+        ranks = xpu_gather_unique(ranks, sorts, axis=0)
+
+        # cumsum trick
+        if not self.use_quickcumsum:
+            x, geom_feats = cumsum_trick(x, geom_feats, ranks)
+        else:
+            x, geom_feats = QuickCumsum.apply(x, geom_feats, ranks)
+
+        # griddify (B x C x Z x X x Y)
+        final = paddle.zeros([B * self.nx[2] * self.nx[0] * self.nx[1], C])
+        geom_feats = geom_feats[:, 3] * (self.nx[2] * self.nx[0] * self.nx[1]) \
+                     + geom_feats[:, 2] * (self.nx[0] * self.nx[1]) \
+                     + geom_feats[:, 0] * self.nx[1] \
+                     + geom_feats[:, 1]
+
+        # inplace version scatter is not supported in static mode
+        if getattr(self, "export_model", False):
+            final = paddle.scatter(final, geom_feats, x, overwrite=True)
+        else:
+            paddle.scatter_(final, geom_feats, x, overwrite=True)
+        final = final.reshape([B, self.nx[2], self.nx[0], self.nx[1],
+                               C]).transpose([0, 4, 1, 2, 3])
+
+        return final
+
     def get_voxels(self,
                    x,
                    rots=None,
@@ -380,7 +451,10 @@ class LiftSplatShoot(nn.Layer):
                    post_trans=None):
         geom = self.get_geometry(rots, trans, post_rots, post_trans)
         x, depth = self.get_cam_feats(x)
-        x = self.voxel_pooling(geom, x)
+        if paddle.is_compiled_with_xpu():
+            x = self.voxel_pooling_xpu(geom, x)
+        else:
+            x = self.voxel_pooling(geom, x)
         return x, depth
 
     def s2c(self, x):
