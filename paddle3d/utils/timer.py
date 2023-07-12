@@ -27,6 +27,8 @@ class Timer:
         self._moving_speed = None
         self.momentum = momentum
         self.total_samples = 0
+        self._moving_samples = 0
+        self._moving_time = 0
 
     def step(self, num_samples=None):
         """
@@ -44,10 +46,15 @@ class Timer:
                     1 - self.momentum) * iter_speed
 
             self.elasped_time += iter_speed
+            self._moving_time += iter_speed
             if num_samples:
                 self.total_samples += num_samples
+                self._moving_samples += num_samples
 
         self.last_time = now
+
+    def update(self):
+        self.last_time = time.time()
 
     @property
     def speed(self):
@@ -62,7 +69,10 @@ class Timer:
     def ips(self):
         if not self.total_samples or self.cur_iter == 0:
             return 0
-        return float(self.total_samples) / self.elasped_time
+        moving_ips = float(self._moving_samples) / self._moving_time
+        self._moving_samples = 0
+        self._moving_time = 0
+        return moving_ips
 
     @property
     def eta(self):
