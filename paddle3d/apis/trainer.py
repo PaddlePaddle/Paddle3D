@@ -307,7 +307,6 @@ class Trainer:
         while self.cur_iter < self.iters:
 
             for sample in self.train_dataloader:
-                timer.update()
                 if self.cur_iter == 1 and self.do_bind and int(
                         os.environ.get('FLAGS_selected_gpus', 0)) == 0:
                     test_cmd = "j=0 | j=$(( $j + 1 ))"
@@ -430,6 +429,8 @@ class Trainer:
 
                     self.checkpoint.record('iters', self.cur_iter)
                     self.checkpoint.record('epochs', self.cur_epoch)
+
+                timer.update()
 
         self.logger.info('Training is complete.')
 
