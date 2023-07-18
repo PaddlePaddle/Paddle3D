@@ -141,6 +141,7 @@ class Trainer:
         self.eval_dataloader = _dataloader_build_fn(
             val_dataset, self.model) if val_dataset else None
         self.val_dataset = val_dataset
+        self.eval_metric_obj = self.val_dataset.metric
 
         self.profiler_options = profiler_options
         self.resume = resume
@@ -470,11 +471,11 @@ class Trainer:
         if self.val_dataset is None:
             raise RuntimeError('No evaluation dataset specified!')
         msg = 'evaluate on validate dataset'
-        metric_obj = self.val_dataset.metric
 
         for idx, sample in self.logger.enumerate(self.eval_dataloader, msg=msg):
             result = validation_step(self.model, sample)
-            metric_obj.update(predictions=result, ground_truths=sample)
+            self.eval_metric_obj.update(
+                predictions=result, ground_truths=sample)
 
-        metrics = metric_obj.compute(verbose=True)
+        metrics = self.eval_metric_obj.compute(verbose=True)
         return metrics
