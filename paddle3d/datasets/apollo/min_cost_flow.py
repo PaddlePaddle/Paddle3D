@@ -44,7 +44,12 @@
 from __future__ import print_function
 
 import numpy as np
-from ortools.graph import pywrapgraph
+try:
+    from ortools.graph import pywrapgraph
+except ImportError:
+    print(
+        'ortools not installed, install it by "pip install ortools==9.1.9490" if you run BEVLaneDet model'
+    )
 
 
 def SolveMinCostFlow(adj_mat, cost_mat):
