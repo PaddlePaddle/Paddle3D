@@ -51,6 +51,9 @@ class SemanticKITTIMetric(MetricABC):
             [n for n in range(self.num_classes) if n not in ignore],
             dtype="int64")
 
+        self.best_acc_avg = 0
+        self.best_iou_avg = 0
+
         # reset the class counters
         self.reset()
 
@@ -115,6 +118,10 @@ class SemanticKITTIMetric(MetricABC):
     def compute(self, verbose=False) -> dict:
         m_accuracy = self.getacc()
         m_jaccard, class_jaccard = self.getIoU()
+        if m_accuracy > self.best_acc_avg:
+            self.best_acc_avg = m_accuracy
+        if m_jaccard > self.best_iou_avg:
+            self.best_iou_avg = m_jaccard
 
         if verbose:
             logger.info("Acc avg {:.3f}".format(float(m_accuracy)))
@@ -128,6 +135,9 @@ class SemanticKITTIMetric(MetricABC):
                             class_str=SemanticKITTIDataset.LABELS[
                                 SemanticKITTIDataset.LEARNING_MAP_INV[i]],
                             jacc=float(jacc)))
+
+            logger.info("Best Acc avg {:.3f}".format(float(self.best_acc_avg)))
+            logger.info("Best IoU avg {:.3f}".format(float(self.best_iou_avg)))
 
         return dict(
             mean_acc=m_accuracy, mean_iou=m_jaccard, class_iou=class_jaccard)
