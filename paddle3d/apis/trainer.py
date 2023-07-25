@@ -39,6 +39,7 @@ def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
     def _generate_loader(dataset: paddle.io.Dataset, model: paddle.nn.Layer):
         args = kwargs.copy()
         batch_size = args.pop('batch_size', 1)
+        val_batch_size = args.pop('val_batch_size', batch_size)
         shuffle = False if not dataset.is_train_mode else True
         drop_last = args.pop('drop_last',
                              False if not dataset.is_train_mode else True)
@@ -51,7 +52,7 @@ def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
 
         batch_sampler = BatchSampler(
             dataset,
-            batch_size=batch_size,
+            batch_size=batch_size if dataset.is_train_mode else val_batch_size,
             shuffle=shuffle,
             drop_last=drop_last)
 
