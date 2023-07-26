@@ -263,6 +263,10 @@ class Config(object):
     #     return self.dic.get('use_ema', False)
 
     @property
+    def val_batch_size(self) -> int:
+        return self.dic.get('val_batch_size', None)
+
+    @property
     def temporal_start_epoch(self) -> int:
         return self.dic.get('temporal_start_epoch', -1)
 

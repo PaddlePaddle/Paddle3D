@@ -253,6 +253,9 @@ def main(args):
         'do_bind': args.do_bind
     })
 
+    if cfg.val_batch_size is not None:
+        dic['dataloader_fn']['val_batch_size'] = cfg.val_batch_size
+
     trainer = Trainer(**dic)
     trainer.train()
 
