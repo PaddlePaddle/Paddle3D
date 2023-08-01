@@ -17,3 +17,13 @@ from .kitti import KittiDepthDataset, KittiMonoDataset, KittiPCDataset
 from .modelnet40 import ModelNet40
 from .nuscenes import NuscenesMVDataset, NuscenesPCDataset
 from .waymo import WaymoPCDataset
+from paddle3d.apis import manager
+
+# for PaddleX
+NuscenesPCDetDataset = NuscenesPCDataset
+KittiDepthMonoDetDataset = KittiDepthDataset
+NuscenesMVDetDataset = NuscenesMVDataset
+manager.DATASETS._components_dict['NuscenesPCDetDataset'] = NuscenesPCDetDataset
+manager.DATASETS._components_dict[
+    'KittiDepthMonoDetDataset'] = KittiDepthMonoDetDataset
+manager.DATASETS._components_dict['NuscenesMVDetDataset'] = NuscenesMVDetDataset
