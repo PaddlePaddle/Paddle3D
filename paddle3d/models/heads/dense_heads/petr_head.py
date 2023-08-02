@@ -456,10 +456,15 @@ class PETRHead(nn.Layer):
                 bottom_center = bboxes[:, :3]
                 gravity_center = np.zeros(
                     bottom_center.shape,
-                    paddle.fluid.data_feeder.convert_dtype(bottom_center.dtype))
-                gravity_center[:, :2] = bottom_center[:, :2].contiguous()
-                gravity_center[:, 2] = (
-                    bottom_center[:, 2] + bboxes[:, 5] * 0.5).contiguous()
+                    paddle.common_ops_import.convert_dtype(bottom_center.dtype))
+                if hasattr(paddle.Tensor, "contiguous"):
+                    gravity_center[:, :2] = bottom_center[:, :2].contiguous()
+                    gravity_center[:, 2] = (
+                        bottom_center[:, 2] + bboxes[:, 5] * 0.5).contiguous()
+                else:
+                    gravity_center[:, :2] = bottom_center[:, :2]
+                    gravity_center[:,
+                                   2] = bottom_center[:, 2] + bboxes[:, 5] * 0.5
                 return gravity_center
 
             targets = [
