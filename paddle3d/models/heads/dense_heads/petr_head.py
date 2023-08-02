@@ -454,9 +454,17 @@ class PETRHead(nn.Layer):
 
             def get_gravity_center(bboxes):
                 bottom_center = bboxes[:, :3]
-                gravity_center = np.zeros_like(bottom_center)
-                gravity_center[:, :2] = bottom_center[:, :2]
-                gravity_center[:, 2] = bottom_center[:, 2] + bboxes[:, 5] * 0.5
+                gravity_center = np.zeros(
+                    bottom_center.shape,
+                    paddle.common_ops_import.convert_dtype(bottom_center.dtype))
+                if hasattr(paddle.Tensor, "contiguous"):
+                    gravity_center[:, :2] = bottom_center[:, :2].contiguous()
+                    gravity_center[:, 2] = (
+                        bottom_center[:, 2] + bboxes[:, 5] * 0.5).contiguous()
+                else:
+                    gravity_center[:, :2] = bottom_center[:, :2]
+                    gravity_center[:,
+                                   2] = bottom_center[:, 2] + bboxes[:, 5] * 0.5
                 return gravity_center
 
             targets = [
