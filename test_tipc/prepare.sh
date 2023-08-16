@@ -30,8 +30,8 @@ trainer_list=$(func_parser_value "${lines[14]}")
 
 if [ ${MODE} = "benchmark_train" ];then
     pip install -r requirements.txt
-    pip install -U opencv-python==4.5.5.64
     pip install -e .
+    pip install opencv-python==4.6.0.66
     MODE="lite_train_lite_infer"
 fi
 
