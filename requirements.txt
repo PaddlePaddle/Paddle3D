@@ -4,7 +4,7 @@ filelock
 numba >= 0.56
 numpy
 nuscenes-devkit
-opencv-python <= 4.7.0.72
+opencv-python >= 4.6.0.66
 pandas
 paddledet
 paddleseg
