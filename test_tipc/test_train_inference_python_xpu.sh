@@ -28,7 +28,7 @@ dataline=`cat $FILENAME`
 sed -i 's/\"gpu\"/\"xpu\"/g' test_tipc/test_train_inference_python.sh
 sed -i 's/--gpus/--xpus/g' test_tipc/test_train_inference_python.sh
 
-# python has been updated to version 3.9 for npu backend
+# python has been updated to version 3.9 for xpu backend
 sed -i "s/python3.7/python3.9/g" $FILENAME
 
 # parser params
