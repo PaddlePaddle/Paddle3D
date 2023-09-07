@@ -42,6 +42,11 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
 
 ## 📣最新进展
 
+**🏅️飞桨AI套件**
+
+飞桨AI套件 [PaddleX](https://www.paddlepaddle.org.cn/paddle/paddleX) 发布全新版本，围绕飞桨精选模型（包括3D检测）提供了一站式、全流程、高效率的开发平台。
+
+
 **💎稳定版本**
 
 位于[`主分支`](https://github.com/PaddlePaddle/Paddle3D)，Paddle3D v1.0正式版本发布，详情请参考[release note](https://github.com/PaddlePaddle/Paddle3D/releases/tag/v1.0)。
@@ -76,6 +81,22 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
     <div align="center">
     <img src="https://user-images.githubusercontent.com/61035602/210315230-83ace5d1-1851-4d9b-b305-4290edf9dde8.png"  height = "300" caption='' />
     <p></p>
+    </div>
+
+- **📑 PaddleX**
+  * 飞桨AI套件（PaddleX）—— 精选产业实用模型的一站式开发平台。包含如下特点：
+    * 【优质的算法库】包含10大任务领域的36个精选模型，实现在一个平台中完成不同任务模型算法的开发。更多领域模型持续丰富中！PaddleX还提供完善的模型训练推理benchmark数据，服务开发者基于业务需求选择最合适的模型。
+    * 【简易的开发方式】工具箱/开发者双模式联动，无代码+低代码开发方式，四步完成数据、训练、验证、部署的全流程AI开发。
+    * 【高效的训练部署】沉淀百度算法团队的最佳调优策略，实现每个模型都能最快最优地收敛。完善的部署SDK支持，实现跨平台、跨硬件的快速产业级部署（服务化部署能力完善中）。
+    * 【丰富的国产硬件支持】PaddleX除了具有在AI Studio云端能力外，还沉淀了windows本地端，正在继续丰富Linux版本、昆仑芯版本、昇腾版本、寒武纪版本。
+    * 【共赢的联创共建】除了便捷地开发AI应用外，PaddleX还为大家提供了获取商业收益的机会，为企业探索更多商业空间。
+  * 作为一款高效的开发神器，PaddleX值得每一位开发者拥有。
+  * PaddleX官网地址：https://www.paddlepaddle.org.cn/paddle/paddleX
+  * 微信扫描下面二维码添加运营同学，并回复【paddlex】，运营同学会邀请您加入官方交流群，获得更高效的问题答疑。
+
+    <div align="center">
+    <img src="https://raw.githubusercontent.com/PaddlePaddle/PaddleOCR/dygraph/doc/joinus_paddlex.jpg"  width = "150" height = "150",caption='' />
+    <p>飞桨AI套件【PaddleX】技术交流群二维码</p>
     </div>
 
 
