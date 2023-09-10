@@ -25,7 +25,6 @@
 
 #include "ms_deform_attn_cuda_kernel.h"
 #include "paddle/extension.h"
-#include <cstdio>
 
 #define CHECK_INPUT(x) PD_CHECK(x.is_gpu(), #x " must be a GPU Tensor.")
 
@@ -212,17 +211,17 @@ std::vector<paddle::Tensor> ms_deform_attn_forward_cuda(
   CHECK_INPUT(sampling_locations);
   CHECK_INPUT(attention_weights);
 
-  const int batch = value.shape()[0]; // 3
-  const int spatial_size = value.shape()[1]; // 28350
-  const int num_heads = value.shape()[2]; // 8
-  const int channels = value.shape()[3]; // 32
+  const int batch = value.shape()[0];
+  const int spatial_size = value.shape()[1];
+  const int num_heads = value.shape()[2];
+  const int channels = value.shape()[3];
 
-  const int num_levels = spatial_shapes.shape()[0]; // 3
+  const int num_levels = spatial_shapes.shape()[0];
 
-  const int num_query = sampling_locations.shape()[1]; // 10271
-  const int num_point = sampling_locations.shape()[4]; // 8
+  const int num_query = sampling_locations.shape()[1];
+  const int num_point = sampling_locations.shape()[4];
 
-  const int im2col_step_ = std::min(batch, im2col_step); // 3
+  const int im2col_step_ = std::min(batch, im2col_step);
 
   PD_CHECK(batch % im2col_step_ == 0, "batch(", batch,
            ") must divide im2col_step(", im2col_step_, ")");
@@ -307,9 +306,10 @@ std::vector<paddle::Tensor> ms_deform_attn_forward_cuda(
           break;
       default:
         PD_THROW(
-          "function ms_deformable_im2col_gpu_kernel is not implemented for data type `");
+          "function ms_deformable_im2col_gpu_kernel is not implemented for data type ");
     }
   }
+
   return {output};
 }
 
