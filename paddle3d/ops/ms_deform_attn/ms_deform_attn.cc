@@ -52,9 +52,10 @@ std::vector<paddle::Tensor> ms_deform_attn_forward(
     const paddle::Tensor &spatial_shapes,
     const paddle::Tensor &level_start_index, const int im2col_step) {
   if (value.is_gpu()) {
-    return ms_deform_attn_forward_cuda(value, spatial_shapes, level_start_index,
+    auto out =  ms_deform_attn_forward_cuda(value, spatial_shapes, level_start_index,
                                        sampling_locations, attention_weights,
                                        im2col_step);
+    return out;
   } else {
     PD_THROW(
         "Unsupported device type for ms_deform_attn_forward "

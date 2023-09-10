@@ -25,6 +25,7 @@
 
 #include "ms_deform_attn_cuda_kernel.h"
 #include "paddle/extension.h"
+#include <cstdio>
 
 #define CHECK_INPUT(x) PD_CHECK(x.is_gpu(), #x " must be a GPU Tensor.")
 
@@ -211,17 +212,17 @@ std::vector<paddle::Tensor> ms_deform_attn_forward_cuda(
   CHECK_INPUT(sampling_locations);
   CHECK_INPUT(attention_weights);
 
-  const int batch = value.shape()[0];
-  const int spatial_size = value.shape()[1];
-  const int num_heads = value.shape()[2];
-  const int channels = value.shape()[3];
+  const int batch = value.shape()[0]; // 3
+  const int spatial_size = value.shape()[1]; // 28350
+  const int num_heads = value.shape()[2]; // 8
+  const int channels = value.shape()[3]; // 32
 
-  const int num_levels = spatial_shapes.shape()[0];
+  const int num_levels = spatial_shapes.shape()[0]; // 3
 
-  const int num_query = sampling_locations.shape()[1];
-  const int num_point = sampling_locations.shape()[4];
+  const int num_query = sampling_locations.shape()[1]; // 10271
+  const int num_point = sampling_locations.shape()[4]; // 8
 
-  const int im2col_step_ = std::min(batch, im2col_step);
+  const int im2col_step_ = std::min(batch, im2col_step); // 3
 
   PD_CHECK(batch % im2col_step_ == 0, "batch(", batch,
            ") must divide im2col_step(", im2col_step_, ")");
@@ -239,25 +240,76 @@ std::vector<paddle::Tensor> ms_deform_attn_forward_cuda(
     const int num_actual_kernels = im2col_step_ * per_output_size;
     const int num_threads = CUDA_NUM_THREADS;
 
-    PD_DISPATCH_FLOATING_TYPES(
-        value.type(), "ms_deform_attn_forward_cuda", ([&] {
-          ms_deformable_im2col_gpu_kernel<data_t>
-              <<<GET_BLOCKS(num_actual_kernels, num_threads), num_threads, 0,
-                 value.stream()>>>(
-                  num_kernels,
-                  value.data<data_t>() + n * im2col_step_ * per_value_size,
-                  spatial_shapes.data<int64_t>(),
-                  level_start_index.data<int64_t>(),
-                  sampling_locations.data<data_t>() +
-                      n * im2col_step_ * per_sample_loc_size,
-                  attention_weights.data<data_t>() +
-                      n * im2col_step_ * per_attn_weight_size,
-                  im2col_step_, spatial_size, num_heads, channels, num_levels,
-                  num_query, num_point,
-                  output.data<data_t>() + n * im2col_step_ * per_output_size);
-        }));
+    switch(value.type()) {
+      case paddle::DataType::FLOAT32:
+        ms_deformable_im2col_gpu_kernel<float>
+        <<<GET_BLOCKS(num_actual_kernels, num_threads), num_threads, 0,
+                  value.stream()>>> (
+                    num_kernels,
+                    value.data<float>() + n * im2col_step_ * per_value_size,
+                    spatial_shapes.data<int64_t>(),
+                    level_start_index.data<int64_t>(),
+                    sampling_locations.data<float>() +
+                        n * im2col_step_ * per_sample_loc_size,
+                    attention_weights.data<float>() +
+                        n * im2col_step_ * per_attn_weight_size,
+                    im2col_step_, spatial_size, num_heads, channels, num_levels,
+                    num_query, num_point,
+                    output.data<float>() + n * im2col_step_ * per_output_size);
+        break;
+      case paddle::DataType::FLOAT64:
+        ms_deformable_im2col_gpu_kernel<double>
+        <<<GET_BLOCKS(num_actual_kernels, num_threads), num_threads, 0,
+                  value.stream()>>> (
+                    num_kernels,
+                    value.data<double>() + n * im2col_step_ * per_value_size,
+                    spatial_shapes.data<int64_t>(),
+                    level_start_index.data<int64_t>(),
+                    sampling_locations.data<double>() +
+                        n * im2col_step_ * per_sample_loc_size,
+                    attention_weights.data<double>() +
+                        n * im2col_step_ * per_attn_weight_size,
+                    im2col_step_, spatial_size, num_heads, channels, num_levels,
+                    num_query, num_point,
+                    output.data<double>() + n * im2col_step_ * per_output_size);
+        break;
+      case paddle::DataType::FLOAT16:
+        ms_deformable_im2col_gpu_kernel<phi::dtype::float16>
+        <<<GET_BLOCKS(num_actual_kernels, num_threads), num_threads, 0,
+                  value.stream()>>> (
+                    num_kernels,
+                    value.data<phi::dtype::float16>() + n * im2col_step_ * per_value_size,
+                    spatial_shapes.data<int64_t>(),
+                    level_start_index.data<int64_t>(),
+                    sampling_locations.data<phi::dtype::float16>() +
+                        n * im2col_step_ * per_sample_loc_size,
+                    attention_weights.data<phi::dtype::float16>() +
+                        n * im2col_step_ * per_attn_weight_size,
+                    im2col_step_, spatial_size, num_heads, channels, num_levels,
+                    num_query, num_point,
+                    output.data<phi::dtype::float16>() + n * im2col_step_ * per_output_size);
+          break;
+      case paddle::DataType::BFLOAT16:
+        ms_deformable_im2col_gpu_kernel<phi::dtype::bfloat16>
+        <<<GET_BLOCKS(num_actual_kernels, num_threads), num_threads, 0,
+                  value.stream()>>> (
+                    num_kernels,
+                    value.data<phi::dtype::bfloat16>() + n * im2col_step_ * per_value_size,
+                    spatial_shapes.data<int64_t>(),
+                    level_start_index.data<int64_t>(),
+                    sampling_locations.data<phi::dtype::bfloat16>() +
+                        n * im2col_step_ * per_sample_loc_size,
+                    attention_weights.data<phi::dtype::bfloat16>() +
+                        n * im2col_step_ * per_attn_weight_size,
+                    im2col_step_, spatial_size, num_heads, channels, num_levels,
+                    num_query, num_point,
+                    output.data<phi::dtype::bfloat16>() + n * im2col_step_ * per_output_size);
+          break;
+      default:
+        PD_THROW(
+          "function ms_deformable_im2col_gpu_kernel is not implemented for data type `");
+    }
   }
-
   return {output};
 }
 
