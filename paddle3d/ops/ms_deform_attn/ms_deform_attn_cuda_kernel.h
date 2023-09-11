@@ -35,8 +35,8 @@ inline int GET_BLOCKS(const int N, const int num_threads) {
        i += blockDim.x * gridDim.x)
 
 template <typename T>
-__device__ __forceinline__ T
-warp_shfl_xor(T value, int laneMask, int width, unsigned int mask = 0xffffffff) {
+__device__ __forceinline__ T warp_shfl_xor(T value, int laneMask, int width,
+                                           unsigned int mask = 0xffffffff) {
 #if CUDA_VERSION >= 9000
   return __shfl_xor_sync(mask, value, laneMask, width);
 #else
@@ -45,18 +45,18 @@ warp_shfl_xor(T value, int laneMask, int width, unsigned int mask = 0xffffffff) 
 }
 
 template <typename T, int width>
-__device__ __forceinline__ void warp_reduce(T* sum) {
+__device__ __forceinline__ void warp_reduce(T *sum) {
   for (int offset = width / 2; offset > 0; offset /= 2) {
     T b = warp_shfl_xor(*sum, offset, width);
   }
 }
 
-
 template <typename scalar_t>
 __device__ scalar_t ms_deform_attn_im2col_bilinear(
     const scalar_t *&bottom_data, const int &height, const int &width,
     const int &nheads, const int &channels, const scalar_t &h,
-    const scalar_t &w, const int &m, const int &c, const int h_stride, const int w_stride, const int base_ptr) {
+    const scalar_t &w, const int &m, const int &c, const int h_stride,
+    const int w_stride, const int base_ptr) {
   const int h_low = floorf(h);
   const int w_low = floorf(w);
   const int h_high = h_low + 1;
@@ -64,7 +64,8 @@ __device__ scalar_t ms_deform_attn_im2col_bilinear(
 
   const scalar_t lh = h - static_cast<scalar_t>(h_low);
   const scalar_t lw = w - static_cast<scalar_t>(w_low);
-  const scalar_t hh = static_cast<scalar_t>(1) - lh, hw = static_cast<scalar_t>(1) - lw;
+  const scalar_t hh = static_cast<scalar_t>(1) - lh,
+                 hw = static_cast<scalar_t>(1) - lw;
 
   const int h_low_ptr_offset = h_low * h_stride;
   const int h_high_ptr_offset = h_low_ptr_offset + h_stride;
@@ -104,7 +105,8 @@ __device__ void ms_deform_attn_col2im_bilinear(
     const int &nheads, const int &channels, const scalar_t &h,
     const scalar_t &w, const int &m, const int &c, const scalar_t &top_grad,
     const scalar_t &attn_weight, scalar_t *&grad_value,
-    scalar_t *grad_sampling_loc, scalar_t *grad_attn_weight, const int w_stride, const int h_stride, const int base_ptr) {
+    scalar_t *grad_sampling_loc, scalar_t *grad_attn_weight, const int w_stride,
+    const int h_stride, const int base_ptr) {
   const int h_low = floorf(h);
   const int w_low = floorf(w);
   const int h_high = h_low + 1;
@@ -256,7 +258,6 @@ __global__ void ms_deformable_im2col_gpu_kernel(
     const int qid_stride = num_heads * channels;
     const int data_value_ptr_init_offset = b_col * spatial_size * qid_stride;
     scalar_t col = static_cast<scalar_t>(0);
-   
 
     for (int l_col = 0; l_col < num_levels; ++l_col) {
       const int level_start_id = data_level_start_index[l_col];
@@ -272,13 +273,18 @@ __global__ void ms_deformable_im2col_gpu_kernel(
         const scalar_t loc_h = data_sampling_loc[data_loc_w_ptr + 1];
         const scalar_t weight = data_attn_weight[data_weight_ptr];
 
-        const scalar_t h_im = loc_h * static_cast<scalar_t>(spatial_h) - static_cast<scalar_t>(0.5);
-        const scalar_t w_im = loc_w * static_cast<scalar_t>(spatial_w) - static_cast<scalar_t>(0.5);
+        const scalar_t h_im = loc_h * static_cast<scalar_t>(spatial_h) -
+                              static_cast<scalar_t>(0.5);
+        const scalar_t w_im = loc_w * static_cast<scalar_t>(spatial_w) -
+                              static_cast<scalar_t>(0.5);
 
-        if (h_im > static_cast<scalar_t>(-1) && w_im > static_cast<scalar_t>(-1) && h_im < static_cast<scalar_t>(spatial_h) && w_im < static_cast<scalar_t>(spatial_w)) {
-          col += ms_deform_attn_im2col_bilinear(data_value_ptr, spatial_h,
-                                                spatial_w, num_heads, channels,
-                                                h_im, w_im, m_col, c_col, h_stride, w_stride, base_ptr) *
+        if (h_im > static_cast<scalar_t>(-1) &&
+            w_im > static_cast<scalar_t>(-1) &&
+            h_im < static_cast<scalar_t>(spatial_h) &&
+            w_im < static_cast<scalar_t>(spatial_w)) {
+          col += ms_deform_attn_im2col_bilinear(
+                     data_value_ptr, spatial_h, spatial_w, num_heads, channels,
+                     h_im, w_im, m_col, c_col, h_stride, w_stride, base_ptr) *
                  weight;
         }
 
@@ -312,7 +318,7 @@ __global__ void ms_deformable_col2im_gpu_kernel_shm_blocksize_aware_reduce_v1(
     _temp /= num_heads;
     _temp /= num_query;
     const int b_col = _temp;
-    
+
     const int base_ptr = m_col * channels + c_col;
 
     const scalar_t top_grad = grad_col[index];
@@ -353,15 +359,16 @@ __global__ void ms_deformable_col2im_gpu_kernel_shm_blocksize_aware_reduce_v1(
               data_value_ptr, spatial_h, spatial_w, num_heads, channels, h_im,
               w_im, m_col, c_col, top_grad, weight, grad_value_ptr,
               cache_grad_sampling_loc + (threadIdx.x << 1),
-              cache_grad_attn_weight + threadIdx.x, h_stride, w_stride, base_ptr);
+              cache_grad_attn_weight + threadIdx.x, h_stride, w_stride,
+              base_ptr);
         }
 
         __syncthreads();
 
         scalar_t _grad_w = cache_grad_sampling_loc[threadIdx.x],
-                   _grad_h = cache_grad_sampling_loc[threadIdx.x + 1],
-                   _grad_a = cache_grad_attn_weight[threadIdx.x];
-        
+                 _grad_h = cache_grad_sampling_loc[threadIdx.x + 1],
+                 _grad_a = cache_grad_attn_weight[threadIdx.x];
+
         warp_reduce<scalar_t, blockSize>(&_grad_w);
         warp_reduce<scalar_t, blockSize>(&_grad_h);
         warp_reduce<scalar_t, blockSize>(&_grad_a);
@@ -380,9 +387,6 @@ __global__ void ms_deformable_col2im_gpu_kernel_shm_blocksize_aware_reduce_v1(
     }
   }
 }
-
-
-
 
 template <typename scalar_t, unsigned int blockSize>
 __global__ void ms_deformable_col2im_gpu_kernel_shm_blocksize_aware_reduce_v2(
@@ -447,7 +451,8 @@ __global__ void ms_deformable_col2im_gpu_kernel_shm_blocksize_aware_reduce_v2(
               data_value_ptr, spatial_h, spatial_w, num_heads, channels, h_im,
               w_im, m_col, c_col, top_grad, weight, grad_value_ptr,
               cache_grad_sampling_loc + (threadIdx.x << 1),
-              cache_grad_attn_weight + threadIdx.x, h_stride, w_stride, base_ptr);
+              cache_grad_attn_weight + threadIdx.x, h_stride, w_stride,
+              base_ptr);
         }
 
         __syncthreads();
@@ -544,7 +549,8 @@ __global__ void ms_deformable_col2im_gpu_kernel_shm_reduce_v1(
               data_value_ptr, spatial_h, spatial_w, num_heads, channels, h_im,
               w_im, m_col, c_col, top_grad, weight, grad_value_ptr,
               cache_grad_sampling_loc + (threadIdx.x << 1),
-              cache_grad_attn_weight + threadIdx.x, h_stride, w_stride, base_ptr);
+              cache_grad_attn_weight + threadIdx.x, h_stride, w_stride,
+              base_ptr);
         }
 
         __syncthreads();
@@ -639,7 +645,8 @@ __global__ void ms_deformable_col2im_gpu_kernel_shm_reduce_v2(
               data_value_ptr, spatial_h, spatial_w, num_heads, channels, h_im,
               w_im, m_col, c_col, top_grad, weight, grad_value_ptr,
               cache_grad_sampling_loc + (threadIdx.x << 1),
-              cache_grad_attn_weight + threadIdx.x, h_stride, w_stride, base_ptr);
+              cache_grad_attn_weight + threadIdx.x, h_stride, w_stride,
+              base_ptr);
         }
 
         __syncthreads();
@@ -707,7 +714,6 @@ __global__ void ms_deformable_col2im_gpu_kernel_shm_reduce_v2_multi_blocks(
 
     const int base_ptr = m_col * channels + c_col;
 
-
     const scalar_t top_grad = grad_col[index];
 
     int data_weight_ptr = sampling_index * num_levels * num_point;
@@ -746,7 +752,8 @@ __global__ void ms_deformable_col2im_gpu_kernel_shm_reduce_v2_multi_blocks(
               data_value_ptr, spatial_h, spatial_w, num_heads, channels, h_im,
               w_im, m_col, c_col, top_grad, weight, grad_value_ptr,
               cache_grad_sampling_loc + (threadIdx.x << 1),
-              cache_grad_attn_weight + threadIdx.x, h_stride, w_stride, base_ptr);
+              cache_grad_attn_weight + threadIdx.x, h_stride, w_stride,
+              base_ptr);
         }
 
         __syncthreads();
