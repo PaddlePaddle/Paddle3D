@@ -55,7 +55,6 @@ std::vector<paddle::Tensor> ms_deform_attn_forward(
     return ms_deform_attn_forward_cuda(value, spatial_shapes, level_start_index,
                                        sampling_locations, attention_weights,
                                        im2col_step);
-
   } else {
     PD_THROW(
         "Unsupported device type for ms_deform_attn_forward "
