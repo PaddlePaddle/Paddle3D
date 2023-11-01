@@ -92,12 +92,7 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
     * 【共赢的联创共建】除了便捷地开发AI应用外，PaddleX还为大家提供了获取商业收益的机会，为企业探索更多商业空间。
   * 作为一款高效的开发神器，PaddleX值得每一位开发者拥有。
   * PaddleX官网地址：https://www.paddlepaddle.org.cn/paddle/paddleX
-  * 微信扫描下面二维码添加运营同学，并回复【paddlex】，运营同学会邀请您加入官方交流群，获得更高效的问题答疑。
-
-    <div align="center">
-    <img src="https://raw.githubusercontent.com/PaddlePaddle/PaddleOCR/dygraph/doc/joinus_paddlex.jpg"  width = "150" height = "150",caption='' />
-    <p>飞桨AI套件【PaddleX】技术交流群二维码</p>
-    </div>
+  * 欢迎大家进入AI Studio【[PaddleX社区频道](https://aistudio.baidu.com/community/channel/610)】进一步交流～
 
 
 ### 📱模型库
