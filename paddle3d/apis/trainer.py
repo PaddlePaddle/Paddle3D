@@ -381,16 +381,18 @@ class Trainer:
                         tag='Training/learning_rate',
                         value=lr,
                         step=self.cur_iter)
-                    max_mem_reserved = paddle.device.cuda.max_memory_reserved()
-                    max_mem_allocated = paddle.device.cuda.max_memory_allocated(
-                    )
+                    max_mem_reserved_str = ""
+                    max_mem_allocated_str = ""
+                    if paddle.device.is_compiled_with_cuda():
+                        max_mem_reserved_str = f"max_mem_reserved: {paddle.device.cuda.max_memory_reserved() // (1024 ** 2)} MB,"
+                        max_mem_allocated_str = f"max_mem_allocated: {paddle.device.cuda.max_memory_allocated() // (1024 ** 2)} MB"
                     self.logger.info(
                         '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f}, batch_cost: {:.6f} sec, '
-                        'ips: {:.6f} images/s | ETA {}, max_mem_reserved: {} B, max_mem_allocated: {} B'
-                        .format(self.cur_epoch, self.epochs, self.cur_iter,
-                                self.iters, loss_log, lr, timer.speed,
-                                timer.ips, timer.eta, max_mem_reserved,
-                                max_mem_allocated))
+                        'ips: {:.6f} images/s | ETA {}, {} {}'.format(
+                            self.cur_epoch, self.epochs, self.cur_iter,
+                            self.iters, loss_log, lr, timer.speed, timer.ips,
+                            timer.eta, max_mem_reserved_str,
+                            max_mem_allocated_str))
 
                     losses_sum.clear()
 
