@@ -231,7 +231,7 @@ class eSEModule(nn.Layer):
         x = self.avg_pool(x)
         x = self.fc(x)
         x = self.hsigmoid(x)
-        return input * x
+        return input * x.astype(input.dtype)
 
 
 class _OSA_layer(nn.Layer):
