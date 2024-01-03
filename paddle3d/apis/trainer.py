@@ -128,7 +128,8 @@ class Trainer:
             amp_cfg: Optional[dict] = None,
             do_bind: Optional[bool] = False,
             temporal_start_epoch: Optional[int] = -1,
-            ema_cfg: Optional[dict] = None):
+            ema_cfg: Optional[dict] = None,
+            print_mem_info: Optional[bool] = False):
 
         self.model = model
         self.optimizer = optimizer
@@ -150,6 +151,7 @@ class Trainer:
 
         self.do_bind = do_bind
         self.temporal_start_epoch = temporal_start_epoch
+        self.print_mem_info = print_mem_info
 
         if iters is None:
             self.epochs = epochs
@@ -383,9 +385,10 @@ class Trainer:
                         step=self.cur_iter)
                     max_mem_reserved_str = ""
                     max_mem_allocated_str = ""
-                    if paddle.device.is_compiled_with_cuda():
-                        max_mem_reserved_str = f"max_mem_reserved: {paddle.device.cuda.max_memory_reserved() // (1024 ** 2)} MB,"
-                        max_mem_allocated_str = f"max_mem_allocated: {paddle.device.cuda.max_memory_allocated() // (1024 ** 2)} MB"
+                    if self.print_mem_info:
+                        if paddle.device.is_compiled_with_cuda():
+                            max_mem_reserved_str = f"max_mem_reserved: {paddle.device.cuda.max_memory_reserved() // (1024 ** 2)} MB,"
+                            max_mem_allocated_str = f"max_mem_allocated: {paddle.device.cuda.max_memory_allocated() // (1024 ** 2)} MB"
                     self.logger.info(
                         '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f}, batch_cost: {:.6f} sec, '
                         'ips: {:.6f} images/s | ETA {}, {} {}'.format(
