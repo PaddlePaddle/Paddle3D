@@ -21,7 +21,7 @@ import numpy as np
 import paddle
 from paddle import inference
 
-from paddle3d.ops import ms_deform_attn
+from paddle3d.ops.ms_deform_attn import ms_deform_attn
 from paddle3d.apis.config import Config
 from paddle3d.apis.trainer import Trainer
 from paddle3d.slim import get_qat_config

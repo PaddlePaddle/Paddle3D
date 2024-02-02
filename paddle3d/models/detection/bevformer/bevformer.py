@@ -354,7 +354,7 @@ class BEVFormer(nn.Layer):
         input_spec = [image_spec, pre_bev_spec, img_metas_spec]
 
         paddle.jit.to_static(self, input_spec=input_spec)
-        if self.is_quant_model:
+        if self.is_quant_model():
             self.qat.save_quantized_model(
                 model=self,
                 path=os.path.join(save_dir, "bevformer_inference"),
