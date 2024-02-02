@@ -95,18 +95,20 @@ void run(Predictor *predictor, const std::vector<float> &input_im_data,
   auto input_names = predictor->GetInputNames();
   auto output_names = predictor->GetOutputNames();
 
-  auto input_im_handle = predictor->GetInputHandle(input_names[0]);
-  input_im_handle->Reshape(input_im_shape);
-  input_im_handle->CopyFromCpu(input_im_data.data());
-
-  auto input_K_handle = predictor->GetInputHandle(input_names[1]);
-  input_K_handle->Reshape(input_K_shape);
-  input_K_handle->CopyFromCpu(input_K_data.data());
-
-  auto input_ratio_handle = predictor->GetInputHandle(input_names[2]);
-  input_ratio_handle->Reshape(input_ratio_shape);
-  input_ratio_handle->CopyFromCpu(input_ratio_data.data());
-
+  for (const auto &input_name: input_names) {
+    auto input_handle = predictor->GetInputHandle(input_name);
+    if (input_name == "images") {
+      input_handle->Reshape(input_im_shape);
+      input_handle->CopyFromCpu(input_im_data.data());
+    } else if (input_name == "trans_cam_to_img") {
+      input_handle->Reshape(input_K_shape);
+      input_handle->CopyFromCpu(input_K_data.data());
+    } else {
+      input_handle->Reshape(input_ratio_shape);
+      input_handle->CopyFromCpu(input_ratio_data.data());
+    }
+  }
+    
   CHECK(predictor->Run());
   auto output_t = predictor->GetOutputHandle(output_names[0]);
 
