@@ -13,7 +13,7 @@ train_infer_img_dir:./datasets/KITTI
 null:null
 ##
 trainer:norm_train
-norm_train:tools/train.py --config configs/centerpoint/centerpoint_pillars_02voxel_nuscenes_10sweep_ampO2_ultra.yml --num_workers 4 --log_interval 1 --seed 123 --save_interval 100
+norm_train:tools/train.py --config configs/centerpoint/centerpoint_pillars_02voxel_nuscenes_10sweep_ampO2_ultra.yml --num_workers 16 --log_interval 1 --seed 123 --save_interval 100
 pact_train:null
 fpgm_train:null
 distill_train:null
@@ -51,6 +51,6 @@ null:null
 ===========================train_benchmark_params==========================
 batch_size:8
 fp_items:fp16
-iters:100
+iters:300
 --profiler_options:batch_range=[10,20];state=GPU;tracer_option=Default;profile_path=model.profile
 flags:FLAGS_cudnn_exhaustive_search=0
