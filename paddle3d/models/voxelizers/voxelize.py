@@ -28,7 +28,7 @@ class HardVoxelizer(nn.Layer):
     def __init__(self, voxel_size, point_cloud_range, max_num_points_in_voxel,
                  max_num_voxels):
         super(HardVoxelizer, self).__init__()
-        self.voxel_size = voxel_size
+        self.voxel_size = list(map(float, voxel_size))
         self.point_cloud_range = point_cloud_range
         self.max_num_points_in_voxel = max_num_points_in_voxel
         if isinstance(max_num_voxels, (tuple, list)):

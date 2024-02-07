@@ -15,11 +15,11 @@
 import os
 from pathlib import Path
 from typing import List, Union
-
 import cv2
 import paddle
 import numpy as np
 from PIL import Image
+from einops import rearrange
 
 from paddle3d.apis import manager
 from paddle3d.datasets.kitti import kitti_utils
@@ -708,4 +708,24 @@ class LoadMultiViewImageFromMultiSweepsFiles(object):
         sample['img'] = sweep_imgs_list
         sample['timestamp'] = timestamp_imgs_list
 
+        return sample
+
+
+@manager.TRANSFORMS.add_component
+class LoadMapsFromFiles(object):
+    def __init__(self, k=None):
+        self.k = k
+
+    def __call__(self, sample) -> Sample:
+        map_filename = sample['map_filename']
+        maps = np.load(map_filename)
+        map_mask = maps['arr_0'].astype(np.float32)
+
+        maps = map_mask.transpose((2, 0, 1))
+        sample['gt_map'] = maps
+        maps = rearrange(
+            maps, 'c (h h1) (w w2) -> (h w) c h1 w2 ', h1=16, w2=16)
+        maps = maps.reshape(256, 3 * 256)
+        sample['map_shape'] = maps.shape
+        sample['maps'] = maps
         return sample

@@ -1,4 +1,5 @@
 batch_size: 4
+val_batch_size: 1
 epochs: 20
 train_dataset:
   type: NuscenesPCDataset

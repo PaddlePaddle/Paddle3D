@@ -4,15 +4,18 @@ filelock
 numba >= 0.56
 numpy
 nuscenes-devkit
-opencv-python <= 4.6.0
+opencv-python <= 4.6.0.66
+opencv-python-headless <= 4.6.0.66
 pandas
 paddledet
 paddleseg
 pyquaternion
 pyyaml
-pillow<=8.3.2
+pillow
 rarfile
 scikit-image
 scikit-learn
 visualdl
 h5py
+einops
+albumentations

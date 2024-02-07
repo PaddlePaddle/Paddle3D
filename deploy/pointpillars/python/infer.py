@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle.inference import Config, create_predictor
 
-from paddle3d.ops.iou3d_nms_cuda import nms_gpu
+from paddle3d.ops.iou3d_nms import nms_gpu
 
 
 def parse_args():

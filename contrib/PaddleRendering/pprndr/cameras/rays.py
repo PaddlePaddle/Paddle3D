@@ -57,6 +57,28 @@ class Frustums(object):
             self._positions = positions
 
     @property
+    def bin_points(self) -> paddle.Tensor:
+        # TODO: [Warning] If bin_points is passed to networks,
+        #  note that there is a mismatch between the shapes of bin_points and shape of directions.
+        if self.origins.ndim == 3:
+            origins = paddle.concat([self.origins, self.origins[:, -1:, :]],
+                                    axis=-2)
+            directions = paddle.concat(
+                [self.directions, self.directions[:, -1:, :]], axis=-2)
+            points = origins + directions * paddle.concat(
+                [self.starts, self.ends[:, -1:, :]],
+                axis=-2)  # [num_rays, num_samples + 1, 3]
+        else:
+            origins = paddle.repeat_interleave(self.origins, repeats=2, axis=-2)
+            directions = paddle.repeat_interleave(
+                self.directions, repeats=2, axis=-2)
+            intervals = paddle.stack([self.starts, self.ends], axis=-2).flatten(
+                -3, -2)
+            points = origins + directions * intervals  # [num_total_samples * 2, 3]
+
+        return points
+
+    @property
     def deltas(self):
         return self.ends - self.starts
 
@@ -111,6 +133,89 @@ class RaySamples:
     def spacing_ends(self):
         return self.spacing_bins[..., 1:, :]
 
+    def merge_samples(self,
+                      sample_list,
+                      ray_bundle=None,
+                      sample_dist=2. / 128.,
+                      mode='force_concat'):
+        if len(sample_list) == 0:
+            raise RuntimeError("Empty sample list.")
+
+        if mode == "sort":
+            # spacing2euclidean_fn must be the same one.
+            for sample in sample_list:
+                assert (
+                    self.spacing2euclidean_fn == sample.spacing2euclidean_fn)
+            bins = self.spacing_bins[:, :-1].squeeze(-1)
+
+            for i, sample in enumerate(sample_list):
+                if i != len(sample_list) - 1:
+                    bins = paddle.concat(
+                        [bins, sample.spacing_bins[:, :-1].squeeze(-1)],
+                        axis=-1)
+                else:
+                    bins = paddle.concat(
+                        [bins, sample.spacing_bins.squeeze(-1)], axis=-1)
+
+            bins = paddle.sort(bins, axis=-1)
+            index = paddle.argsort(bins, axis=-1)
+            euclidean_bins = self.spacing2euclidean_fn(bins)
+            ray_samples = ray_bundle.generate_ray_samples(
+                euclidean_bins=euclidean_bins.unsqueeze(-1),
+                spacing_bins=bins.unsqueeze(-1),
+                spacing2euclidean_fn=self.spacing2euclidean_fn)
+            return ray_samples, index
+
+        elif mode == 'force_concat':
+            # NOTE: This func. concatenates frustums, spacing_bins and spacing2euclidean_fn are disabled.
+            euclidean_bins = paddle.concat(
+                [self.frustums.starts, self.frustums.ends[:, -1:, :]], axis=1)
+            origins = self.frustums.origins
+            directions = self.frustums.directions
+            pixel_area = self.frustums.pixel_area
+            camera_ids = self.camera_ids
+
+            for i, sample in enumerate(sample_list):
+                origin_pad = sample.frustums.origins[:, -1:, :]
+                origins = paddle.concat(
+                    [origins, sample.frustums.origins, origin_pad], axis=-2)
+
+                direction_pad = sample.frustums.directions[:, -1:, :]
+                directions = paddle.concat(
+                    [directions, sample.frustums.directions, direction_pad],
+                    axis=-2)
+                pixel_area = paddle.concat(
+                    [pixel_area, sample.frustums.pixel_area], axis=-2)
+
+                camera_ids = paddle.concat([camera_ids, sample.camera_ids],
+                                           axis=-2)
+                sample_euclidean_bins = paddle.concat(
+                    [sample.frustums.starts, sample.frustums.ends[:, -1:, :]],
+                    axis=1)
+                euclidean_bins = paddle.concat(
+                    [euclidean_bins, sample_euclidean_bins], axis=1)
+
+            starts = euclidean_bins[:, :-1, :]
+            ends = euclidean_bins[:, 1:, :]
+
+            merged_frustums = Frustums(
+                origins=origins,
+                directions=directions,
+                starts=starts,
+                ends=ends,
+                pixel_area=pixel_area,
+                offsets=None,
+            )
+            ray_samples = RaySamples(
+                frustums=merged_frustums,
+                camera_ids=camera_ids,
+                spacing_bins=None,
+                spacing2euclidean_fn=None)
+            return ray_samples
+        else:
+            raise NotImplementedError(
+                "[mode] should be either 'force_concat' or 'sort'")
+
 
 @dataclass
 class RayBundle:
@@ -137,11 +242,11 @@ class RayBundle:
             pixel_area=self.pixel_area[indices],
             camera_ids=self.camera_ids[indices])
 
-    def generate_ray_samples(
-            self,
-            euclidean_bins: paddle.Tensor,
-            spacing_bins: paddle.Tensor,
-            spacing2euclidean_fn: Callable = None) -> RaySamples:
+    def generate_ray_samples(self,
+                             euclidean_bins: paddle.Tensor,
+                             spacing_bins: paddle.Tensor,
+                             spacing2euclidean_fn: Callable = None,
+                             positions: paddle.Tensor = None) -> RaySamples:
         n_smaples_per_ray = euclidean_bins.shape[-2] - 1
 
         ray_bundle = self[..., None, :]
@@ -154,7 +259,8 @@ class RayBundle:
             starts=euclidean_bins[..., :-1, :],
             ends=euclidean_bins[..., 1:, :],
             pixel_area=ray_bundle.pixel_area.repeat_interleave(
-                n_smaples_per_ray, axis=-2))
+                n_smaples_per_ray, axis=-2),
+            positions=positions)
         ray_samples = RaySamples(
             frustums=frustums,
             camera_ids=ray_bundle.camera_ids.repeat_interleave(

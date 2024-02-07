@@ -60,7 +60,8 @@ class DataManager(nn.Layer):
 
         self.pixel_sampler = PixelSampler(ray_batch_size)
 
-        self.ray_generator = RayGenerator(dataset.cameras.cuda())
+        self.ray_generator = RayGenerator(dataset.cameras.cuda(),
+                                          dataset.image_coords_offset)
 
     def forward(self):
         """

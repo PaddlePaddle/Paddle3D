@@ -209,7 +209,7 @@ class AnchorHeadSingle(nn.Layer):
         tb_dict.update(tb_dict_box)
         rpn_loss = cls_loss + box_loss
 
-        tb_dict['rpn_loss'] = rpn_loss.item()
+        tb_dict['rpn_loss'] = rpn_loss
         return rpn_loss, tb_dict
 
     def get_cls_layer_loss(self):

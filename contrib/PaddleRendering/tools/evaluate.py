@@ -14,7 +14,7 @@
 
 import argparse
 import os
-
+import sys
 from pprndr.apis.config import Config
 from pprndr.apis.trainer import Trainer
 from pprndr.utils.checkpoint import load_pretrained_model
@@ -45,7 +45,6 @@ def parse_args():
         help='Num workers for data loader',
         type=int,
         default=2)
-
     return parser.parse_args()
 
 
@@ -74,7 +73,6 @@ def main(args):
     dic.pop('ray_batch_size')
     dic.pop('image_resampling_interval')
     dic.pop('use_adaptive_ray_batch_size')
-
     dic.update({
         'train_dataset': None,
         'data_manager_fn': {
@@ -82,14 +80,43 @@ def main(args):
         },
         'checkpoint': False
     })
-
     if args.model is not None:
         load_pretrained_model(cfg.model, args.model)
+
+    eval_pixel_stride = dic.get("eval_pixel_stride", 1)
+    eval_to_cpu = getattr(dic["val_dataset"], "eval_to_cpu", False)
+    image_coords_offset = getattr(dic["val_dataset"], "image_coords_offset",
+                                  0.5)
+
+    validate_mesh = getattr(dic["val_dataset"], "validate_mesh", None)
+    if validate_mesh is not None and validate_mesh not in ["neus_style"]:
+        raise NotImplementedError(
+            "Only neus_style is supported for extracting mesh.")
+
+    if validate_mesh is not None:
+        mesh_resolution = getattr(dic["val_dataset"], "mesh_resolution", 64)
+        world_space_for_mesh = getattr(dic["val_dataset"],
+                                       "world_space_for_mesh", False)
+        bound_min = getattr(dic["val_dataset"], "bound_min", None)
+        bound_max = getattr(dic["val_dataset"], "bound_max", None)
+    else:
+        mesh_resolution = None
+        world_space_for_mesh = None
+        bound_min = None
+        bound_max = None
 
     trainer = Trainer(**dic)
     trainer.evaluate(
         save_dir=os.path.join(os.path.split(args.model)[0], "renderings"),
-        val_ray_batch_size=args.ray_batch_size)
+        val_ray_batch_size=args.ray_batch_size,
+        validate_mesh=validate_mesh,
+        mesh_resolution=mesh_resolution,
+        pixel_stride=eval_pixel_stride,
+        world_space_for_mesh=world_space_for_mesh,
+        bound_min=bound_min,  # used for generating mesh
+        bound_max=bound_max,  # used for generating mesh
+        image_coords_offset=image_coords_offset,
+        eval_to_cpu=eval_to_cpu)
 
 
 if __name__ == '__main__':

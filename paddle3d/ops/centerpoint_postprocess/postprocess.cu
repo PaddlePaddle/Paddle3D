@@ -144,7 +144,7 @@ std::vector<paddle::Tensor> postprocess_gpu(
     // score and label
     auto sigmoid_hm_per_task = paddle::experimental::sigmoid(hm[task_id]);
     auto label_per_task =
-        paddle::experimental::argmax(sigmoid_hm_per_task, 1, true, false, 3);
+        paddle::experimental::argmax(sigmoid_hm_per_task, 1, true, false);
     auto score_per_task =
         paddle::experimental::max(sigmoid_hm_per_task, {1}, true);
     // dim

@@ -51,10 +51,10 @@ class SMOKECoder(paddle.nn.Layer):
 
         ry = paddle.reshape(i_temp.tile([N, 1]), (N, -1, 3))
 
-        ry[:, 0, 0] *= cos
-        ry[:, 0, 2] *= sin
-        ry[:, 2, 0] *= sin
-        ry[:, 2, 2] *= cos
+        ry[:, 0, 0] = cos
+        ry[:, 0, 2] = sin
+        ry[:, 2, 0] = -sin
+        ry[:, 2, 2] = cos
         return ry
 
     def encode_box3d(self, rotys, dims, locs):

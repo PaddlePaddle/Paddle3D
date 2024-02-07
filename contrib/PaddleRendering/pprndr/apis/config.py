@@ -157,11 +157,15 @@ class Config(object):
 
     @property
     def image_batch_size(self) -> int:
-        return self.dic.get('batch_size', -1)
+        return self.dic.get('image_batch_size', -1)
 
     @property
     def ray_batch_size(self) -> int:
         return self.dic.get('ray_batch_size', 1)
+
+    @property
+    def eval_pixel_stride(self) -> int:
+        return self.dic.get('eval_pixel_stride', 1)
 
     @property
     def use_adaptive_ray_batch_size(self) -> bool:
@@ -254,6 +258,10 @@ class Config(object):
         return self.dic.get('grad_accum_cfg', None)
 
     @property
+    def reinit_optim_config(self) -> Union[Dict, None]:
+        return self.dic.get('reinit_optim_cfg', None)
+
+    @property
     def train_metric_meters(self) -> Union[List[MetricABC], None]:
         metrics_cfg = self.dic.get('train_metrics', None)
         if metrics_cfg is None:
@@ -333,11 +341,13 @@ class Config(object):
             'train_metric_meters': self.train_metric_meters,
             'val_metric_meters': self.val_metric_meters,
             'image_batch_size': self.image_batch_size,
+            'eval_pixel_stride': self.eval_pixel_stride,
             'ray_batch_size': self.ray_batch_size,
             'use_adaptive_ray_batch_size': self.use_adaptive_ray_batch_size,
             'image_resampling_interval': self.image_resampling_interval,
             'amp_cfg': self.amp_config,
-            'grad_accum_cfg': self.grad_accum_config
+            'grad_accum_cfg': self.grad_accum_config,
+            'reinit_optim_cfg': self.reinit_optim_config
         })
 
         return dic

@@ -13,12 +13,11 @@
 #  limitations under the License.
 
 import math
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Callable, Any
 
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-
 from pprndr.apis import manager
 
 try:
@@ -145,15 +144,20 @@ class MLP(nn.Layer):
                  num_layers: int,
                  hidden_dim: Union[int, List[int], Tuple[int]] = None,
                  skip_layers: Union[int, List[int], Tuple[int]] = None,
+                 skip_connection_way: str = "concat_out",
+                 skip_connection_scale: float = None,
                  with_bias: bool = True,
-                 activation: str = "relu",
-                 output_activation: str = "none"):
+                 activation: Union[str, nn.Layer] = "relu",
+                 output_activation: Union[str, nn.Layer] = "none",
+                 weight_init: Any = None,
+                 weight_normalization: bool = False):
         super(MLP, self).__init__()
 
         self.input_dim = input_dim
         self.output_dim = output_dim
         self.num_layers = num_layers
         self.with_bias = with_bias
+        self.skip_scale = skip_connection_scale
 
         if num_layers > 1:
             assert hidden_dim is not None, "hidden_dim must be specified when num_layers > 1"
@@ -176,11 +180,33 @@ class MLP(nn.Layer):
 
         self.hidden_dim = hidden_dim
         self.skip_layers = skip_layers if skip_layers is not None else set()
+        if len(self.skip_layers) > 0 and skip_connection_way == "concat_in":
+            for skip_layer in self.skip_layers:
+                self.hidden_dim[skip_layer - 1] -= self.input_dim
 
-        self.activation = PADDLE_ACTIVATION[activation.lower()]
-        self.output_activation = PADDLE_ACTIVATION[output_activation.lower()]
-
+        self.activation = self._populate_activation(activation)
+        self.output_activation = self._populate_activation(output_activation)
         self.layers = self._populate_layers()
+
+        # Weight init_fn.
+        if weight_init is not None:
+            weight_init.initialize(self.layers, self.skip_layers,
+                                   [self.input_dim] + self.hidden_dim)
+
+        # Weight normalization
+        if weight_normalization:
+            for layer in self.layers:
+                nn.utils.weight_norm(layer, dim=1)
+
+    def _populate_activation(self,
+                             activation: Union[str, nn.Layer]) -> Callable:
+        if isinstance(activation, str):
+            activation = PADDLE_ACTIVATION[activation.lower()]
+        elif not isinstance(activation, nn.Layer):
+            raise NotImplementedError(
+                "activation should be either str or nn.Layer.")
+
+        return activation
 
     def _populate_layers(self) -> nn.LayerList:
         layers = nn.LayerList()
@@ -189,11 +215,13 @@ class MLP(nn.Layer):
                 nn.Linear(
                     self.input_dim, self.output_dim, bias_attr=self.with_bias))
         else:
+            # First layer
             layers.append(
                 nn.Linear(
                     self.input_dim,
                     self.hidden_dim[0],
                     bias_attr=self.with_bias))
+
             # hidden layers
             for i in range(1, self.num_layers - 1):
                 if i in self.skip_layers:
@@ -208,6 +236,7 @@ class MLP(nn.Layer):
                             self.hidden_dim[i - 1],
                             self.hidden_dim[i],
                             bias_attr=self.with_bias))
+            # Last layer
             layers.append(
                 nn.Linear(
                     self.hidden_dim[-1],
@@ -221,12 +250,15 @@ class MLP(nn.Layer):
         residual = x
         for i, layer in enumerate(self.layers[:-1]):
             if i in self.skip_layers:
-                x = paddle.concat([residual, x], axis=-1)
+                x = paddle.concat([x, residual], axis=-1)
+                if self.skip_scale is not None:
+                    x = x / self.skip_scale
             x = layer(x)
             if self.activation is not None:
                 x = self.activation(x)
 
         x = self.layers[-1](x).astype("float32")
+
         if self.output_activation is not None:
             x = self.output_activation(x)
 

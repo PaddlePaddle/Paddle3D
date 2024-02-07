@@ -42,6 +42,11 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
 
 ## 📣最新进展
 
+**🏅️飞桨AI套件**
+
+飞桨AI套件 [PaddleX](https://www.paddlepaddle.org.cn/paddle/paddleX) 发布全新版本，围绕飞桨精选模型（包括3D检测）提供了一站式、全流程、高效率的开发平台。
+
+
 **💎稳定版本**
 
 位于[`主分支`](https://github.com/PaddlePaddle/Paddle3D)，Paddle3D v1.0正式版本发布，详情请参考[release note](https://github.com/PaddlePaddle/Paddle3D/releases/tag/v1.0)。
@@ -77,6 +82,17 @@ Paddle3D是飞桨官方开源的端到端深度学习3D感知套件，涵盖了�
     <img src="https://user-images.githubusercontent.com/61035602/210315230-83ace5d1-1851-4d9b-b305-4290edf9dde8.png"  height = "300" caption='' />
     <p></p>
     </div>
+
+- **📑 PaddleX**
+  * 飞桨低代码开发工具（PaddleX）—— 面向国内外主流AI硬件的飞桨精选模型一站式开发工具。包含如下核心优势：
+    * 【产业高精度模型库】：覆盖10个主流AI任务 40+精选模型，丰富齐全。
+    * 【特色模型产线】：提供融合大小模型的特色模型产线，精度更高，效果更好。
+    * 【低代码开发模式】：图形化界面支持统一开发范式，便捷高效。
+    * 【私有化部署多硬件支持】：适配国内外主流AI硬件，支持本地纯离线使用，满足企业安全保密需要。
+
+  * PaddleX官网地址：https://aistudio.baidu.com/intro/paddlex
+
+  * PaddleX官方交流频道：https://aistudio.baidu.com/community/channel/610
 
 
 ### 📱模型库

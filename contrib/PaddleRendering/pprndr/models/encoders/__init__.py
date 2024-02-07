@@ -16,3 +16,5 @@ from .grid_encoder import GridEncoder
 from .nerf_encoder import NeRFEncoder
 from .ref_nerf_encoder import IntegDirEncoder
 from .sh_encoder import SHEncoder
+from .neus_encoder import NeuSEncoder
+from .tensorf_encoder import TensorVMEncoder, TensorCPEncoder, TriplaneEncoder

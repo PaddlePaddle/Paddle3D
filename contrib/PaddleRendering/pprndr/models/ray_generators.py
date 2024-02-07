@@ -21,12 +21,11 @@ __all__ = ["RayGenerator"]
 
 
 class RayGenerator(nn.Layer):
-    def __init__(self, cameras: Cameras):
+    def __init__(self, cameras: Cameras, offset: float = 0.5):
         super(RayGenerator, self).__init__()
 
         self.cameras = cameras
-
-        image_coords = cameras.get_image_coords()
+        image_coords = cameras.get_image_coords(offset=offset)
         self.register_buffer("image_coords", image_coords)
 
     def forward(self, camera_ids: paddle.Tensor, pixel_indices: paddle.Tensor):

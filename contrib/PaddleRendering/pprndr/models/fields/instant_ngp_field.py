@@ -26,12 +26,12 @@ except ModuleNotFoundError:
     from pprndr.cpp_extensions import trunc_exp
 
 from pprndr.geometries.scene_box import ContractionType
-from pprndr.models.fields import BaseField
+from pprndr.models.fields import BaseDensityField
 from pprndr.ray_marching import contract
 
 
 @manager.FIELDS.add_component
-class InstantNGPField(BaseField):
+class InstantNGPField(BaseDensityField):
     """
     Instant-NGP Field. Reference: https://nvlabs.github.io/instant-ngp/assets/mueller2022instant.pdf
 

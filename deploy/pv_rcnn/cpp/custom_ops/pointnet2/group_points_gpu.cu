@@ -15,10 +15,10 @@ __global__ void group_points_grad_kernel_stack(
     float *grad_features) {
   // :param grad_out: (M1 + M2 ..., C, nsample) tensor of the gradients of the
   // output from forward :param idx: (M1 + M2 ..., nsample) tensor containing
-  // the indicies of features to group with :param idx_batch_cnt: (batch_size)
-  // [M1 + M2 ...] tensor containing the indicies of features to group with
+  // the indices of features to group with :param idx_batch_cnt: (batch_size)
+  // [M1 + M2 ...] tensor containing the indices of features to group with
   // :param features_batch_cnt: (batch_size) [N1 + N2 ...] tensor containing the
-  // indicies of features to group with :return:
+  // indices of features to group with :return:
   //     grad_features: (N1 + N2 ..., C) gradient of the features
   int index = blockIdx.x * blockDim.x + threadIdx.x;
   int sample_idx = index % nsample;
@@ -53,10 +53,10 @@ void group_points_grad_kernel_launcher_stack(int B, int M, int C, int N,
                                              float *grad_features) {
   // :param grad_out: (M1 + M2 ..., C, nsample) tensor of the gradients of the
   // output from forward :param idx: (M1 + M2 ..., nsample) tensor containing
-  // the indicies of features to group with :param idx_batch_cnt: (batch_size)
-  // [M1 + M2 ...] tensor containing the indicies of features to group with
+  // the indices of features to group with :param idx_batch_cnt: (batch_size)
+  // [M1 + M2 ...] tensor containing the indices of features to group with
   // :param features_batch_cnt: (batch_size) [N1 + N2 ...] tensor containing the
-  // indicies of features to group with :return:
+  // indices of features to group with :return:
   //     grad_features: (N1 + N2 ..., C) gradient of the features
 
   cudaError_t err;
@@ -85,9 +85,9 @@ __global__ void group_points_kernel_stack(int B, int M, int C, int nsample,
                                           float *out) {
   // :param features: (N1 + N2 ..., C) tensor of features to group
   // :param features_batch_cnt: (batch_size) [N1 + N2 ...] tensor containing the
-  // indicies of features to group with :param idx: (M1 + M2 ..., nsample)
-  // tensor containing the indicies of features to group with :param
-  // idx_batch_cnt: (batch_size) [M1 + M2 ...] tensor containing the indicies of
+  // indices of features to group with :param idx: (M1 + M2 ..., nsample)
+  // tensor containing the indices of features to group with :param
+  // idx_batch_cnt: (batch_size) [M1 + M2 ...] tensor containing the indices of
   // features to group with :return:
   //     output: (M1 + M2, C, nsample) tensor
   int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -124,9 +124,9 @@ void group_points_kernel_launcher_stack(const int B, const int M, const int C,
                                         const int *idx_batch_cnt, float *out) {
   // :param features: (N1 + N2 ..., C) tensor of features to group
   // :param features_batch_cnt: (batch_size) [N1 + N2 ...] tensor containing the
-  // indicies of features to group with :param idx: (M1 + M2 ..., nsample)
-  // tensor containing the indicies of features to group with :param
-  // idx_batch_cnt: (batch_size) [M1 + M2 ...] tensor containing the indicies of
+  // indices of features to group with :param idx: (M1 + M2 ..., nsample)
+  // tensor containing the indices of features to group with :param
+  // idx_batch_cnt: (batch_size) [M1 + M2 ...] tensor containing the indices of
   // features to group with :return:
   //     output: (M1 + M2, C, nsample) tensor
 

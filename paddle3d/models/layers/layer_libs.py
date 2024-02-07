@@ -21,11 +21,11 @@ import paddle.nn as nn
 import paddle.nn.functional as F
 
 from paddle3d.models import layers
-from paddle3d.ops import iou3d_nms_cuda
+from paddle3d.ops import iou3d_nms
 
 from .param_init import (constant_init, kaiming_normal_init,
                          kaiming_uniform_init, normal_init, reset_parameters,
-                         uniform_init, xavier_uniform_init)
+                         uniform_init, xavier_uniform_init, init_weight)
 
 
 def sigmoid_hm(hm_features):
@@ -237,7 +237,10 @@ def rotate_nms_pcdet(boxes,
     # so we add a reshape op
     boxes = boxes.reshape([-1, 7])
 
-    keep, num_out = iou3d_nms_cuda.nms_gpu(boxes, thresh)
+    if paddle.is_compiled_with_xpu():
+        keep, num_out = iou3d_nms.nms_xpu(boxes, thresh)
+    else:  # gpu
+        keep, num_out = iou3d_nms.nms_gpu(boxes, thresh)
     selected = order[keep[:num_out]]
 
     if post_max_size is not None:
@@ -464,3 +467,36 @@ class NormedLinear(nn.Linear):
         x_ = x_ * self.tempearture
 
         return F.linear(x_, weight_, self.bias)
+
+
+class SimConv(nn.Layer):
+    '''Normal Conv with ReLU activation'''
+
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
+                 stride,
+                 groups=1,
+                 bias=False):
+        super().__init__()
+        padding = kernel_size // 2
+        self.conv = nn.Conv2D(
+            in_channels,
+            out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            groups=groups,
+            bias_attr=bias,
+        )
+        self.bn = nn.BatchNorm2D(out_channels)
+        self.act = nn.ReLU()
+
+        self.apply(init_weight)
+
+    def forward(self, x):
+        return self.act(self.bn(self.conv(x)))
+
+    def forward_fuse(self, x):
+        return self.act(self.conv(x))

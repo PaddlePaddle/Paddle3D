@@ -20,7 +20,7 @@ from pprndr.utils.logger import logger
 
 __all__ = [
     "DATASETS", "TRANSFORMS", "MODELS", "ENCODERS", "RAYSAMPLERS", "LAYERS",
-    "FIELDS", "RENDERERS", "LR_SCHEDULERS", "METRICS"
+    "FIELDS", "RENDERERS", "LR_SCHEDULERS", "METRICS", "WEIGHT_INITIALIZERS"
 ]
 
 
@@ -149,3 +149,4 @@ LAYERS = ComponentManager(name="layers")
 RENDERERS = ComponentManager(name="renderers")
 LR_SCHEDULERS = ComponentManager(name="lr_schedulers")
 METRICS = ComponentManager(name="metrics")
+WEIGHT_INITIALIZERS = ComponentManager(name="weight_initializers")

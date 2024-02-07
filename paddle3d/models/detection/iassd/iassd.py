@@ -25,7 +25,7 @@ from paddle.static import InputSpec
 from paddle3d.apis import manager
 from paddle3d.geometries import BBoxes3D, CoordMode
 from paddle3d.models.layers import constant_init, reset_parameters
-from paddle3d.ops import iou3d_nms_cuda, pointnet2_ops
+from paddle3d.ops import iou3d_nms, pointnet2_ops
 from paddle3d.sample import Sample
 from paddle3d.utils import box_utils
 from paddle3d.utils.logger import logger
@@ -199,8 +199,8 @@ class IASSD(nn.Layer):
             label_preds = paddle.gather(label_preds, index=order)
             # When order is one-value tensor,
             # boxes[order] loses a dimension, so we add a reshape
-            keep, num_out = iou3d_nms_cuda.nms_gpu(box_preds,
-                                                   nms_config["nms_thresh"])
+            keep, num_out = iou3d_nms.nms_gpu(box_preds,
+                                              nms_config["nms_thresh"])
             if num_out.cast("int64") == 0:
                 return fake_score, fake_label, fake_box
             else:

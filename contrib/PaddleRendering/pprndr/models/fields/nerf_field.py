@@ -20,13 +20,13 @@ import paddle.nn.functional as F
 
 from pprndr.apis import manager
 from pprndr.cameras.rays import RaySamples
-from pprndr.models.fields import BaseField
+from pprndr.models.fields import BaseDensityField
 
-__all__ = ['NeRFField']
+__all__ = ['NeRFField', 'NeRFPPField']
 
 
 @manager.FIELDS.add_component
-class NeRFField(BaseField):
+class NeRFField(BaseDensityField):
     """
     NeRF Field. Reference: https://arxiv.org/abs/2003.08934
 
@@ -99,3 +99,43 @@ class NeRFField(BaseField):
             color = color * (1. + 2. * self.rgb_padding) - self.rgb_padding
 
         return dict(rgb=color)
+
+
+@manager.FIELDS.add_component
+class NeRFPPField(NeRFField):
+    """
+    NeRF++ Field according to the paper.
+    """
+
+    def __init__(
+            self,
+            dir_encoder: nn.Layer,
+            pos_encoder: nn.Layer,
+            stem_net: nn.Layer,
+            density_head: nn.Layer,
+            color_head: nn.Layer,
+            density_noise: float = None,
+            density_bias: float = None,
+            rgb_padding: float = None,
+    ):
+        super(NeRFPPField, self).__init__(
+            dir_encoder=dir_encoder,
+            pos_encoder=pos_encoder,
+            stem_net=stem_net,
+            density_head=density_head,
+            color_head=color_head,
+            density_noise=density_noise,
+            density_bias=density_bias,
+            rgb_padding=rgb_padding,
+            use_integrated_encoding=False)
+
+    def get_density(self, ray_samples: RaySamples
+                    ) -> Tuple[paddle.Tensor, paddle.Tensor]:
+        # warp outsiders
+        positions = ray_samples.frustums.positions
+        dis_to_center = paddle.linalg.norm(
+            positions, p=2, axis=-1, keepdim=True).clip(1.0, 1e10)
+        pos_inputs = paddle.concat(
+            [positions / dis_to_center, 1.0 / dis_to_center], axis=-1)
+
+        return super(NeRFPPField, self).get_density(pos_inputs)

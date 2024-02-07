@@ -252,3 +252,13 @@ def reset_parameters(m, reverse=False):
 def init_bias_by_prob(prob):
     bias_val = float(-np.log((1 - prob) / prob))
     return bias_val
+
+
+def init_weight(layer):
+    if isinstance(layer, (nn.layer.conv._ConvNd, nn.Linear)):
+        reset_parameters(layer)
+    elif isinstance(layer, (nn.layer.norm._BatchNormBase, \
+                    nn.layer.norm.LayerNorm, nn.layer.norm._InstanceNormBase)):
+        with paddle.no_grad():
+            constant_init(layer.weight, value=1)
+            constant_init(layer.bias, value=0)

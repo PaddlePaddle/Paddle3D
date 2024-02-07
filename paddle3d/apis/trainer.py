@@ -29,6 +29,7 @@ from paddle3d.utils.logger import Logger, logger
 from paddle3d.utils.shm_utils import _get_shared_memory_size_in_M
 from paddle3d.utils.timer import Timer
 from paddle3d.utils.profiler import add_profiler_step
+from paddle3d.utils.ema import ModelEMA
 
 
 def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
@@ -38,6 +39,7 @@ def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
     def _generate_loader(dataset: paddle.io.Dataset, model: paddle.nn.Layer):
         args = kwargs.copy()
         batch_size = args.pop('batch_size', 1)
+        val_batch_size = args.pop('val_batch_size', batch_size)
         shuffle = False if not dataset.is_train_mode else True
         drop_last = args.pop('drop_last',
                              False if not dataset.is_train_mode else True)
@@ -50,7 +52,7 @@ def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
 
         batch_sampler = BatchSampler(
             dataset,
-            batch_size=batch_size,
+            batch_size=batch_size if dataset.is_train_mode else val_batch_size,
             shuffle=shuffle,
             drop_last=drop_last)
 
@@ -124,7 +126,9 @@ class Trainer:
             profiler_options: Optional[dict] = None,
             dataloader_fn: Union[dict, Callable] = dict(),
             amp_cfg: Optional[dict] = None,
-            do_bind: Optional[bool] = False):
+            do_bind: Optional[bool] = False,
+            temporal_start_epoch: Optional[int] = -1,
+            ema_cfg: Optional[dict] = None):
 
         self.model = model
         self.optimizer = optimizer
@@ -145,6 +149,7 @@ class Trainer:
         self.iters_per_epoch = len(self.train_dataloader)
 
         self.do_bind = do_bind
+        self.temporal_start_epoch = temporal_start_epoch
 
         if iters is None:
             self.epochs = epochs
@@ -202,23 +207,25 @@ class Trainer:
         if self.checkpoint is None:
             return
 
-        if not self.checkpoint.empty:
-            if not resume:
-                raise RuntimeError(
-                    'The checkpoint {} is not emtpy! Set `resume=True` to continue training or use another dir as checkpoint'
-                    .format(self.checkpoint.rootdir))
+        self.use_ema = False
+        if ema_cfg is not None:
+            logger.info('Use EMA train, ema config: {}'.format(ema_cfg))
+            self.ema = ModelEMA(self.model, **ema_cfg)
+            self.use_ema = True
 
+        if not self.checkpoint.empty and resume:
             if self.checkpoint.meta.get(
                     'train_by_epoch') != self.train_by_epoch:
                 raise RuntimeError(
                     'Unable to resume training since the train_by_epoch is inconsistent with that saved in the checkpoint'
                 )
 
-            params_dict, opt_dict = self.checkpoint.get()
-            self.model.set_dict(params_dict)
-            self.optimizer.set_state_dict(opt_dict)
             self.cur_iter = self.checkpoint.meta.get('iters')
             self.cur_epoch = self.checkpoint.meta.get('epochs')
+            params_dict, opt_dict = self.checkpoint.get(
+                ema=self.ema if self.use_ema else None, step=self.cur_epoch)
+            self.model.set_dict(params_dict)
+            self.optimizer.set_state_dict(opt_dict)
             self.scheduler.step(self.cur_iter)
 
             self.logger.info(
@@ -253,6 +260,21 @@ class Trainer:
             self.logger.info(
                 'Use AMP train, AMP config: {}, Scaler config: {}'.format(
                     amp_cfg_, scaler_cfg_))
+
+        # training with ema
+        if self.use_ema:
+            ema_decay = ema_cfg.get('ema_decay', 0.9998)
+            ema_decay_type = ema_cfg.get('ema_decay_type', 'threshold')
+            cycle_epoch = ema_cfg.get('cycle_epoch', -1)
+            ema_black_list = ema_cfg.get('ema_black_list', None)
+            ema_filter_no_grad = ema_cfg.get('ema_filter_no_grad', False)
+            self.ema = ModelEMA(
+                self.model,
+                decay=ema_decay,
+                ema_decay_type=ema_decay_type,
+                cycle_epoch=cycle_epoch,
+                ema_black_list=ema_black_list,
+                ema_filter_no_grad=ema_filter_no_grad)
 
     def train(self):
         """
@@ -314,6 +336,13 @@ class Trainer:
                 if self.cur_iter % self.iters_per_epoch == 1:
                     self.cur_epoch += 1
 
+                # simple implementation of SequentialControlHook
+                if self.temporal_start_epoch != -1 and (
+                        self.cur_epoch > self.temporal_start_epoch):
+                    self.model.with_prev = True
+                else:
+                    self.model.with_prev = False
+
                 if self.cur_iter > self.iters:
                     break
 
@@ -352,17 +381,32 @@ class Trainer:
                         tag='Training/learning_rate',
                         value=lr,
                         step=self.cur_iter)
-
+                    max_mem_reserved_str = ""
+                    max_mem_allocated_str = ""
+                    if paddle.device.is_compiled_with_cuda():
+                        max_mem_reserved_str = f"max_mem_reserved: {paddle.device.cuda.max_memory_reserved() // (1024 ** 2)} MB,"
+                        max_mem_allocated_str = f"max_mem_allocated: {paddle.device.cuda.max_memory_allocated() // (1024 ** 2)} MB"
                     self.logger.info(
-                        '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f}, batch_cost: {:.6f} sec, ips: {:.6f} images/s | ETA {}'
-                        .format(self.cur_epoch, self.epochs, self.cur_iter,
-                                self.iters, loss_log, lr, timer.speed,
-                                timer.ips, timer.eta))
+                        '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f}, batch_cost: {:.6f} sec, '
+                        'ips: {:.6f} images/s | ETA {}, {} {}'.format(
+                            self.cur_epoch, self.epochs, self.cur_iter,
+                            self.iters, loss_log, lr, timer.speed, timer.ips,
+                            timer.eta, max_mem_reserved_str,
+                            max_mem_allocated_str))
 
                     losses_sum.clear()
 
+                if self.use_ema:  # update ema_weight at each iter
+                    self.ema.update()
+
                 if status.do_eval and env.local_rank == 0:
                     # TODO: whether to save a checkpoint based on the metric
+                    # if use ema, evaluation should be based on ema weights
+                    # so replace current weights with ema weights
+                    if self.use_ema:
+                        # apply ema weight on model
+                        curr_weight = copy.deepcopy(self.model.state_dict())
+                        self.model.set_dict(self.ema.apply())
                     metrics = self.evaluate()
                     for k, v in metrics.items():
                         if not isinstance(v, paddle.Tensor) or v.numel() != 1:
@@ -372,6 +416,10 @@ class Trainer:
                             tag='Evaluation/{}'.format(k),
                             value=float(v),
                             step=self.cur_iter)
+
+                    if self.use_ema:
+                        # reset original weight
+                        self.model.set_dict(curr_weight)
 
                 if status.save_checkpoint and env.local_rank == 0:
                     if self.train_by_epoch:
@@ -383,10 +431,13 @@ class Trainer:
                         tag=tag,
                         params_dict=self.model.state_dict(),
                         opt_dict=self.optimizer.state_dict(),
-                        verbose=True)
+                        verbose=True,
+                        ema_model=self.ema.apply() if self.use_ema else None)
 
                     self.checkpoint.record('iters', self.cur_iter)
                     self.checkpoint.record('epochs', self.cur_epoch)
+
+                timer.update()
 
         self.logger.info('Training is complete.')
 
@@ -401,7 +452,8 @@ class Trainer:
                     tag=tag,
                     params_dict=self.model.state_dict(),
                     opt_dict=self.optimizer.state_dict(),
-                    verbose=True)
+                    verbose=True,
+                    ema_model=self.ema.apply() if self.use_ema else None)
 
             self.checkpoint.record('iters', self.iters)
             self.checkpoint.record('epochs', self.epochs)

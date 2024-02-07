@@ -592,3 +592,16 @@ class MMResNet(nn.Layer):
                 # trick: eval have effect on BatchNorm only
                 if isinstance(m, nn.BatchNorm2D):
                     m.eval()
+
+
+def resnet34(pretrained=None, **kwargs):
+    """Constructs a ResNet-34 model.
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet
+    """
+    model = MMResNet(depth=34, **kwargs)
+    if pretrained is not None:
+        state_dict = paddle.load(pretrained)
+        model.set_state_dict(state_dict)
+        print('Loaded resnet34 pretrained model from', pretrained)
+    return model

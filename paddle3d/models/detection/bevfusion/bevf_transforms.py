@@ -485,28 +485,17 @@ class SampleFilterByKey(TransformABC):
 
 
 @manager.TRANSFORMS.add_component
-class LoadPointsFromFile(object):
+class LoadPointsFromFile(TransformABC):
     """Load Points From File.
-
-    Load sunrgbd and scannet points from file.
-
-    Args:
-        load_dim (int): The dimension of the loaded points.
-            Defaults to 6.
-        coord_type (str): The type of coordinates of points cloud.
-            Available options includes:
-            - 'LIDAR': Points in LiDAR coordinates.
-            - 'DEPTH': Points in depth coordinates, usually for indoor dataset.
-            - 'CAMERA': Points in camera coordinates.
-        use_dim (list[int]): Which dimensions of the points to be used.
-            Defaults to [0, 1, 2]. For KITTI dataset, set use_dim=4
-            or use_dim=[0, 1, 2, 3] to use the intensity dimension.
-        shift_height (bool): Whether to use shifted height. Defaults to False.
-            for more details. Defaults to dict(backend='disk').
     """
 
-    def __init__(self, load_dim=6, use_dim=[0, 1, 2], shift_height=False):
+    def __init__(self,
+                 load_dim=6,
+                 use_dim=[0, 1, 2],
+                 shift_height=False,
+                 use_color=False):
         self.shift_height = shift_height
+        self.use_color = use_color
         if isinstance(use_dim, int):
             use_dim = list(range(use_dim))
         assert max(use_dim) < load_dim, \
@@ -517,36 +506,38 @@ class LoadPointsFromFile(object):
 
     def _load_points(self, pts_filename):
         """Private function to load point clouds data.
-
-        Args:
-            pts_filename (str): Filename of point clouds data.
-
-        Returns:
-            np.ndarray: An array containing point clouds data.
         """
-        points = np.fromfile(pts_filename, dtype=np.float32)
 
+        points = np.fromfile(pts_filename, dtype=np.float32)
         return points
 
     def __call__(self, results):
         """Call function to load points data from file.
-
-        Args:
-            results (dict): Result dict containing point clouds data.
-
-        Returns:
-            dict: The result dict containing the point clouds data. \
-                Added key and value are described below.
-
-                - points (np.ndarray): Point clouds data.
         """
         pts_filename = results['pts_filename']
         points = self._load_points(pts_filename)
         points = points.reshape(-1, self.load_dim)
         points = points[:, self.use_dim]
+        attribute_dims = None
 
         if self.shift_height:
-            raise NotImplementedError
+            floor_height = np.percentile(points[:, 2], 0.99)
+            height = points[:, 2] - floor_height
+            points = np.concatenate(
+                [points[:, :3],
+                 np.expand_dims(height, 1), points[:, 3:]], 1)
+            attribute_dims = dict(height=3)
+
+        if self.use_color:
+            assert len(self.use_dim) >= 6
+            if attribute_dims is None:
+                attribute_dims = dict()
+            attribute_dims.update(
+                dict(color=[
+                    points.shape[1] - 3,
+                    points.shape[1] - 2,
+                    points.shape[1] - 1,
+                ]))
 
         results['points'] = points
 

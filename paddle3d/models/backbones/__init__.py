@@ -21,3 +21,4 @@ from .second_backbone import *
 from .vovnet import *
 from .vovnetcp import VoVNetCP
 from .mm_resnet import MMResNet
+from .custom_resnet import CustomResNet

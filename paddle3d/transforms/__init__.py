@@ -20,3 +20,4 @@ from paddle3d.transforms.reader import *
 from paddle3d.transforms.sampling import *
 from paddle3d.transforms.target_generator import *
 from paddle3d.transforms.transform import *
+from paddle3d.transforms.bevdet_reader import *

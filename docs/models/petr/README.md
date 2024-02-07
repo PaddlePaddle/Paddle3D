@@ -27,6 +27,7 @@ PETRv2在v1的基础上加入了时序信息，致力于构建一个统一的多
 
 
 ## <h2 id="4">模型库</h2>
+### 检测模型
 | 模型 |  骨干网络  | 3DmAP | NDS |  模型下载 | 配置文件 |  日志 |
 | :--: | :-------: | :--------: | :-------------------: | :------: | :-----: | :--: |
 |PETR v1 |  v99    | 38.35 | 43.52 | [model](https://paddle3d.bj.bcebos.com/models/petr/petr_vovnet_gridmask_p4_800x320_amp/model.pdparams) | [config](../../../configs/petr/petr_vovnet_gridmask_p4_800x320_amp.yml) | [log](https://paddle3d.bj.bcebos.com/models/petr/petr_vovnet_gridmask_p4_800x320_amp/train.log) \| [vdl](https://www.paddlepaddle.org.cn/paddle/visualdl/service/app/scalar?id=334e6a6ba257c953fe67bac17a1434a6) |
@@ -35,6 +36,10 @@ PETRv2在v1的基础上加入了时序信息，致力于构建一个统一的多
 |PETR v2 + denoise + centerview |  v99    | 43.45 | 52.24 | [model](https://paddle3d.bj.bcebos.com/models/petr/petrv2_vovnet_gridmask_p4_800x320_dn_centerview_amp/model.pdparams) | [config](../../../configs/petr/petrv2_vovnet_gridmask_p4_800x320_dn_centerview_amp.yml) | [log](https://paddle3d.bj.bcebos.com/models/petr/petrv2_vovnet_gridmask_p4_800x320_dn_centerview_amp/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=41e8354ab1faef44ab05850e1b4d5383) |
 |PETR v2 + denoise + multiview |  v99    | 44.91 | 53.34 | [model](https://paddle3d.bj.bcebos.com/models/petr/petrv2_vovnet_gridmask_p4_1600x640_dn_multiscale_amp/model.pdparams) | [config](../../../configs/petr/petrv2_vovnet_gridmask_p4_1600x640_dn_multiscale_amp.yml) | [log](https://paddle3d.bj.bcebos.com/models/petr/petrv2_vovnet_gridmask_p4_1600x640_dn_multiscale_amp/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=ed5c16888449914ddde4f9554c6edeac) |
 
+### 分割模型
+| 模型 | 骨干网络 | Drive | Lane|  Vehicle  | 模型下载 | 配置文件 |  日志 |
+|:--------:|:----------:|:---------:|:--------:|:--------:|:--------:|:---------:|:---------:|
+| PETR v2 BEVseg   | v99    | 79.0%     | 44.8%   | 49.4%     |  [model](https://paddle3d.bj.bcebos.com/models/petr/petrv2_BEVseg_800x320_amp/model.pdparams) | [config](../../../configs/petr/petrv2_BEVseg_800x320_amp.yml) | [log](https://paddle3d.bj.bcebos.com/models/petr/petrv2_BEVseg_800x320_amp/train.log) \| [vdl](https://paddlepaddle.org.cn/paddle/visualdl/service/app?id=c2d6249c8c791dd79d17c27da7a80621) |
 ## <h2 id="5">使用教程</h2>
 
 ## <h2 id="6">数据准备</h2>
@@ -73,6 +78,8 @@ nuscenes
 | -- | -- |
 | petr_nuscenes_annotation_train.pkl | [下载](https://paddle3d.bj.bcebos.com/datasets/nuScenes/petr_nuscenes_annotation_train.pkl) |
 | petr_nuscenes_annotation_val.pkl | [下载](https://paddle3d.bj.bcebos.com/datasets/nuScenes/petr_nuscenes_annotation_val.pkl) |
+
+如果需要运行分割模型，需要从Nuscenes官网下载`Map expansion`数据集，解压到`maps`文件夹下，并下载[HDmaps-nocovers annotion文件](https://paddle3d.bj.bcebos.com/datasets/nuScenes/HDmaps-nocovers.zip)。
 
 ## <h2 id="7">训练</h2>
 

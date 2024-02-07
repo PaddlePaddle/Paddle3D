@@ -14,11 +14,10 @@
 
 import argparse
 import os
+import sys
 import random
-
 import numpy as np
 import paddle
-
 import pprndr.utils.env as pprndr_env
 from pprndr.apis.config import Config
 from pprndr.apis.trainer import Trainer

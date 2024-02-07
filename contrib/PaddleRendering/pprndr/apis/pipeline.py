@@ -14,7 +14,6 @@
 
 from collections import defaultdict
 from typing import Dict, Tuple, Union
-
 import paddle
 from paddle.distributed.fleet.utils.hybrid_parallel_util import \
     fused_allreduce_gradients
@@ -84,8 +83,10 @@ def training_step(model: paddle.nn.Layer,
 
 
 @paddle.no_grad()
-def inference_step(model: paddle.nn.Layer, ray_bundle: RayBundle,
-                   ray_batch_size: int) -> dict:
+def inference_step(model: paddle.nn.Layer,
+                   ray_bundle: RayBundle,
+                   ray_batch_size: int,
+                   to_cpu: bool = False) -> dict:
     outputs_all = defaultdict(list)
 
     model.eval()
@@ -94,7 +95,10 @@ def inference_step(model: paddle.nn.Layer, ray_bundle: RayBundle,
         cur_ray_bundle = ray_bundle[b_id:b_id + ray_batch_size]
         outputs = model(cur_ray_bundle)
         for k, v in outputs.items():
+            if isinstance(v, paddle.Tensor) and to_cpu:
+                v = v.cpu()
             outputs_all[k].append(v)
+        del outputs
 
     outputs = {}
     for k, v in outputs_all.items():

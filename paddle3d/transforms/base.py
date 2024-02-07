@@ -49,7 +49,8 @@ class Compose(TransformABC):
             sample.meta.channel_order = "chw"
 
         elif sample.modality == 'multimodal' or sample.modality == 'multiview':
-            sample.img = np.stack(
-                [img.transpose(2, 0, 1) for img in sample.img], axis=0)
+            if 'img' in sample.keys():
+                sample.img = np.stack(
+                    [img.transpose(2, 0, 1) for img in sample.img], axis=0)
 
         return sample
