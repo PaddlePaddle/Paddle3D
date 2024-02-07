@@ -360,6 +360,12 @@ sh compile.sh
 python infer.py --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5
 ```
 
+运行以下命令，执行预测并可视化：
+
+```
+python vis.py --model_file /path/to/centerpoint.pdmodel --params_file /path/to/centerpoint.pdiparams --lidar_file /path/to/lidar.pcd.bin --num_point_dim 5
+```
+
 Python开启TensorRT的推理步骤与C++开启TensorRT加速推理一致，请参考文档前面介绍【开启TensorRT加速预测】并将C++命令参数替换成Python的命令参数。推荐使用PaddlePaddle 的官方镜像，镜像内已经预安装TensorRT。官方镜像请至[Paddle官网](https://www.paddlepaddle.org.cn/install/quick?docurl=/documentation/docs/zh/install/docker/linux-docker.html)进行下载。
 
 ## <h2 id="9">自定义数据集</h2>
