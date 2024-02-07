@@ -198,3 +198,7 @@ def generate_nuscenes_gt_database(dataset_root: str,
     with open(db_anno_file, 'wb') as f:
         pickle.dump(database, f)
     logger.info("The database generation has been done.")
+
+
+if __name__ == '__main__':
+    generate_kitti_gt_database("/data/Dataset/kitti")

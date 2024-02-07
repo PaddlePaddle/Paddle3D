@@ -29,17 +29,39 @@ model_name=$(func_parser_value "${lines[1]}")
 trainer_list=$(func_parser_value "${lines[14]}")
 
 if [ ${MODE} = "benchmark_train" ];then
+    export https_proxy=${HTTP_PRO} && export http_proxy=${HTTPS_PRO}
     pip install -r requirements.txt
     pip install -e .
     pip install opencv-python==4.6.0.66
     MODE="lite_train_lite_infer"
+    unset https_proxy && unset http_proxy
 fi
 
+mkdir -p /data/Dataset
 if [ ${MODE} = "lite_train_lite_infer" ];then
     if [ ${model_name} == "PAConv" ]; then
         rm -rf ./test_tipc/data/mini_modelnet40
         mkdir -p ./test_tipc/data/mini_modelnet40
         cd ./test_tipc/data/mini_modelnet40 && tar xf ../mini_modelnet40.tar.gz && cd ../../
+    elif [ ${model_name} = "petrv2" ]; then
+        rm -rf ./data/nuscenes
+        wget -nc  -P ./ https://paddle3d.bj.bcebos.com/pretrained/fcos3d_vovnet_imgbackbone-remapped.pdparams --no-check-certificate
+        cd ./data/ && unzip nuscenes.zip && cd ../
+    elif [ ${model_name} = "centerpoint" ]; then
+        mkdir -p datasets
+        rm -rf ./datasets/KITTI
+        wget -nc -P ./datasets/ https://paddle3d.bj.bcebos.com/TIPC/dataset/kitti_mini_centerpoint.tar.gz --no-check-certificate
+        cd ./datasets/ && tar -xzf kitti_mini_centerpoint.tar.gz && cd -
+    elif [ ${model_name} = "pointpillars" ]; then
+        if [ ! -d "/data/Dataset/KITTI_800" ]; then
+            cd /data/Dataset
+            wget https://paddle3d.bj.bcebos.com/TIPC/dataset/KITTI_800.tar --no-check-certificate
+            tar -xf KITTI_800.tar
+            cd -
+        fi
+        mkdir -p datasets
+        rm -rf ./datasets/KITTI_800
+        ln -s /data/Dataset/KITTI_800 ./datasets/KITTI_800
     elif [ ${model_name} == "petr_vovnet_gridmask_p4_800x320" ]; then
         rm -rf ./data
         mkdir data && cd data
