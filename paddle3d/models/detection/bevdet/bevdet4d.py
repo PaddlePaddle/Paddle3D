@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from typing import Dict, List
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 from paddle3d.apis import manager
+from paddle3d.ops import bev_pool_v2
 
 
 class DictObject(Dict):
@@ -279,7 +281,7 @@ class BEVDet4D(nn.Layer):
             feat_prev = paddle.concat(bev_feat_list[1:], axis=0)
             trans_curr = trans[0].tile([self.num_frame - 1, 1, 1])
             rots_curr = rots[0].tile([self.num_frame - 1, 1, 1, 1])
-            trans_prev = paddle.concat(rots[1:], axis=0)
+            trans_prev = paddle.concat(trans[1:], axis=0)
             rots_prev = paddle.concat(rots[1:], axis=0)
             bda_curr = bda.tile([self.num_frame - 1, 1, 1])
             return feat_prev, [
@@ -414,3 +416,78 @@ class BEVDet4D(nn.Layer):
             points, img=img_inputs[0], img_metas=img_metas, **kwargs)
         outs = self.pts_bbox_head(img_feats[0])
         return outs
+
+    def get_bev_pool_input(self, input):
+        coor = self.img_view_transformer.get_lidar_coor(*input[1:7])
+        return self.img_view_transformer.voxel_pooling_prepare_v2(coor)
+
+    def export_forward(self, img, feat_prev, mlp_input, ranks_depth, ranks_feat,
+                       ranks_bev, interval_starts, interval_lengths):
+
+        self.align_after_view_transfromation = True
+        x = self.image_encoder(img)
+        B, N, C, H, W = x.shape
+        x = x.reshape((B * N, C, H, W))
+        x = self.img_view_transformer.depth_net(x, mlp_input)
+        depth = F.softmax(x[:, :self.img_view_transformer.D], axis=1)
+        tran_feat = x[:, self.img_view_transformer.D:(
+            self.img_view_transformer.D +
+            self.img_view_transformer.out_channels)]
+        feat = tran_feat
+        n, d, h, w = depth.shape
+        feat = feat.reshape([n, feat.shape[1], h, w])
+        feat = feat.transpose([0, 2, 3, 1])
+
+        output_height, output_width = 128, 128
+        bev_feat_shape = (1, output_height, output_width, 80)  # (B, Z, Y, X, C)
+        out = bev_pool_v2.bev_pool_v2(depth, feat, ranks_depth, ranks_feat,
+                                      ranks_bev, interval_lengths,
+                                      interval_starts, bev_feat_shape)
+        bev_feat = out.transpose((0, 3, 1, 2))
+        bev_feat = bev_feat.reshape([1, 80, 128, 128])
+
+        if self.pre_process:
+            bev_feat = self.pre_process_net(bev_feat)[0]
+
+        bev_feat_list = []
+        bev_feat_list.append(bev_feat)
+        bev_feat_list.append(feat_prev)
+        bev_feat = paddle.concat(bev_feat_list, axis=1)
+        bev_feat = self.bev_encoder(bev_feat)
+
+        outs = self.pts_bbox_head(bev_feat)[0]
+        return outs
+
+    def export(self, save_dir: str, **kwargs):
+        self.forward = self.export_forward
+        self.export_model = True
+
+        image_spec = paddle.static.InputSpec(
+            shape=[1, 6, 3, 256, 704], dtype="float32", name='image')
+        feat_prev_spec = paddle.static.InputSpec(
+            shape=[1, (self.num_frame - 1) * 80, 128, 128],
+            dtype="float32",
+            name="feat_prev")
+        mlp_input_spec = paddle.static.InputSpec(
+            shape=[1, 6, 27], dtype="float32", name="mlp_input")
+        ranks_depth_spec = paddle.static.InputSpec(
+            shape=[None], dtype="int32", name='ranks_depth')
+        ranks_feat_spec = paddle.static.InputSpec(
+            shape=[None], dtype="int32", name='ranks_feat')
+        ranks_bev_spec = paddle.static.InputSpec(
+            shape=[None], dtype="int32", name='ranks_bev')
+        interval_starts_spec = paddle.static.InputSpec(
+            shape=[None], dtype="int32", name='interval_starts')
+        interval_lengths_spec = paddle.static.InputSpec(
+            shape=[None], dtype="int32", name='interval_lengths')
+
+        input_spec = [
+            image_spec, feat_prev_spec, mlp_input_spec, ranks_depth_spec,
+            ranks_feat_spec, ranks_bev_spec, interval_starts_spec,
+            interval_lengths_spec
+        ]
+
+        model_name = "bevdet/model"
+
+        paddle.jit.to_static(self, input_spec=input_spec)
+        paddle.jit.save(self, os.path.join(save_dir, model_name))
