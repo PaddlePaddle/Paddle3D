@@ -29,12 +29,10 @@ model_name=$(func_parser_value "${lines[1]}")
 trainer_list=$(func_parser_value "${lines[14]}")
 
 if [ ${MODE} = "benchmark_train" ];then
-    export https_proxy=${HTTP_PRO} && export http_proxy=${HTTPS_PRO}
     pip install -r requirements.txt
     pip install -e .
     pip install opencv-python==4.6.0.66
     MODE="lite_train_lite_infer"
-    unset https_proxy && unset http_proxy
 fi
 
 mkdir -p /data/Dataset
