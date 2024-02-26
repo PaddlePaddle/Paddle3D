@@ -164,9 +164,6 @@ else
     device_num_list=($device_num)
 fi
 
-# clear share memory
-rm -rf /dev/shm/*
-
 IFS="|"
 for batch_size in ${batch_size_list[*]}; do
     for precision in ${fp_items_list[*]}; do
@@ -264,7 +261,3 @@ for batch_size in ${batch_size_list[*]}; do
         done
     done
 done
-
-# clear share memory
-rm -rf /dev/shm/*
-ps -ef | grep python | awk '{ print $2 }' | xargs kill -9
