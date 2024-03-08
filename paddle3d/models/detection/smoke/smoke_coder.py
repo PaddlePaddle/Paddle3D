@@ -135,7 +135,7 @@ class SMOKECoder(paddle.nn.Layer):
 
         # int + float -> int, but float + int -> float
         # proj_points = points + points_offset
-        proj_points = points_offset + points
+        proj_points = points_offset + points.astype(points_offset.dtype)
 
         # transform project points in homogeneous form.
         proj_points_extend = paddle.concat(
