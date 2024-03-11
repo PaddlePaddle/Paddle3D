@@ -133,7 +133,6 @@ class SMOKECoder(paddle.nn.Layer):
         points = paddle.reshape(points, (-1, 2))
         assert points.shape[0] == N
 
-        # int + float -> int, but float + int -> float
         # proj_points = points + points_offset
         proj_points = points_offset + points.astype(points_offset.dtype)
 
