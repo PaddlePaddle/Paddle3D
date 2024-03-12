@@ -72,12 +72,11 @@ def default_dataloader_build_fn(**kwargs) -> paddle.io.DataLoader:
                                "disable shared_memory in DataLoader")
                 use_shared_memory = False
 
-        return paddle.io.DataLoader(
-            dataset=dataset,
-            batch_sampler=batch_sampler,
-            collate_fn=collate_fn,
-            use_shared_memory=use_shared_memory,
-            **args)
+        return paddle.io.DataLoader(dataset=dataset,
+                                    batch_sampler=batch_sampler,
+                                    collate_fn=collate_fn,
+                                    use_shared_memory=use_shared_memory,
+                                    **args)
 
     return _generate_loader
 
@@ -128,7 +127,8 @@ class Trainer:
             amp_cfg: Optional[dict] = None,
             do_bind: Optional[bool] = False,
             temporal_start_epoch: Optional[int] = -1,
-            ema_cfg: Optional[dict] = None):
+            ema_cfg: Optional[dict] = None,
+            print_mem_info: Optional[bool] = False):
 
         self.model = model
         self.optimizer = optimizer
@@ -150,6 +150,7 @@ class Trainer:
 
         self.do_bind = do_bind
         self.temporal_start_epoch = temporal_start_epoch
+        self.print_mem_info = print_mem_info
 
         if iters is None:
             self.epochs = epochs
@@ -237,8 +238,8 @@ class Trainer:
                 "Attempt to restore parameters from an empty checkpoint")
 
         if env.local_rank == 0:
-            self.log_writer = LogWriter(
-                logdir=self.checkpoint.rootdir, file_name=vdl_file_name)
+            self.log_writer = LogWriter(logdir=self.checkpoint.rootdir,
+                                        file_name=vdl_file_name)
             self.checkpoint.record('vdl_file_name',
                                    os.path.basename(self.log_writer.file_name))
             self.checkpoint.record('train_by_epoch', self.train_by_epoch)
@@ -268,13 +269,12 @@ class Trainer:
             cycle_epoch = ema_cfg.get('cycle_epoch', -1)
             ema_black_list = ema_cfg.get('ema_black_list', None)
             ema_filter_no_grad = ema_cfg.get('ema_filter_no_grad', False)
-            self.ema = ModelEMA(
-                self.model,
-                decay=ema_decay,
-                ema_decay_type=ema_decay_type,
-                cycle_epoch=cycle_epoch,
-                ema_black_list=ema_black_list,
-                ema_filter_no_grad=ema_filter_no_grad)
+            self.ema = ModelEMA(self.model,
+                                decay=ema_decay,
+                                ema_decay_type=ema_decay_type,
+                                cycle_epoch=cycle_epoch,
+                                ema_black_list=ema_black_list,
+                                ema_filter_no_grad=ema_filter_no_grad)
 
     def train(self):
         """
@@ -350,16 +350,16 @@ class Trainer:
 
                 lr = self.optimizer.get_lr()
 
-                output = training_step(
-                    model,
-                    self.optimizer,
-                    sample,
-                    self.cur_iter,
-                    scaler=self.scaler,
-                    amp_cfg=self.amp_cfg,
-                    all_fused_tensors=getattr(self.optimizer,
-                                              'all_fused_tensors', None),
-                    group=group)
+                output = training_step(model,
+                                       self.optimizer,
+                                       sample,
+                                       self.cur_iter,
+                                       scaler=self.scaler,
+                                       amp_cfg=self.amp_cfg,
+                                       all_fused_tensors=getattr(
+                                           self.optimizer, 'all_fused_tensors',
+                                           None),
+                                       group=group)
 
                 for loss_name, loss_value in output.items():
                     losses_sum[loss_name] += float(loss_value)
@@ -372,23 +372,22 @@ class Trainer:
                     for loss_name, loss_value in losses_sum.items():
                         loss_value = loss_value / self.scheduler.log_interval
                         loss_log += ', {}={:.6f}'.format(loss_name, loss_value)
-                        self.log_writer.add_scalar(
-                            tag='Training/' + loss_name,
-                            value=loss_value,
-                            step=self.cur_iter)
+                        self.log_writer.add_scalar(tag='Training/' + loss_name,
+                                                   value=loss_value,
+                                                   step=self.cur_iter)
 
-                    self.log_writer.add_scalar(
-                        tag='Training/learning_rate',
-                        value=lr,
-                        step=self.cur_iter)
+                    self.log_writer.add_scalar(tag='Training/learning_rate',
+                                               value=lr,
+                                               step=self.cur_iter)
                     max_mem_reserved_str = ""
                     max_mem_allocated_str = ""
-                    if paddle.device.is_compiled_with_cuda():
-                        max_mem_reserved_str = f"max_mem_reserved: {paddle.device.cuda.max_memory_reserved() // (1024 ** 2)} MB,"
-                        max_mem_allocated_str = f"max_mem_allocated: {paddle.device.cuda.max_memory_allocated() // (1024 ** 2)} MB"
+                    if self.print_mem_info:
+                        if paddle.device.is_compiled_with_cuda():
+                            max_mem_reserved_str = f", max_mem_reserved: {paddle.device.cuda.max_memory_reserved() // (1024 ** 2)} MB, "
+                            max_mem_allocated_str = f"max_mem_allocated: {paddle.device.cuda.max_memory_allocated() // (1024 ** 2)} MB"
                     self.logger.info(
                         '[TRAIN] epoch={}/{}, iter={}/{} {}, lr={:.6f}, batch_cost: {:.6f} sec, '
-                        'ips: {:.6f} images/s | ETA {}, {} {}'.format(
+                        'ips: {:.6f} images/s | ETA {}{}{}'.format(
                             self.cur_epoch, self.epochs, self.cur_iter,
                             self.iters, loss_log, lr, timer.speed, timer.ips,
                             timer.eta, max_mem_reserved_str,
