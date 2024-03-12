@@ -408,14 +408,21 @@ class Trainer:
                         curr_weight = copy.deepcopy(self.model.state_dict())
                         self.model.set_dict(self.ema.apply())
                     metrics = self.evaluate()
-                    for k, v in metrics.items():
-                        if not isinstance(v, paddle.Tensor) or v.numel() != 1:
-                            continue
+                    if len(metrics) == 2:
+                        metric_name = ['AP_R40', 'AP_R11']
+                    else:
+                        metric_name = ['AP']
+                    for i, metric in enumerate(metrics):
+                        for k, v in metric.items():
+                            if not isinstance(v,
+                                              paddle.Tensor) or v.numel() != 1:
+                                continue
 
-                        self.log_writer.add_scalar(
-                            tag='Evaluation/{}'.format(k),
-                            value=float(v),
-                            step=self.cur_iter)
+                            self.log_writer.add_scalar(
+                                tag='Evaluation/{}_{}'.format(
+                                    metric_name[i], k),
+                                value=float(v),
+                                step=self.cur_iter)
 
                     if self.use_ema:
                         # reset original weight
