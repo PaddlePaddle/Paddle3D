@@ -17,7 +17,7 @@ def update_train_results(model_save_root,
     if paddle.distributed.get_rank() != 0:
         return
     assert last_num >= 1
-    train_results_path = os.path.join(model_save_root, "train_results.json")
+    train_results_path = os.path.join(model_save_root, "train_result.json")
     save_model_tag = ["pdparams", "pdopt"]
     save_inference_tag = [
         "inference_config", "pdmodel", "pdiparams", "pdiparams.info"
@@ -45,7 +45,7 @@ def update_train_results(model_save_root,
 
         for tag in save_model_tag:
             train_results["models"]["best"][tag] = os.path.join(
-                prefix, f"{prefix}.{tag}")
+                prefix, f"model.{tag}")
         for tag in save_inference_tag:
             train_results["models"]["best"][tag] = os.path.join(
                 prefix, "inference", f"inference.{tag}"
@@ -58,7 +58,7 @@ def update_train_results(model_save_root,
         train_results["models"][f"last_{1}"]["NDS"] = metric_info["NDS"]
         for tag in save_model_tag:
             train_results["models"][f"last_{1}"][tag] = os.path.join(
-                prefix, f"{prefix}.{tag}")
+                prefix, f"model.{tag}")
         for tag in save_inference_tag:
             train_results["models"][f"last_{1}"][tag] = os.path.join(
                 prefix, "inference", f"inference.{tag}"

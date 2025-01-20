@@ -318,6 +318,8 @@ class BEVFFasterRCNN(MVXFasterRCNN):
         return loss
 
     def export(self, save_dir, name='bevfusion', **kwargs):
+        if name is None:
+            name = 'bevfusion'
         self.forward = self.export_forward
         self.pts_middle_encoder.export_model = True
         self.lift_splat_shot_vis.export_model = True

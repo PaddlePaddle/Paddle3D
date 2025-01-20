@@ -204,6 +204,19 @@ class Checkpoint(CheckpointABC):
         if opt_dict is not None:
             opt_path = os.path.join(dirname, 'model.pdopt')
             paddle.save(opt_dict, opt_path)
+            # Currently we save the *latest* model as the *best* model
+            best_model_opt_path = os.path.join(self.rootdir, 'best_model')
+            os.makedirs(best_model_opt_path, exist_ok=True)
+            tgt_opt_path = os.path.join(best_model_opt_path, 'model.pdopt')
+            if os.path.lexists(tgt_opt_path):
+                # We will overwrite the existing best model
+                os.remove(tgt_opt_path)
+            try:
+                os.symlink(
+                    os.path.relpath(opt_path, best_model_opt_path),
+                    tgt_opt_path)
+            except OSError:
+                shutil.copy2(params_path, tgt_opt_path)
 
         if verbose:
             logger.info('Push model to checkpoint {}'.format(dirname))

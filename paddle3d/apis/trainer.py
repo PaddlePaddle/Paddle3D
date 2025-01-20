@@ -474,10 +474,24 @@ class Trainer:
                         export_model.export(
                             savepath, name='inference', **kwargs)
 
+                        # copy exported model to best model
+                        best_export_savepath = os.path.join(
+                            self.checkpoint.rootdir, "best_model", "inference")
+                        if os.path.exists(best_export_savepath):
+                            shutil.rmtree(best_export_savepath)
+                        shutil.copytree(savepath, best_export_savepath)
+
                         # save inference.yml
                         dump_infer_config(
                             self.pdx_cfg, os.path.join(savepath,
                                                        'inference.yml'))
+                        # copy inference.yml to best model
+                        epoch_export_yml_savepath = os.path.join(
+                            savepath, 'inference.yml')
+                        best_export_yml_savepath = os.path.join(
+                            best_export_savepath, 'inference.yml')
+                        shutil.copy2(epoch_export_yml_savepath,
+                                     best_export_yml_savepath)
 
                         # save training result
                         metric_info = {
@@ -510,7 +524,6 @@ class Trainer:
                                                        config_name)
                         if not os.path.exists(config_savepath):
                             shutil.copy(self.pdx_cfg['config'], config_savepath)
-
                 timer.update()
 
         self.logger.info('Training is complete.')
@@ -531,6 +544,73 @@ class Trainer:
 
             self.checkpoint.record('iters', self.iters)
             self.checkpoint.record('epochs', self.epochs)
+
+            uniform_output_enabled = self.pdx_cfg.get("uniform_output_enabled",
+                                                      False)
+            if uniform_output_enabled:
+                # model export
+                export_model = copy.deepcopy(self.model)
+                export_model.eval()
+                arg_dict = {} if not hasattr(
+                    export_model.export,
+                    'arg_dict') else export_model.export.arg_dict
+                kwargs = {
+                    key[2:]: self.pdx_cfg.get(key[2:], None)
+                    for key in arg_dict
+                }
+                savepath = os.path.join(self.checkpoint.rootdir, tag,
+                                        'inference')
+                kwargs['export_with_new_pir'] = self.pdx_cfg.get(
+                    'export_with_pir', False)
+                export_model.export(savepath, name='inference', **kwargs)
+
+                # copy exported model to best model
+                best_export_savepath = os.path.join(self.checkpoint.rootdir,
+                                                    "best_model", "inference")
+                if os.path.exists(best_export_savepath):
+                    shutil.rmtree(best_export_savepath)
+                shutil.copytree(savepath, best_export_savepath)
+
+                # save inference.yml
+                dump_infer_config(self.pdx_cfg,
+                                  os.path.join(savepath, 'inference.yml'))
+
+                # copy inference.yml to best model
+                epoch_export_yml_savepath = os.path.join(
+                    savepath, 'inference.yml')
+                best_export_yml_savepath = os.path.join(best_export_savepath,
+                                                        'inference.yml')
+                shutil.copy2(epoch_export_yml_savepath,
+                             best_export_yml_savepath)
+
+                # save training result
+                metric_info = {"mAP": 0.0, "NDS": 0.0, "epoch": self.cur_epoch}
+                if status.do_eval:
+                    metric_info['mAP'] = metrics['mean_ap']
+                    metric_info['NDS'] = metrics['nd_score']
+                update_train_results(
+                    self.checkpoint.rootdir,
+                    self.pdx_cfg['pdx_model_name'],
+                    "epoch_{}".format(self.cur_epoch),
+                    metric_info,
+                    done_flag=True,
+                    ema=self.use_ema)  # update train result for last epoch
+                update_train_results(
+                    self.checkpoint.rootdir,
+                    self.pdx_cfg['pdx_model_name'],
+                    "best_model",
+                    metric_info,
+                    done_flag=True,
+                    ema=self.use_ema
+                )  # update train result for best epoch (same as last)
+                self.model.train()
+
+                # save training config
+                config_name = os.path.basename(self.pdx_cfg['config'])
+                config_savepath = os.path.join(self.checkpoint.rootdir,
+                                               config_name)
+                if not os.path.exists(config_savepath):
+                    shutil.copy(self.pdx_cfg['config'], config_savepath)
 
     def evaluate(self) -> float:
         """
