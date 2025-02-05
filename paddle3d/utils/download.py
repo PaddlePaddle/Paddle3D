@@ -12,57 +12,69 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-from typing import Generator
-from urllib.parse import urlparse
-
+from tqdm import tqdm
+import time
 import requests
+import shutil
+import os
+import os.path as osp
+from paddle3d.env import local_rank
+from paddle3d.utils.logger import logger
+
+DOWNLOAD_RETRY_LIMIT = 3
 
 
-def download(url: str, path: str = None) -> str:
-    '''Download a file
+def download(url, path):
+    """
+    Download from url, save to path.
 
-    Args:
-        url (str) : url to be downloaded
-        path (str, optional) : path to store downloaded products, default is current work directory
-
-    Examples:
-        .. code-block:: python
-            url = 'https://xxxxx.xx/xx.tar.gz'
-            download(url, path='./output')
-    '''
-    for savename, _, _ in download_with_progress(url, path):
-        ...
-    return savename
-
-
-def download_with_progress(url: str,
-                           path: str = None) -> Generator[str, int, int]:
-    '''Download a file and return the downloading progress -> Generator[filename, download_size, total_size]
-
-    Args:
-        url (str) : url to be downloaded
-        path (str, optional) : path to store downloaded products, default is current work directory
-
-    Examples:
-        .. code-block:: python
-            url = 'https://xxxxx.xx/xx.tar.gz'
-            for filename, download_size, total_szie in download_with_progress(url, path='./output'):
-                print(filename, download_size, total_size)
-    '''
-    path = os.getcwd() if not path else path
-    if not os.path.exists(path):
+    url (str): download url
+    path (str): download to given path
+    """
+    if not osp.exists(path):
         os.makedirs(path)
 
-    parse_result = urlparse(url)
-    savename = parse_result.path.split('/')[-1]
-    savename = os.path.join(path, savename)
+    fname = osp.split(url)[-1]
+    fullname = osp.join(path, fname)
+    retry_cnt = 0
 
-    res = requests.get(url, stream=True)
-    download_size = 0
-    total_size = int(res.headers.get('content-length'))
-    with open(savename, 'wb') as _file:
-        for data in res.iter_content(chunk_size=4096):
-            _file.write(data)
-            download_size += len(data)
-            yield savename, download_size, total_size
+    while not osp.exists(fullname):
+        if retry_cnt < DOWNLOAD_RETRY_LIMIT:
+            retry_cnt += 1
+        else:
+            raise RuntimeError("Download from {} failed. "
+                               "Retry limit reached".format(url))
+
+        logger.info("Downloading {} from {}".format(fname, url))
+
+        try:
+            req = requests.get(url, stream=True)
+        except Exception as e:  # requests.exceptions.ConnectionError
+            logger.info(
+                "Downloading {} from {} failed {} times with exception {}".
+                format(fname, url, retry_cnt + 1, str(e)))
+            time.sleep(1)
+            continue
+
+        if req.status_code != 200:
+            raise RuntimeError("Downloading from {} failed with code "
+                               "{}!".format(url, req.status_code))
+
+        # For protecting download interupted, download to
+        # tmp_fullname firstly, move tmp_fullname to fullname
+        # after download finished
+        tmp_fullname = fullname + "_tmp"
+        total_size = req.headers.get('content-length')
+        with open(tmp_fullname, 'wb') as f:
+            if total_size:
+                with tqdm(total=(int(total_size) + 1023) // 1024) as pbar:
+                    for chunk in req.iter_content(chunk_size=1024):
+                        f.write(chunk)
+                        pbar.update(1)
+            else:
+                for chunk in req.iter_content(chunk_size=1024):
+                    if chunk:
+                        f.write(chunk)
+        shutil.move(tmp_fullname, fullname)
+
+    return fullname
