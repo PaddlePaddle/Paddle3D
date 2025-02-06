@@ -19,10 +19,11 @@ from urllib.parse import unquote, urlparse
 import filelock
 import paddle
 
-from paddle3d.env import PRETRAINED_HOME, TMP_HOME
-from paddle3d.utils.download import download_with_progress
+from paddle3d.env import PRETRAINED_HOME, TMP_HOME, local_rank
+from paddle3d.utils.download import download
 from paddle3d.utils.logger import logger
 from paddle3d.utils.xarfile import unarchive_with_progress
+import time
 
 
 def load_pretrained_model_from_url(model: paddle.nn.Layer,
@@ -49,14 +50,14 @@ def load_pretrained_model_from_url(model: paddle.nn.Layer,
             )
             os.remove(savepath)
 
-        # Add file lock to prevent multi-process download
-        with filelock.FileLock(os.path.join(TMP_HOME, savename)):
-            if not os.path.exists(savepath):
-                with logger.progressbar(
-                        "download pretrained model from {}".format(url)) as bar:
-                    for _, ds, ts in download_with_progress(url, savedir):
-                        bar.update(float(ds) / ts)
-
+        if local_rank == 0:
+            # Add file lock to prevent multi-process download
+            with filelock.FileLock(os.path.join(TMP_HOME, savename)):
+                if not os.path.exists(savepath):
+                    download(url, savedir)
+        else:
+            while not os.path.exists(savepath):
+                time.sleep(1)
         #TODO: unzip the file if it is a compress one
 
     load_pretrained_model_from_path(model, savepath, verbose=verbose)
