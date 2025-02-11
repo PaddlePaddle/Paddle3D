@@ -6,6 +6,7 @@ numpy
 nuscenes-devkit
 opencv-python <= 4.6.0.66
 opencv-python-headless == 4.10.0.84
+open3d
 pandas
 paddledet
 paddleseg
