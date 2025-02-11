@@ -92,11 +92,13 @@ def dump_infer_config(pdx_cfg, path):
     transforms_pipelines = []
     for func in transforms:
         ordered_func = OrderedDict()
-        ordered_func['type'] = func['type']
+        ordered_func_key = func['type']
+        ordered_func_value = dict()
         for k in func:
             if k == 'type':
                 continue
-            ordered_func[k] = func[k]
+            ordered_func_value[k] = func[k]
+        ordered_func[ordered_func_key] = ordered_func_value
         transforms_pipelines.append(ordered_func)
 
     infer_cfg["PreProcess"] = {
