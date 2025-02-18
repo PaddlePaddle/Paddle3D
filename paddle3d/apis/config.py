@@ -275,7 +275,7 @@ class Config(object):
         pdx_cfg_dict = {}
         pdx_cfg_dict['uniform_output_enabled'] = self.dic.get(
             'uniform_output_enabled', False)
-        pdx_cfg_dict['pdx_model_name'] = self.dic.get('pdx_model_name', False)
+        pdx_cfg_dict['pdx_model_name'] = self.dic.get('pdx_model_name', None)
         inference_cfg = {}
         val_dataset_cfg = self.dic.get('val_dataset', None)
         if val_dataset_cfg:
