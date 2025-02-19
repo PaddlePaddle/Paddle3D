@@ -23,6 +23,7 @@ from paddle3d.models.base import BaseDetectionModel
 from paddle3d.slim import get_qat_config
 from paddle3d.utils.checkpoint import load_pretrained_model
 from paddle3d.utils.logger import logger
+from paddle3d.utils.save_result import dump_infer_config
 
 parser = argparse.ArgumentParser(description='Model Export')
 
@@ -66,6 +67,11 @@ def parse_normal_args():
         help='Config for quant model.',
         default=None,
         type=str)
+    parser.add_argument(
+        '--save_inference_yml',
+        dest='save_inference_yml',
+        help='Whether to save inference yml for exported models.',
+        action='store_true')
 
     return parser.parse_known_args()
 
@@ -154,6 +160,10 @@ def main(args, rest_args):
     kwargs = {key[2:]: getattr(args, key[2:]) for key in arg_dict}
 
     model.export(args.save_dir, name=args.save_name, **kwargs)
+
+    if args.save_inference_yml:
+        dump_infer_config(cfg.pdx_cfg,
+                          os.path.join(args.save_dir, 'inference.yml'))
 
     if args.export_for_apollo:
         if not isinstance(model, BaseDetectionModel):
